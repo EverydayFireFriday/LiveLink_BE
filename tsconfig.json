@@ -1,8 +1,11 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
     "target": "ES2020",
+    "module": "commonjs",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
     "esModuleInterop": true,
-    "strict": true
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   }
 }
