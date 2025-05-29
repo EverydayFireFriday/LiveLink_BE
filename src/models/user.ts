@@ -1,9 +1,10 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 
-// User 인터페이스 정의
+// User 인터페이스 정의 - 이메일 필드 추가
 export interface User {
   _id?: ObjectId;
   username: string;
+  email: string; // 이메일 필드 추가
   passwordHash: string;
   profileImage?: string; // S3 URL 또는 파일 경로
   createdAt: Date;
@@ -34,8 +35,9 @@ class Database {
       this.db = this.client.db(process.env.MONGO_DB_NAME || 'livelink');
       console.log('✅ MongoDB Native Driver connected');
       
-      // 인덱스 생성 (username 유니크)
+      // 인덱스 생성 (username과 email 모두 유니크)
       await this.getUserCollection().createIndex({ username: 1 }, { unique: true });
+      await this.getUserCollection().createIndex({ email: 1 }, { unique: true });
     } catch (error) {
       console.error('❌ MongoDB connection failed:', error);
       throw error;
@@ -87,7 +89,14 @@ export class UserModel {
       };
     } catch (error: any) {
       if (error.code === 11000) {
-        throw new Error('Username already exists');
+        // 중복 키 에러 처리 - 어떤 필드가 중복인지 확인
+        if (error.keyPattern?.username) {
+          throw new Error('Username already exists');
+        } else if (error.keyPattern?.email) {
+          throw new Error('Email already exists');
+        } else {
+          throw new Error('Duplicate key error');
+        }
       }
       throw error;
     }
@@ -96,6 +105,19 @@ export class UserModel {
   // username으로 사용자 찾기
   async findByUsername(username: string): Promise<User | null> {
     return await this.userCollection.findOne({ username });
+  }
+
+  // 이메일로 사용자 찾기 - 새로 추가
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.userCollection.findOne({ email });
+  }
+
+  // 이메일과 username 모두로 사용자 찾기 - 새로 추가
+  async findByEmailAndUsername(email: string, username: string): Promise<User | null> {
+    return await this.userCollection.findOne({ 
+      email, 
+      username 
+    });
   }
 
   // ID로 사용자 찾기
@@ -128,6 +150,11 @@ export class UserModel {
     return await this.updateUser(id, { profileImage: profileImageUrl });
   }
 
+  // 비밀번호 업데이트 - 새로 추가
+  async updatePassword(id: string | ObjectId, passwordHash: string): Promise<User | null> {
+    return await this.updateUser(id, { passwordHash });
+  }
+
   // 사용자 삭제
   async deleteUser(id: string | ObjectId): Promise<boolean> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
@@ -154,6 +181,55 @@ export class UserModel {
   async isUsernameExists(username: string): Promise<boolean> {
     const count = await this.userCollection.countDocuments({ username });
     return count > 0;
+  }
+
+  // 이메일 중복 확인 - 새로 추가
+  async isEmailExists(email: string): Promise<boolean> {
+    const count = await this.userCollection.countDocuments({ email });
+    return count > 0;
+  }
+
+  // 이메일 또는 username으로 사용자 찾기 - 새로 추가 (로그인 시 유용)
+  async findByEmailOrUsername(emailOrUsername: string): Promise<User | null> {
+    return await this.userCollection.findOne({
+      $or: [
+        { email: emailOrUsername },
+        { username: emailOrUsername }
+      ]
+    });
+  }
+
+  // 사용자 검색 (부분 일치) - 새로 추가
+  async searchUsers(searchTerm: string, limit: number = 20): Promise<User[]> {
+    const regex = new RegExp(searchTerm, 'i'); // 대소문자 구분 없이
+    return await this.userCollection
+      .find({
+        $or: [
+          { username: { $regex: regex } },
+          { email: { $regex: regex } }
+        ]
+      })
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .toArray();
+  }
+
+  // 특정 기간 내 가입한 사용자 조회 - 새로 추가
+  async findUsersByDateRange(startDate: Date, endDate: Date): Promise<User[]> {
+    return await this.userCollection
+      .find({
+        createdAt: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+  }
+
+  // 마지막 활동 시간 업데이트 - 새로 추가
+  async updateLastActivity(id: string | ObjectId): Promise<User | null> {
+    return await this.updateUser(id, { updatedAt: new Date() });
   }
 }
 

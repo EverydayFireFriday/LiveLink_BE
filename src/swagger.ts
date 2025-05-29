@@ -4,7 +4,7 @@ export const swaggerSpec = swaggerJSDoc({
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "회원 API",
+      title: "Livelink API",
       version: "1.0.0",
     },
   },
