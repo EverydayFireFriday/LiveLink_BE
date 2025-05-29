@@ -1,10 +1,50 @@
 import express from "express";
 import bcrypt from "bcrypt";
+import nodemailer from "nodemailer";
+import crypto from "crypto";
 import { UserModel } from "../models/user";
 
 // UserModel을 지연 초기화하는 함수
 const getUserModel = () => {
   return new UserModel();
+};
+
+// 이메일 전송을 위한 nodemailer 설정
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    service: 'gmail', // 또는 다른 이메일 서비스
+    auth: {
+      user: process.env.EMAIL_USER, // 환경변수에서 가져오기
+      pass: process.env.EMAIL_PASS, // 앱 비밀번호
+    },
+  });
+};
+
+// 인증 코드 저장소 (실제로는 Redis나 DB에 저장하는 것이 좋습니다)
+interface VerificationCode {
+  code: string;
+  email: string;
+  type: 'password_reset' | 'username_recovery';
+  expiresAt: Date;
+  isUsed: boolean;
+}
+
+// 메모리 저장소 (실제로는 Redis 사용 권장)
+const verificationCodes = new Map<string, VerificationCode>();
+
+// 만료된 코드 정리 함수
+const cleanupExpiredCodes = () => {
+  const now = new Date();
+  for (const [key, value] of verificationCodes.entries()) {
+    if (value.expiresAt < now) {
+      verificationCodes.delete(key);
+    }
+  }
+};
+
+// 6자리 인증 코드 생성
+const generateVerificationCode = (): string => {
+  return crypto.randomInt(100000, 999999).toString();
 };
 
 /**
@@ -23,6 +63,9 @@ const getUserModel = () => {
  *             properties:
  *               username:
  *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
  *               password:
  *                 type: string
  *               profileImage:
@@ -37,10 +80,17 @@ const getUserModel = () => {
  *         description: 서버 에러
  */
 export const register = async (req: express.Request, res: express.Response) => {
-  const { username, password, profileImage } = req.body;
+  const { username, email, password, profileImage } = req.body;
 
-  if (!username || !password) {
-    res.status(400).json({ message: "username과 password를 입력해주세요." });
+  if (!username || !email || !password) {
+    res.status(400).json({ message: "username, email, password를 모두 입력해주세요." });
+    return;
+  }
+
+  // 이메일 형식 검증
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    res.status(400).json({ message: "올바른 이메일 형식을 입력해주세요." });
     return;
   }
 
@@ -50,11 +100,18 @@ export const register = async (req: express.Request, res: express.Response) => {
   }
 
   try {
-    // 사용자명 중복 확인
     const userModel = getUserModel();
+    
+    // 사용자명과 이메일 중복 확인
     const existingUser = await userModel.findByUsername(username);
     if (existingUser) {
       res.status(400).json({ message: "이미 존재하는 사용자입니다." });
+      return;
+    }
+
+    const existingEmail = await userModel.findByEmail(email);
+    if (existingEmail) {
+      res.status(400).json({ message: "이미 사용 중인 이메일입니다." });
       return;
     }
 
@@ -64,16 +121,18 @@ export const register = async (req: express.Request, res: express.Response) => {
     // 새 사용자 생성
     const newUser = await userModel.createUser({
       username,
+      email,
       passwordHash,
       profileImage: profileImage || undefined,
     });
 
-    console.log(`새 사용자 가입: ${username} (MongoDB 저장 완료)`);
+    console.log(`새 사용자 가입: ${username} (${email}) - MongoDB 저장 완료`);
     res.status(201).json({
       message: "회원가입 성공",
       user: {
         id: newUser._id,
         username: newUser.username,
+        email: newUser.email,
         profileImage: newUser.profileImage,
         createdAt: newUser.createdAt,
       },
@@ -82,6 +141,8 @@ export const register = async (req: express.Request, res: express.Response) => {
     console.error("회원가입 에러:", error);
     if (error.message === "Username already exists") {
       res.status(400).json({ message: "이미 존재하는 사용자입니다." });
+    } else if (error.message === "Email already exists") {
+      res.status(400).json({ message: "이미 사용 중인 이메일입니다." });
     } else {
       res.status(500).json({ message: "서버 에러로 회원가입 실패" });
     }
@@ -125,9 +186,9 @@ export const login = async (req: express.Request, res: express.Response) => {
   }
 
   try {
-    // 사용자 찾기
+    // 사용자 찾기 (username 또는 email로 로그인 가능)
     const userModel = getUserModel();
-    const user = await userModel.findByUsername(username);
+    const user = await userModel.findByEmailOrUsername(username);
     if (!user) {
       res.status(401).json({ message: "존재하지 않는 사용자입니다." });
       return;
@@ -147,18 +208,20 @@ export const login = async (req: express.Request, res: express.Response) => {
     req.session.user = {
       username: user.username,
       userId: user._id!.toString(),
+      email: user.email,
       profileImage: user.profileImage,
       loginTime: new Date().toISOString(),
     };
 
     console.log(
-      `로그인 성공: ${username} (세션 ID: ${req.sessionID}, Redis 저장 완료)`
+      `로그인 성공: ${user.username} (${user.email}) - 세션 ID: ${req.sessionID}, Redis 저장 완료`
     );
     res.status(200).json({
       message: "로그인 성공",
       user: {
         id: user._id,
         username: user.username,
+        email: user.email,
         profileImage: user.profileImage,
       },
       sessionId: req.sessionID,
@@ -272,6 +335,7 @@ export const getProfile = async (
       user: {
         id: user._id,
         username: user.username,
+        email: user.email,
         profileImage: user.profileImage,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -343,6 +407,7 @@ export const updateProfile = async (
       user: {
         id: updatedUser._id,
         username: updatedUser.username,
+        email: updatedUser.email,
         profileImage: updatedUser.profileImage,
         updatedAt: updatedUser.updatedAt,
       },
@@ -395,6 +460,7 @@ export const getAllUsers = async (
     const safeUsers = users.map((user) => ({
       id: user._id,
       username: user.username,
+      email: user.email,
       profileImage: user.profileImage,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -411,5 +477,500 @@ export const getAllUsers = async (
   } catch (error) {
     console.error("사용자 목록 조회 에러:", error);
     res.status(500).json({ message: "사용자 목록 조회 실패" });
+  }
+};
+
+// ===========================================
+// 🆕 이메일 인증 관련 함수들
+// ===========================================
+
+/**
+ * @swagger
+ * /auth/find-username:
+ *   post:
+ *     summary: 아이디 찾기 (이메일 인증)
+ *     description: 이메일로 인증 코드를 전송하여 아이디를 찾습니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: 인증 코드 전송 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 이메일을 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
+export const findUsername = async (req: express.Request, res: express.Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400).json({ message: "이메일을 입력해주세요." });
+    return;
+  }
+
+  // 이메일 형식 검증
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    res.status(400).json({ message: "올바른 이메일 형식을 입력해주세요." });
+    return;
+  }
+
+  try {
+    const userModel = getUserModel();
+    // 이메일로 사용자 찾기
+    const user = await userModel.findByEmail(email);
+    
+    if (!user) {
+      res.status(404).json({ message: "해당 이메일로 등록된 사용자를 찾을 수 없습니다." });
+      return;
+    }
+
+    // 인증 코드 생성
+    const verificationCode = generateVerificationCode();
+    const codeKey = `username_${email}_${Date.now()}`;
+    
+    // 인증 코드 저장 (15분 만료)
+    verificationCodes.set(codeKey, {
+      code: verificationCode,
+      email,
+      type: 'username_recovery',
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15분
+      isUsed: false,
+    });
+
+    // 이메일 전송
+    const transporter = createTransporter();
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: '[LiveLink] 아이디 찾기 인증 코드',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">아이디 찾기 인증 코드</h2>
+          <p>안녕하세요!</p>
+          <p>아이디 찾기를 위한 인증 코드를 발송해드립니다.</p>
+          <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
+            <h3 style="color: #007bff; font-size: 24px; margin: 0;">인증 코드: ${verificationCode}</h3>
+          </div>
+          <p><strong>주의사항:</strong></p>
+          <ul>
+            <li>이 코드는 15분 후에 만료됩니다.</li>
+            <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
+            <li>본인이 요청하지 않았다면 이 이메일을 무시해주세요.</li>
+          </ul>
+          <p>감사합니다.<br>LiveLink 팀</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    // 만료된 코드 정리
+    cleanupExpiredCodes();
+
+    res.status(200).json({
+      message: "인증 코드가 이메일로 전송되었습니다.",
+      codeKey,
+      expiresIn: "15분",
+    });
+
+  } catch (error) {
+    console.error("아이디 찾기 이메일 전송 에러:", error);
+    res.status(500).json({ message: "이메일 전송 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/verify-username:
+ *   post:
+ *     summary: 아이디 찾기 인증 코드 확인
+ *     description: 인증 코드를 확인하고 아이디를 반환합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               codeKey:
+ *                 type: string
+ *               verificationCode:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 인증 성공 및 아이디 반환
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 코드 불일치
+ *       410:
+ *         description: 인증 코드 만료
+ *       500:
+ *         description: 서버 에러
+ */
+export const verifyUsernameCode = async (req: express.Request, res: express.Response) => {
+  const { codeKey, verificationCode } = req.body;
+
+  if (!codeKey || !verificationCode) {
+    res.status(400).json({ message: "인증 키와 인증 코드를 입력해주세요." });
+    return;
+  }
+
+  try {
+    const storedCode = verificationCodes.get(codeKey);
+    
+    if (!storedCode) {
+      res.status(410).json({ message: "인증 코드가 만료되었거나 존재하지 않습니다." });
+      return;
+    }
+
+    if (storedCode.isUsed) {
+      res.status(410).json({ message: "이미 사용된 인증 코드입니다." });
+      return;
+    }
+
+    if (storedCode.expiresAt < new Date()) {
+      verificationCodes.delete(codeKey);
+      res.status(410).json({ message: "인증 코드가 만료되었습니다." });
+      return;
+    }
+
+    if (storedCode.code !== verificationCode) {
+      res.status(401).json({ message: "인증 코드가 일치하지 않습니다." });
+      return;
+    }
+
+    // 사용자 정보 조회
+    const userModel = getUserModel();
+    const user = await userModel.findByEmail(storedCode.email);
+    
+    if (!user) {
+      res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      return;
+    }
+
+    // 인증 코드 사용 표시
+    storedCode.isUsed = true;
+    verificationCodes.set(codeKey, storedCode);
+
+    res.status(200).json({
+      message: "인증 성공",
+      username: user.username,
+      maskedEmail: user.email.replace(/(.{2}).*(@.*)/, '$1***$2'), // 이메일 마스킹
+    });
+
+  } catch (error) {
+    console.error("아이디 찾기 인증 확인 에러:", error);
+    res.status(500).json({ message: "인증 확인 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: 비밀번호 재설정 요청 (이메일 인증)
+ *     description: 이메일로 비밀번호 재설정 인증 코드를 전송합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               username:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 인증 코드 전송 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
+export const resetPasswordRequest = async (req: express.Request, res: express.Response) => {
+  const { email, username } = req.body;
+
+  if (!email || !username) {
+    res.status(400).json({ message: "이메일과 아이디를 모두 입력해주세요." });
+    return;
+  }
+
+  // 이메일 형식 검증
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    res.status(400).json({ message: "올바른 이메일 형식을 입력해주세요." });
+    return;
+  }
+
+  try {
+    const userModel = getUserModel();
+    // 이메일과 아이디가 모두 일치하는 사용자 찾기
+    const user = await userModel.findByEmailAndUsername(email, username);
+    
+    if (!user) {
+      res.status(404).json({ message: "입력하신 이메일과 아이디가 일치하는 사용자를 찾을 수 없습니다." });
+      return;
+    }
+
+    // 인증 코드 생성
+    const verificationCode = generateVerificationCode();
+    const codeKey = `password_${email}_${Date.now()}`;
+    
+    // 인증 코드 저장 (15분 만료)
+    verificationCodes.set(codeKey, {
+      code: verificationCode,
+      email,
+      type: 'password_reset',
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15분
+      isUsed: false,
+    });
+
+    // 이메일 전송
+    const transporter = createTransporter();
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: '[LiveLink] 비밀번호 재설정 인증 코드',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">비밀번호 재설정 인증 코드</h2>
+          <p>안녕하세요, <strong>${username}</strong>님!</p>
+          <p>비밀번호 재설정을 위한 인증 코드를 발송해드립니다.</p>
+          <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
+            <h3 style="color: #dc3545; font-size: 24px; margin: 0;">인증 코드: ${verificationCode}</h3>
+          </div>
+          <p><strong>주의사항:</strong></p>
+          <ul>
+            <li>이 코드는 15분 후에 만료됩니다.</li>
+            <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
+            <li>본인이 요청하지 않았다면 즉시 비밀번호를 변경해주세요.</li>
+          </ul>
+          <p>감사합니다.<br>LiveLink 팀</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    // 만료된 코드 정리
+    cleanupExpiredCodes();
+
+    res.status(200).json({
+      message: "비밀번호 재설정 인증 코드가 이메일로 전송되었습니다.",
+      codeKey,
+      expiresIn: "15분",
+    });
+
+  } catch (error) {
+    console.error("비밀번호 재설정 이메일 전송 에러:", error);
+    res.status(500).json({ message: "이메일 전송 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/verify-reset-password:
+ *   post:
+ *     summary: 비밀번호 재설정 인증 및 새 비밀번호 설정
+ *     description: 인증 코드를 확인하고 새 비밀번호로 변경합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               codeKey:
+ *                 type: string
+ *               verificationCode:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 비밀번호 재설정 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 코드 불일치
+ *       410:
+ *         description: 인증 코드 만료
+ *       500:
+ *         description: 서버 에러
+ */
+export const verifyResetPassword = async (req: express.Request, res: express.Response) => {
+  const { codeKey, verificationCode, newPassword } = req.body;
+
+  if (!codeKey || !verificationCode || !newPassword) {
+    res.status(400).json({ message: "모든 필드를 입력해주세요." });
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400).json({ message: "새 비밀번호는 최소 6자 이상이어야 합니다." });
+    return;
+  }
+
+  try {
+    const storedCode = verificationCodes.get(codeKey);
+    
+    if (!storedCode) {
+      res.status(410).json({ message: "인증 코드가 만료되었거나 존재하지 않습니다." });
+      return;
+    }
+
+    if (storedCode.isUsed) {
+      res.status(410).json({ message: "이미 사용된 인증 코드입니다." });
+      return;
+    }
+
+    if (storedCode.expiresAt < new Date()) {
+      verificationCodes.delete(codeKey);
+      res.status(410).json({ message: "인증 코드가 만료되었습니다." });
+      return;
+    }
+
+    if (storedCode.code !== verificationCode) {
+      res.status(401).json({ message: "인증 코드가 일치하지 않습니다." });
+      return;
+    }
+
+    if (storedCode.type !== 'password_reset') {
+      res.status(400).json({ message: "잘못된 인증 코드 유형입니다." });
+      return;
+    }
+
+    // 사용자 정보 조회
+    const userModel = getUserModel();
+    const user = await userModel.findByEmail(storedCode.email);
+    
+    if (!user) {
+      res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      return;
+    }
+
+    // 새 비밀번호 해시화
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+    // 비밀번호 업데이트
+    await userModel.updateUser(user._id!.toString(), {
+      passwordHash: newPasswordHash,
+      updatedAt: new Date(),
+    });
+
+    // 인증 코드 사용 표시 및 삭제
+    verificationCodes.delete(codeKey);
+
+    console.log(`비밀번호 재설정 완료: ${user.username} (${storedCode.email})`);
+
+    res.status(200).json({
+      message: "비밀번호가 성공적으로 재설정되었습니다.",
+      username: user.username,
+    });
+
+  } catch (error) {
+    console.error("비밀번호 재설정 에러:", error);
+    res.status(500).json({ message: "비밀번호 재설정 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/resend-code:
+ *   post:
+ *     summary: 인증 코드 재전송
+ *     description: 만료된 인증 코드를 새로 생성하여 재전송합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               type:
+ *                 type: string
+ *                 enum: [username_recovery, password_reset]
+ *               username:
+ *                 type: string
+ *                 description: 비밀번호 재설정 시에만 필요
+ *     responses:
+ *       200:
+ *         description: 인증 코드 재전송 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       429:
+ *         description: 너무 많은 요청
+ *       500:
+ *         description: 서버 에러
+ */
+export const resendVerificationCode = async (req: express.Request, res: express.Response) => {
+  const { email, type, username } = req.body;
+
+  if (!email || !type) {
+    res.status(400).json({ message: "이메일과 인증 유형을 입력해주세요." });
+    return;
+  }
+
+  if (type === 'password_reset' && !username) {
+    res.status(400).json({ message: "비밀번호 재설정 시 아이디도 입력해주세요." });
+    return;
+  }
+
+  try {
+    // 기존 코드들 정리
+    cleanupExpiredCodes();
+
+    // 같은 이메일로 최근 1분 내에 요청한 코드가 있는지 확인 (스팸 방지)
+    const recentCodes = Array.from(verificationCodes.values()).filter(
+      code => code.email === email && 
+      code.type === type && 
+      (Date.now() - (code.expiresAt.getTime() - 15 * 60 * 1000)) < 60 * 1000
+    );
+
+    if (recentCodes.length > 0) {
+      res.status(429).json({ 
+        message: "너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.",
+        retryAfter: 60
+      });
+      return;
+    }
+
+    // 새로운 인증 요청 처리
+    if (type === 'username_recovery') {
+      await findUsername(req, res);
+    } else if (type === 'password_reset') {
+      await resetPasswordRequest(req, res);
+    } else {
+      res.status(400).json({ message: "올바르지 않은 인증 유형입니다." });
+    }
+
+  } catch (error) {
+    console.error("인증 코드 재전송 에러:", error);
+    res.status(500).json({ message: "인증 코드 재전송 실패" });
   }
 };
