@@ -5,7 +5,6 @@ import crypto from "crypto";
 import { UserModel } from "../models/user";
 import Redis from "ioredis";
 
-// Redis URL 방식 (환경변수에 REDIS_URL 설정)
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // UserModel을 지연 초기화하는 함수
@@ -16,11 +15,17 @@ const getUserModel = () => {
 // 이메일 전송을 위한 nodemailer 설정
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail', // 또는 다른 이메일 서비스
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
-      user: process.env.EMAIL_USER, // 환경변수에서 가져오기
-      pass: process.env.EMAIL_PASS, // 앱 비밀번호
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // Gmail 앱 비밀번호 사용
     },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 };
 
@@ -139,8 +144,8 @@ export const register = async (req: express.Request, res: express.Response) => {
     return;
   }
 
-  if (password.length < 6) {
-    res.status(400).json({ message: "비밀번호는 최소 6자 이상이어야 합니다." });
+  if (password.length < 7) {
+    res.status(400).json({ message: "비밀번호는 최소 7자 이상이어야 합니다." });
     return;
   }
 
@@ -1066,8 +1071,8 @@ export const verifyResetPassword = async (req: express.Request, res: express.Res
     return;
   }
 
-  if (newPassword.length < 6) {
-    res.status(400).json({ message: "새 비밀번호는 최소 6자 이상이어야 합니다." });
+  if (newPassword.length < 7) {
+    res.status(400).json({ message: "새 비밀번호는 최소 7자 이상이어야 합니다." });
     return;
   }
 
