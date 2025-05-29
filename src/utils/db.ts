@@ -6,7 +6,7 @@ let db: Db;
 export const connectDB = async () => {
   try {
     const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-    const DB_NAME = process.env.MONGO_DB_NAME || "livelink";
+    const DB_NAME = process.env.MONGO_DB_NAME || "livelink"; 
     
     client = new MongoClient(MONGO_URI);
     await client.connect();
