@@ -26,7 +26,13 @@ export interface IPartnerLink {
   address: string;
 }
 
-// Concert 메인 인터페이스
+// Like 인터페이스 (새로 추가)
+export interface ILike {
+  userId: ObjectId;
+  likedAt: Date;
+}
+
+// Concert 메인 인터페이스 (좋아요 필드 추가)
 export interface IConcert {
   _id: ObjectId;
   uid: string; // 사용자 지정 ID (timestamp 포함)
@@ -43,6 +49,9 @@ export interface IConcert {
   galleryImages?: string[]; // S3 URLs 배열
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
   tags?: string[];
+  likes?: ILike[]; // 좋아요 배열 (새로 추가)
+  likesCount?: number; // 좋아요 개수 (새로 추가)
+  uploadedBy?: ObjectId; // 업로드한 사용자 ID (새로 추가)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -58,7 +67,7 @@ export class ConcertModel {
     this.createIndexes();
   }
 
-  // 인덱스 생성 - 수정된 버전 (parallel arrays 문제 해결)
+  // 인덱스 생성 - 좋아요 시스템 인덱스 추가
   private async createIndexes() {
     try {
       console.log("Concert 인덱스 생성 시작...");
@@ -85,9 +94,17 @@ export class ConcertModel {
       await this.collection.createIndex({ createdAt: 1 });
       console.log("✅ createdAt 인덱스 생성");
 
+      // 좋아요 시스템 관련 인덱스 (새로 추가)
+      await this.collection.createIndex({ likesCount: -1 });
+      console.log("✅ likesCount 인덱스 생성");
+
+      await this.collection.createIndex({ "likes.userId": 1 });
+      console.log("✅ likes.userId 인덱스 생성");
+
+      await this.collection.createIndex({ uploadedBy: 1 });
+      console.log("✅ uploadedBy 인덱스 생성");
+
       // 안전한 복합 인덱스들 (parallel arrays 제외)
-      // ❌ 제거: { datetime: 1, artist: 1 } - 둘 다 배열이라 불가능
-      
       await this.collection.createIndex({ "location.city": 1, status: 1 });
       console.log("✅ location.city + status 복합 인덱스 생성");
 
@@ -99,6 +116,13 @@ export class ConcertModel {
 
       await this.collection.createIndex({ createdAt: -1, status: 1 });
       console.log("✅ createdAt + status 복합 인덱스 생성");
+
+      // 좋아요 관련 복합 인덱스 (새로 추가)
+      await this.collection.createIndex({ likesCount: -1, datetime: 1 });
+      console.log("✅ likesCount + datetime 복합 인덱스 생성");
+
+      await this.collection.createIndex({ status: 1, likesCount: -1 });
+      console.log("✅ status + likesCount 복합 인덱스 생성");
 
       // 텍스트 검색 인덱스
       await this.collection.createIndex({
@@ -256,7 +280,7 @@ export class ConcertModel {
     return { isValid: errors.length === 0, errors };
   }
 
-  // 콘서트 생성 - 수정된 버전
+  // 콘서트 생성 - 좋아요 시스템 필드 추가
   async create(
     concertData: Omit<IConcert, "createdAt" | "updatedAt">
   ): Promise<IConcert> {
@@ -269,6 +293,8 @@ export class ConcertModel {
     const concert: IConcert = {
       ...concertData,
       status: concertData.status || "upcoming",
+      likes: concertData.likes || [], // 기본값 설정
+      likesCount: concertData.likesCount || 0, // 기본값 설정
       createdAt: now,
       updatedAt: now,
     };
@@ -335,10 +361,11 @@ export class ConcertModel {
     id: string,
     updateData: Partial<IConcert>
   ): Promise<IConcert | null> {
-    // uid 수정 방지
-    if (updateData.uid) {
-      delete updateData.uid;
-    }
+    // 수정 불가능한 필드 제거
+    if (updateData.uid) delete updateData.uid;
+    if (updateData.likes) delete updateData.likes;
+    if (updateData.likesCount) delete updateData.likesCount;
+    if (updateData.uploadedBy) delete updateData.uploadedBy;
 
     const validation = this.validateConcertData(updateData);
     if (!validation.isValid) {
@@ -380,6 +407,178 @@ export class ConcertModel {
     const result = await this.collection.findOneAndDelete(query);
     return result ? result : null;
   }
+
+  // ==================== 좋아요 시스템 메서드들 (새로 추가) ====================
+
+  // 좋아요 추가 (안전성 개선)
+  async addLike(concertId: string, userId: string): Promise<IConcert> {
+    if (!userId) {
+      throw new Error("사용자 ID는 필수입니다.");
+    }
+
+    let query: any;
+    if (ObjectId.isValid(concertId)) {
+      query = { _id: new ObjectId(concertId) };
+    } else {
+      query = { uid: concertId };
+    }
+
+    const userObjectId = new ObjectId(userId);
+    const now = new Date();
+
+    // 먼저 콘서트가 존재하는지 확인
+    const existingConcert = await this.collection.findOne(query);
+    if (!existingConcert) {
+      throw new Error("콘서트를 찾을 수 없습니다.");
+    }
+
+    // 이미 좋아요했는지 확인
+    const isAlreadyLiked = existingConcert.likes && Array.isArray(existingConcert.likes)
+      ? existingConcert.likes.some((like: any) => {
+          try {
+            return like && like.userId && like.userId.toString() === userId.toString();
+          } catch (error) {
+            console.warn("좋아요 중복 검사 중 에러:", error);
+            return false;
+          }
+        })
+      : false;
+
+    if (isAlreadyLiked) {
+      throw new Error("이미 좋아요한 콘서트입니다.");
+    }
+
+    const result = await this.collection.findOneAndUpdate(
+      query,
+      {
+        $push: {
+          likes: {
+            userId: userObjectId,
+            likedAt: now
+          }
+        },
+        $inc: { likesCount: 1 },
+        $set: { updatedAt: now }
+      },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      throw new Error("좋아요 추가에 실패했습니다.");
+    }
+
+    return result;
+  }
+
+  // 좋아요 삭제 (안전성 개선)
+  async removeLike(concertId: string, userId: string): Promise<IConcert> {
+    if (!userId) {
+      throw new Error("사용자 ID는 필수입니다.");
+    }
+
+    let query: any;
+    if (ObjectId.isValid(concertId)) {
+      query = { _id: new ObjectId(concertId) };
+    } else {
+      query = { uid: concertId };
+    }
+
+    const userObjectId = new ObjectId(userId);
+    const now = new Date();
+
+    // 먼저 콘서트가 존재하는지 확인
+    const existingConcert = await this.collection.findOne(query);
+    if (!existingConcert) {
+      throw new Error("콘서트를 찾을 수 없습니다.");
+    }
+
+    const result = await this.collection.findOneAndUpdate(
+      query,
+      {
+        $pull: {
+          likes: { userId: userObjectId }
+        },
+        $inc: { likesCount: -1 },
+        $set: { updatedAt: now }
+      },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      throw new Error("좋아요 삭제에 실패했습니다.");
+    }
+
+    // likesCount가 음수가 되지 않도록 보정
+    if (result.likesCount && result.likesCount < 0) {
+      await this.collection.updateOne(
+        query,
+        { $set: { likesCount: 0 } }
+      );
+      result.likesCount = 0;
+    }
+
+    return result;
+  }
+
+  // 사용자가 좋아요한 콘서트 목록 조회
+  async findLikedByUser(
+    userId: string,
+    options: {
+      page?: number;
+      limit?: number;
+    } = {}
+  ): Promise<{ concerts: IConcert[]; total: number }> {
+    if (!userId) {
+      console.log("❌ findLikedByUser: 사용자 ID가 없음");
+      return { concerts: [], total: 0 };
+    }
+
+    const { page = 1, limit = 20 } = options;
+    const skip = (page - 1) * limit;
+    
+    let userObjectId: ObjectId;
+    try {
+      userObjectId = new ObjectId(userId);
+    } catch (error) {
+      console.error("❌ findLikedByUser: 잘못된 사용자 ID 형식:", userId);
+      return { concerts: [], total: 0 };
+    }
+
+    console.log("🔍 findLikedByUser 검색 조건:", {
+      userId,
+      userObjectId: userObjectId.toString(),
+      page,
+      limit
+    });
+
+    try {
+      const [concerts, total] = await Promise.all([
+        this.collection
+          .find({
+            "likes.userId": userObjectId
+          })
+          .sort({ "likes.likedAt": -1 }) // 좋아요한 시간 기준 내림차순
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        this.collection.countDocuments({
+          "likes.userId": userObjectId
+        })
+      ]);
+
+      console.log("✅ findLikedByUser 결과:", {
+        찾은콘서트수: concerts.length,
+        전체개수: total
+      });
+
+      return { concerts, total };
+    } catch (error) {
+      console.error("❌ findLikedByUser 쿼리 실행 에러:", error);
+      return { concerts: [], total: 0 };
+    }
+  }
+
+  // ==================== 기존 메서드들 ====================
 
   // 다가오는 콘서트 조회
   async findUpcoming(): Promise<IConcert[]> {
@@ -460,24 +659,42 @@ export class ConcertModel {
     return result.modifiedCount;
   }
 
-  // 통계 정보
+  // 통계 정보 - 좋아요 정보 포함
   async getStats(): Promise<{
     total: number;
     upcoming: number;
     ongoing: number;
     completed: number;
     cancelled: number;
+    totalLikes: number;
+    averageLikes: number;
   }> {
-    const stats = await this.collection
-      .aggregate([
-        {
-          $group: {
-            _id: "$status",
-            count: { $sum: 1 },
+    const [statusStats, likeStats] = await Promise.all([
+      // 상태별 통계
+      this.collection
+        .aggregate([
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+            },
           },
-        },
-      ])
-      .toArray();
+        ])
+        .toArray(),
+      
+      // 좋아요 통계
+      this.collection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalLikes: { $sum: "$likesCount" },
+              totalConcerts: { $sum: 1 },
+            },
+          },
+        ])
+        .toArray()
+    ]);
 
     const result = {
       total: 0,
@@ -485,12 +702,23 @@ export class ConcertModel {
       ongoing: 0,
       completed: 0,
       cancelled: 0,
+      totalLikes: 0,
+      averageLikes: 0,
     };
 
-    stats.forEach((stat) => {
-      result[stat._id as keyof typeof result] = stat.count;
+    // 상태별 통계 처리
+    statusStats.forEach((stat) => {
+      result[stat._id as keyof Omit<typeof result, 'totalLikes' | 'averageLikes'>] = stat.count;
       result.total += stat.count;
     });
+
+    // 좋아요 통계 처리
+    if (likeStats.length > 0) {
+      result.totalLikes = likeStats[0].totalLikes || 0;
+      result.averageLikes = result.total > 0 
+        ? Math.round((result.totalLikes / result.total) * 100) / 100 
+        : 0;
+    }
 
     return result;
   }
