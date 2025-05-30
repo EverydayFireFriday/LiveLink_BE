@@ -11,8 +11,6 @@ import {
   updateUsername,
   checkUsername,
   // 이메일 인증 관련 함수들
-  findUsername,
-  verifyUsernameCode,
   resetPasswordRequest,
   verifyResetPassword,
   resendVerificationCode,
@@ -26,10 +24,6 @@ const router = express.Router();
 // 기본 인증 관련
 router.post("/register", register);
 router.post("/login", login);
-
-// 별명 찾기 (이메일 인증)
-router.post("/find-username", findUsername);
-router.post("/verify-username", verifyUsernameCode);
 
 // 비밀번호 재설정 (이메일 인증)
 router.post("/reset-password", resetPasswordRequest);
@@ -57,8 +51,6 @@ router.put("/profile", requireAuth, updateProfile);
 router.put("/update-username", requireAuth, updateUsername);
 
 // === 관리자 권한이 필요한 라우트들 ===
-
-// 모든 사용자 조회 (관리자만)
 router.get("/users", requireAdmin, getAllUsers);
 
 export default router;
