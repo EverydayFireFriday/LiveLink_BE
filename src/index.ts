@@ -7,8 +7,14 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 
 // 데이터베이스 연결 함수들
-import { connectDatabase as connectUserDB, disconnectDatabase as disconnectUserDB } from "./models/user";
-import { connectDB as connectConcertDB, initializeConcertModel } from "./utils/db";
+import {
+  connectDatabase as connectUserDB,
+  disconnectDatabase as disconnectUserDB,
+} from "./models/user";
+import {
+  connectDB as connectConcertDB,
+  initializeConcertModel,
+} from "./utils/db";
 
 // 라우터 import
 import authRouter from "./routes/authRoute";
@@ -23,45 +29,54 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 기본 보안 헤더 설정 (helmet 대신)
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  next();
-});
+app.use(
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  }
+);
 
 // 기본 로깅 (morgan 대신)
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const timestamp = new Date().toISOString();
-  console.log(`${timestamp} ${req.method} ${req.url} - ${req.ip}`);
-  next();
-});
+app.use(
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const timestamp = new Date().toISOString();
+    console.log(`${timestamp} ${req.method} ${req.url} - ${req.ip}`);
+    next();
+  }
+);
 
 // 기본 Rate limiting (express-rate-limit 대신)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15분
 const RATE_LIMIT_MAX = 100; // 최대 100 요청
 
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const clientId = req.ip || 'unknown';
-  const now = Date.now();
-  
-  const clientData = rateLimitMap.get(clientId);
-  
-  if (!clientData || now > clientData.resetTime) {
-    rateLimitMap.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    next();
-  } else if (clientData.count < RATE_LIMIT_MAX) {
-    clientData.count++;
-    next();
-  } else {
-    res.status(429).json({
-      error: "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
-    });
-    return;
+app.use(
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const clientId = req.ip || "unknown";
+    const now = Date.now();
+
+    const clientData = rateLimitMap.get(clientId);
+
+    if (!clientData || now > clientData.resetTime) {
+      rateLimitMap.set(clientId, {
+        count: 1,
+        resetTime: now + RATE_LIMIT_WINDOW,
+      });
+      next();
+    } else if (clientData.count < RATE_LIMIT_MAX) {
+      clientData.count++;
+      next();
+    } else {
+      res.status(429).json({
+        error: "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
+      });
+      return;
+    }
   }
-});
+);
 
 // CORS 설정
 app.use(
@@ -83,9 +98,11 @@ const redisClient = createClient({
 redisClient.on("connect", () => console.log("✅ Redis connected"));
 redisClient.on("error", (err) => {
   // 종료 과정에서 발생하는 에러는 무시
-  if (err.message?.includes('Disconnects client') || 
-      err.message?.includes('destroy') ||
-      err.message?.includes('Connection is closed')) {
+  if (
+    err.message?.includes("Disconnects client") ||
+    err.message?.includes("destroy") ||
+    err.message?.includes("Connection is closed")
+  ) {
     return;
   }
   console.error("❌ Redis Error:", err.message);
@@ -96,23 +113,25 @@ redisClient.on("end", () => console.log("ℹ️ Redis connection ended"));
 redisClient.connect().catch(console.error);
 
 // 미들웨어 설정
-app.use(express.json({ 
-  limit: "10mb",
-  verify: (req: express.Request, res: express.Response, buf: Buffer) => {
-    try {
-      JSON.parse(buf.toString());
-    } catch (e) {
-      res.status(400).json({ message: "잘못된 JSON 형식입니다." });
-      throw new Error("Invalid JSON");
-    }
-  }
-}));
+app.use(
+  express.json({
+    limit: "10mb",
+    verify: (req: express.Request, res: express.Response, buf: Buffer) => {
+      try {
+        JSON.parse(buf.toString());
+      } catch (e) {
+        res.status(400).json({ message: "잘못된 JSON 형식입니다." });
+        throw new Error("Invalid JSON");
+      }
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // 세션 미들웨어 설정
 app.use(
   session({
-    store: new RedisStore({ 
+    store: new RedisStore({
       client: redisClient,
       prefix: "app:sess:",
     }),
@@ -135,25 +154,27 @@ let isUserDBConnected = false;
 let isConcertDBConnected = false;
 
 // 데이터베이스 연결 상태 확인 미들웨어
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  // Auth 관련 요청은 User DB 필요
-  if (req.path.startsWith('/auth') && !isUserDBConnected) {
-    res.status(503).json({
-      message: "사용자 데이터베이스 연결이 준비되지 않았습니다.",
-    });
-    return;
+app.use(
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Auth 관련 요청은 User DB 필요
+    if (req.path.startsWith("/auth") && !isUserDBConnected) {
+      res.status(503).json({
+        message: "사용자 데이터베이스 연결이 준비되지 않았습니다.",
+      });
+      return;
+    }
+
+    // Concert 관련 요청은 Concert DB 필요
+    if (req.path.startsWith("/api/concert") && !isConcertDBConnected) {
+      res.status(503).json({
+        message: "콘서트 데이터베이스 연결이 준비되지 않았습니다.",
+      });
+      return;
+    }
+
+    next();
   }
-  
-  // Concert 관련 요청은 Concert DB 필요
-  if (req.path.startsWith('/api/concert') && !isConcertDBConnected) {
-    res.status(503).json({
-      message: "콘서트 데이터베이스 연결이 준비되지 않았습니다.",
-    });
-    return;
-  }
-  
-  next();
-});
+);
 
 // Swagger 설정
 const swaggerOptions = {
@@ -162,7 +183,8 @@ const swaggerOptions = {
     info: {
       title: "Unified API Server",
       version: "1.0.0",
-      description: "Authentication & Concert Management API with Redis Session & MongoDB Native Driver",
+      description:
+        "Authentication & Concert Management API with Redis Session & MongoDB Native Driver",
       contact: {
         name: "API Support",
         email: "support@api.com",
@@ -177,10 +199,14 @@ const swaggerOptions = {
         url: `http://localhost:${PORT}`,
         description: "Development server",
       },
-      ...(process.env.PRODUCTION_URL ? [{
-        url: process.env.PRODUCTION_URL,
-        description: "Production server",
-      }] : []),
+      ...(process.env.PRODUCTION_URL
+        ? [
+            {
+              url: process.env.PRODUCTION_URL,
+              description: "Production server",
+            },
+          ]
+        : []),
     ],
     tags: [
       {
@@ -242,7 +268,7 @@ const swaggerOptions = {
             },
             updatedAt: {
               type: "string",
-              format: "date-time", 
+              format: "date-time",
               description: "마지막 수정일",
             },
           },
@@ -265,7 +291,7 @@ const swaggerOptions = {
             artist: {
               type: "array",
               items: {
-                type: "string"
+                type: "string",
               },
               description: "아티스트명 배열",
               example: ["아이유", "특별 게스트"],
@@ -350,7 +376,7 @@ app.use(
       .swagger-ui .info h1 { color: #3b82f6 }
       .swagger-ui .scheme-container { background: #f8fafc; padding: 20px; border-radius: 8px; }
     `,
-    customSiteTitle: "Unified API Documentation",
+    customSiteTitle: "LiveLink",
     customfavIcon: "/favicon.ico",
     swaggerOptions: {
       persistAuthorization: true,
@@ -364,9 +390,10 @@ app.use(
 // 기본 라우트 (API 정보)
 app.get("/", (req: express.Request, res: express.Response) => {
   res.json({
-    message: "Unified API Server",
+    message: "LiveLink",
     version: "1.0.0",
-    description: "Authentication & Concert Management API with MongoDB Native Driver and Redis Session",
+    description:
+      "Authentication & Concert Management API with MongoDB Native Driver and Redis Session",
     endpoints: {
       documentation: "/api-docs",
       auth: "/auth",
@@ -486,10 +513,7 @@ const initializeDatabases = async () => {
 };
 
 // DB와 Redis 연결 후 서버 시작
-Promise.all([
-  initializeDatabases(),
-  redisClient.ping()
-])
+Promise.all([initializeDatabases(), redisClient.ping()])
   .then(() => {
     app.listen(PORT, () => {
       console.log("🎉 ================================");

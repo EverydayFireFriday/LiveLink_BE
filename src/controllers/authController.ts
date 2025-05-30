@@ -1,8 +1,10 @@
 import express from "express";
-import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { UserModel } from "../models/user";
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // UserModel을 지연 초기화하는 함수
 const getUserModel = () => {
@@ -12,34 +14,79 @@ const getUserModel = () => {
 // 이메일 전송을 위한 nodemailer 설정
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail', // 또는 다른 이메일 서비스
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
-      user: process.env.EMAIL_USER, // 환경변수에서 가져오기
-      pass: process.env.EMAIL_PASS, // 앱 비밀번호
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // Gmail 앱 비밀번호 사용
     },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 };
 
-// 인증 코드 저장소 (실제로는 Redis나 DB에 저장하는 것이 좋습니다)
+// 인증 코드 인터페이스
 interface VerificationCode {
   code: string;
   email: string;
-  type: 'password_reset' | 'username_recovery';
-  expiresAt: Date;
-  isUsed: boolean;
+  type: 'password_reset';
+  createdAt: string;
 }
 
-// 메모리 저장소 (실제로는 Redis 사용 권장)
-const verificationCodes = new Map<string, VerificationCode>();
+// Redis 키 생성 함수
+const getRedisKey = (type: string, email: string): string => {
+  return `verification:${type}:${email}`;
+};
 
-// 만료된 코드 정리 함수
-const cleanupExpiredCodes = () => {
-  const now = new Date();
-  for (const [key, value] of verificationCodes.entries()) {
-    if (value.expiresAt < now) {
-      verificationCodes.delete(key);
-    }
+// Redis에서 인증 코드 저장 (3분 TTL)
+const saveVerificationCode = async (type: string, email: string, code: string): Promise<string> => {
+  const key = getRedisKey(type, email);
+  const data: VerificationCode = {
+    code,
+    email,
+    type: type as 'password_reset',
+    createdAt: new Date().toISOString(),
+  };
+  
+  // Redis에 3분(180초) TTL로 저장
+  await redis.setex(key, 180, JSON.stringify(data));
+  
+  return key;
+};
+
+// Redis에서 인증 코드 조회
+const getVerificationCode = async (key: string): Promise<VerificationCode | null> => {
+  try {
+    const data = await redis.get(key);
+    if (!data) return null;
+    
+    return JSON.parse(data) as VerificationCode;
+  } catch (error) {
+    console.error('Redis 데이터 파싱 에러:', error);
+    return null;
   }
+};
+
+// Redis에서 인증 코드 삭제
+const deleteVerificationCode = async (key: string): Promise<void> => {
+  await redis.del(key);
+};
+
+// 최근 요청 확인 (스팸 방지용)
+const checkRecentRequest = async (email: string, type: string): Promise<boolean> => {
+  const recentKey = `recent:${type}:${email}`;
+  const exists = await redis.exists(recentKey);
+  
+  if (exists) {
+    return true; // 최근 요청이 있음
+  }
+  
+  // 1분간 재요청 방지
+  await redis.setex(recentKey, 60, '1');
+  return false;
 };
 
 // 6자리 인증 코드 생성
@@ -96,8 +143,8 @@ export const register = async (req: express.Request, res: express.Response) => {
     return;
   }
 
-  if (password.length < 6) {
-    res.status(400).json({ message: "비밀번호는 최소 6자 이상이어야 합니다." });
+  if (password.length < 7) {
+    res.status(400).json({ message: "비밀번호는 최소 7자 이상이어야 합니다." });
     return;
   }
 
@@ -122,14 +169,11 @@ export const register = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    // 비밀번호 해시화
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // 새 사용자 생성
+    // 새 사용자 생성 (평문 비밀번호 저장)
     const newUser = await userModel.createUser({
       email,
       username,
-      passwordHash,
+      passwordHash: password, // 평문 비밀번호로 저장
       profileImage: profileImage || undefined,
     });
 
@@ -203,9 +247,8 @@ export const login = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    // 비밀번호 확인
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
+    // 비밀번호 확인 (평문 비교)
+    if (password !== user.passwordHash) {
       res.status(401).json({ message: "비밀번호가 일치하지 않습니다." });
       return;
     }
@@ -674,209 +717,15 @@ export const getAllUsers = async (
 };
 
 // ===========================================
-// 🆕 이메일 인증 관련 함수들
+// 🆕 Redis 기반 비밀번호 재설정 기능 (3분 유효기간)
 // ===========================================
-
-/**
- * @swagger
- * /auth/find-username:
- *   post:
- *     summary: 아이디 찾기 (이메일 인증)
- *     description: 이메일로 인증 코드를 전송하여 별명을 찾습니다.
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *     responses:
- *       200:
- *         description: 인증 코드 전송 성공
- *       400:
- *         description: 잘못된 요청
- *       404:
- *         description: 이메일을 찾을 수 없음
- *       500:
- *         description: 서버 에러
- */
-export const findUsername = async (req: express.Request, res: express.Response) => {
-  const { email } = req.body;
-
-  if (!email) {
-    res.status(400).json({ message: "이메일을 입력해주세요." });
-    return;
-  }
-
-  // 이메일 형식 검증
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    res.status(400).json({ message: "올바른 이메일 형식을 입력해주세요." });
-    return;
-  }
-
-  try {
-    const userModel = getUserModel();
-    // 이메일로 사용자 찾기
-    const user = await userModel.findByEmail(email);
-    
-    if (!user) {
-      res.status(404).json({ message: "해당 이메일로 등록된 사용자를 찾을 수 없습니다." });
-      return;
-    }
-
-    // 인증 코드 생성
-    const verificationCode = generateVerificationCode();
-    const codeKey = `username_${email}_${Date.now()}`;
-    
-    // 인증 코드 저장 (15분 만료)
-    verificationCodes.set(codeKey, {
-      code: verificationCode,
-      email,
-      type: 'username_recovery',
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15분
-      isUsed: false,
-    });
-
-    // 이메일 전송
-    const transporter = createTransporter();
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: '[LiveLink] 아이디 찾기 인증 코드',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">아이디 찾기 인증 코드</h2>
-          <p>안녕하세요!</p>
-          <p>아이디 찾기를 위한 인증 코드를 발송해드립니다.</p>
-          <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
-            <h3 style="color: #007bff; font-size: 24px; margin: 0;">인증 코드: ${verificationCode}</h3>
-          </div>
-          <p><strong>주의사항:</strong></p>
-          <ul>
-            <li>이 코드는 15분 후에 만료됩니다.</li>
-            <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
-            <li>본인이 요청하지 않았다면 이 이메일을 무시해주세요.</li>
-          </ul>
-          <p>감사합니다.<br>LiveLink 팀</p>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    // 만료된 코드 정리
-    cleanupExpiredCodes();
-
-    res.status(200).json({
-      message: "인증 코드가 이메일로 전송되었습니다.",
-      codeKey,
-      expiresIn: "15분",
-    });
-
-  } catch (error) {
-    console.error("아이디 찾기 이메일 전송 에러:", error);
-    res.status(500).json({ message: "이메일 전송 실패" });
-  }
-};
-
-/**
- * @swagger
- * /auth/verify-username:
- *   post:
- *     summary: 아이디 찾기 인증 코드 확인
- *     description: 인증 코드를 확인하고 별명을 반환합니다.
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               codeKey:
- *                 type: string
- *               verificationCode:
- *                 type: string
- *     responses:
- *       200:
- *         description: 인증 성공 및 별명 반환
- *       400:
- *         description: 잘못된 요청
- *       401:
- *         description: 인증 코드 불일치
- *       410:
- *         description: 인증 코드 만료
- *       500:
- *         description: 서버 에러
- */
-export const verifyUsernameCode = async (req: express.Request, res: express.Response) => {
-  const { codeKey, verificationCode } = req.body;
-
-  if (!codeKey || !verificationCode) {
-    res.status(400).json({ message: "인증 키와 인증 코드를 입력해주세요." });
-    return;
-  }
-
-  try {
-    const storedCode = verificationCodes.get(codeKey);
-    
-    if (!storedCode) {
-      res.status(410).json({ message: "인증 코드가 만료되었거나 존재하지 않습니다." });
-      return;
-    }
-
-    if (storedCode.isUsed) {
-      res.status(410).json({ message: "이미 사용된 인증 코드입니다." });
-      return;
-    }
-
-    if (storedCode.expiresAt < new Date()) {
-      verificationCodes.delete(codeKey);
-      res.status(410).json({ message: "인증 코드가 만료되었습니다." });
-      return;
-    }
-
-    if (storedCode.code !== verificationCode) {
-      res.status(401).json({ message: "인증 코드가 일치하지 않습니다." });
-      return;
-    }
-
-    // 사용자 정보 조회
-    const userModel = getUserModel();
-    const user = await userModel.findByEmail(storedCode.email);
-    
-    if (!user) {
-      res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
-      return;
-    }
-
-    // 인증 코드 사용 표시
-    storedCode.isUsed = true;
-    verificationCodes.set(codeKey, storedCode);
-
-    res.status(200).json({
-      message: "인증 성공",
-      username: user.username,
-      maskedEmail: user.email.replace(/(.{2}).*(@.*)/, '$1***$2'), // 이메일 마스킹
-    });
-
-  } catch (error) {
-    console.error("아이디 찾기 인증 확인 에러:", error);
-    res.status(500).json({ message: "인증 확인 실패" });
-  }
-};
 
 /**
  * @swagger
  * /auth/reset-password:
  *   post:
  *     summary: 비밀번호 재설정 요청 (이메일 인증)
- *     description: 이메일로 비밀번호 재설정 인증 코드를 전송합니다.
+ *     description: 이메일로 비밀번호 재설정 인증 코드를 전송합니다. (3분 유효기간, Redis 저장)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -896,6 +745,8 @@ export const verifyUsernameCode = async (req: express.Request, res: express.Resp
  *         description: 잘못된 요청
  *       404:
  *         description: 사용자를 찾을 수 없음
+ *       429:
+ *         description: 너무 빈번한 요청
  *       500:
  *         description: 서버 에러
  */
@@ -915,6 +766,16 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
   }
 
   try {
+    // 최근 요청 확인 (스팸 방지)
+    const hasRecentRequest = await checkRecentRequest(email, 'password_reset');
+    if (hasRecentRequest) {
+      res.status(429).json({ 
+        message: "너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.",
+        retryAfter: 60
+      });
+      return;
+    }
+
     const userModel = getUserModel();
     // 이메일로 사용자 찾기
     const user = await userModel.findByEmail(email);
@@ -926,16 +787,9 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
 
     // 인증 코드 생성
     const verificationCode = generateVerificationCode();
-    const codeKey = `password_${email}_${Date.now()}`;
     
-    // 인증 코드 저장 (15분 만료)
-    verificationCodes.set(codeKey, {
-      code: verificationCode,
-      email,
-      type: 'password_reset',
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15분
-      isUsed: false,
-    });
+    // Redis에 인증 코드 저장 (3분 TTL)
+    const redisKey = await saveVerificationCode('password_reset', email, verificationCode);
 
     // 이메일 전송
     const transporter = createTransporter();
@@ -953,7 +807,7 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
           </div>
           <p><strong>주의사항:</strong></p>
           <ul>
-            <li>이 코드는 15분 후에 만료됩니다.</li>
+            <li>이 코드는 3분 후에 만료됩니다.</li>
             <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
             <li>본인이 요청하지 않았다면 즉시 비밀번호를 변경해주세요.</li>
           </ul>
@@ -964,13 +818,13 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
 
     await transporter.sendMail(mailOptions);
 
-    // 만료된 코드 정리
-    cleanupExpiredCodes();
+    console.log(`비밀번호 재설정 인증 코드 전송: ${user.username} (${email}) - Redis 저장 (3분 TTL)`);
 
     res.status(200).json({
       message: "비밀번호 재설정 인증 코드가 이메일로 전송되었습니다.",
-      codeKey,
-      expiresIn: "15분",
+      redisKey,
+      expiresIn: "3분",
+      storage: "Redis에 저장됨",
     });
 
   } catch (error) {
@@ -984,7 +838,7 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
  * /auth/verify-reset-password:
  *   post:
  *     summary: 비밀번호 재설정 인증 및 새 비밀번호 설정
- *     description: 인증 코드를 확인하고 새 비밀번호로 변경합니다.
+ *     description: Redis에서 인증 코드를 확인하고 새 비밀번호로 변경합니다.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -993,8 +847,9 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
  *           schema:
  *             type: object
  *             properties:
- *               codeKey:
+ *               email:
  *                 type: string
+ *                 format: email
  *               verificationCode:
  *                 type: string
  *               newPassword:
@@ -1012,34 +867,24 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
  *         description: 서버 에러
  */
 export const verifyResetPassword = async (req: express.Request, res: express.Response) => {
-  const { codeKey, verificationCode, newPassword } = req.body;
+  const { email, verificationCode, newPassword } = req.body;
 
-  if (!codeKey || !verificationCode || !newPassword) {
+  if (!email || !verificationCode || !newPassword) {
     res.status(400).json({ message: "모든 필드를 입력해주세요." });
     return;
   }
 
-  if (newPassword.length < 6) {
-    res.status(400).json({ message: "새 비밀번호는 최소 6자 이상이어야 합니다." });
+  if (newPassword.length < 7) {
+    res.status(400).json({ message: "새 비밀번호는 최소 7자 이상이어야 합니다." });
     return;
   }
 
   try {
-    const storedCode = verificationCodes.get(codeKey);
+    const redisKey = getRedisKey('password_reset', email);
+    const storedCode = await getVerificationCode(redisKey);
     
     if (!storedCode) {
       res.status(410).json({ message: "인증 코드가 만료되었거나 존재하지 않습니다." });
-      return;
-    }
-
-    if (storedCode.isUsed) {
-      res.status(410).json({ message: "이미 사용된 인증 코드입니다." });
-      return;
-    }
-
-    if (storedCode.expiresAt < new Date()) {
-      verificationCodes.delete(codeKey);
-      res.status(410).json({ message: "인증 코드가 만료되었습니다." });
       return;
     }
 
@@ -1055,31 +900,29 @@ export const verifyResetPassword = async (req: express.Request, res: express.Res
 
     // 사용자 정보 조회
     const userModel = getUserModel();
-    const user = await userModel.findByEmail(storedCode.email);
+    const user = await userModel.findByEmail(email);
     
     if (!user) {
       res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
       return;
     }
 
-    // 새 비밀번호 해시화
-    const newPasswordHash = await bcrypt.hash(newPassword, 12);
-
-    // 비밀번호 업데이트
+    // 비밀번호 업데이트 (평문으로 저장)
     await userModel.updateUser(user._id!.toString(), {
-      passwordHash: newPasswordHash,
+      passwordHash: newPassword, // 평문 비밀번호로 저장
       updatedAt: new Date(),
     });
 
-    // 인증 코드 사용 표시 및 삭제
-    verificationCodes.delete(codeKey);
+    // 인증 코드 삭제 (일회용)
+    await deleteVerificationCode(redisKey);
 
-    console.log(`비밀번호 재설정 완료: ${user.username} (${storedCode.email})`);
+    console.log(`비밀번호 재설정 완료: ${user.username} (${email}) - Redis에서 코드 삭제`);
 
     res.status(200).json({
       message: "비밀번호가 성공적으로 재설정되었습니다.",
       username: user.username,
       email: user.email,
+      verifiedFrom: "Redis 인증 시스템",
     });
 
   } catch (error) {
@@ -1093,7 +936,7 @@ export const verifyResetPassword = async (req: express.Request, res: express.Res
  * /auth/resend-code:
  *   post:
  *     summary: 인증 코드 재전송
- *     description: 만료된 인증 코드를 새로 생성하여 재전송합니다.
+ *     description: 만료된 인증 코드를 새로 생성하여 Redis에 저장하고 재전송합니다. (3분 유효기간)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -1107,7 +950,7 @@ export const verifyResetPassword = async (req: express.Request, res: express.Res
  *                 format: email
  *               type:
  *                 type: string
- *                 enum: [username_recovery, password_reset]
+ *                 enum: [password_reset]
  *     responses:
  *       200:
  *         description: 인증 코드 재전송 성공
@@ -1126,18 +969,15 @@ export const resendVerificationCode = async (req: express.Request, res: express.
     return;
   }
 
+  if (type !== 'password_reset') {
+    res.status(400).json({ message: "올바르지 않은 인증 유형입니다." });
+    return;
+  }
+
   try {
-    // 기존 코드들 정리
-    cleanupExpiredCodes();
-
-    // 같은 이메일로 최근 1분 내에 요청한 코드가 있는지 확인 (스팸 방지)
-    const recentCodes = Array.from(verificationCodes.values()).filter(
-      code => code.email === email && 
-      code.type === type && 
-      (Date.now() - (code.expiresAt.getTime() - 15 * 60 * 1000)) < 60 * 1000
-    );
-
-    if (recentCodes.length > 0) {
+    // 최근 요청 확인 (스팸 방지)
+    const hasRecentRequest = await checkRecentRequest(email, type);
+    if (hasRecentRequest) {
       res.status(429).json({ 
         message: "너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.",
         retryAfter: 60
@@ -1145,17 +985,125 @@ export const resendVerificationCode = async (req: express.Request, res: express.
       return;
     }
 
+    // 기존 인증 코드 삭제
+    const oldRedisKey = getRedisKey(type, email);
+    await deleteVerificationCode(oldRedisKey);
+
     // 새로운 인증 요청 처리
-    if (type === 'username_recovery') {
-      await findUsername(req, res);
-    } else if (type === 'password_reset') {
-      await resetPasswordRequest(req, res);
-    } else {
-      res.status(400).json({ message: "올바르지 않은 인증 유형입니다." });
-    }
+    await resetPasswordRequest(req, res);
 
   } catch (error) {
     console.error("인증 코드 재전송 에러:", error);
     res.status(500).json({ message: "인증 코드 재전송 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/verification-status:
+ *   post:
+ *     summary: 인증 코드 상태 확인
+ *     description: Redis에서 인증 코드의 존재 여부와 남은 시간을 확인합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               type:
+ *                 type: string
+ *                 enum: [password_reset]
+ *     responses:
+ *       200:
+ *         description: 인증 코드 상태 반환
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 인증 코드 없음
+ *       500:
+ *         description: 서버 에러
+ */
+export const getVerificationStatus = async (req: express.Request, res: express.Response) => {
+  const { email, type } = req.body;
+
+  if (!email || !type) {
+    res.status(400).json({ message: "이메일과 인증 유형을 입력해주세요." });
+    return;
+  }
+
+  try {
+    const redisKey = getRedisKey(type, email);
+    const storedCode = await getVerificationCode(redisKey);
+    const ttl = await redis.ttl(redisKey);
+
+    if (!storedCode || ttl <= 0) {
+      res.status(404).json({ 
+        message: "활성화된 인증 코드가 없습니다.",
+        exists: false
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: "인증 코드가 활성화되어 있습니다.",
+      exists: true,
+      timeRemaining: ttl,
+      timeRemainingText: `${Math.floor(ttl / 60)}분 ${ttl % 60}초`,
+      type: storedCode.type,
+      createdAt: storedCode.createdAt,
+      storage: "Redis에서 확인됨",
+    });
+
+  } catch (error) {
+    console.error("인증 코드 상태 확인 에러:", error);
+    res.status(500).json({ message: "인증 코드 상태 확인 실패" });
+  }
+};
+
+// Redis 연결 상태 확인 함수
+export const checkRedisConnection = async (): Promise<boolean> => {
+  try {
+    await redis.ping();
+    return true;
+  } catch (error) {
+    console.error("Redis 연결 에러:", error);
+    return false;
+  }
+};
+
+// Redis 정리 작업 (선택사항 - 크론잡이나 스케줄러에서 사용)
+export const cleanupExpiredCodes = async (): Promise<void> => {
+  try {
+    const pattern = 'verification:*';
+    const keys = await redis.keys(pattern);
+    
+    if (keys.length > 0) {
+      const pipeline = redis.pipeline();
+      keys.forEach(key => {
+        pipeline.ttl(key);
+      });
+      
+      const ttls = await pipeline.exec();
+      let expiredCount = 0;
+      
+      if (ttls) {
+        for (let i = 0; i < ttls.length; i++) {
+          const [err, ttl] = ttls[i];
+          if (!err && (ttl as number) <= 0) {
+            await redis.del(keys[i]);
+            expiredCount++;
+          }
+        }
+      }
+      
+      console.log(`Redis 정리 작업 완료: ${expiredCount}개의 만료된 인증 코드 삭제`);
+    }
+  } catch (error) {
+    console.error("Redis 정리 작업 에러:", error);
   }
 };
