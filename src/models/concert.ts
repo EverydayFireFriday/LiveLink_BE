@@ -1,10 +1,8 @@
 import { ObjectId, Collection, Db } from "mongodb";
 
-// Location 인터페이스
+// Location 인터페이스 - 간소화
 export interface ILocation {
-  venue: string;
-  address: string;
-  city: string;
+  location: string;
 }
 
 // Price 인터페이스
@@ -19,39 +17,31 @@ export interface ITicketLink {
   url: string;
 }
 
-// Partner Link 인터페이스
-export interface IPartnerLink {
-  name: string;
-  url: string;
-  address: string;
-}
-
-// Like 인터페이스 (새로 추가)
+// Like 인터페이스
 export interface ILike {
   userId: ObjectId;
   likedAt: Date;
 }
 
-// Concert 메인 인터페이스 (좋아요 필드 추가)
+// Concert 메인 인터페이스 - 업데이트됨
 export interface IConcert {
   _id: ObjectId;
   uid: string; // 사용자 지정 ID (timestamp 포함)
   title: string;
-  artist: string[];
+  artist: string[]; // 빈 배열이면 400 -> 200으로 변경
   location: ILocation[];
   datetime: Date[];
   price?: IPrice[];
   description?: string;
   category?: string[];
   ticketLink?: ITicketLink[];
-  partnerLinks?: IPartnerLink[];
+  ticketOpenDate?: Date; // 티켓 오픈 날짜/시간 추가
   posterImage?: string; // S3 URL
-  galleryImages?: string[]; // S3 URLs 배열
+  info?: string[]; // galleryImages에서 info로 이름 변경
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
   tags?: string[];
-  likes?: ILike[]; // 좋아요 배열 (새로 추가)
-  likesCount?: number; // 좋아요 개수 (새로 추가)
-  uploadedBy?: ObjectId; // 업로드한 사용자 ID (새로 추가)
+  likes?: ILike[]; // 좋아요 배열
+  likesCount?: number; // 좋아요 개수
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,76 +54,32 @@ export class ConcertModel {
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<IConcert>("concerts");
-    this.createIndexes();
+    this.createMinimalIndexes();
   }
 
-  // 인덱스 생성 - 좋아요 시스템 인덱스 추가
-  private async createIndexes() {
+  // 최소한의 필수 인덱스만 생성
+  private async createMinimalIndexes() {
     try {
-      console.log("Concert 인덱스 생성 시작...");
+      console.log("Concert 최소 인덱스 생성 시작...");
 
-      // 기본 단일 필드 인덱스들
+      // 1. uid 유니크 인덱스 (필수 - 중복 방지)
       await this.collection.createIndex({ uid: 1 }, { unique: true });
       console.log("✅ uid 인덱스 생성");
 
-      await this.collection.createIndex({ artist: 1 });
-      console.log("✅ artist 인덱스 생성");
-
-      await this.collection.createIndex({ "location.city": 1 });
-      console.log("✅ location.city 인덱스 생성");
-
-      await this.collection.createIndex({ datetime: 1 });
-      console.log("✅ datetime 인덱스 생성");
-
-      await this.collection.createIndex({ category: 1 });
-      console.log("✅ category 인덱스 생성");
-
-      await this.collection.createIndex({ status: 1 });
-      console.log("✅ status 인덱스 생성");
-
-      await this.collection.createIndex({ createdAt: 1 });
-      console.log("✅ createdAt 인덱스 생성");
-
-      // 좋아요 시스템 관련 인덱스 (새로 추가)
-      await this.collection.createIndex({ likesCount: -1 });
-      console.log("✅ likesCount 인덱스 생성");
-
-      await this.collection.createIndex({ "likes.userId": 1 });
-      console.log("✅ likes.userId 인덱스 생성");
-
-      await this.collection.createIndex({ uploadedBy: 1 });
-      console.log("✅ uploadedBy 인덱스 생성");
-
-      // 안전한 복합 인덱스들 (parallel arrays 제외)
-      await this.collection.createIndex({ "location.city": 1, status: 1 });
-      console.log("✅ location.city + status 복합 인덱스 생성");
-
-      await this.collection.createIndex({ status: 1, datetime: 1 });
-      console.log("✅ status + datetime 복합 인덱스 생성");
-
-      await this.collection.createIndex({ status: 1, createdAt: -1 });
-      console.log("✅ status + createdAt 복합 인덱스 생성");
-
-      await this.collection.createIndex({ createdAt: -1, status: 1 });
-      console.log("✅ createdAt + status 복합 인덱스 생성");
-
-      // 좋아요 관련 복합 인덱스 (새로 추가)
-      await this.collection.createIndex({ likesCount: -1, datetime: 1 });
-      console.log("✅ likesCount + datetime 복합 인덱스 생성");
-
-      await this.collection.createIndex({ status: 1, likesCount: -1 });
-      console.log("✅ status + likesCount 복합 인덱스 생성");
-
-      // 텍스트 검색 인덱스
+      // 2. 텍스트 검색 인덱스 (검색 기능용) - location 필드명 수정
       await this.collection.createIndex({
         title: "text",
         artist: "text",
-        "location.venue": "text",
+        "location.location": "text",
         description: "text",
       });
       console.log("✅ 텍스트 검색 인덱스 생성");
 
-      console.log("🎉 Concert 컬렉션 인덱스 생성 완료");
+      // 3. 좋아요 사용자 인덱스 (좋아요 기능용)
+      await this.collection.createIndex({ "likes.userId": 1 });
+      console.log("✅ likes.userId 인덱스 생성");
+
+      console.log("🎉 Concert 최소 인덱스 생성 완료 (총 3개)");
     } catch (error) {
       console.error("❌ 인덱스 생성 중 오류:", error);
       // 인덱스 생성 실패해도 계속 진행
@@ -141,7 +87,7 @@ export class ConcertModel {
     }
   }
 
-  // 데이터 유효성 검사 - 카테고리 확장
+  // 데이터 유효성 검사 - 업데이트됨
   private validateConcertData(concertData: Partial<IConcert>): {
     isValid: boolean;
     errors: string[];
@@ -153,13 +99,12 @@ export class ConcertModel {
     if (!concertData.title || concertData.title.trim().length === 0) {
       errors.push("title은 필수입니다.");
     }
-    if (
-      !concertData.artist ||
-      !Array.isArray(concertData.artist) ||
-      concertData.artist.length === 0
-    ) {
-      errors.push("artist는 비어있지 않은 배열이어야 합니다.");
+
+    // artist 검증 수정: 빈 배열 허용 (400 -> 200)
+    if (!concertData.artist || !Array.isArray(concertData.artist)) {
+      errors.push("artist는 배열이어야 합니다.");
     }
+
     if (
       !concertData.location ||
       !Array.isArray(concertData.location) ||
@@ -183,26 +128,26 @@ export class ConcertModel {
       errors.push("description은 2000자를 초과할 수 없습니다.");
     }
 
-    // location 필드 검증
+    // location 필드 검증 - 간소화된 구조
     if (concertData.location && Array.isArray(concertData.location)) {
       concertData.location.forEach((loc, index) => {
-        if (!loc.venue || loc.venue.trim().length === 0) {
-          errors.push(`location[${index}].venue은 필수입니다.`);
+        if (!loc.location || loc.location.trim().length === 0) {
+          errors.push(`location[${index}].location은 필수입니다.`);
         }
-        if (!loc.address || loc.address.trim().length === 0) {
-          errors.push(`location[${index}].address는 필수입니다.`);
-        }
-        if (loc.venue && loc.venue.length > 150) {
-          errors.push(`location[${index}].venue은 150자를 초과할 수 없습니다.`);
+        if (loc.location && loc.location.length > 150) {
+          errors.push(
+            `location[${index}].location은 150자를 초과할 수 없습니다.`
+          );
         }
       });
     }
 
-    // datetime 검증 - 타입 안전성 개선
+    // datetime 검증
     if (concertData.datetime && Array.isArray(concertData.datetime)) {
       concertData.datetime.forEach((dt, index) => {
         if (!(dt instanceof Date)) {
-          const dateValue = typeof dt === 'string' || typeof dt === 'number' ? dt : String(dt);
+          const dateValue =
+            typeof dt === "string" || typeof dt === "number" ? dt : String(dt);
           if (!Date.parse(dateValue)) {
             errors.push(`datetime[${index}]는 유효한 날짜여야 합니다.`);
           }
@@ -210,37 +155,93 @@ export class ConcertModel {
       });
     }
 
+    // ticketOpenDate 검증 (새로 추가)
+    if (concertData.ticketOpenDate) {
+      if (!(concertData.ticketOpenDate instanceof Date)) {
+        const dateValue =
+          typeof concertData.ticketOpenDate === "string" ||
+          typeof concertData.ticketOpenDate === "number"
+            ? concertData.ticketOpenDate
+            : String(concertData.ticketOpenDate);
+        if (!Date.parse(dateValue)) {
+          errors.push("ticketOpenDate는 유효한 날짜여야 합니다.");
+        }
+      }
+    }
+
     // category 검증 - 확장된 카테고리 목록
     const validCategories = [
       // 기본 장르
-      "pop", "rock", "jazz", "classical", "hiphop", "electronic", 
-      "indie", "folk", "r&b", "country", "musical", "opera",
-      
+      "pop",
+      "rock",
+      "jazz",
+      "classical",
+      "hiphop",
+      "electronic",
+      "indie",
+      "folk",
+      "r&b",
+      "country",
+      "musical",
+      "opera",
+
       // K-POP 및 아시아 음악
-      "k-pop", "kpop", "j-pop", "c-pop", "korean", "japanese",
-      
+      "k-pop",
+      "kpop",
+      "j-pop",
+      "c-pop",
+      "korean",
+      "japanese",
+
       // 세부 장르
-      "ballad", "dance", "trot", "rap", "hip-hop", "edm", 
-      "house", "techno", "dubstep", "reggae", "blues", "soul", 
-      "funk", "punk", "metal", "alternative", "grunge",
-      
+      "ballad",
+      "dance",
+      "trot",
+      "rap",
+      "hip-hop",
+      "edm",
+      "house",
+      "techno",
+      "dubstep",
+      "reggae",
+      "blues",
+      "soul",
+      "funk",
+      "punk",
+      "metal",
+      "alternative",
+      "grunge",
+
       // 기타
-      "fusion", "world", "latin", "gospel", "new-age", 
-      "ambient", "instrumental", "acoustic", "live", 
-      "concert", "festival", "other"
+      "fusion",
+      "world",
+      "latin",
+      "gospel",
+      "new-age",
+      "ambient",
+      "instrumental",
+      "acoustic",
+      "live",
+      "concert",
+      "festival",
+      "other",
     ];
 
     if (concertData.category && Array.isArray(concertData.category)) {
       concertData.category.forEach((cat, index) => {
         // 대소문자 무시하고 검사
         const normalizedCat = cat.toLowerCase().trim();
-        const isValid = validCategories.some(validCat => 
-          validCat.toLowerCase() === normalizedCat
+        const isValid = validCategories.some(
+          (validCat) => validCat.toLowerCase() === normalizedCat
         );
-        
+
         if (!isValid) {
-          errors.push(`category[${index}] '${cat}'는 유효한 카테고리가 아닙니다.`);
-          console.log(`💡 허용된 카테고리: ${validCategories.slice(0, 10).join(', ')}... (총 ${validCategories.length}개)`);
+          errors.push(
+            `category[${index}] '${cat}'는 유효한 카테고리가 아닙니다.`
+          );
+          console.log(
+            `💡 허용된 카테고리: ${validCategories.slice(0, 10).join(", ")}... (총 ${validCategories.length}개)`
+          );
         }
       });
     }
@@ -249,14 +250,21 @@ export class ConcertModel {
     const urlPattern = /^https?:\/\/.+/;
     const imageUrlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
 
-    if (concertData.posterImage && !imageUrlPattern.test(concertData.posterImage)) {
+    if (
+      concertData.posterImage &&
+      !imageUrlPattern.test(concertData.posterImage)
+    ) {
       errors.push("posterImage는 유효한 이미지 URL이어야 합니다.");
     }
 
-    if (concertData.galleryImages && Array.isArray(concertData.galleryImages)) {
-      concertData.galleryImages.forEach((img, index) => {
-        if (!imageUrlPattern.test(img)) {
-          errors.push(`galleryImages[${index}]는 유효한 이미지 URL이어야 합니다.`);
+    // info 필드 검증 (galleryImages에서 변경됨)
+    if (concertData.info && Array.isArray(concertData.info)) {
+      concertData.info.forEach((infoItem, index) => {
+        if (typeof infoItem !== "string" || infoItem.trim().length === 0) {
+          errors.push(`info[${index}]는 비어있지 않은 문자열이어야 합니다.`);
+        }
+        if (infoItem && infoItem.length > 500) {
+          errors.push(`info[${index}]는 500자를 초과할 수 없습니다.`);
         }
       });
     }
@@ -269,18 +277,10 @@ export class ConcertModel {
       });
     }
 
-    if (concertData.partnerLinks && Array.isArray(concertData.partnerLinks)) {
-      concertData.partnerLinks.forEach((partner, index) => {
-        if (!urlPattern.test(partner.url)) {
-          errors.push(`partnerLinks[${index}].url은 유효한 URL이어야 합니다.`);
-        }
-      });
-    }
-
     return { isValid: errors.length === 0, errors };
   }
 
-  // 콘서트 생성 - 좋아요 시스템 필드 추가
+  // 콘서트 생성
   async create(
     concertData: Omit<IConcert, "createdAt" | "updatedAt">
   ): Promise<IConcert> {
@@ -301,9 +301,14 @@ export class ConcertModel {
 
     // datetime 배열을 Date 객체로 변환
     if (concert.datetime) {
-      concert.datetime = concert.datetime.map((dt) => 
+      concert.datetime = concert.datetime.map((dt) =>
         dt instanceof Date ? dt : new Date(dt)
       );
+    }
+
+    // ticketOpenDate 처리 (새로 추가)
+    if (concert.ticketOpenDate && !(concert.ticketOpenDate instanceof Date)) {
+      concert.ticketOpenDate = new Date(concert.ticketOpenDate);
     }
 
     const result = await this.collection.insertOne(concert);
@@ -365,7 +370,6 @@ export class ConcertModel {
     if (updateData.uid) delete updateData.uid;
     if (updateData.likes) delete updateData.likes;
     if (updateData.likesCount) delete updateData.likesCount;
-    if (updateData.uploadedBy) delete updateData.uploadedBy;
 
     const validation = this.validateConcertData(updateData);
     if (!validation.isValid) {
@@ -377,6 +381,14 @@ export class ConcertModel {
     // datetime 배열 처리
     if (updateData.datetime && Array.isArray(updateData.datetime)) {
       updateData.datetime = updateData.datetime.map((dt) => new Date(dt));
+    }
+
+    // ticketOpenDate 처리 (새로 추가)
+    if (
+      updateData.ticketOpenDate &&
+      !(updateData.ticketOpenDate instanceof Date)
+    ) {
+      updateData.ticketOpenDate = new Date(updateData.ticketOpenDate);
     }
 
     let query: any;
@@ -408,9 +420,9 @@ export class ConcertModel {
     return result ? result : null;
   }
 
-  // ==================== 좋아요 시스템 메서드들 (새로 추가) ====================
+  // ==================== 좋아요 시스템 메서드들 ====================
 
-  // 좋아요 추가 (안전성 개선)
+  // 좋아요 추가
   async addLike(concertId: string, userId: string): Promise<IConcert> {
     if (!userId) {
       throw new Error("사용자 ID는 필수입니다.");
@@ -433,16 +445,21 @@ export class ConcertModel {
     }
 
     // 이미 좋아요했는지 확인
-    const isAlreadyLiked = existingConcert.likes && Array.isArray(existingConcert.likes)
-      ? existingConcert.likes.some((like: any) => {
-          try {
-            return like && like.userId && like.userId.toString() === userId.toString();
-          } catch (error) {
-            console.warn("좋아요 중복 검사 중 에러:", error);
-            return false;
-          }
-        })
-      : false;
+    const isAlreadyLiked =
+      existingConcert.likes && Array.isArray(existingConcert.likes)
+        ? existingConcert.likes.some((like: any) => {
+            try {
+              return (
+                like &&
+                like.userId &&
+                like.userId.toString() === userId.toString()
+              );
+            } catch (error) {
+              console.warn("좋아요 중복 검사 중 에러:", error);
+              return false;
+            }
+          })
+        : false;
 
     if (isAlreadyLiked) {
       throw new Error("이미 좋아요한 콘서트입니다.");
@@ -454,11 +471,11 @@ export class ConcertModel {
         $push: {
           likes: {
             userId: userObjectId,
-            likedAt: now
-          }
+            likedAt: now,
+          },
         },
         $inc: { likesCount: 1 },
-        $set: { updatedAt: now }
+        $set: { updatedAt: now },
       },
       { returnDocument: "after" }
     );
@@ -470,7 +487,7 @@ export class ConcertModel {
     return result;
   }
 
-  // 좋아요 삭제 (안전성 개선)
+  // 좋아요 삭제
   async removeLike(concertId: string, userId: string): Promise<IConcert> {
     if (!userId) {
       throw new Error("사용자 ID는 필수입니다.");
@@ -496,10 +513,10 @@ export class ConcertModel {
       query,
       {
         $pull: {
-          likes: { userId: userObjectId }
+          likes: { userId: userObjectId },
         },
         $inc: { likesCount: -1 },
-        $set: { updatedAt: now }
+        $set: { updatedAt: now },
       },
       { returnDocument: "after" }
     );
@@ -510,10 +527,7 @@ export class ConcertModel {
 
     // likesCount가 음수가 되지 않도록 보정
     if (result.likesCount && result.likesCount < 0) {
-      await this.collection.updateOne(
-        query,
-        { $set: { likesCount: 0 } }
-      );
+      await this.collection.updateOne(query, { $set: { likesCount: 0 } });
       result.likesCount = 0;
     }
 
@@ -535,7 +549,7 @@ export class ConcertModel {
 
     const { page = 1, limit = 20 } = options;
     const skip = (page - 1) * limit;
-    
+
     let userObjectId: ObjectId;
     try {
       userObjectId = new ObjectId(userId);
@@ -548,27 +562,27 @@ export class ConcertModel {
       userId,
       userObjectId: userObjectId.toString(),
       page,
-      limit
+      limit,
     });
 
     try {
       const [concerts, total] = await Promise.all([
         this.collection
           .find({
-            "likes.userId": userObjectId
+            "likes.userId": userObjectId,
           })
           .sort({ "likes.likedAt": -1 }) // 좋아요한 시간 기준 내림차순
           .skip(skip)
           .limit(limit)
           .toArray(),
         this.collection.countDocuments({
-          "likes.userId": userObjectId
-        })
+          "likes.userId": userObjectId,
+        }),
       ]);
 
       console.log("✅ findLikedByUser 결과:", {
         찾은콘서트수: concerts.length,
-        전체개수: total
+        전체개수: total,
       });
 
       return { concerts, total };
@@ -601,11 +615,11 @@ export class ConcertModel {
       .toArray();
   }
 
-  // 도시별 콘서트 조회
-  async findByCity(city: string): Promise<IConcert[]> {
+  // 도시별 콘서트 조회 - location 필드명 수정
+  async findByLocation(location: string): Promise<IConcert[]> {
     return await this.collection
       .find({
-        "location.city": new RegExp(city, "i"),
+        "location.location": new RegExp(location, "i"),
       })
       .sort({ datetime: 1 })
       .toArray();
@@ -637,6 +651,18 @@ export class ConcertModel {
         category: { $in: [category] },
       })
       .sort({ datetime: 1 })
+      .toArray();
+  }
+
+  // 티켓 오픈 예정 콘서트 조회 (새로 추가)
+  async findUpcomingTicketOpen(): Promise<IConcert[]> {
+    const now = new Date();
+    return await this.collection
+      .find({
+        ticketOpenDate: { $gte: now },
+        status: "upcoming",
+      })
+      .sort({ ticketOpenDate: 1 })
       .toArray();
   }
 
@@ -681,7 +707,7 @@ export class ConcertModel {
           },
         ])
         .toArray(),
-      
+
       // 좋아요 통계
       this.collection
         .aggregate([
@@ -693,7 +719,7 @@ export class ConcertModel {
             },
           },
         ])
-        .toArray()
+        .toArray(),
     ]);
 
     const result = {
@@ -708,16 +734,19 @@ export class ConcertModel {
 
     // 상태별 통계 처리
     statusStats.forEach((stat) => {
-      result[stat._id as keyof Omit<typeof result, 'totalLikes' | 'averageLikes'>] = stat.count;
+      result[
+        stat._id as keyof Omit<typeof result, "totalLikes" | "averageLikes">
+      ] = stat.count;
       result.total += stat.count;
     });
 
     // 좋아요 통계 처리
     if (likeStats.length > 0) {
       result.totalLikes = likeStats[0].totalLikes || 0;
-      result.averageLikes = result.total > 0 
-        ? Math.round((result.totalLikes / result.total) * 100) / 100 
-        : 0;
+      result.averageLikes =
+        result.total > 0
+          ? Math.round((result.totalLikes / result.total) * 100) / 100
+          : 0;
     }
 
     return result;
