@@ -19,6 +19,14 @@ import {
   getConcertsByStatus,
   getConcertStats,
 } from "../controllers/concertController";
+
+import {
+  batchUploadConcerts,
+  batchUpdateConcerts,
+  batchDeleteConcerts,
+  batchLikeConcerts,
+} from "../controllers/concertBatchConroller";
+
 import { requireAuth, requireAdmin } from "../middlewares/authMiddleware";
 
 const router = express.Router();
@@ -116,6 +124,73 @@ router.get("/ticket-open", getTicketOpenConcerts);
  * 정렬: 좋아요한 시간 내림차순
  */
 router.get("/liked", requireAuth, getLikedConcerts);
+
+// === 배치 처리 라우트들 (인증 필요) ===
+// 💡 배치 관련 컨트롤러를 별도 파일로 분리하여 관리
+
+/**
+ * 여러 콘서트 일괄 등록
+ * POST /api/concert/batch
+ * 로그인된 사용자만 여러 콘서트를 한 번에 등록할 수 있음
+ *
+ * 특징:
+ * - 각 콘서트별 성공/실패 결과 리포트
+ * - skipDuplicates 옵션으로 중복 UID 처리 방식 선택
+ * - 부분 실패 시에도 성공한 항목들은 등록됨
+ *
+ * 요청 본문:
+ * - concerts: 등록할 콘서트들의 배열
+ * - skipDuplicates: 중복 UID 무시 여부 (기본값: false)
+ */
+router.post("/batch", requireAuth, batchUploadConcerts);
+
+/**
+ * 여러 콘서트 일괄 수정
+ * PUT /api/concert/batch
+ * 로그인된 사용자만 여러 콘서트를 한 번에 수정할 수 있음
+ *
+ * 특징:
+ * - 각 콘서트별 성공/실패 결과 리포트
+ * - continueOnError 옵션으로 에러 발생 시 계속 진행 여부 선택
+ * - 부분 실패 시에도 성공한 항목들은 수정됨
+ *
+ * 요청 본문:
+ * - updates: 수정할 콘서트들의 배열 (id, data 포함)
+ * - continueOnError: 에러 발생 시 계속 진행 여부 (기본값: true)
+ */
+router.put("/batch", requireAuth, batchUpdateConcerts);
+
+/**
+ * 여러 콘서트 일괄 삭제
+ * DELETE /api/concert/batch
+ * 로그인된 사용자만 여러 콘서트를 한 번에 삭제할 수 있음
+ *
+ * 특징:
+ * - 각 콘서트별 성공/실패/미발견 결과 리포트
+ * - continueOnError 옵션으로 에러 발생 시 계속 진행 여부 선택
+ * - 부분 실패 시에도 성공한 항목들은 삭제됨
+ *
+ * 요청 본문:
+ * - ids: 삭제할 콘서트 ID들의 배열
+ * - continueOnError: 에러 발생 시 계속 진행 여부 (기본값: true)
+ */
+router.delete("/batch", requireAuth, batchDeleteConcerts);
+
+/**
+ * 여러 콘서트 일괄 좋아요 처리
+ * POST /api/concert/batch/like
+ * 로그인된 사용자만 여러 콘서트에 대해 좋아요를 일괄 처리할 수 있음
+ *
+ * 특징:
+ * - 좋아요 추가와 삭제를 한 번에 처리
+ * - 각 액션별 성공/실패 결과 리포트
+ * - continueOnError 옵션으로 에러 발생 시 계속 진행 여부 선택
+ *
+ * 요청 본문:
+ * - actions: 좋아요 액션들의 배열 (concertId, action 포함)
+ * - continueOnError: 에러 발생 시 계속 진행 여부 (기본값: true)
+ */
+router.post("/batch/like", requireAuth, batchLikeConcerts);
 
 /**
  * 아티스트별 콘서트 목록 조회
