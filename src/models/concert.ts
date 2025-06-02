@@ -79,7 +79,11 @@ export class ConcertModel {
       await this.collection.createIndex({ "likes.userId": 1 });
       console.log("✅ likes.userId 인덱스 생성");
 
-      console.log("🎉 Concert 최소 인덱스 생성 완료 (총 3개)");
+      // 4. 배치 처리를 위한 추가 인덱스
+      await this.collection.createIndex({ _id: 1 });
+      console.log("✅ _id 인덱스 생성");
+
+      console.log("🎉 Concert 최소 인덱스 생성 완료 (총 4개)");
     } catch (error) {
       console.error("❌ 인덱스 생성 중 오류:", error);
       // 인덱스 생성 실패해도 계속 진행
@@ -589,6 +593,306 @@ export class ConcertModel {
     } catch (error) {
       console.error("❌ findLikedByUser 쿼리 실행 에러:", error);
       return { concerts: [], total: 0 };
+    }
+  }
+
+  // ==================== 배치 처리 메서드들 ====================
+
+  /**
+   * 여러 UID로 콘서트 조회 (배치 처리용)
+   */
+  async findByUids(uids: string[]): Promise<IConcert[]> {
+    try {
+      if (!Array.isArray(uids) || uids.length === 0) {
+        return [];
+      }
+      return await this.collection.find({ uid: { $in: uids } }).toArray();
+    } catch (error) {
+      console.error("findByUids 에러:", error);
+      return [];
+    }
+  }
+
+  /**
+   * 여러 ID로 콘서트 조회 (배치 처리용)
+   */
+  async findByIds(ids: string[]): Promise<IConcert[]> {
+    try {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return [];
+      }
+
+      const objectIds = ids
+        .map((id) => {
+          try {
+            return ObjectId.isValid(id) ? new ObjectId(id) : null;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean) as ObjectId[];
+
+      if (objectIds.length === 0) {
+        return [];
+      }
+
+      return await this.collection.find({ _id: { $in: objectIds } }).toArray();
+    } catch (error) {
+      console.error("findByIds 에러:", error);
+      return [];
+    }
+  }
+
+  /**
+   * 여러 콘서트 한 번에 삽입 (MongoDB insertMany 사용)
+   */
+  async insertMany(concerts: any[]): Promise<IConcert[]> {
+    try {
+      if (!Array.isArray(concerts) || concerts.length === 0) {
+        return [];
+      }
+
+      // 각 콘서트 데이터 전처리
+      const processedConcerts = concerts.map((concert) => {
+        const now = new Date();
+
+        // datetime 배열을 Date 객체로 변환
+        if (concert.datetime && Array.isArray(concert.datetime)) {
+          concert.datetime = concert.datetime.map((dt: any) =>
+            dt instanceof Date ? dt : new Date(dt)
+          );
+        }
+
+        // ticketOpenDate 처리
+        if (
+          concert.ticketOpenDate &&
+          !(concert.ticketOpenDate instanceof Date)
+        ) {
+          concert.ticketOpenDate = new Date(concert.ticketOpenDate);
+        }
+
+        // 기본값 설정
+        return {
+          ...concert,
+          status: concert.status || "upcoming",
+          likes: concert.likes || [],
+          likesCount: concert.likesCount || 0,
+          createdAt: concert.createdAt || now,
+          updatedAt: concert.updatedAt || now,
+        };
+      });
+
+      const options = {
+        ordered: false, // 일부 실패해도 나머지 계속 처리
+        bypassDocumentValidation: false,
+      };
+
+      const result = await this.collection.insertMany(
+        processedConcerts,
+        options
+      );
+
+      // 삽입된 문서들 반환
+      const insertedIds = Object.values(result.insertedIds);
+      return await this.collection
+        .find({ _id: { $in: insertedIds } })
+        .toArray();
+    } catch (error) {
+      console.error("insertMany 에러:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 여러 콘서트 한 번에 삭제
+   */
+  async deleteByIds(ids: string[]): Promise<number> {
+    try {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return 0;
+      }
+
+      const objectIds = ids
+        .map((id) => {
+          try {
+            return ObjectId.isValid(id) ? new ObjectId(id) : null;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean) as ObjectId[];
+
+      if (objectIds.length === 0) {
+        return 0;
+      }
+
+      const result = await this.collection.deleteMany({
+        _id: { $in: objectIds },
+      });
+      return result.deletedCount || 0;
+    } catch (error) {
+      console.error("deleteByIds 에러:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * 여러 콘서트에 대한 좋아요 상태 일괄 조회
+   */
+  async findLikeStatusBatch(
+    concertIds: string[],
+    userId: string
+  ): Promise<Map<string, boolean>> {
+    try {
+      if (!Array.isArray(concertIds) || concertIds.length === 0 || !userId) {
+        return new Map();
+      }
+
+      const objectIds = concertIds
+        .map((id) => {
+          try {
+            return ObjectId.isValid(id) ? new ObjectId(id) : null;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean) as ObjectId[];
+
+      const userObjectId = new ObjectId(userId);
+
+      const concerts = await this.collection
+        .find({ _id: { $in: objectIds } }, { projection: { _id: 1, likes: 1 } })
+        .toArray();
+
+      const likeStatusMap = new Map<string, boolean>();
+
+      concerts.forEach((concert) => {
+        const isLiked =
+          concert.likes?.some(
+            (like: any) => like.userId?.toString() === userId.toString()
+          ) || false;
+        likeStatusMap.set(concert._id.toString(), isLiked);
+      });
+
+      return likeStatusMap;
+    } catch (error) {
+      console.error("findLikeStatusBatch 에러:", error);
+      return new Map();
+    }
+  }
+
+  /**
+   * 대량 업데이트를 위한 bulk write 작업
+   */
+  async bulkWrite(operations: any[]): Promise<any> {
+    try {
+      if (!Array.isArray(operations) || operations.length === 0) {
+        return { modifiedCount: 0, upsertedCount: 0, insertedCount: 0 };
+      }
+
+      const options = {
+        ordered: false, // 일부 실패해도 나머지 계속 처리
+      };
+
+      return await this.collection.bulkWrite(operations, options);
+    } catch (error) {
+      console.error("bulkWrite 에러:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 배치 좋아요 처리 (성능 최적화)
+   */
+  async batchLikeOperations(
+    operations: Array<{
+      concertId: string;
+      userId: string;
+      action: "add" | "remove";
+    }>
+  ): Promise<{ success: number; failed: number; errors: any[] }> {
+    try {
+      if (!Array.isArray(operations) || operations.length === 0) {
+        return { success: 0, failed: 0, errors: [] };
+      }
+
+      const bulkOps: any[] = [];
+      const errors: any[] = [];
+      let successCount = 0;
+      let failedCount = 0;
+
+      for (const op of operations) {
+        try {
+          const { concertId, userId, action } = op;
+
+          if (!concertId || !userId || !["add", "remove"].includes(action)) {
+            errors.push({
+              concertId,
+              userId,
+              action,
+              error: "잘못된 매개변수",
+            });
+            failedCount++;
+            continue;
+          }
+
+          let query: any;
+          if (ObjectId.isValid(concertId)) {
+            query = { _id: new ObjectId(concertId) };
+          } else {
+            query = { uid: concertId };
+          }
+
+          const userObjectId = new ObjectId(userId);
+          const now = new Date();
+
+          if (action === "add") {
+            bulkOps.push({
+              updateOne: {
+                filter: {
+                  ...query,
+                  "likes.userId": { $ne: userObjectId }, // 중복 방지
+                },
+                update: {
+                  $push: { likes: { userId: userObjectId, likedAt: now } },
+                  $inc: { likesCount: 1 },
+                  $set: { updatedAt: now },
+                },
+              },
+            });
+          } else {
+            bulkOps.push({
+              updateOne: {
+                filter: query,
+                update: {
+                  $pull: { likes: { userId: userObjectId } },
+                  $inc: { likesCount: -1 },
+                  $set: { updatedAt: now },
+                },
+              },
+            });
+          }
+
+          successCount++;
+        } catch (error) {
+          errors.push({
+            concertId: op.concertId,
+            userId: op.userId,
+            action: op.action,
+            error: error instanceof Error ? error.message : "알 수 없는 에러",
+          });
+          failedCount++;
+        }
+      }
+
+      if (bulkOps.length > 0) {
+        await this.bulkWrite(bulkOps);
+      }
+
+      return { success: successCount, failed: failedCount, errors };
+    } catch (error) {
+      console.error("batchLikeOperations 에러:", error);
+      throw error;
     }
   }
 
