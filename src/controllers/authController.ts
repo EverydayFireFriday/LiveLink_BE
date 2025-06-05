@@ -98,6 +98,44 @@ const generateVerificationCode = (): string => {
   return crypto.randomInt(100000, 999999).toString();
 };
 
+// 사용자명 자동 생성 함수
+const generateUsername = async (email: string, baseUsername?: string): Promise<string> => {
+  const userModel = getUserModel();
+  
+  // 기본 사용자명 생성 (이메일 앞부분 또는 제공된 기본값)
+  let username = baseUsername || email.split('@')[0];
+  
+  // 특수문자 제거 및 소문자 변환
+  username = username.replace(/[^a-zA-Z0-9가-힣]/g, '').toLowerCase();
+  
+  // 최소 길이 보장
+  if (username.length < 2) {
+    username = 'user';
+  }
+  
+  // 최대 길이 제한
+  if (username.length > 15) {
+    username = username.substring(0, 15);
+  }
+  
+  let finalUsername = username;
+  let counter = 1;
+  
+  // 중복 확인 및 번호 추가
+  while (await userModel.findByUsername(finalUsername)) {
+    finalUsername = `${username}${counter}`;
+    counter++;
+    
+    // 무한 루프 방지
+    if (counter > 9999) {
+      finalUsername = `${username}${Date.now().toString().slice(-4)}`;
+      break;
+    }
+  }
+  
+  return finalUsername;
+};
+
 // 비밀번호 해시화 함수
 const hashPassword = async (password: string): Promise<string> => {
   return await bcrypt.hash(password, SALT_ROUNDS);
@@ -106,6 +144,72 @@ const hashPassword = async (password: string): Promise<string> => {
 // 비밀번호 검증 함수
 const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
   return await bcrypt.compare(password, hashedPassword);
+};
+
+/**
+ * @swagger
+ * /auth/generate-username:
+ *   get:
+ *     summary: 사용자명 자동 생성
+ *     description: 이메일을 기반으로 사용 가능한 사용자명을 자동 생성합니다.
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: 기반이 될 이메일 주소
+ *       - in: query
+ *         name: base
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: 선호하는 기본 사용자명 (선택사항)
+ *     responses:
+ *       200:
+ *         description: 사용자명 생성 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       500:
+ *         description: 서버 에러
+ */
+export const generateUsernameAPI = async (
+  req: express.Request,
+  res: express.Response
+) => {
+  const { email, base } = req.query;
+
+  if (!email || typeof email !== 'string') {
+    res.status(400).json({ message: "이메일을 입력해주세요." });
+    return;
+  }
+
+  // 이메일 형식 검증
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    res.status(400).json({ message: "올바른 이메일 형식을 입력해주세요." });
+    return;
+  }
+
+  try {
+    const generatedUsername = await generateUsername(
+      email, 
+      base ? String(base) : undefined
+    );
+
+    res.status(200).json({
+      message: "사용자명이 성공적으로 생성되었습니다.",
+      username: generatedUsername,
+      available: true,
+      generatedFrom: base ? `기본값: ${base}` : `이메일: ${email}`,
+    });
+
+  } catch (error) {
+    console.error("사용자명 생성 에러:", error);
+    res.status(500).json({ message: "사용자명 생성 실패" });
+  }
 };
 
 /**
@@ -147,8 +251,8 @@ const verifyPassword = async (password: string, hashedPassword: string): Promise
 export const register = async (req: express.Request, res: express.Response) => {
   const { email, username, password, profileImage } = req.body;
 
-  if (!email || !username || !password) {
-    res.status(400).json({ message: "이메일(아이디), 별명, 비밀번호를 모두 입력해주세요." });
+  if (!email || !password) {
+    res.status(400).json({ message: "이메일(아이디)과 비밀번호를 입력해주세요." });
     return;
   }
 
@@ -164,25 +268,45 @@ export const register = async (req: express.Request, res: express.Response) => {
     return;
   }
 
-  if (username.length < 2) {
-    res.status(400).json({ message: "별명은 최소 2자 이상이어야 합니다." });
-    return;
-  }
-
   try {
     const userModel = getUserModel();
     
-    // 이메일과 별명 중복 확인
+    // 이메일 중복 확인
     const existingEmail = await userModel.findByEmail(email);
     if (existingEmail) {
       res.status(400).json({ message: "이미 사용 중인 이메일입니다." });
       return;
     }
 
-    const existingUsername = await userModel.findByUsername(username);
-    if (existingUsername) {
-      res.status(400).json({ message: "이미 사용 중인 별명입니다." });
-      return;
+    // 사용자명 처리 (자동 생성 또는 검증)
+    let finalUsername: string;
+    
+    if (!username || username.trim() === '') {
+      // 사용자명이 없으면 자동 생성
+      finalUsername = await generateUsername(email);
+      console.log(`사용자명 자동 생성: ${email} → ${finalUsername}`);
+    } else {
+      // 사용자명이 제공된 경우 검증
+      if (username.length < 2) {
+        res.status(400).json({ message: "별명은 최소 2자 이상이어야 합니다." });
+        return;
+      }
+
+      if (username.length > 20) {
+        res.status(400).json({ message: "별명은 최대 20자까지 가능합니다." });
+        return;
+      }
+
+      const existingUsername = await userModel.findByUsername(username);
+      if (existingUsername) {
+        res.status(400).json({ 
+          message: "이미 사용 중인 별명입니다.",
+          suggestion: "자동 생성을 원하시면 별명을 비워두세요."
+        });
+        return;
+      }
+      
+      finalUsername = username;
     }
 
     // 비밀번호 해시화
@@ -191,12 +315,12 @@ export const register = async (req: express.Request, res: express.Response) => {
     // 새 사용자 생성 (해시화된 비밀번호 저장)
     const newUser = await userModel.createUser({
       email,
-      username,
+      username: finalUsername,
       passwordHash: hashedPassword, 
       profileImage: profileImage || undefined,
     });
 
-    console.log(`새 사용자 가입: ${username} (${email}) - MongoDB 저장 완료 (bcrypt 해시화)`);
+    console.log(`새 사용자 가입: ${finalUsername} (${email}) - MongoDB 저장 완료 (bcrypt 해시화)`);
     res.status(201).json({
       message: "회원가입 성공",
       user: {
@@ -206,6 +330,7 @@ export const register = async (req: express.Request, res: express.Response) => {
         profileImage: newUser.profileImage,
         createdAt: newUser.createdAt,
       },
+      usernameGenerated: !username || username.trim() === '',
       security: "비밀번호가 bcrypt로 안전하게 해시화되었습니다.",
     });
   } catch (error: any) {

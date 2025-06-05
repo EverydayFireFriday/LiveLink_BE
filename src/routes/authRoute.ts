@@ -10,6 +10,7 @@ import {
   // 별명 관련 함수들
   updateUsername,
   checkUsername,
+  generateUsernameAPI,
   // 이메일 인증 관련 함수들
   resetPasswordRequest,
   verifyResetPassword,
@@ -35,6 +36,9 @@ router.post("/resend-code", resendVerificationCode);
 
 // 별명 중복 체크 (회원가입 시에도 필요하므로 인증 불필요)
 router.post("/check-username", checkUsername);
+
+// 별명 자동 생성 (이메일기반 자동 생성, 중복시 숫자 추가)
+router.get('/generate-username', generateUsernameAPI);
 
 // === 인증이 필요한 라우트들 ===
 
