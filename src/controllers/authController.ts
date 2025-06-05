@@ -1,10 +1,14 @@
 import express from "express";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import { UserModel } from "../models/user";
 import Redis from "ioredis";
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+// bcrypt 솔트 라운드 (10-12가 권장됨)
+const SALT_ROUNDS = 12;
 
 // UserModel을 지연 초기화하는 함수
 const getUserModel = () => {
@@ -94,12 +98,22 @@ const generateVerificationCode = (): string => {
   return crypto.randomInt(100000, 999999).toString();
 };
 
+// 비밀번호 해시화 함수
+const hashPassword = async (password: string): Promise<string> => {
+  return await bcrypt.hash(password, SALT_ROUNDS);
+};
+
+// 비밀번호 검증 함수
+const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
+  return await bcrypt.compare(password, hashedPassword);
+};
+
 /**
  * @swagger
  * /auth/register:
  *   post:
  *     summary: 사용자 회원가입
- *     description: 새로운 사용자를 MongoDB에 등록합니다. 이메일이 아이디 역할을 합니다.
+ *     description: 새로운 사용자를 MongoDB에 등록합니다. 이메일이 아이디 역할을 하며, 비밀번호는 bcrypt로 해시화됩니다.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -117,6 +131,8 @@ const generateVerificationCode = (): string => {
  *                 description: 별명 (수정 가능)
  *               password:
  *                 type: string
+ *                 minLength: 7
+ *                 description: 비밀번호 (bcrypt로 해시화됨)
  *               profileImage:
  *                 type: string
  *                 description: 프로필 이미지 URL (선택사항)
@@ -169,15 +185,18 @@ export const register = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    // 새 사용자 생성 (평문 비밀번호 저장)
+    // 비밀번호 해시화
+    const hashedPassword = await hashPassword(password);
+
+    // 새 사용자 생성 (해시화된 비밀번호 저장)
     const newUser = await userModel.createUser({
       email,
       username,
-      passwordHash: password, // 평문 비밀번호로 저장
+      passwordHash: hashedPassword, 
       profileImage: profileImage || undefined,
     });
 
-    console.log(`새 사용자 가입: ${username} (${email}) - MongoDB 저장 완료`);
+    console.log(`새 사용자 가입: ${username} (${email}) - MongoDB 저장 완료 (bcrypt 해시화)`);
     res.status(201).json({
       message: "회원가입 성공",
       user: {
@@ -187,6 +206,7 @@ export const register = async (req: express.Request, res: express.Response) => {
         profileImage: newUser.profileImage,
         createdAt: newUser.createdAt,
       },
+      security: "비밀번호가 bcrypt로 안전하게 해시화되었습니다.",
     });
   } catch (error: any) {
     console.error("회원가입 에러:", error);
@@ -205,7 +225,7 @@ export const register = async (req: express.Request, res: express.Response) => {
  * /auth/login:
  *   post:
  *     summary: 사용자 로그인
- *     description: 이메일(아이디)과 비밀번호로 로그인합니다.
+ *     description: 이메일(아이디)과 비밀번호로 로그인합니다. bcrypt로 비밀번호를 안전하게 검증합니다.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -220,6 +240,7 @@ export const register = async (req: express.Request, res: express.Response) => {
  *                 description: 아이디로 사용되는 이메일
  *               password:
  *                 type: string
+ *                 description: 비밀번호
  *     responses:
  *       200:
  *         description: 로그인 성공
@@ -247,14 +268,15 @@ export const login = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    // 비밀번호 확인 (평문 비교)
-    if (password !== user.passwordHash) {
+    // 비밀번호 확인 (bcrypt 비교)
+    const isPasswordValid = await verifyPassword(password, user.passwordHash);
+    if (!isPasswordValid) {
       res.status(401).json({ message: "비밀번호가 일치하지 않습니다." });
       return;
     }
 
     // 마지막 로그인 시간 업데이트
-    await userModel.updateUser(user._id!, { updatedAt: new Date() });
+    await userModel.updateUser(user._id!.toString(), { updatedAt: new Date() });
 
     // 세션에 사용자 정보 저장
     req.session.user = {
@@ -266,7 +288,7 @@ export const login = async (req: express.Request, res: express.Response) => {
     };
 
     console.log(
-      `로그인 성공: ${user.username} (${user.email}) - 세션 ID: ${req.sessionID}, Redis 저장 완료`
+      `로그인 성공: ${user.username} (${user.email}) - 세션 ID: ${req.sessionID}, Redis 저장 완료 (bcrypt 검증)`
     );
     res.status(200).json({
       message: "로그인 성공",
@@ -277,6 +299,7 @@ export const login = async (req: express.Request, res: express.Response) => {
         profileImage: user.profileImage,
       },
       sessionId: req.sessionID,
+      security: "bcrypt로 안전하게 인증되었습니다.",
     });
   } catch (error) {
     console.error("로그인 에러:", error);
@@ -659,7 +682,7 @@ export const checkUsername = async (
  * /auth/users:
  *   get:
  *     summary: 전체 사용자 목록 조회 (관리자용)
- *     description: 모든 사용자 정보를 MongoDB에서 조회합니다.
+ *     description: 모든 사용자 정보를 MongoDB에서 조회합니다. 비밀번호 해시는 제외됩니다.
  *     tags: [Auth]
  *     parameters:
  *       - in: query
@@ -692,7 +715,7 @@ export const getAllUsers = async (
     const users = await userModel.findAllUsers(limit, skip);
     const totalUsers = await userModel.countUsers();
 
-    // passwordHash 제거
+    // passwordHash 제거 (보안)
     const safeUsers = users.map((user) => ({
       id: user._id,
       email: user.email,
@@ -709,6 +732,7 @@ export const getAllUsers = async (
       totalPages: Math.ceil(totalUsers / limit),
       users: safeUsers,
       dataSource: "MongoDB에서 조회",
+      security: "비밀번호 해시는 안전하게 제외됨",
     });
   } catch (error) {
     console.error("사용자 목록 조회 에러:", error);
@@ -717,7 +741,7 @@ export const getAllUsers = async (
 };
 
 // ===========================================
-// 🆕 Redis 기반 비밀번호 재설정 기능 (3분 유효기간)
+// 🔐 bcrypt 기반 비밀번호 재설정 기능 (3분 유효기간)
 // ===========================================
 
 /**
@@ -825,6 +849,7 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
       redisKey,
       expiresIn: "3분",
       storage: "Redis에 저장됨",
+      security: "bcrypt로 안전하게 해시화될 예정",
     });
 
   } catch (error) {
@@ -838,7 +863,7 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
  * /auth/verify-reset-password:
  *   post:
  *     summary: 비밀번호 재설정 인증 및 새 비밀번호 설정
- *     description: Redis에서 인증 코드를 확인하고 새 비밀번호로 변경합니다.
+ *     description: Redis에서 인증 코드를 확인하고 새 비밀번호로 변경합니다. 새 비밀번호는 bcrypt로 해시화됩니다.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -854,6 +879,8 @@ export const resetPasswordRequest = async (req: express.Request, res: express.Re
  *                 type: string
  *               newPassword:
  *                 type: string
+ *                 minLength: 7
+ *                 description: 새 비밀번호 (bcrypt로 해시화됨)
  *     responses:
  *       200:
  *         description: 비밀번호 재설정 성공
@@ -907,27 +934,134 @@ export const verifyResetPassword = async (req: express.Request, res: express.Res
       return;
     }
 
-    // 비밀번호 업데이트 (평문으로 저장)
+    // 새 비밀번호 해시화
+    const hashedNewPassword = await hashPassword(newPassword);
+
+    // 비밀번호 업데이트 (해시화된 비밀번호로 저장)
     await userModel.updateUser(user._id!.toString(), {
-      passwordHash: newPassword, // 평문 비밀번호로 저장
+      passwordHash: hashedNewPassword,
       updatedAt: new Date(),
     });
 
     // 인증 코드 삭제 (일회용)
     await deleteVerificationCode(redisKey);
 
-    console.log(`비밀번호 재설정 완료: ${user.username} (${email}) - Redis에서 코드 삭제`);
+    console.log(`비밀번호 재설정 완료: ${user.username} (${email}) - bcrypt 해시화 후 저장, Redis에서 코드 삭제`);
 
     res.status(200).json({
       message: "비밀번호가 성공적으로 재설정되었습니다.",
       username: user.username,
       email: user.email,
       verifiedFrom: "Redis 인증 시스템",
+      security: "새 비밀번호가 bcrypt로 안전하게 해시화되었습니다.",
     });
 
   } catch (error) {
     console.error("비밀번호 재설정 에러:", error);
     res.status(500).json({ message: "비밀번호 재설정 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/change-password:
+ *   put:
+ *     summary: 로그인된 사용자의 비밀번호 변경
+ *     description: 현재 비밀번호를 확인하고 새 비밀번호로 변경합니다. (로그인 필요)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 description: 현재 비밀번호
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 7
+ *                 description: 새 비밀번호 (bcrypt로 해시화됨)
+ *     responses:
+ *       200:
+ *         description: 비밀번호 변경 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요 또는 현재 비밀번호 불일치
+ *       404:
+ *         description: 사용자 없음
+ *       500:
+ *         description: 서버 에러
+ */
+export const changePassword = async (
+  req: express.Request,
+  res: express.Response
+) => {
+  if (!req.session.user) {
+    res.status(401).json({ message: "로그인이 필요합니다." });
+    return;
+  }
+
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ message: "현재 비밀번호와 새 비밀번호를 모두 입력해주세요." });
+    return;
+  }
+
+  if (newPassword.length < 7) {
+    res.status(400).json({ message: "새 비밀번호는 최소 7자 이상이어야 합니다." });
+    return;
+  }
+
+  if (currentPassword === newPassword) {
+    res.status(400).json({ message: "새 비밀번호는 현재 비밀번호와 달라야 합니다." });
+    return;
+  }
+
+  try {
+    const userModel = getUserModel();
+    const user = await userModel.findByEmail(req.session.user.email);
+
+    if (!user) {
+      res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      return;
+    }
+
+    // 현재 비밀번호 확인
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      res.status(401).json({ message: "현재 비밀번호가 일치하지 않습니다." });
+      return;
+    }
+
+    // 새 비밀번호 해시화
+    const hashedNewPassword = await hashPassword(newPassword);
+
+    // 비밀번호 업데이트
+    await userModel.updateUser(user._id!.toString(), {
+      passwordHash: hashedNewPassword,
+      updatedAt: new Date(),
+    });
+
+    console.log(`비밀번호 변경 완료: ${user.username} (${user.email}) - bcrypt 해시화 후 저장`);
+
+    res.status(200).json({
+      message: "비밀번호가 성공적으로 변경되었습니다.",
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        updatedAt: new Date(),
+      },
+      security: "새 비밀번호가 bcrypt로 안전하게 해시화되었습니다.",
+    });
+
+  } catch (error) {
+    console.error("비밀번호 변경 에러:", error);
+    res.status(500).json({ message: "비밀번호 변경 실패" });
   }
 };
 
