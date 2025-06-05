@@ -14,6 +14,7 @@ import {
   resetPasswordRequest,
   verifyResetPassword,
   resendVerificationCode,
+  changePassword,
 } from "../controllers/authController";
 import { requireAuth, requireAdmin } from "../middlewares/authMiddleware";
 
@@ -46,6 +47,8 @@ router.get("/session", requireAuth, checkSession);
 // 프로필 관련 (로그인된 사용자만)
 router.get("/profile", requireAuth, getProfile);
 router.put("/profile", requireAuth, updateProfile);
+router.put('/change-password', requireAuth, changePassword);
+
 
 // 별명 수정 (로그인된 사용자만)
 router.put("/update-username", requireAuth, updateUsername);
