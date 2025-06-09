@@ -36,8 +36,14 @@ const createTransporter = () => {
 interface VerificationCode {
   code: string;
   email: string;
-  type: 'password_reset';
+  type: 'password_reset' | 'email_verification';
   createdAt: string;
+  // 회원가입 인증을 위한 추가 정보
+  userData?: {
+    username: string;
+    passwordHash: string;
+    profileImage?: string;
+  };
 }
 
 // Redis 키 생성 함수
@@ -46,13 +52,19 @@ const getRedisKey = (type: string, email: string): string => {
 };
 
 // Redis에서 인증 코드 저장 (3분 TTL)
-const saveVerificationCode = async (type: string, email: string, code: string): Promise<string> => {
+const saveVerificationCode = async (
+  type: string, 
+  email: string, 
+  code: string, 
+  userData?: any
+): Promise<string> => {
   const key = getRedisKey(type, email);
   const data: VerificationCode = {
     code,
     email,
-    type: type as 'password_reset',
+    type: type as 'password_reset' | 'email_verification',
     createdAt: new Date().toISOString(),
+    userData
   };
   
   // Redis에 3분(180초) TTL로 저장
@@ -214,10 +226,309 @@ export const generateUsernameAPI = async (
 
 /**
  * @swagger
+ * /auth/register-request:
+ *   post:
+ *     summary: 회원가입 이메일 인증 요청
+ *     description: 회원가입을 위한 이메일 인증 코드를 전송합니다. 사용자 정보는 Redis에 임시 저장됩니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: 회원가입할 이메일
+ *               username:
+ *                 type: string
+ *                 description: 별명 (자동 생성 가능)
+ *               password:
+ *                 type: string
+ *                 minLength: 7
+ *                 description: 비밀번호
+ *               profileImage:
+ *                 type: string
+ *                 description: 프로필 이미지 URL (선택사항)
+ *     responses:
+ *       200:
+ *         description: 인증 코드 전송 성공
+ *       400:
+ *         description: 잘못된 요청 또는 이미 존재하는 사용자
+ *       429:
+ *         description: 너무 빈번한 요청
+ *       500:
+ *         description: 서버 에러
+ */
+export const registerRequest = async (req: express.Request, res: express.Response) => {
+  const { email, username, password, profileImage } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({ message: "이메일과 비밀번호를 입력해주세요." });
+    return;
+  }
+
+  // 이메일 형식 검증
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    res.status(400).json({ message: "올바른 이메일 형식을 입력해주세요." });
+    return;
+  }
+
+  if (password.length < 7) {
+    res.status(400).json({ message: "비밀번호는 최소 7자 이상이어야 합니다." });
+    return;
+  }
+
+  try {
+    // 최근 요청 확인 (스팸 방지)
+    const hasRecentRequest = await checkRecentRequest(email, 'email_verification');
+    if (hasRecentRequest) {
+      res.status(429).json({ 
+        message: "너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.",
+        retryAfter: 60
+      });
+      return;
+    }
+
+    const userModel = getUserModel();
+    
+    // 이메일 중복 확인
+    const existingEmail = await userModel.findByEmail(email);
+    if (existingEmail) {
+      res.status(400).json({ message: "이미 사용 중인 이메일입니다." });
+      return;
+    }
+
+    // 사용자명 처리 (자동 생성 또는 검증)
+    let finalUsername: string;
+    
+    if (!username || username.trim() === '') {
+      // 사용자명이 없으면 자동 생성
+      finalUsername = await generateUsername(email);
+      console.log(`사용자명 자동 생성: ${email} → ${finalUsername}`);
+    } else {
+      // 사용자명이 제공된 경우 검증
+      if (username.length < 2) {
+        res.status(400).json({ message: "별명은 최소 2자 이상이어야 합니다." });
+        return;
+      }
+
+      if (username.length > 20) {
+        res.status(400).json({ message: "별명은 최대 20자까지 가능합니다." });
+        return;
+      }
+
+      const existingUsername = await userModel.findByUsername(username);
+      if (existingUsername) {
+        res.status(400).json({ 
+          message: "이미 사용 중인 별명입니다.",
+          suggestion: "자동 생성을 원하시면 별명을 비워두세요."
+        });
+        return;
+      }
+      
+      finalUsername = username;
+    }
+
+    // 비밀번호 해시화
+    const hashedPassword = await hashPassword(password);
+
+    // 인증 코드 생성
+    const verificationCode = generateVerificationCode();
+
+    // 사용자 데이터를 Redis에 임시 저장 (인증 후 DB에 저장)
+    const userData = {
+      username: finalUsername,
+      passwordHash: hashedPassword,
+      profileImage: profileImage || undefined,
+    };
+
+    const redisKey = await saveVerificationCode('email_verification', email, verificationCode, userData);
+
+    // 이메일 전송
+    const transporter = createTransporter();
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: '[LiveLink] 회원가입 이메일 인증',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">회원가입 이메일 인증</h2>
+          <p>안녕하세요!</p>
+          <p><strong>LiveLink</strong>에 회원가입해주셔서 감사합니다.</p>
+          <p>아래 인증 코드를 입력하여 회원가입을 완료해주세요.</p>
+          <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
+            <h3 style="color: #007bff; font-size: 24px; margin: 0;">인증 코드: ${verificationCode}</h3>
+          </div>
+          <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-left: 4px solid #007bff;">
+            <p><strong>회원가입 정보:</strong></p>
+            <ul style="margin: 10px 0;">
+              <li>이메일: ${email}</li>
+              <li>별명: ${finalUsername}</li>
+              <li>가입일: ${new Date().toLocaleString('ko-KR')}</li>
+            </ul>
+          </div>
+          <p><strong>주의사항:</strong></p>
+          <ul>
+            <li>이 코드는 3분 후에 만료됩니다.</li>
+            <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
+            <li>본인이 요청하지 않았다면 이 이메일을 무시하세요.</li>
+          </ul>
+          <p>감사합니다.<br>LiveLink 팀</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    console.log(`회원가입 인증 코드 전송: ${finalUsername} (${email}) - Redis 임시 저장 (3분 TTL)`);
+
+    res.status(200).json({
+      message: "회원가입 인증 코드가 이메일로 전송되었습니다.",
+      email,
+      username: finalUsername,
+      usernameGenerated: !username || username.trim() === '',
+      redisKey,
+      expiresIn: "3분",
+      nextStep: "이메일에서 인증 코드를 확인하고 /auth/verify-register로 인증을 완료해주세요.",
+    });
+
+  } catch (error) {
+    console.error("회원가입 인증 이메일 전송 에러:", error);
+    res.status(500).json({ message: "이메일 전송 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/verify-register:
+ *   post:
+ *     summary: 회원가입 이메일 인증 완료
+ *     description: 이메일 인증 코드를 확인하고 실제 회원가입을 완료합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               verificationCode:
+ *                 type: string
+ *                 description: 이메일로 받은 6자리 인증 코드
+ *     responses:
+ *       201:
+ *         description: 회원가입 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 코드 불일치
+ *       410:
+ *         description: 인증 코드 만료
+ *       500:
+ *         description: 서버 에러
+ */
+export const verifyRegister = async (req: express.Request, res: express.Response) => {
+  const { email, verificationCode } = req.body;
+
+  if (!email || !verificationCode) {
+    res.status(400).json({ message: "이메일과 인증 코드를 입력해주세요." });
+    return;
+  }
+
+  try {
+    const redisKey = getRedisKey('email_verification', email);
+    const storedData = await getVerificationCode(redisKey);
+    
+    if (!storedData) {
+      res.status(410).json({ message: "인증 코드가 만료되었거나 존재하지 않습니다." });
+      return;
+    }
+
+    if (storedData.code !== verificationCode) {
+      res.status(401).json({ message: "인증 코드가 일치하지 않습니다." });
+      return;
+    }
+
+    if (storedData.type !== 'email_verification') {
+      res.status(400).json({ message: "잘못된 인증 코드 유형입니다." });
+      return;
+    }
+
+    if (!storedData.userData) {
+      res.status(400).json({ message: "사용자 데이터가 없습니다. 다시 회원가입을 시도해주세요." });
+      return;
+    }
+
+    const userModel = getUserModel();
+    
+    // 이메일 중복 재확인 (동시성 문제 방지)
+    const existingEmail = await userModel.findByEmail(email);
+    if (existingEmail) {
+      await deleteVerificationCode(redisKey);
+      res.status(400).json({ message: "이미 사용 중인 이메일입니다." });
+      return;
+    }
+
+    // 사용자명 중복 재확인
+    const existingUsername = await userModel.findByUsername(storedData.userData.username);
+    if (existingUsername) {
+      await deleteVerificationCode(redisKey);
+      res.status(400).json({ message: "이미 사용 중인 별명입니다. 다시 회원가입을 시도해주세요." });
+      return;
+    }
+
+    // 실제 사용자 생성 (MongoDB에 저장)
+    const newUser = await userModel.createUser({
+      email,
+      username: storedData.userData.username,
+      passwordHash: storedData.userData.passwordHash,
+      profileImage: storedData.userData.profileImage,
+    });
+
+    // 인증 코드 삭제 (일회용)
+    await deleteVerificationCode(redisKey);
+
+    console.log(`이메일 인증 회원가입 완료: ${newUser.username} (${email}) - MongoDB 저장 완료, Redis에서 임시 데이터 삭제`);
+
+    res.status(201).json({
+      message: "이메일 인증이 완료되어 회원가입이 성공했습니다!",
+      user: {
+        id: newUser._id,
+        email: newUser.email,
+        username: newUser.username,
+        profileImage: newUser.profileImage,
+        createdAt: newUser.createdAt,
+      },
+      verifiedFrom: "Redis 이메일 인증 시스템",
+      security: "비밀번호가 bcrypt로 안전하게 해시화되었습니다.",
+      nextStep: "이제 로그인할 수 있습니다.",
+    });
+
+  } catch (error: any) {
+    console.error("회원가입 인증 완료 에러:", error);
+    if (error.message === "Email already exists") {
+      res.status(400).json({ message: "이미 사용 중인 이메일입니다." });
+    } else if (error.message === "Username already exists") {
+      res.status(400).json({ message: "이미 사용 중인 별명입니다." });
+    } else {
+      res.status(500).json({ message: "서버 에러로 회원가입 실패" });
+    }
+  }
+};
+
+/**
+ * @swagger
  * /auth/register:
  *   post:
- *     summary: 사용자 회원가입
- *     description: 새로운 사용자를 MongoDB에 등록합니다. 이메일이 아이디 역할을 하며, 비밀번호는 bcrypt로 해시화됩니다.
+ *     summary: 직접 회원가입 (이메일 인증 없이)
+ *     description: 기존 방식의 즉시 회원가입입니다. 보안을 위해 이메일 인증 방식을 권장합니다.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -332,6 +643,7 @@ export const register = async (req: express.Request, res: express.Response) => {
       },
       usernameGenerated: !username || username.trim() === '',
       security: "비밀번호가 bcrypt로 안전하게 해시화되었습니다.",
+      recommendation: "보안을 위해 이메일 인증 회원가입(/auth/register-request)을 권장합니다.",
     });
   } catch (error: any) {
     console.error("회원가입 에러:", error);
@@ -1209,7 +1521,7 @@ export const changePassword = async (
  *                 format: email
  *               type:
  *                 type: string
- *                 enum: [password_reset]
+ *                 enum: [password_reset, email_verification]
  *     responses:
  *       200:
  *         description: 인증 코드 재전송 성공
@@ -1228,7 +1540,7 @@ export const resendVerificationCode = async (req: express.Request, res: express.
     return;
   }
 
-  if (type !== 'password_reset') {
+  if (!['password_reset', 'email_verification'].includes(type)) {
     res.status(400).json({ message: "올바르지 않은 인증 유형입니다." });
     return;
   }
@@ -1248,8 +1560,17 @@ export const resendVerificationCode = async (req: express.Request, res: express.
     const oldRedisKey = getRedisKey(type, email);
     await deleteVerificationCode(oldRedisKey);
 
-    // 새로운 인증 요청 처리
-    await resetPasswordRequest(req, res);
+    // 인증 유형에 따라 분기 처리
+    if (type === 'password_reset') {
+      await resetPasswordRequest(req, res);
+    } else if (type === 'email_verification') {
+      // 회원가입 인증 코드 재전송의 경우, 기존 사용자 데이터가 필요함
+      res.status(400).json({ 
+        message: "회원가입 인증은 처음부터 다시 시작해주세요.",
+        suggestion: "/auth/register-request 엔드포인트를 다시 호출해주세요."
+      });
+      return;
+    }
 
   } catch (error) {
     console.error("인증 코드 재전송 에러:", error);
@@ -1276,7 +1597,7 @@ export const resendVerificationCode = async (req: express.Request, res: express.
  *                 format: email
  *               type:
  *                 type: string
- *                 enum: [password_reset]
+ *                 enum: [password_reset, email_verification]
  *     responses:
  *       200:
  *         description: 인증 코드 상태 반환
@@ -1316,11 +1637,89 @@ export const getVerificationStatus = async (req: express.Request, res: express.R
       type: storedCode.type,
       createdAt: storedCode.createdAt,
       storage: "Redis에서 확인됨",
+      hasUserData: type === 'email_verification' ? !!storedCode.userData : false,
     });
 
   } catch (error) {
     console.error("인증 코드 상태 확인 에러:", error);
     res.status(500).json({ message: "인증 코드 상태 확인 실패" });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/cancel-verification:
+ *   post:
+ *     summary: 인증 프로세스 취소
+ *     description: Redis에서 진행 중인 인증 코드를 삭제합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               type:
+ *                 type: string
+ *                 enum: [password_reset, email_verification]
+ *     responses:
+ *       200:
+ *         description: 인증 프로세스 취소 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 취소할 인증 코드 없음
+ *       500:
+ *         description: 서버 에러
+ */
+export const cancelVerification = async (req: express.Request, res: express.Response) => {
+  const { email, type } = req.body;
+
+  if (!email || !type) {
+    res.status(400).json({ message: "이메일과 인증 유형을 입력해주세요." });
+    return;
+  }
+
+  if (!['password_reset', 'email_verification'].includes(type)) {
+    res.status(400).json({ message: "올바르지 않은 인증 유형입니다." });
+    return;
+  }
+
+  try {
+    const redisKey = getRedisKey(type, email);
+    const storedCode = await getVerificationCode(redisKey);
+
+    if (!storedCode) {
+      res.status(404).json({ 
+        message: "취소할 인증 프로세스가 없습니다.",
+        exists: false
+      });
+      return;
+    }
+
+    // 인증 코드 삭제
+    await deleteVerificationCode(redisKey);
+    
+    // 최근 요청 기록도 삭제 (즉시 새로운 요청 가능하도록)
+    const recentKey = `recent:${type}:${email}`;
+    await redis.del(recentKey);
+
+    console.log(`인증 프로세스 취소: ${email} (${type}) - Redis에서 삭제 완료`);
+
+    res.status(200).json({
+      message: "인증 프로세스가 성공적으로 취소되었습니다.",
+      email,
+      type,
+      deletedFrom: "Redis 인증 시스템",
+    });
+
+  } catch (error) {
+    console.error("인증 프로세스 취소 에러:", error);
+    res.status(500).json({ message: "인증 프로세스 취소 실패" });
   }
 };
 
@@ -1364,5 +1763,67 @@ export const cleanupExpiredCodes = async (): Promise<void> => {
     }
   } catch (error) {
     console.error("Redis 정리 작업 에러:", error);
+  }
+};
+
+/**
+ * @swagger
+ * /auth/health:
+ *   get:
+ *     summary: 인증 시스템 상태 확인
+ *     description: Redis 연결 상태와 시스템 정보를 확인합니다.
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: 시스템 상태 정상
+ *       500:
+ *         description: 시스템 오류
+ */
+export const healthCheck = async (req: express.Request, res: express.Response) => {
+  try {
+    const redisConnected = await checkRedisConnection();
+    const userModel = getUserModel();
+    
+    // MongoDB 연결 상태 확인 (간단한 쿼리로)
+    let mongoConnected = false;
+    try {
+      await userModel.countUsers();
+      mongoConnected = true;
+    } catch (error) {
+      console.error("MongoDB 연결 확인 에러:", error);
+    }
+
+    const status = redisConnected && mongoConnected ? 'healthy' : 'unhealthy';
+    const statusCode = status === 'healthy' ? 200 : 500;
+
+    res.status(statusCode).json({
+      status,
+      timestamp: new Date().toISOString(),
+      services: {
+        redis: {
+          connected: redisConnected,
+          status: redisConnected ? 'OK' : 'ERROR'
+        },
+        mongodb: {
+          connected: mongoConnected,
+          status: mongoConnected ? 'OK' : 'ERROR'
+        }
+      },
+      features: {
+        emailVerification: "활성화",
+        passwordReset: "활성화",
+        sessionManagement: "Redis 기반",
+        passwordHashing: "bcrypt",
+        verificationTTL: "3분"
+      }
+    });
+
+  } catch (error) {
+    console.error("헬스체크 에러:", error);
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: '시스템 상태 확인 실패'
+    });
   }
 };
