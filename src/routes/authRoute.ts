@@ -34,7 +34,12 @@ import {
   // 시스템 상태
   healthCheck,
 } from "../controllers/authController";
-import { requireAuth, requireAdmin } from "../middlewares/authMiddleware";
+import {
+  requireAuth,
+  requireAdmin,
+  checkAdminStatus,
+  getAdminList,
+} from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -81,14 +86,20 @@ router.get("/profile", requireAuth, getProfile); // 프로필 조회
 router.put("/profile", requireAuth, updateProfile); // 프로필 이미지 업데이트
 router.put("/update-username", requireAuth, updateUsername); // 사용자명 변경
 
-//비밀번호 변경 (로그인된 사용자)
+// 비밀번호 변경 (로그인된 사용자)
 router.put("/change-password", requireAuth, changePassword); // 현재 비밀번호로 새 비밀번호 설정
 
+// 관리자 권한 확인 (로그인된 사용자)
+router.get("/admin-status", requireAuth, checkAdminStatus); // 현재 사용자의 관리자 권한 확인
+
 // ==============================================
-// 관리자 권한 라우트들 (Admin Only Routes)
+// 👑 관리자 권한 라우트들 (Admin Only Routes)
 // ==============================================
 
 // 사용자 관리
 router.get("/users", requireAdmin, getAllUsers); // 전체 사용자 목록 조회
+
+// 관리자 관리
+router.get("/admins", requireAdmin, getAdminList); // 관리자 목록 조회
 
 export default router;

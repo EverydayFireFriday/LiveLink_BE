@@ -6,6 +6,30 @@ import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 
+// 🔧 환경변수 로드 (맨 먼저!)
+dotenv.config();
+
+// 🔍 관리자 설정 디버깅
+console.log("\n🔧 환경변수 검증 중...");
+console.log("📧 EMAIL_USER:", process.env.EMAIL_USER ? "✅ 설정됨" : "❌ 누락");
+console.log("🔄 REDIS_URL:", process.env.REDIS_URL ? "✅ 설정됨" : "❌ 누락");
+console.log("👑 ADMIN_EMAILS 원본:", process.env.ADMIN_EMAILS);
+console.log(
+  "👑 ADMIN_EMAILS 존재:",
+  !!process.env.ADMIN_EMAILS ? "✅ 설정됨" : "❌ 누락"
+);
+
+if (process.env.ADMIN_EMAILS) {
+  const adminEmails = process.env.ADMIN_EMAILS.split(",").map((email) =>
+    email.trim()
+  );
+  console.log("👑 관리자 계정 개수:", adminEmails.length);
+  console.log("👑 관리자 목록:", adminEmails);
+} else {
+  console.warn("⚠️  ADMIN_EMAILS가 설정되지 않았습니다!");
+}
+console.log("");
+
 // 데이터베이스 연결 함수들
 import {
   connectDatabase as connectUserDB,
@@ -22,8 +46,6 @@ import concertRouter from "./routes/concertRoute";
 
 // connect-redis v6.1.3 방식
 const RedisStore = require("connect-redis")(session);
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
