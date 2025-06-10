@@ -1,4 +1,4 @@
-// controllers/auth.ts (리팩토링된 버전)
+// controllers/auth.ts (완전한 Swagger 문서 포함)
 import express from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
@@ -776,6 +776,20 @@ export const logout = (req: express.Request, res: express.Response) => {
  *     responses:
  *       200:
  *         description: 로그인 상태 반환
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 loggedIn:
+ *                   type: boolean
+ *                   description: 로그인 여부
+ *                 user:
+ *                   type: object
+ *                   description: 로그인한 사용자 정보 (로그인 시에만)
+ *                 sessionId:
+ *                   type: string
+ *                   description: 세션 ID
  */
 export const checkSession = (req: express.Request, res: express.Response) => {
   if (req.session.user) {
@@ -1236,7 +1250,47 @@ export const cleanupExpiredCodes = async (): Promise<void> => {
   }
 };
 
-// 나머지 기존 함수들 (간소화된 버전)
+/**
+ * @swagger
+ * /auth/profile:
+ *   get:
+ *     summary: 프로필 조회
+ *     description: 로그인한 사용자의 프로필 정보를 조회합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 프로필 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     username:
+ *                       type: string
+ *                     profileImage:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                     updatedAt:
+ *                       type: string
+ *       401:
+ *         description: 로그인 필요
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
 export const getProfile = async (req: express.Request, res: express.Response) => {
   if (!req.session.user) {
     res.status(401).json({ message: "로그인이 필요합니다." });
@@ -1271,6 +1325,35 @@ export const getProfile = async (req: express.Request, res: express.Response) =>
   }
 };
 
+/**
+ * @swagger
+ * /auth/profile:
+ *   put:
+ *     summary: 프로필 업데이트
+ *     description: 로그인한 사용자의 프로필 이미지를 업데이트합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profileImage:
+ *                 type: string
+ *                 description: 프로필 이미지 URL
+ *     responses:
+ *       200:
+ *         description: 프로필 업데이트 성공
+ *       401:
+ *         description: 로그인 필요
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
 export const updateProfile = async (req: express.Request, res: express.Response) => {
   if (!req.session.user) {
     res.status(401).json({ message: "로그인이 필요합니다." });
@@ -1310,6 +1393,39 @@ export const updateProfile = async (req: express.Request, res: express.Response)
   }
 };
 
+/**
+ * @swagger
+ * /auth/username:
+ *   put:
+ *     summary: 사용자명 변경
+ *     description: 로그인한 사용자의 사용자명(별명)을 변경합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               newUsername:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 20
+ *                 description: 새로운 사용자명
+ *     responses:
+ *       200:
+ *         description: 사용자명 변경 성공
+ *       400:
+ *         description: 잘못된 요청 또는 중복된 사용자명
+ *       401:
+ *         description: 로그인 필요
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
 export const updateUsername = async (req: express.Request, res: express.Response) => {
   if (!req.session.user) {
     res.status(401).json({ message: "로그인이 필요합니다." });
@@ -1379,6 +1495,33 @@ export const updateUsername = async (req: express.Request, res: express.Response
   }
 };
 
+/**
+ * @swagger
+ * /auth/check-username:
+ *   post:
+ *     summary: 사용자명 중복 확인
+ *     description: 사용자명이 이미 사용 중인지 확인합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 20
+ *                 description: 확인할 사용자명
+ *     responses:
+ *       200:
+ *         description: 사용 가능한 사용자명
+ *       400:
+ *         description: 사용 불가능한 사용자명 또는 잘못된 요청
+ *       500:
+ *         description: 서버 에러
+ */
 export const checkUsername = async (req: express.Request, res: express.Response) => {
   const { username } = req.body;
 
@@ -1416,6 +1559,41 @@ export const checkUsername = async (req: express.Request, res: express.Response)
   }
 };
 
+/**
+ * @swagger
+ * /auth/change-password:
+ *   put:
+ *     summary: 비밀번호 변경 (로그인 상태)
+ *     description: 로그인한 사용자가 현재 비밀번호를 확인하고 새 비밀번호로 변경합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 description: 현재 비밀번호
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 7
+ *                 description: 새 비밀번호
+ *     responses:
+ *       200:
+ *         description: 비밀번호 변경 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 로그인 필요 또는 현재 비밀번호 불일치
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
 export const changePassword = async (req: express.Request, res: express.Response) => {
   if (!req.session.user) {
     res.status(401).json({ message: "로그인이 필요합니다." });
@@ -1497,6 +1675,62 @@ export const changePassword = async (req: express.Request, res: express.Response
   }
 };
 
+/**
+ * @swagger
+ * /auth/users:
+ *   get:
+ *     summary: 전체 사용자 목록 조회
+ *     description: 모든 사용자의 목록을 페이지네이션과 함께 조회합니다. (관리자용)
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: 페이지당 사용자 수
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: 건너뛸 사용자 수
+ *     responses:
+ *       200:
+ *         description: 사용자 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 totalUsers:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       profileImage:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                       updatedAt:
+ *                         type: string
+ *       500:
+ *         description: 서버 에러
+ */
 export const getAllUsers = async (req: express.Request, res: express.Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
@@ -1530,7 +1764,38 @@ export const getAllUsers = async (req: express.Request, res: express.Response) =
   }
 };
 
-// 인증 관련 유틸리티 함수들
+/**
+ * @swagger
+ * /auth/verification/status:
+ *   post:
+ *     summary: 인증 코드 상태 확인
+ *     description: Redis에 저장된 인증 코드의 상태와 남은 시간을 확인합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: 인증 대상 이메일
+ *               type:
+ *                 type: string
+ *                 enum: [password_reset, email_verification]
+ *                 description: 인증 유형
+ *     responses:
+ *       200:
+ *         description: 인증 코드 활성화됨
+ *       404:
+ *         description: 활성화된 인증 코드 없음
+ *       400:
+ *         description: 잘못된 요청
+ *       500:
+ *         description: 서버 에러
+ */
 export const getVerificationStatus = async (req: express.Request, res: express.Response) => {
   const { email, type } = req.body;
 
@@ -1569,6 +1834,38 @@ export const getVerificationStatus = async (req: express.Request, res: express.R
   }
 };
 
+/**
+ * @swagger
+ * /auth/verification/cancel:
+ *   post:
+ *     summary: 인증 프로세스 취소
+ *     description: 진행 중인 인증 프로세스를 취소하고 Redis에서 관련 데이터를 삭제합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: 인증 대상 이메일
+ *               type:
+ *                 type: string
+ *                 enum: [password_reset, email_verification]
+ *                 description: 인증 유형
+ *     responses:
+ *       200:
+ *         description: 인증 프로세스 취소 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 취소할 인증 프로세스 없음
+ *       500:
+ *         description: 서버 에러
+ */
 export const cancelVerification = async (req: express.Request, res: express.Response) => {
   const { email, type } = req.body;
 
@@ -1614,6 +1911,38 @@ export const cancelVerification = async (req: express.Request, res: express.Resp
   }
 };
 
+/**
+ * @swagger
+ * /auth/verification/resend:
+ *   post:
+ *     summary: 인증 코드 재전송
+ *     description: 기존 인증 코드를 삭제하고 새로운 인증 코드를 재전송합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: 인증 대상 이메일
+ *               type:
+ *                 type: string
+ *                 enum: [password_reset, email_verification]
+ *                 description: 인증 유형
+ *     responses:
+ *       200:
+ *         description: 인증 코드 재전송 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       429:
+ *         description: 너무 빈번한 요청
+ *       500:
+ *         description: 서버 에러
+ */
 export const resendVerificationCode = async (req: express.Request, res: express.Response) => {
   const { email, type } = req.body;
 
