@@ -24,7 +24,6 @@ if (process.env.ADMIN_EMAILS) {
     email.trim()
   );
   console.log("👑 관리자 계정 개수:", adminEmails.length);
-  console.log("👑 관리자 목록:", adminEmails);
 } else {
   console.warn("⚠️  ADMIN_EMAILS가 설정되지 않았습니다!");
 }
