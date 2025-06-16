@@ -27,7 +27,7 @@ import {
   batchLikeConcerts,
 } from "../controllers/concertBatchConroller";
 
-import { requireAuth, requireAdmin } from "../middlewares/authMiddleware";
+import { requireAuth, requireAdmin } from "../middlewares/auth/authMiddleware";
 
 const router = express.Router();
 
