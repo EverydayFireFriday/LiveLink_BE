@@ -40,8 +40,8 @@ import {
   initializeConcertModel,
 } from "./utils/db";
 
-// 라우터 import
-import authRouter from "./routes/auth/authRoutes";
+// 🔧 라우터 import 수정 - index.ts를 import하여 모든 auth 라우트 포함
+import authRouter from "./routes/auth/index"; // ✅ 변경: authRoutes → index
 import concertRouter from "./routes/concertRoute";
 
 // connect-redis v6.1.3 방식
@@ -227,8 +227,8 @@ app.get("/", (req: express.Request, res: express.Response) => {
   });
 });
 
-// 라우터 연결
-app.use("/auth", authRouter);
+// 🔧 라우터 연결 - 이제 모든 auth 관련 라우트가 포함됨 (registrationRoutes 포함)
+app.use("/auth", authRouter); // ✅ 이제 index.ts를 통해 모든 라우트 연결
 app.use("/concert", concertRouter);
 
 // 에러 핸들링 미들웨어
