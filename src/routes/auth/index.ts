@@ -4,6 +4,8 @@ import registrationRoutes from "./registrationRoutes";
 import passwordRoutes from "./passwordRoutes";
 import profileRoutes from "./profileRoutes";
 import verificationRoutes from "./verificationRoutes";
+import adminRouter from "./adminRoutes";
+
 
 const router = express.Router();
 
@@ -13,5 +15,8 @@ router.use("/", registrationRoutes);
 router.use("/", passwordRoutes);
 router.use("/", profileRoutes);
 router.use("/", verificationRoutes);
+//관리자용 라우터
+router.use("/auth", adminRouter);
+
 
 export default router;
