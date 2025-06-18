@@ -40,9 +40,9 @@ import {
   initializeConcertModel,
 } from "./utils/db";
 
-// 🔧 라우터 import 수정 - index.ts를 import하여 모든 auth 라우트 포함
-import authRouter from "./routes/auth/index"; // ✅ 변경: authRoutes → index
-import concertRouter from "./routes/concertRoute";
+// 🔧 라우터 import 수정 - 통합된 라우터 사용
+import authRouter from "./routes/auth/index"; // ✅ Auth 통합 라우터
+import concertRouter from "./routes/concert/index"; // ✅ Concert 통합 라우터
 
 // connect-redis v6.1.3 방식
 const RedisStore = require("connect-redis")(session);
@@ -173,7 +173,7 @@ app.use(
 let isUserDBConnected = false;
 let isConcertDBConnected = false;
 
-// 데이터베이스 연결 상태 확인 미들웨어
+// 데이터베이스 연결 상태 확인 미들웨어 (수정됨)
 app.use(
   (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (req.path.startsWith("/auth") && !isUserDBConnected) {
@@ -183,7 +183,8 @@ app.use(
       return;
     }
 
-    if (req.path.startsWith("/api/concert") && !isConcertDBConnected) {
+    // ✅ 수정: /api/concert → /concert
+    if (req.path.startsWith("/concert") && !isConcertDBConnected) {
       res.status(503).json({
         message: "콘서트 데이터베이스 연결이 준비되지 않았습니다.",
       });
@@ -201,7 +202,7 @@ app.use(
   swaggerUi.setup(swaggerSpec, swaggerUiOptions)
 );
 
-// 기본 라우트 (API 정보)
+// 기본 라우트 (API 정보) - 수정됨
 app.get("/", (req: express.Request, res: express.Response) => {
   res.json({
     message: "LiveLink",
@@ -211,7 +212,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
     endpoints: {
       documentation: "/api-docs",
       auth: "/auth",
-      concerts: "/api/concert",
+      concerts: "/concert", // ✅ 수정: /api/concert → /concert
     },
     features: [
       "User Authentication (MongoDB Native Driver + Redis Session)",
@@ -227,9 +228,9 @@ app.get("/", (req: express.Request, res: express.Response) => {
   });
 });
 
-// 🔧 라우터 연결 - 이제 모든 auth 관련 라우트가 포함됨 (registrationRoutes 포함)
-app.use("/auth", authRouter); // ✅ 이제 index.ts를 통해 모든 라우트 연결
-app.use("/concert", concertRouter);
+// 🔧 라우터 연결 - 수정됨
+app.use("/auth", authRouter); // ✅ Auth 라우터
+app.use("/concert", concertRouter); // ✅ Concert 통합 라우터 (수정됨)
 
 // 에러 핸들링 미들웨어
 app.use(
@@ -252,7 +253,7 @@ app.use(
   }
 );
 
-// 404 핸들러
+// 404 핸들러 - 수정됨
 app.use("*", (req: express.Request, res: express.Response) => {
   res.status(404).json({
     message: "요청한 경로를 찾을 수 없습니다.",
@@ -261,7 +262,7 @@ app.use("*", (req: express.Request, res: express.Response) => {
     availableEndpoints: {
       documentation: "GET /api-docs",
       auth: "/auth/*",
-      concert: "/api/concert/*",
+      concert: "/concert/*", // ✅ 수정: /api/concert → /concert
     },
     timestamp: new Date().toISOString(),
   });
@@ -309,7 +310,7 @@ const initializeDatabases = async () => {
   }
 };
 
-// DB와 Redis 연결 후 서버 시작
+// DB와 Redis 연결 후 서버 시작 - 로그 메시지 수정됨
 Promise.all([initializeDatabases(), redisClient.ping()])
   .then(() => {
     app.listen(PORT, () => {
@@ -317,7 +318,7 @@ Promise.all([initializeDatabases(), redisClient.ping()])
       console.log(`🚀 Unified API Server running at http://localhost:${PORT}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
       console.log(`🔐 Auth API: http://localhost:${PORT}/auth`);
-      console.log(`🎵 Concert API: http://localhost:${PORT}/api/concert`);
+      console.log(`🎵 Concert API: http://localhost:${PORT}/concert`); // ✅ 수정
       console.log(`💾 Database: MongoDB Native Driver`);
       console.log(`🗄️  Session Store: Redis`);
       console.log("🎉 ================================");
