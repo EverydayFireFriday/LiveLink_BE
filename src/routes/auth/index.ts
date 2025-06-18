@@ -16,6 +16,6 @@ router.use("/", passwordRoutes);
 router.use("/", profileRoutes);
 router.use("/", verificationRoutes);
 //admin용 라우터 설정
-router.use("/", adminRouter);
+router.use("/admin", adminRouter);
 
 export default router;
