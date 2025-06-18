@@ -36,6 +36,9 @@ const swaggerOptions = {
         : []),
     ],
     tags: [
+      // Health Check (가장 위로)
+      { name: "Health Check", description: "서버 상태 및 모니터링" },
+
       // Auth 관련 tags
       { name: "Auth", description: "로그인/로그아웃 관리" },
       { name: "Registration", description: "회원가입 관리" },

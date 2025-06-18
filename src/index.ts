@@ -40,9 +40,10 @@ import {
   initializeConcertModel,
 } from "./utils/db";
 
-// 🔧 라우터 import 수정 - 통합된 라우터 사용
+// 🔧 라우터 import 수정 - Health Check 추가
 import authRouter from "./routes/auth/index"; // ✅ Auth 통합 라우터
-import concertRouter from "./routes/concert/index"; // ✅ Concert 통합 라우터
+import concertRouter from "./routes/concert/index"; // ✅ Concert 통합 라우터 (수정됨)
+import healthRouter from "./routes/health/healthRoutes"; // ✅ Health Check 라우터
 
 // connect-redis v6.1.3 방식
 const RedisStore = require("connect-redis")(session);
@@ -140,8 +141,12 @@ app.use(
       try {
         JSON.parse(buf.toString());
       } catch (e) {
-        res.status(400).json({ message: "잘못된 JSON 형식입니다." });
-        throw new Error("Invalid JSON");
+        // ❌ 기존: res.status().json() 호출 후 throw Error (중복 응답)
+        // ✅ 수정: throw만 하고 에러 핸들러에게 위임
+        const error = new Error("잘못된 JSON 형식입니다.") as any;
+        error.status = 400;
+        error.type = "entity.parse.failed";
+        throw error;
       }
     },
   })
@@ -183,8 +188,8 @@ app.use(
       return;
     }
 
-    // ✅ 수정: /api/concert → /concert
-    if (req.path.startsWith("/concert") && !isConcertDBConnected) {
+    // ✅ API prefix와 일치
+    if (req.path.startsWith("/api/concert") && !isConcertDBConnected) {
       res.status(503).json({
         message: "콘서트 데이터베이스 연결이 준비되지 않았습니다.",
       });
@@ -211,8 +216,9 @@ app.get("/", (req: express.Request, res: express.Response) => {
       "Authentication & Concert Management API with MongoDB Native Driver and Redis Session",
     endpoints: {
       documentation: "/api-docs",
+      health: "/health", // ✅ Health Check 추가
       auth: "/auth",
-      concerts: "/concert", // ✅ 수정: /api/concert → /concert
+      concerts: "/api/concert", // ✅ API prefix 추가
     },
     features: [
       "User Authentication (MongoDB Native Driver + Redis Session)",
@@ -228,9 +234,10 @@ app.get("/", (req: express.Request, res: express.Response) => {
   });
 });
 
-// 🔧 라우터 연결 - 수정됨
+// 🔧 라우터 연결 - Health Check 추가
+app.use("/health", healthRouter); // ✅ Health Check 라우터
 app.use("/auth", authRouter); // ✅ Auth 라우터
-app.use("/concert", concertRouter); // ✅ Concert 통합 라우터 (수정됨)
+app.use("/api/concert", concertRouter); // ✅ Concert API 라우터 (/api prefix 추가)
 
 // 에러 핸들링 미들웨어
 app.use(
@@ -240,9 +247,24 @@ app.use(
     res: express.Response,
     next: express.NextFunction
   ) => {
+    // 응답이 이미 전송되었는지 확인
+    if (res.headersSent) {
+      return next(err);
+    }
+
     console.error("🔥 Error:", err);
     const isDevelopment = process.env.NODE_ENV === "development";
 
+    // JSON 파싱 에러 특별 처리
+    if (err.type === "entity.parse.failed" || err.message?.includes("JSON")) {
+      return res.status(400).json({
+        message: "잘못된 JSON 형식입니다.",
+        error: isDevelopment ? err.message : "Invalid JSON format",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // 일반 에러 처리
     res.status(err.status || 500).json({
       message: err.message || "서버 내부 에러",
       error: isDevelopment
@@ -261,8 +283,9 @@ app.use("*", (req: express.Request, res: express.Response) => {
     method: req.method,
     availableEndpoints: {
       documentation: "GET /api-docs",
+      health: "/health/*", // ✅ Health Check 추가
       auth: "/auth/*",
-      concert: "/concert/*", // ✅ 수정: /api/concert → /concert
+      concert: "/api/concert/*", // ✅ API prefix 추가
     },
     timestamp: new Date().toISOString(),
   });
@@ -318,7 +341,7 @@ Promise.all([initializeDatabases(), redisClient.ping()])
       console.log(`🚀 Unified API Server running at http://localhost:${PORT}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
       console.log(`🔐 Auth API: http://localhost:${PORT}/auth`);
-      console.log(`🎵 Concert API: http://localhost:${PORT}/concert`); // ✅ 수정
+      console.log(`🎵 Concert API: http://localhost:${PORT}/api/concert`); // ✅ API prefix 추가
       console.log(`💾 Database: MongoDB Native Driver`);
       console.log(`🗄️  Session Store: Redis`);
       console.log("🎉 ================================");
