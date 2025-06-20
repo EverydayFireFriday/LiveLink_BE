@@ -6,11 +6,11 @@ const PORT = process.env.PORT || 3000;
 // 동적 서버 URL 생성 함수
 const getServerUrl = () => {
   // 배포 환경에서는 환경변수 우선 사용
-  if (process.env.PRODUCTION_URL) {
+  if (process.env.NODE_ENV === "production" && process.env.PRODUCTION_URL) {
     return process.env.PRODUCTION_URL;
   }
 
-  // 현재 호스트 기반으로 URL 생성 (런타임에서 결정)
+  // 런타임에서 현재 호스트 기반으로 URL 생성
   if (typeof window !== "undefined" && window.location) {
     return `${window.location.protocol}//${window.location.host}`;
   }
@@ -37,24 +37,20 @@ const swaggerOptions = {
         url: "https://opensource.org/licenses/MIT",
       },
     },
-    servers: [
-      {
-        url: process.env.PRODUCTION_URL || `http://localhost:${PORT}`,
-        description:
-          process.env.NODE_ENV === "production"
-            ? "Production server"
-            : "Development server",
-      },
-      // 개발 환경에서만 localhost 추가
-      ...(process.env.NODE_ENV !== "production"
+    servers:
+      process.env.NODE_ENV === "production"
         ? [
             {
-              url: `http://localhost:${PORT}`,
-              description: "Local development server",
+              url: process.env.PRODUCTION_URL || "https://test.newyear.bio",
+              description: "Production server",
             },
           ]
-        : []),
-    ],
+        : [
+            {
+              url: `http://localhost:${PORT}`,
+              description: "Development server",
+            },
+          ],
     tags: [
       // Health Check (가장 위로)
       { name: "Health Check", description: "서버 상태 및 모니터링" },
