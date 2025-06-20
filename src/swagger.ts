@@ -3,6 +3,22 @@ import swaggerUi from "swagger-ui-express";
 
 const PORT = process.env.PORT || 3000;
 
+// 동적 서버 URL 생성 함수
+const getServerUrl = () => {
+  // 배포 환경에서는 환경변수 우선 사용
+  if (process.env.PRODUCTION_URL) {
+    return process.env.PRODUCTION_URL;
+  }
+
+  // 현재 호스트 기반으로 URL 생성 (런타임에서 결정)
+  if (typeof window !== "undefined" && window.location) {
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+
+  // 개발 환경 fallback
+  return `http://localhost:${PORT}`;
+};
+
 // Swagger 설정
 const swaggerOptions = {
   definition: {
@@ -23,14 +39,18 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://localhost:${PORT}`,
-        description: "Development server",
+        url: process.env.PRODUCTION_URL || `http://localhost:${PORT}`,
+        description:
+          process.env.NODE_ENV === "production"
+            ? "Production server"
+            : "Development server",
       },
-      ...(process.env.PRODUCTION_URL
+      // 개발 환경에서만 localhost 추가
+      ...(process.env.NODE_ENV !== "production"
         ? [
             {
-              url: process.env.PRODUCTION_URL,
-              description: "Production server",
+              url: `http://localhost:${PORT}`,
+              description: "Local development server",
             },
           ]
         : []),
@@ -615,32 +635,202 @@ const swaggerOptions = {
 // Swagger 스펙 생성
 export const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
-// Swagger UI 옵션
+// Swagger UI 옵션 (화려한 컬러와 대소문자 무시 검색)
 export const swaggerUiOptions = {
   explorer: true,
   customCss: `
+    /* 기본 스타일 초기화 */
     .swagger-ui .topbar { display: none }
-    .swagger-ui .info h1 { color: #3b82f6; font-size: 2rem; font-weight: bold; }
-    .swagger-ui .info .title { color: #1e40af; }
+    
+    /* 헤더 스타일링 - 심플하게 */
+    .swagger-ui .info h1 { 
+      color: #3b82f6; 
+      font-size: 2rem; 
+      font-weight: bold;
+    }
+    .swagger-ui .info .title { 
+      color: #1e40af; 
+    }
+    
+    /* 서버 선택 영역 - 기존 스타일 */
     .swagger-ui .scheme-container { 
       background: #f8fafc; 
       padding: 20px; 
       border-radius: 8px; 
       border: 1px solid #e2e8f0;
     }
-    .swagger-ui .opblock.opblock-post { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
-    .swagger-ui .opblock.opblock-get { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-    .swagger-ui .opblock.opblock-put { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
-    .swagger-ui .opblock.opblock-delete { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     
-    /* Concert 관련 태그 스타일링 */
-    .swagger-ui .opblock-tag[data-tag*="Concerts - Basic"] { background: linear-gradient(90deg, #e0f2fe, #b3e5fc); }
-    .swagger-ui .opblock-tag[data-tag*="Concerts - Like"] { background: linear-gradient(90deg, #fce4ec, #f8bbd9); }
-    .swagger-ui .opblock-tag[data-tag*="Concerts - Search"] { background: linear-gradient(90deg, #e8f5e8, #c8e6c9); }
-    .swagger-ui .opblock-tag[data-tag*="Concerts - Batch"] { background: linear-gradient(90deg, #fff3e0, #ffcc02); }
+    /* HTTP 메소드별 컬러 - 기존 스타일 */
+    .swagger-ui .opblock.opblock-post { 
+      border-color: #10b981; 
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .swagger-ui .opblock.opblock-get { 
+      border-color: #3b82f6; 
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .swagger-ui .opblock.opblock-put { 
+      border-color: #f59e0b; 
+      background: rgba(245, 158, 11, 0.1);
+    }
+    .swagger-ui .opblock.opblock-delete { 
+      border-color: #ef4444; 
+      background: rgba(239, 68, 68, 0.1);
+    }
     
-    /* Admin 태그 스타일링 */
-    .swagger-ui .opblock-tag[data-tag*="Admin"] { background: linear-gradient(90deg, #f3e8ff, #ddd6fe); }
+    /* 태그별 화려한 스타일링 - API 폴더만 화려하게! */
+    .swagger-ui .opblock-tag { 
+      border-radius: 8px;
+      margin: 10px 0;
+      transition: all 0.3s ease;
+    }
+    .swagger-ui .opblock-tag:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    /* Health Check - 화려하게! */
+    .swagger-ui .opblock-tag[data-tag*="Health"] { 
+      background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(132, 250, 176, 0.3);
+    }
+    
+    /* Auth 관련 태그들 - 화려하게! */
+    .swagger-ui .opblock-tag[data-tag*="Auth"] { 
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      color: #2d3748;
+      box-shadow: 0 4px 15px rgba(168, 237, 234, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Registration"] { 
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      color: #2d3748;
+      box-shadow: 0 4px 15px rgba(255, 236, 210, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Password"] { 
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+      color: #2d3748;
+      box-shadow: 0 4px 15px rgba(255, 154, 158, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Profile"] { 
+      background: linear-gradient(135deg, #a8caba 0%, #5d4e75 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(168, 202, 186, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Verification"] { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Concert 관련 태그들 - 화려하게! */
+    .swagger-ui .opblock-tag[data-tag*="Concerts - Basic"] { 
+      background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Concerts - Like"] { 
+      background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(253, 121, 168, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Concerts - Search"] { 
+      background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+    }
+    .swagger-ui .opblock-tag[data-tag*="Concerts - Batch"] { 
+      background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+    }
+    
+    /* Admin 태그 - 화려하게! */
+    .swagger-ui .opblock-tag[data-tag*="Admin"] { 
+      background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+    }
+    
+    /* 모든 태그 제목 스타일 */
+    .swagger-ui .opblock-tag .opblock-tag-section h3 {
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* 검색 필터 스타일링 - 기본 스타일 */
+    .swagger-ui .filter-container { 
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 1px solid #e2e8f0;
+    }
+    .swagger-ui .filter .operation-filter-input { 
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 10px 15px;
+      font-size: 14px;
+    }
+    
+    /* 버튼 스타일링 - 기본 스타일 */
+    .swagger-ui .btn { 
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .swagger-ui .btn:hover { 
+      transform: translateY(-1px);
+    }
+    
+    /* 응답 코드 스타일링 - 기본 */
+    .swagger-ui .responses-inner h4 { 
+      color: #374151;
+      font-weight: bold;
+    }
+    
+    /* 파라미터 테이블 스타일링 - 기본 */
+    .swagger-ui table thead tr td, .swagger-ui table thead tr th { 
+      background: #f9fafb;
+      color: #374151;
+      font-weight: bold;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    /* 모델 섹션 스타일링 - 기본 */
+    .swagger-ui .model-box { 
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+    }
+    
+    /* 애니메이션 효과 - 약간만 */
+    .swagger-ui .opblock { 
+      transition: all 0.2s ease;
+      border-radius: 6px;
+      margin: 5px 0;
+    }
+    .swagger-ui .opblock:hover { 
+      transform: translateX(2px);
+    }
+    
+    /* 스크롤바 스타일링 */
+    .swagger-ui ::-webkit-scrollbar { 
+      width: 8px;
+      height: 8px;
+    }
+    .swagger-ui ::-webkit-scrollbar-track { 
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    .swagger-ui ::-webkit-scrollbar-thumb { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 4px;
+    }
+    .swagger-ui ::-webkit-scrollbar-thumb:hover { 
+      background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    }
   `,
   customSiteTitle: "LiveLink API Documentation",
   customfavIcon: "/favicon.ico",
@@ -654,6 +844,180 @@ export const swaggerUiOptions = {
     defaultModelExpandDepth: 1,
     tagsSorter: "alpha", // 태그를 알파벳 순으로 정렬
     operationsSorter: "alpha", // 작업을 알파벳 순으로 정렬
+
+    // 검색 시 대소문자 구분 안함 (커스텀 필터 함수)
+    onComplete: function () {
+      try {
+        // 더 안전한 방식으로 필터 함수 오버라이드
+        setTimeout(() => {
+          const win = window as any;
+
+          // Swagger UI가 완전히 로드되었을 때 실행
+          if (win.ui && win.ui.getSystem) {
+            const system = win.ui.getSystem();
+            const layoutSelectors = system.layoutSelectors;
+
+            // 기존 필터 함수 찾기
+            if (layoutSelectors && layoutSelectors.taggedOperations) {
+              const originalTaggedOps = layoutSelectors.taggedOperations;
+
+              // 새로운 필터 함수로 오버라이드
+              system.layoutSelectors.taggedOperations = function (
+                state: any,
+                tagFilter: string
+              ) {
+                const taggedOps = originalTaggedOps(state, "");
+
+                if (!tagFilter || tagFilter.trim().length === 0) {
+                  return taggedOps;
+                }
+
+                const lowerFilter = tagFilter.toLowerCase().trim();
+
+                return taggedOps.filter((taggedOp: any) => {
+                  try {
+                    // 태그명 확인
+                    const tagName = taggedOp.get
+                      ? taggedOp.get("tagName")
+                      : taggedOp.tagName;
+                    if (
+                      tagName &&
+                      tagName.toLowerCase().includes(lowerFilter)
+                    ) {
+                      return true;
+                    }
+
+                    // 오퍼레이션들 확인
+                    const operations = taggedOp.get
+                      ? taggedOp.get("operations")
+                      : taggedOp.operations;
+                    if (operations && operations.some) {
+                      return operations.some((op: any) => {
+                        try {
+                          const operation = op.get
+                            ? op.get("operation")
+                            : op.operation;
+                          const path = op.get ? op.get("path") : op.path;
+
+                          if (
+                            path &&
+                            path.toLowerCase().includes(lowerFilter)
+                          ) {
+                            return true;
+                          }
+
+                          if (operation) {
+                            const method = operation.get
+                              ? operation.get("method")
+                              : operation.method;
+                            const summary = operation.get
+                              ? operation.get("summary")
+                              : operation.summary;
+                            const operationId = operation.get
+                              ? operation.get("operationId")
+                              : operation.operationId;
+
+                            return (
+                              (method &&
+                                method.toLowerCase().includes(lowerFilter)) ||
+                              (summary &&
+                                summary.toLowerCase().includes(lowerFilter)) ||
+                              (operationId &&
+                                operationId.toLowerCase().includes(lowerFilter))
+                            );
+                          }
+
+                          return false;
+                        } catch (e) {
+                          return false;
+                        }
+                      });
+                    }
+
+                    return false;
+                  } catch (e) {
+                    return true; // 에러 시 보여주기
+                  }
+                });
+              };
+
+              console.log(
+                "✅ Swagger 검색 필터가 성공적으로 오버라이드되었습니다."
+              );
+            }
+          }
+
+          // 대안: DOM 기반 검색도 추가
+          const searchInput = document.querySelector(
+            ".operation-filter-input"
+          ) as HTMLInputElement;
+          if (searchInput) {
+            // 기존 이벤트 리스너 제거
+            const newInput = searchInput.cloneNode(true) as HTMLInputElement;
+            searchInput.parentNode?.replaceChild(newInput, searchInput);
+
+            // 새로운 검색 로직
+            newInput.addEventListener("input", function (e) {
+              const searchTerm = (
+                e.target as HTMLInputElement
+              ).value.toLowerCase();
+              const tags = document.querySelectorAll(".opblock-tag");
+
+              tags.forEach((tag) => {
+                const tagElement = tag as HTMLElement;
+                const tagTitle =
+                  tagElement.querySelector("h3")?.textContent?.toLowerCase() ||
+                  "";
+
+                if (!searchTerm || tagTitle.includes(searchTerm)) {
+                  tagElement.style.display = "block";
+                } else {
+                  tagElement.style.display = "none";
+                }
+              });
+            });
+
+            console.log("✅ DOM 기반 검색이 추가되었습니다.");
+          }
+        }, 2000); // 더 긴 지연시간
+      } catch (error) {
+        console.log("검색 필터 초기화 중 오류:", error);
+      }
+
+      // 추가적인 UI 개선
+      try {
+        const style = document.createElement("style");
+        style.textContent = `
+          .swagger-ui .filter .operation-filter-input::placeholder {
+            color: rgba(0, 0, 0, 0.5);
+            font-style: italic;
+          }
+          .swagger-ui .opblock-summary-description {
+            font-weight: 500;
+          }
+          .swagger-ui .opblock-summary-path {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+          }
+        `;
+        document.head.appendChild(style);
+
+        // 검색 placeholder 텍스트 변경 (타입 안전성 고려)
+        setTimeout(() => {
+          const filterInput = document.querySelector(
+            ".operation-filter-input"
+          ) as HTMLInputElement;
+          if (filterInput && "placeholder" in filterInput) {
+            filterInput.placeholder =
+              "🔍 태그 검색... (예: admin, auth, concert)";
+          }
+        }, 3000); // DOM이 완전히 로드된 후 실행
+      } catch (error) {
+        console.log("UI 개선 적용 중 오류:", error);
+      }
+    },
   },
 };
 
@@ -661,13 +1025,27 @@ export const swaggerUiOptions = {
 if (process.env.NODE_ENV !== "production") {
   try {
     const pathCount = Object.keys((swaggerSpec as any).paths || {}).length;
-    console.log(`\n📚 Swagger: ${pathCount}개 API 경로 발견`);
+    console.log(`\n🎵 LiveLink API Swagger Documentation`);
+    console.log(`📚 발견된 API 경로: ${pathCount}개`);
+    console.log(
+      `🌍 서버 URL: ${process.env.PRODUCTION_URL || `http://localhost:${PORT}`}`
+    );
+
     if (pathCount === 0) {
       console.log("⚠️  API가 감지되지 않음 - @swagger 주석 확인 필요");
     } else {
       console.log("✅ Swagger 문서 생성 완료");
-      console.log("📖 Auth APIs, Concert APIs, Admin APIs 포함");
+      console.log("🎨 화려한 UI 테마 적용");
+      console.log("🔍 대소문자 구분 없는 검색 기능 활성화");
+      console.log("📖 포함된 API: Auth, Concert, Admin");
     }
+
+    console.log("\n🎯 주요 기능:");
+    console.log("  • 동적 서버 URL 설정 (배포환경 자동 감지)");
+    console.log("  • 그라디언트 컬러 테마");
+    console.log("  • 대소문자 무시 검색");
+    console.log("  • 호버 애니메이션 효과");
+    console.log("  • 태그별 컬러 구분");
   } catch (error) {
     console.log("⚠️  Swagger 초기화 오류:", error);
   }
