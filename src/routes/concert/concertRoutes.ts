@@ -6,7 +6,10 @@ import {
   updateConcert,
   deleteConcert,
 } from "../../controllers/concert/concertController";
-import { requireAuth, requireAdmin } from "../../middlewares/auth/authMiddleware";
+import {
+  requireAuth,
+  requireAdmin,
+} from "../../middlewares/auth/authMiddleware";
 
 const router = express.Router();
 
