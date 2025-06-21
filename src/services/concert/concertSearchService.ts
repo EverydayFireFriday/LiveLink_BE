@@ -3,7 +3,7 @@ import type { IConcert } from "../../models/concert";
 import {
   normalizeSearchQuery,
   validateAndNormalizePagination,
-} from "../../utils/validation/concertValidation";
+} from "../../utils/validation/concert/concertValidation";
 
 export interface ConcertServiceResponse {
   success: boolean;

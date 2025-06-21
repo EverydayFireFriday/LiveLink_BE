@@ -52,7 +52,7 @@ export {
   normalizeConcertData,
   normalizeSearchQuery,
   formatValidationError,
-} from "../../utils/validation/concertValidation";
+} from "../../utils/validation/concert/concertValidation";
 
 // Concert Validation Types
-export type { ValidationResult } from "../../utils/validation/concertValidation";
+export type { ValidationResult } from "../../utils/validation/concert/concertValidation";

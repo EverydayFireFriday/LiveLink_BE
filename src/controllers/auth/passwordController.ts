@@ -1,6 +1,6 @@
 import express from "express";
 import { PasswordService } from "../../services/auth/passwordService";
-import { AuthValidator } from "../../validators/auth/authValidator";
+import { AuthValidator } from "../../utils/validation/auth/authValidator";
 
 export class PasswordController {
   private passwordService: PasswordService;

@@ -1,6 +1,6 @@
 import express from "express";
 import { UserService } from "../../services/auth/userService";
-import { UserValidator } from "../../validators/auth/userValidator";
+import { UserValidator } from "../../utils/validation/auth/userValidator";
 
 export class ProfileController {
   private userService: UserService;

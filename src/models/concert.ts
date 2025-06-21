@@ -91,40 +91,76 @@ export class ConcertModel {
     }
   }
 
-  // 데이터 유효성 검사 - 업데이트됨
-  private validateConcertData(concertData: Partial<IConcert>): {
+  // 데이터 유효성 검사 - 업데이트됨 (create와 update 분리)
+  private validateConcertData(
+    concertData: Partial<IConcert>,
+    isUpdate: boolean = false
+  ): {
     isValid: boolean;
     errors: string[];
   } {
     const errors: string[] = [];
 
-    // 필수 필드 검사
-    if (!concertData.uid) errors.push("uid는 필수입니다.");
-    if (!concertData.title || concertData.title.trim().length === 0) {
-      errors.push("title은 필수입니다.");
+    // 필수 필드 검사 (생성시에만)
+    if (!isUpdate) {
+      if (!concertData.uid) errors.push("uid는 필수입니다.");
+      if (!concertData.title || concertData.title.trim().length === 0) {
+        errors.push("title은 필수입니다.");
+      }
+
+      // artist 검증: 빈 배열 허용 (400 -> 200)
+      if (!concertData.artist || !Array.isArray(concertData.artist)) {
+        errors.push("artist는 배열이어야 합니다.");
+      }
+
+      if (
+        !concertData.location ||
+        !Array.isArray(concertData.location) ||
+        concertData.location.length === 0
+      ) {
+        errors.push("location은 비어있지 않은 배열이어야 합니다.");
+      }
+      if (
+        !concertData.datetime ||
+        !Array.isArray(concertData.datetime) ||
+        concertData.datetime.length === 0
+      ) {
+        errors.push("datetime은 비어있지 않은 배열이어야 합니다.");
+      }
+    } else {
+      // 업데이트시 필드별 검사 (제공된 필드에 대해서만)
+      if (concertData.title !== undefined) {
+        if (!concertData.title || concertData.title.trim().length === 0) {
+          errors.push("title은 비어있을 수 없습니다.");
+        }
+      }
+
+      if (concertData.artist !== undefined) {
+        if (!Array.isArray(concertData.artist)) {
+          errors.push("artist는 배열이어야 합니다.");
+        }
+      }
+
+      if (concertData.location !== undefined) {
+        if (
+          !Array.isArray(concertData.location) ||
+          concertData.location.length === 0
+        ) {
+          errors.push("location은 비어있지 않은 배열이어야 합니다.");
+        }
+      }
+
+      if (concertData.datetime !== undefined) {
+        if (
+          !Array.isArray(concertData.datetime) ||
+          concertData.datetime.length === 0
+        ) {
+          errors.push("datetime은 비어있지 않은 배열이어야 합니다.");
+        }
+      }
     }
 
-    // artist 검증 수정: 빈 배열 허용 (400 -> 200)
-    if (!concertData.artist || !Array.isArray(concertData.artist)) {
-      errors.push("artist는 배열이어야 합니다.");
-    }
-
-    if (
-      !concertData.location ||
-      !Array.isArray(concertData.location) ||
-      concertData.location.length === 0
-    ) {
-      errors.push("location은 비어있지 않은 배열이어야 합니다.");
-    }
-    if (
-      !concertData.datetime ||
-      !Array.isArray(concertData.datetime) ||
-      concertData.datetime.length === 0
-    ) {
-      errors.push("datetime은 비어있지 않은 배열이어야 합니다.");
-    }
-
-    // 길이 제한 검사
+    // 길이 제한 검사 (제공된 필드에 대해서만)
     if (concertData.title && concertData.title.length > 200) {
       errors.push("title은 200자를 초과할 수 없습니다.");
     }
@@ -132,7 +168,7 @@ export class ConcertModel {
       errors.push("description은 2000자를 초과할 수 없습니다.");
     }
 
-    // location 필드 검증 - 간소화된 구조
+    // location 필드 검증 - 간소화된 구조 (제공된 경우에만)
     if (concertData.location && Array.isArray(concertData.location)) {
       concertData.location.forEach((loc, index) => {
         if (!loc.location || loc.location.trim().length === 0) {
@@ -146,7 +182,7 @@ export class ConcertModel {
       });
     }
 
-    // datetime 검증
+    // datetime 검증 (제공된 경우에만)
     if (concertData.datetime && Array.isArray(concertData.datetime)) {
       concertData.datetime.forEach((dt, index) => {
         if (!(dt instanceof Date)) {
@@ -159,7 +195,7 @@ export class ConcertModel {
       });
     }
 
-    // ticketOpenDate 검증 (새로 추가)
+    // ticketOpenDate 검증 (새로 추가) (제공된 경우에만)
     if (concertData.ticketOpenDate) {
       if (!(concertData.ticketOpenDate instanceof Date)) {
         const dateValue =
@@ -173,7 +209,7 @@ export class ConcertModel {
       }
     }
 
-    // category 검증 - 확장된 카테고리 목록
+    // category 검증 - 확장된 카테고리 목록 (제공된 경우에만)
     const validCategories = [
       // 기본 장르
       "pop",
@@ -188,7 +224,6 @@ export class ConcertModel {
       "country",
       "musical",
       "opera",
-
       // K-POP 및 아시아 음악
       "k-pop",
       "kpop",
@@ -196,7 +231,6 @@ export class ConcertModel {
       "c-pop",
       "korean",
       "japanese",
-
       // 세부 장르
       "ballad",
       "dance",
@@ -215,7 +249,6 @@ export class ConcertModel {
       "metal",
       "alternative",
       "grunge",
-
       // 기타
       "fusion",
       "world",
@@ -250,7 +283,7 @@ export class ConcertModel {
       });
     }
 
-    // URL 검증
+    // URL 검증 (제공된 경우에만)
     const urlPattern = /^https?:\/\/.+/;
     const imageUrlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
 
@@ -261,7 +294,7 @@ export class ConcertModel {
       errors.push("posterImage는 유효한 이미지 URL이어야 합니다.");
     }
 
-    // info 필드 검증 (galleryImages에서 변경됨)
+    // info 필드 검증 (galleryImages에서 변경됨) (제공된 경우에만)
     if (concertData.info && Array.isArray(concertData.info)) {
       concertData.info.forEach((infoItem, index) => {
         if (typeof infoItem !== "string" || infoItem.trim().length === 0) {
@@ -284,11 +317,11 @@ export class ConcertModel {
     return { isValid: errors.length === 0, errors };
   }
 
-  // 콘서트 생성
+  // 콘서트 생성 (기존 코드 - 변경 없음)
   async create(
     concertData: Omit<IConcert, "createdAt" | "updatedAt">
   ): Promise<IConcert> {
-    const validation = this.validateConcertData(concertData);
+    const validation = this.validateConcertData(concertData, false); // isUpdate = false
     if (!validation.isValid) {
       throw new Error(`유효성 검사 실패: ${validation.errors.join(", ")}`);
     }
@@ -365,7 +398,7 @@ export class ConcertModel {
     return { concerts, total };
   }
 
-  // 콘서트 업데이트
+  // 콘서트 업데이트 (수정됨 - isUpdate = true로 유효성 검사)
   async updateById(
     id: string,
     updateData: Partial<IConcert>
@@ -375,7 +408,7 @@ export class ConcertModel {
     if (updateData.likes) delete updateData.likes;
     if (updateData.likesCount) delete updateData.likesCount;
 
-    const validation = this.validateConcertData(updateData);
+    const validation = this.validateConcertData(updateData, true); // isUpdate = true
     if (!validation.isValid) {
       throw new Error(`유효성 검사 실패: ${validation.errors.join(", ")}`);
     }
