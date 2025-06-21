@@ -1,5 +1,5 @@
 import express from "express";
-import { AuthValidator } from "../../validators/auth/authValidator";
+import { AuthValidator } from "../../utils/validation/auth/authValidator";
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {

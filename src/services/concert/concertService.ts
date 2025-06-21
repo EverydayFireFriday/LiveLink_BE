@@ -2,10 +2,11 @@ import { ObjectId } from "mongodb";
 import { getConcertModel } from "../../models/concert";
 import {
   validateConcertData,
+  validateConcertUpdateData, // 새로 추가
   generateObjectIdFromUid,
   normalizeConcertData,
   isValidImageUrl,
-} from "../../utils/validation/concertValidation";
+} from "../../utils/validation/concert/concertValidation";
 
 export interface CreateConcertRequest {
   uid: string;
@@ -30,7 +31,7 @@ export interface ConcertServiceResponse {
   statusCode?: number;
 }
 
-// Model의 IConcert 타입을 그대로 사용
+// Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
 import type {
   IConcert,
   ILocation,
@@ -57,15 +58,15 @@ export class ConcertService {
         };
       }
 
-      const Concert = getConcertModel();
+      const ConcertModel = getConcertModel();
 
       // 2. UID 중복 확인
-      const existingConcert = await Concert.findByUid(concertData.uid);
+      const existingConcert = await ConcertModel.findByUid(concertData.uid);
       if (existingConcert) {
         return {
           success: false,
           error: "이미 존재하는 콘서트 UID입니다.",
-          statusCode: 400,
+          statusCode: 409, // Conflict
         };
       }
 
@@ -87,7 +88,7 @@ export class ConcertService {
         mongoId = generateObjectIdFromUid(concertData.uid);
 
         // ObjectId 중복 확인
-        const existingById = await Concert.findById(mongoId.toString());
+        const existingById = await ConcertModel.findById(mongoId.toString());
         if (existingById) {
           mongoId = new ObjectId();
         }
@@ -95,7 +96,7 @@ export class ConcertService {
         mongoId = new ObjectId();
       }
 
-      // 5. 데이터 정규화 및 준비 - Model의 IConcert 타입 사용
+      // 5. 데이터 정규화 및 준비 - Model의 Concert 타입 사용
       const processedData: Omit<IConcert, "createdAt" | "updatedAt"> = {
         _id: mongoId,
         uid: concertData.uid,
@@ -139,7 +140,7 @@ export class ConcertService {
       };
 
       // 6. MongoDB에 저장
-      const newConcert = await Concert.create(processedData);
+      const newConcert = await ConcertModel.create(processedData);
 
       return {
         success: true,
@@ -157,6 +158,7 @@ export class ConcertService {
           posterImage: processedData.posterImage,
           info: processedData.info,
           tags: processedData.tags,
+          status: processedData.status,
           likesCount: 0,
           createdAt: newConcert.createdAt,
           updatedAt: newConcert.updatedAt,
@@ -181,8 +183,8 @@ export class ConcertService {
     userId?: string
   ): Promise<ConcertServiceResponse> {
     try {
-      const Concert = getConcertModel();
-      const concert = await Concert.findById(id);
+      const ConcertModel = getConcertModel();
+      const concert = await ConcertModel.findById(id);
 
       if (!concert) {
         return {
@@ -232,15 +234,18 @@ export class ConcertService {
   /**
    * 콘서트 목록 조회 (페이지네이션, 필터링, 정렬)
    */
-  static async getAllConcerts(params: {
-    page?: number;
-    limit?: number;
-    category?: string;
-    artist?: string;
-    location?: string;
-    status?: string;
-    sortBy?: string;
-  }): Promise<ConcertServiceResponse> {
+  static async getAllConcerts(
+    params: {
+      page?: number;
+      limit?: number;
+      category?: string;
+      artist?: string;
+      location?: string;
+      status?: string;
+      sortBy?: string;
+    },
+    userId?: string // 사용자 ID 추가
+  ): Promise<ConcertServiceResponse> {
     try {
       const {
         page = 1,
@@ -252,7 +257,7 @@ export class ConcertService {
         sortBy = "date",
       } = params;
 
-      const Concert = getConcertModel();
+      const ConcertModel = getConcertModel();
 
       // 필터 조건 구성
       const filter: any = {};
@@ -276,10 +281,30 @@ export class ConcertService {
           break;
       }
 
-      const { concerts, total } = await Concert.findMany(filter, {
+      const { concerts, total } = await ConcertModel.findMany(filter, {
         page: parseInt(page.toString()),
         limit: parseInt(limit.toString()),
         sort,
+      });
+
+      // 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
+      const concertsWithLikeStatus = concerts.map((concert: any) => {
+        let isLiked = false;
+        if (userId && concert.likes && Array.isArray(concert.likes)) {
+          isLiked = concert.likes.some((like: any) => {
+            if (!like || !like.userId) return false;
+            try {
+              return like.userId.toString() === userId.toString();
+            } catch (error) {
+              return false;
+            }
+          });
+        }
+
+        return {
+          ...concert,
+          isLiked: userId ? isLiked : undefined,
+        };
       });
 
       const totalPages = Math.ceil(total / parseInt(limit.toString()));
@@ -287,7 +312,7 @@ export class ConcertService {
       return {
         success: true,
         data: {
-          concerts,
+          concerts: concertsWithLikeStatus,
           pagination: {
             currentPage: parseInt(page.toString()),
             totalPages,
@@ -309,17 +334,27 @@ export class ConcertService {
   }
 
   /**
-   * 콘서트 정보 수정
+   * 콘서트 정보 수정 - 수정된 버전
    */
   static async updateConcert(
     id: string,
     updateData: any
   ): Promise<ConcertServiceResponse> {
     try {
-      const Concert = getConcertModel();
+      // 1. 업데이트 데이터 유효성 검증 (새로운 함수 사용)
+      const validationResult = validateConcertUpdateData(updateData);
+      if (!validationResult.isValid) {
+        return {
+          success: false,
+          error: validationResult.message,
+          statusCode: 400,
+        };
+      }
 
-      // 기존 콘서트 확인
-      const existingConcert = await Concert.findById(id);
+      const ConcertModel = getConcertModel();
+
+      // 2. 기존 콘서트 확인
+      const existingConcert = await ConcertModel.findById(id);
       if (!existingConcert) {
         return {
           success: false,
@@ -328,7 +363,7 @@ export class ConcertService {
         };
       }
 
-      // 수정 불가능한 필드 제거
+      // 3. 수정 불가능한 필드 제거
       const cleanUpdateData = { ...updateData };
       delete cleanUpdateData.uid;
       delete cleanUpdateData.likes;
@@ -337,7 +372,33 @@ export class ConcertService {
       delete cleanUpdateData.createdAt;
       cleanUpdateData.updatedAt = new Date();
 
-      const updatedConcert = await Concert.updateById(id, cleanUpdateData);
+      // 4. 포스터 이미지 URL 유효성 검증 (수정하는 경우)
+      if (
+        cleanUpdateData.posterImage &&
+        !isValidImageUrl(cleanUpdateData.posterImage)
+      ) {
+        return {
+          success: false,
+          error: "올바르지 않은 포스터 이미지 URL입니다.",
+          statusCode: 400,
+        };
+      }
+
+      // 5. 날짜 필드 타입 변환
+      if (cleanUpdateData.datetime) {
+        cleanUpdateData.datetime = Array.isArray(cleanUpdateData.datetime)
+          ? cleanUpdateData.datetime.map((dt: string) => new Date(dt))
+          : [new Date(cleanUpdateData.datetime)];
+      }
+
+      if (cleanUpdateData.ticketOpenDate) {
+        cleanUpdateData.ticketOpenDate = new Date(
+          cleanUpdateData.ticketOpenDate
+        );
+      }
+
+      // 6. 업데이트 실행
+      const updatedConcert = await ConcertModel.updateById(id, cleanUpdateData);
 
       if (!updatedConcert) {
         return {
@@ -367,10 +428,10 @@ export class ConcertService {
    */
   static async deleteConcert(id: string): Promise<ConcertServiceResponse> {
     try {
-      const Concert = getConcertModel();
+      const ConcertModel = getConcertModel();
 
       // 기존 콘서트 확인
-      const existingConcert = await Concert.findById(id);
+      const existingConcert = await ConcertModel.findById(id);
       if (!existingConcert) {
         return {
           success: false,
@@ -379,7 +440,7 @@ export class ConcertService {
         };
       }
 
-      const deletedConcert = await Concert.deleteById(id);
+      const deletedConcert = await ConcertModel.deleteById(id);
 
       if (!deletedConcert) {
         return {

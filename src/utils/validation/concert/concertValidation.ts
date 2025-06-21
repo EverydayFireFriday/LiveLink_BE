@@ -10,7 +10,7 @@ export interface ValidationResult {
 }
 
 /**
- * 콘서트 데이터 유효성 검증 함수
+ * 콘서트 생성 데이터 유효성 검증 함수
  * @param concertData 검증할 콘서트 데이터
  * @returns 유효성 검증 결과
  */
@@ -350,6 +350,422 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   return {
     isValid: true,
     message: "유효성 검증 통과",
+  };
+};
+
+/**
+ * 콘서트 업데이트 데이터 유효성 검증 함수 (새로 추가)
+ * @param updateData 수정할 콘서트 데이터
+ * @returns 유효성 검증 결과
+ */
+export const validateConcertUpdateData = (
+  updateData: any
+): ValidationResult => {
+  // 빈 객체는 허용하지 않음
+  if (!updateData || typeof updateData !== "object") {
+    return {
+      isValid: false,
+      message: "업데이트 데이터가 올바르지 않습니다.",
+    };
+  }
+
+  // 업데이트 가능한 필드들이 최소 하나는 있어야 함
+  const updateableFields = [
+    "title",
+    "description",
+    "status",
+    "price",
+    "ticketOpenDate",
+    "posterImage",
+    "info",
+    "tags",
+    "datetime",
+    "artist",
+    "location",
+    "category",
+    "ticketLink",
+  ];
+
+  const hasUpdateableField = updateableFields.some((field) =>
+    updateData.hasOwnProperty(field)
+  );
+
+  if (!hasUpdateableField) {
+    return {
+      isValid: false,
+      message: "수정할 수 있는 필드가 최소 하나는 필요합니다.",
+    };
+  }
+
+  // 수정 불가능한 필드들 체크 (경고만 출력, 검증은 통과)
+  const readOnlyFields = ["uid", "likes", "likesCount", "_id", "createdAt"];
+  const hasReadOnlyFields = readOnlyFields.some((field) =>
+    updateData.hasOwnProperty(field)
+  );
+
+  if (hasReadOnlyFields) {
+    const foundFields = readOnlyFields.filter((field) =>
+      updateData.hasOwnProperty(field)
+    );
+    console.warn(
+      `수정 불가능한 필드가 포함되어 있습니다 (무시됨): ${foundFields.join(", ")}`
+    );
+  }
+
+  // 각 필드별 개별 검증 (제공된 필드에 대해서만)
+
+  // title 검증
+  if (updateData.title !== undefined) {
+    if (
+      typeof updateData.title !== "string" ||
+      updateData.title.trim().length === 0
+    ) {
+      return {
+        isValid: false,
+        message: "title은 비어있지 않은 문자열이어야 합니다.",
+        field: "title",
+      };
+    }
+  }
+
+  // description 검증
+  if (
+    updateData.description !== undefined &&
+    typeof updateData.description !== "string"
+  ) {
+    return {
+      isValid: false,
+      message: "description은 문자열이어야 합니다.",
+      field: "description",
+    };
+  }
+
+  // status 검증
+  if (updateData.status !== undefined) {
+    if (!isValidConcertStatus(updateData.status)) {
+      return {
+        isValid: false,
+        message:
+          "status는 upcoming, ongoing, completed, cancelled 중 하나여야 합니다.",
+        field: "status",
+      };
+    }
+  }
+
+  // artist 배열 검증
+  if (updateData.artist !== undefined) {
+    if (!Array.isArray(updateData.artist)) {
+      return {
+        isValid: false,
+        message: "artist는 배열이어야 합니다.",
+        field: "artist",
+      };
+    }
+
+    for (let i = 0; i < updateData.artist.length; i++) {
+      const artist = updateData.artist[i];
+      if (typeof artist !== "string" || artist.trim().length === 0) {
+        return {
+          isValid: false,
+          message: `artist[${i}]는 비어있지 않은 문자열이어야 합니다.`,
+          field: "artist",
+        };
+      }
+    }
+  }
+
+  // location 배열 검증
+  if (updateData.location !== undefined) {
+    if (!Array.isArray(updateData.location)) {
+      return {
+        isValid: false,
+        message: "location은 배열이어야 합니다.",
+        field: "location",
+      };
+    }
+
+    if (updateData.location.length === 0) {
+      return {
+        isValid: false,
+        message: "location 배열은 비어있을 수 없습니다.",
+        field: "location",
+      };
+    }
+
+    for (let i = 0; i < updateData.location.length; i++) {
+      const loc = updateData.location[i];
+      if (!loc || typeof loc !== "object") {
+        return {
+          isValid: false,
+          message: `location[${i}]는 객체여야 합니다.`,
+          field: "location",
+        };
+      }
+
+      if (
+        !loc.location ||
+        typeof loc.location !== "string" ||
+        loc.location.trim().length === 0
+      ) {
+        return {
+          isValid: false,
+          message: `location[${i}].location은 비어있지 않은 문자열이어야 합니다.`,
+          field: "location",
+        };
+      }
+    }
+  }
+
+  // datetime 배열 검증
+  if (updateData.datetime !== undefined) {
+    if (!Array.isArray(updateData.datetime)) {
+      return {
+        isValid: false,
+        message: "datetime은 배열이어야 합니다.",
+        field: "datetime",
+      };
+    }
+
+    if (updateData.datetime.length === 0) {
+      return {
+        isValid: false,
+        message: "datetime 배열은 비어있을 수 없습니다.",
+        field: "datetime",
+      };
+    }
+
+    for (let i = 0; i < updateData.datetime.length; i++) {
+      const dt = updateData.datetime[i];
+      if (!dt || typeof dt !== "string") {
+        return {
+          isValid: false,
+          message: `datetime[${i}]는 문자열이어야 합니다.`,
+          field: "datetime",
+        };
+      }
+
+      if (!Date.parse(dt)) {
+        return {
+          isValid: false,
+          message: `datetime[${i}]는 유효한 날짜 형식이어야 합니다.`,
+          field: "datetime",
+        };
+      }
+    }
+  }
+
+  // price 배열 검증
+  if (updateData.price !== undefined) {
+    if (!Array.isArray(updateData.price)) {
+      return {
+        isValid: false,
+        message: "price는 배열이어야 합니다.",
+        field: "price",
+      };
+    }
+
+    for (let i = 0; i < updateData.price.length; i++) {
+      const price = updateData.price[i];
+      if (!price || typeof price !== "object") {
+        return {
+          isValid: false,
+          message: `price[${i}]는 객체여야 합니다.`,
+          field: "price",
+        };
+      }
+
+      if (
+        price.tier &&
+        (typeof price.tier !== "string" || price.tier.trim().length === 0)
+      ) {
+        return {
+          isValid: false,
+          message: `price[${i}].tier는 비어있지 않은 문자열이어야 합니다.`,
+          field: "price",
+        };
+      }
+
+      if (
+        price.amount !== undefined &&
+        (typeof price.amount !== "number" || price.amount < 0)
+      ) {
+        return {
+          isValid: false,
+          message: `price[${i}].amount는 0 이상의 숫자여야 합니다.`,
+          field: "price",
+        };
+      }
+    }
+  }
+
+  // category 배열 검증
+  if (updateData.category !== undefined) {
+    if (!Array.isArray(updateData.category)) {
+      return {
+        isValid: false,
+        message: "category는 배열이어야 합니다.",
+        field: "category",
+      };
+    }
+
+    const validCategories = [
+      "pop",
+      "rock",
+      "jazz",
+      "classical",
+      "hiphop",
+      "electronic",
+      "indie",
+      "folk",
+      "r&b",
+      "country",
+      "musical",
+      "opera",
+      "other",
+    ];
+
+    for (let i = 0; i < updateData.category.length; i++) {
+      const category = updateData.category[i];
+      if (
+        typeof category !== "string" ||
+        !validCategories.includes(category.toLowerCase())
+      ) {
+        return {
+          isValid: false,
+          message: `category[${i}]는 유효한 카테고리여야 합니다. 허용된 값: ${validCategories.join(", ")}`,
+          field: "category",
+        };
+      }
+    }
+  }
+
+  // ticketLink 배열 검증
+  if (updateData.ticketLink !== undefined) {
+    if (!Array.isArray(updateData.ticketLink)) {
+      return {
+        isValid: false,
+        message: "ticketLink는 배열이어야 합니다.",
+        field: "ticketLink",
+      };
+    }
+
+    for (let i = 0; i < updateData.ticketLink.length; i++) {
+      const link = updateData.ticketLink[i];
+      if (!link || typeof link !== "object") {
+        return {
+          isValid: false,
+          message: `ticketLink[${i}]는 객체여야 합니다.`,
+          field: "ticketLink",
+        };
+      }
+
+      if (
+        link.platform &&
+        (typeof link.platform !== "string" || link.platform.trim().length === 0)
+      ) {
+        return {
+          isValid: false,
+          message: `ticketLink[${i}].platform은 비어있지 않은 문자열이어야 합니다.`,
+          field: "ticketLink",
+        };
+      }
+
+      if (
+        link.url &&
+        (typeof link.url !== "string" || link.url.trim().length === 0)
+      ) {
+        return {
+          isValid: false,
+          message: `ticketLink[${i}].url은 비어있지 않은 문자열이어야 합니다.`,
+          field: "ticketLink",
+        };
+      }
+    }
+  }
+
+  // ticketOpenDate 검증
+  if (updateData.ticketOpenDate !== undefined) {
+    if (
+      typeof updateData.ticketOpenDate !== "string" ||
+      !Date.parse(updateData.ticketOpenDate)
+    ) {
+      return {
+        isValid: false,
+        message: "ticketOpenDate는 유효한 날짜 형식의 문자열이어야 합니다.",
+        field: "ticketOpenDate",
+      };
+    }
+  }
+
+  // posterImage 검증
+  if (updateData.posterImage !== undefined) {
+    if (typeof updateData.posterImage !== "string") {
+      return {
+        isValid: false,
+        message: "posterImage는 문자열이어야 합니다.",
+        field: "posterImage",
+      };
+    }
+
+    if (
+      updateData.posterImage.trim().length > 0 &&
+      !isValidImageUrl(updateData.posterImage)
+    ) {
+      return {
+        isValid: false,
+        message: "posterImage는 유효한 이미지 URL이어야 합니다.",
+        field: "posterImage",
+      };
+    }
+  }
+
+  // info 배열 검증
+  if (updateData.info !== undefined) {
+    if (!Array.isArray(updateData.info)) {
+      return {
+        isValid: false,
+        message: "info는 배열이어야 합니다.",
+        field: "info",
+      };
+    }
+
+    for (let i = 0; i < updateData.info.length; i++) {
+      const infoItem = updateData.info[i];
+      if (typeof infoItem !== "string" || infoItem.trim().length === 0) {
+        return {
+          isValid: false,
+          message: `info[${i}]는 비어있지 않은 문자열이어야 합니다.`,
+          field: "info",
+        };
+      }
+    }
+  }
+
+  // tags 배열 검증
+  if (updateData.tags !== undefined) {
+    if (!Array.isArray(updateData.tags)) {
+      return {
+        isValid: false,
+        message: "tags는 배열이어야 합니다.",
+        field: "tags",
+      };
+    }
+
+    for (let i = 0; i < updateData.tags.length; i++) {
+      const tag = updateData.tags[i];
+      if (typeof tag !== "string" || tag.trim().length === 0) {
+        return {
+          isValid: false,
+          message: `tags[${i}]는 비어있지 않은 문자열이어야 합니다.`,
+          field: "tags",
+        };
+      }
+    }
+  }
+
+  return {
+    isValid: true,
+    message: "업데이트 데이터 유효성 검증 통과",
   };
 };
 
