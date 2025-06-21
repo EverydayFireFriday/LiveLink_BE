@@ -3,8 +3,8 @@ import { AuthService } from "../../services/auth/authService";
 import { UserService } from "../../services/auth/userService";
 import { VerificationService } from "../../services/auth/verificationService";
 import { EmailService } from "../../utils/emailService";
-import { AuthValidator } from "../../validators/auth/authValidator";
-import { UserValidator } from "../../validators/auth/userValidator";
+import { AuthValidator } from "../../utils/validation/auth/authValidator";
+import { UserValidator } from "../../utils/validation/auth/userValidator";
 
 export class RegistrationController {
   private authService: AuthService;
@@ -377,11 +377,9 @@ export class RegistrationController {
       }
 
       if (!storedData.userData) {
-        res
-          .status(400)
-          .json({
-            message: "사용자 데이터가 없습니다. 다시 회원가입을 시도해주세요.",
-          });
+        res.status(400).json({
+          message: "사용자 데이터가 없습니다. 다시 회원가입을 시도해주세요.",
+        });
         return;
       }
 
