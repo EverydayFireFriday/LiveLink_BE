@@ -1,6 +1,6 @@
 import express from "express";
 import { VerificationService } from "../../services/auth/verificationService";
-import { AuthValidator } from "../../validators/auth/authValidator";
+import { AuthValidator } from "../../utils/validation/auth/authValidator";
 
 export class VerificationController {
   private verificationService: VerificationService;
