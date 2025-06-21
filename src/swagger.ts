@@ -62,13 +62,13 @@ const swaggerOptions = {
       { name: "Profile", description: "프로필 관리" },
       { name: "Verification", description: "이메일 인증 관리" },
 
-      // Concert 관련 tags (수정됨)
+      // Concert 관련 tags
       { name: "Concerts - Basic", description: "콘서트 기본 CRUD 관리" },
       { name: "Concerts - Like", description: "콘서트 좋아요 관리" },
       { name: "Concerts - Search", description: "콘서트 검색 및 필터링" },
       { name: "Concerts - Batch", description: "콘서트 배치 작업" },
 
-      // Admin 관련 (추가)
+      // Admin 관련
       { name: "Admin", description: "관리자 전용 기능" },
     ],
     components: {
@@ -77,12 +77,7 @@ const swaggerOptions = {
           type: "apiKey",
           in: "cookie",
           name: "app.session.id",
-          description: "세션 기반 인증",
-        },
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          description: "Bearer 토큰 (호환성을 위해 추가)",
+          description: "세션 기반 인증 - 로그인 후 자동으로 설정되는 세션 쿠키",
         },
       },
       schemas: {
@@ -411,7 +406,7 @@ const swaggerOptions = {
           required: ["userStats", "sessionStats", "systemStats"],
         },
 
-        // Concert 관련 스키마 (올바르게 수정됨)
+        // Concert 관련 스키마 - 세션 기반 인증으로 일관성 맞춤
         Concert: {
           type: "object",
           required: ["uid", "title", "location", "datetime"],
@@ -562,10 +557,144 @@ const swaggerOptions = {
             isLiked: {
               type: "boolean",
               example: true,
-              description: "현재 사용자의 좋아요 여부 (로그인한 경우에만)",
+              description:
+                "현재 사용자의 좋아요 여부 (세션에서 인증된 사용자인 경우에만)",
             },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+
+        // Concert 생성/수정 요청 스키마
+        ConcertCreateRequest: {
+          type: "object",
+          required: ["uid", "title", "location", "datetime"],
+          properties: {
+            uid: {
+              type: "string",
+              example: "concert_1703123456789_abc123",
+              description: "사용자 지정 ID (timestamp 포함)",
+            },
+            title: {
+              type: "string",
+              example: "아이유 콘서트 2024",
+              description: "콘서트 제목",
+            },
+            artist: {
+              type: "array",
+              items: { type: "string" },
+              example: ["아이유", "특별 게스트"],
+              description: "아티스트명 배열",
+            },
+            location: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["location"],
+                properties: {
+                  location: {
+                    type: "string",
+                    example: "올림픽공원 체조경기장",
+                    description: "공연장소",
+                  },
+                },
+              },
+              description: "공연 장소 정보 배열",
+            },
+            datetime: {
+              type: "array",
+              items: { type: "string", format: "date-time" },
+              example: [
+                "2024-06-15T19:00:00+09:00",
+                "2024-06-16T19:00:00+09:00",
+              ],
+              description: "공연 날짜 및 시간 배열",
+            },
+            price: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  tier: { type: "string", example: "VIP" },
+                  amount: { type: "number", example: 200000 },
+                },
+              },
+              description: "티켓 가격 정보 배열",
+            },
+            description: {
+              type: "string",
+              example: "아이유의 특별한 콘서트",
+              description: "콘서트 설명",
+            },
+            category: {
+              type: "array",
+              items: {
+                type: "string",
+                enum: [
+                  "pop",
+                  "rock",
+                  "jazz",
+                  "classical",
+                  "hiphop",
+                  "electronic",
+                  "indie",
+                  "folk",
+                  "r&b",
+                  "country",
+                  "musical",
+                  "opera",
+                  "other",
+                ],
+              },
+              example: ["pop", "k-pop"],
+              description: "음악 카테고리 배열",
+            },
+            ticketLink: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  platform: { type: "string", example: "인터파크" },
+                  url: {
+                    type: "string",
+                    format: "uri",
+                    example: "https://ticket.interpark.com/example",
+                  },
+                },
+              },
+              description: "티켓 구매 링크 배열",
+            },
+            ticketOpenDate: {
+              type: "string",
+              format: "date-time",
+              example: "2024-05-01T10:00:00+09:00",
+              description: "티켓 오픈 날짜/시간",
+            },
+            posterImage: {
+              type: "string",
+              format: "uri",
+              example:
+                "https://your-bucket.s3.amazonaws.com/concerts/poster.jpg",
+              description: "포스터 이미지 URL",
+            },
+            info: {
+              type: "array",
+              items: { type: "string" },
+              example: ["주차 가능", "음식 반입 불가"],
+              description: "콘서트 추가 정보 배열",
+            },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              example: ["발라드", "K-POP", "솔로"],
+              description: "콘서트 태그 배열",
+            },
+            status: {
+              type: "string",
+              enum: ["upcoming", "ongoing", "completed", "cancelled"],
+              default: "upcoming",
+              description: "콘서트 상태",
+            },
           },
         },
 
@@ -576,7 +705,7 @@ const swaggerOptions = {
           properties: {
             concerts: {
               type: "array",
-              items: { $ref: "#/components/schemas/Concert" },
+              items: { $ref: "#/components/schemas/ConcertCreateRequest" },
               description: "등록할 콘서트들의 배열",
             },
             skipDuplicates: {
@@ -590,6 +719,142 @@ const swaggerOptions = {
               minimum: 1,
               maximum: 1000,
               description: "배치 처리 크기",
+            },
+          },
+        },
+
+        BatchUploadResponse: {
+          type: "object",
+          properties: {
+            message: { type: "string", example: "배치 업로드 완료" },
+            results: {
+              type: "object",
+              properties: {
+                totalRequested: {
+                  type: "integer",
+                  example: 100,
+                  description: "요청된 총 콘서트 수",
+                },
+                successCount: {
+                  type: "integer",
+                  example: 95,
+                  description: "성공적으로 업로드된 콘서트 수",
+                },
+                errorCount: {
+                  type: "integer",
+                  example: 5,
+                  description: "오류 발생한 콘서트 수",
+                },
+                duplicateCount: {
+                  type: "integer",
+                  example: 3,
+                  description: "중복으로 인해 스킵된 콘서트 수",
+                },
+                errors: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      uid: { type: "string" },
+                      error: { type: "string" },
+                    },
+                  },
+                  description: "오류 발생 항목들",
+                },
+              },
+            },
+            timestamp: { type: "string", format: "date-time" },
+          },
+        },
+
+        // 좋아요 관련 스키마
+        LikeResponse: {
+          type: "object",
+          properties: {
+            message: { type: "string", example: "좋아요 추가/제거됨" },
+            isLiked: { type: "boolean", example: true },
+            likesCount: { type: "integer", example: 43 },
+            timestamp: { type: "string", format: "date-time" },
+          },
+        },
+
+        // 검색 필터 스키마
+        ConcertSearchFilters: {
+          type: "object",
+          properties: {
+            title: {
+              type: "string",
+              description: "제목 검색",
+              example: "아이유",
+            },
+            artist: {
+              type: "string",
+              description: "아티스트 검색",
+              example: "아이유",
+            },
+            location: {
+              type: "string",
+              description: "장소 검색",
+              example: "올림픽공원",
+            },
+            category: {
+              type: "array",
+              items: { type: "string" },
+              description: "카테고리 필터",
+              example: ["pop", "k-pop"],
+            },
+            status: {
+              type: "string",
+              enum: ["upcoming", "ongoing", "completed", "cancelled"],
+              description: "상태 필터",
+              example: "upcoming",
+            },
+            dateFrom: {
+              type: "string",
+              format: "date",
+              description: "시작 날짜 (YYYY-MM-DD)",
+              example: "2024-06-01",
+            },
+            dateTo: {
+              type: "string",
+              format: "date",
+              description: "종료 날짜 (YYYY-MM-DD)",
+              example: "2024-12-31",
+            },
+            priceMin: {
+              type: "number",
+              description: "최소 가격",
+              example: 50000,
+            },
+            priceMax: {
+              type: "number",
+              description: "최대 가격",
+              example: 300000,
+            },
+            sortBy: {
+              type: "string",
+              enum: ["date", "title", "likesCount", "createdAt"],
+              default: "date",
+              description: "정렬 기준",
+            },
+            sortOrder: {
+              type: "string",
+              enum: ["asc", "desc"],
+              default: "asc",
+              description: "정렬 순서",
+            },
+            page: {
+              type: "integer",
+              minimum: 1,
+              default: 1,
+              description: "페이지 번호",
+            },
+            limit: {
+              type: "integer",
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+              description: "페이지당 항목 수",
             },
           },
         },
@@ -622,6 +887,25 @@ const swaggerOptions = {
             limit: { type: "integer", example: 20 },
           },
         },
+
+        // 콘서트 목록 응답
+        ConcertListResponse: {
+          type: "object",
+          properties: {
+            message: { type: "string", example: "콘서트 목록 조회 성공" },
+            data: {
+              type: "object",
+              properties: {
+                concerts: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/Concert" },
+                },
+                pagination: { $ref: "#/components/schemas/PaginationResponse" },
+              },
+            },
+            timestamp: { type: "string", format: "date-time" },
+          },
+        },
       },
     },
   },
@@ -648,7 +932,7 @@ export const swaggerUiOptions = {
       color: #1e40af; 
     }
     
-    /* 서버 선택 영역 - 기존 스타일 */
+    /* 서버 선택 영역 - 기본 스타일 */
     .swagger-ui .scheme-container { 
       background: #f8fafc; 
       padding: 20px; 
@@ -656,7 +940,7 @@ export const swaggerUiOptions = {
       border: 1px solid #e2e8f0;
     }
     
-    /* HTTP 메소드별 컬러 - 기존 스타일 */
+    /* HTTP 메소드별 컬러 - 기본 스타일 */
     .swagger-ui .opblock.opblock-post { 
       border-color: #10b981; 
       background: rgba(16, 185, 129, 0.1);
@@ -1034,9 +1318,11 @@ if (process.env.NODE_ENV !== "production") {
       console.log("🎨 화려한 UI 테마 적용");
       console.log("🔍 대소문자 구분 없는 검색 기능 활성화");
       console.log("📖 포함된 API: Auth, Concert, Admin");
+      console.log("🔐 인증 방식: Session-based (Redis)");
     }
 
     console.log("\n🎯 주요 기능:");
+    console.log("  • 세션 기반 인증 (Redis)");
     console.log("  • 동적 서버 URL 설정 (배포환경 자동 감지)");
     console.log("  • 그라디언트 컬러 테마");
     console.log("  • 대소문자 무시 검색");

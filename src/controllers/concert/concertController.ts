@@ -8,8 +8,6 @@ import { ConcertService } from "../../services/concert/concertService";
  *     summary: 콘서트 정보 업로드
  *     description: 콘서트 정보를 MongoDB에 저장합니다. UID에서 timestamp를 추출하여 ObjectId로 변환합니다.
  *     tags: [Concerts - Basic]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -118,6 +116,8 @@ import { ConcertService } from "../../services/concert/concertService";
  *         description: 콘서트 업로드 성공
  *       400:
  *         description: 잘못된 요청 데이터
+ *       401:
+ *         description: 인증이 필요합니다 (로그인 필요)
  *       500:
  *         description: 서버 에러
  */
@@ -126,11 +126,19 @@ export const uploadConcert = async (
   res: express.Response
 ) => {
   try {
+    // 세션에서 사용자 정보 확인
+    if (!req.session?.user) {
+      return res.status(401).json({
+        message: "로그인이 필요합니다",
+        error: "AUTHENTICATION_REQUIRED",
+      });
+    }
+
     const result = await ConcertService.createConcert(req.body);
 
     if (result.success) {
       console.log(
-        `콘서트 정보 저장 완료: ${result.data.title} (UID: ${result.data.uid})`
+        `콘서트 정보 저장 완료: ${result.data.title} (UID: ${result.data.uid}) - 업로드 사용자: ${req.session.user.username}`
       );
 
       res.status(result.statusCode!).json({
@@ -184,7 +192,8 @@ export const getConcert = async (
 ) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.userId || (req as any).user?.id;
+    // 세션에서 사용자 ID 가져오기 (로그인하지 않은 경우 undefined)
+    const userId = req.session?.user?.userId;
 
     const result = await ConcertService.getConcert(id, userId);
 
@@ -300,8 +309,6 @@ export const getAllConcerts = async (
  *     summary: 콘서트 정보 수정
  *     description: ObjectId 또는 UID로 특정 콘서트의 정보를 수정합니다.
  *     tags: [Concerts - Basic]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -314,7 +321,7 @@ export const getAllConcerts = async (
  *       200:
  *         description: 콘서트 수정 성공
  *       401:
- *         description: 인증 필요
+ *         description: 인증이 필요합니다 (로그인 필요)
  *       404:
  *         description: 콘서트를 찾을 수 없음
  *       500:
@@ -325,10 +332,22 @@ export const updateConcert = async (
   res: express.Response
 ) => {
   try {
+    // 세션에서 사용자 정보 확인
+    if (!req.session?.user) {
+      return res.status(401).json({
+        message: "로그인이 필요합니다",
+        error: "AUTHENTICATION_REQUIRED",
+      });
+    }
+
     const { id } = req.params;
     const result = await ConcertService.updateConcert(id, req.body);
 
     if (result.success) {
+      console.log(
+        `콘서트 정보 수정 완료: ${id} - 수정 사용자: ${req.session.user.username}`
+      );
+
       res.status(result.statusCode!).json({
         message: "콘서트 정보 수정 성공",
         concert: result.data,
@@ -354,8 +373,6 @@ export const updateConcert = async (
  *     summary: 콘서트 삭제
  *     description: ObjectId 또는 UID로 특정 콘서트를 삭제합니다.
  *     tags: [Concerts - Basic]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -368,7 +385,7 @@ export const updateConcert = async (
  *       200:
  *         description: 콘서트 삭제 성공
  *       401:
- *         description: 인증 필요
+ *         description: 인증이 필요합니다 (로그인 필요)
  *       404:
  *         description: 콘서트를 찾을 수 없음
  *       500:
@@ -379,10 +396,22 @@ export const deleteConcert = async (
   res: express.Response
 ) => {
   try {
+    // 세션에서 사용자 정보 확인
+    if (!req.session?.user) {
+      return res.status(401).json({
+        message: "로그인이 필요합니다",
+        error: "AUTHENTICATION_REQUIRED",
+      });
+    }
+
     const { id } = req.params;
     const result = await ConcertService.deleteConcert(id);
 
     if (result.success) {
+      console.log(
+        `콘서트 삭제 완료: ${id} - 삭제 사용자: ${req.session.user.username}`
+      );
+
       res.status(result.statusCode!).json({
         message: "콘서트 삭제 성공",
         deletedConcert: result.data,

@@ -9,7 +9,7 @@ import { ConcertLikeService } from "../../services/concert/concertLikeService";
  *     description: 로그인된 사용자의 특정 콘서트에 대한 좋아요 상태를 확인합니다.
  *     tags: [Concerts - Like]
  *     security:
- *       - bearerAuth: []
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -34,7 +34,10 @@ export const getLikeStatus = async (
 ) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.userId || (req as any).user?.id;
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "로그인이 필요합니다" });
+    }
 
     const result = await ConcertLikeService.getLikeStatus(id, userId);
 
@@ -44,9 +47,7 @@ export const getLikeStatus = async (
         ...result.data,
       });
     } else {
-      res.status(result.statusCode!).json({
-        message: result.error,
-      });
+      res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
     console.error("좋아요 상태 조회 컨트롤러 에러:", error);
@@ -65,7 +66,7 @@ export const getLikeStatus = async (
  *     description: 로그인된 사용자가 특정 콘서트에 좋아요를 추가합니다.
  *     tags: [Concerts - Like]
  *     security:
- *       - bearerAuth: []
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -89,7 +90,10 @@ export const getLikeStatus = async (
 export const addLike = async (req: express.Request, res: express.Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.userId || (req as any).user?.id;
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "로그인이 필요합니다" });
+    }
 
     const result = await ConcertLikeService.addLike(id, userId);
 
@@ -99,9 +103,7 @@ export const addLike = async (req: express.Request, res: express.Response) => {
         concert: result.data,
       });
     } else {
-      res.status(result.statusCode!).json({
-        message: result.error,
-      });
+      res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
     console.error("좋아요 추가 컨트롤러 에러:", error);
@@ -120,7 +122,7 @@ export const addLike = async (req: express.Request, res: express.Response) => {
  *     description: 로그인된 사용자가 특정 콘서트의 좋아요를 삭제합니다.
  *     tags: [Concerts - Like]
  *     security:
- *       - bearerAuth: []
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -145,7 +147,10 @@ export const removeLike = async (
 ) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.userId || (req as any).user?.id;
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "로그인이 필요합니다" });
+    }
 
     const result = await ConcertLikeService.removeLike(id, userId);
 
@@ -155,9 +160,7 @@ export const removeLike = async (
         concert: result.data,
       });
     } else {
-      res.status(result.statusCode!).json({
-        message: result.error,
-      });
+      res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
     console.error("좋아요 삭제 컨트롤러 에러:", error);
@@ -176,21 +179,18 @@ export const removeLike = async (
  *     description: 로그인된 사용자가 좋아요한 콘서트 목록을 페이지네이션과 함께 조회합니다.
  *     tags: [Concerts - Like]
  *     security:
- *       - bearerAuth: []
+ *       - sessionAuth: []
  *     parameters:
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
- *           minimum: 1
  *           default: 1
  *         description: 페이지 번호
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           minimum: 1
- *           maximum: 100
  *           default: 20
  *         description: 페이지당 항목 수
  *     responses:
@@ -206,7 +206,11 @@ export const getLikedConcerts = async (
   res: express.Response
 ) => {
   try {
-    const userId = (req as any).user?.userId || (req as any).user?.id;
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "로그인이 필요합니다" });
+    }
+
     const { page, limit } = req.query;
 
     const result = await ConcertLikeService.getLikedConcerts(userId, {
@@ -220,9 +224,7 @@ export const getLikedConcerts = async (
         ...result.data,
       });
     } else {
-      res.status(result.statusCode!).json({
-        message: result.error,
-      });
+      res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
     console.error("좋아요한 콘서트 목록 조회 컨트롤러 에러:", error);
