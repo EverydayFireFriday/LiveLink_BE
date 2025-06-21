@@ -188,8 +188,8 @@ app.use(
       return;
     }
 
-    // ✅ API prefix와 일치
-    if (req.path.startsWith("/api/concert") && !isConcertDBConnected) {
+    // ✅ /api/concert → /concert로 수정
+    if (req.path.startsWith("/concert") && !isConcertDBConnected) {
       res.status(503).json({
         message: "콘서트 데이터베이스 연결이 준비되지 않았습니다.",
       });
@@ -218,7 +218,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
       documentation: "/api-docs",
       health: "/health", // ✅ Health Check 추가
       auth: "/auth",
-      concerts: "/api/concert", // ✅ API prefix 추가
+      concerts: "/concert", // ✅ /api prefix 제거
     },
     features: [
       "User Authentication (MongoDB Native Driver + Redis Session)",
@@ -237,7 +237,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
 // 🔧 라우터 연결 - Health Check 추가
 app.use("/health", healthRouter); // ✅ Health Check 라우터
 app.use("/auth", authRouter); // ✅ Auth 라우터
-app.use("/api/concert", concertRouter); // ✅ Concert API 라우터 (/api prefix 추가)
+app.use("/concert", concertRouter); // ✅ Concert API 라우터 (/api prefix 제거)
 
 // 에러 핸들링 미들웨어
 app.use(
@@ -285,7 +285,7 @@ app.use("*", (req: express.Request, res: express.Response) => {
       documentation: "GET /api-docs",
       health: "/health/*", // ✅ Health Check 추가
       auth: "/auth/*",
-      concert: "/api/concert/*", // ✅ API prefix 추가
+      concert: "/concert/*", // ✅ /api prefix 제거
     },
     timestamp: new Date().toISOString(),
   });
@@ -341,7 +341,7 @@ Promise.all([initializeDatabases(), redisClient.ping()])
       console.log(`🚀 Unified API Server running at http://localhost:${PORT}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
       console.log(`🔐 Auth API: http://localhost:${PORT}/auth`);
-      console.log(`🎵 Concert API: http://localhost:${PORT}/api/concert`); // ✅ API prefix 추가
+      console.log(`🎵 Concert API: http://localhost:${PORT}/concert`); // ✅ /api prefix 제거
       console.log(`💾 Database: MongoDB Native Driver`);
       console.log(`🗄️  Session Store: Redis`);
       console.log("🎉 ================================");
