@@ -915,14 +915,37 @@ const swaggerOptions = {
 // Swagger 스펙 생성
 export const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
-// Swagger UI 옵션 (화려한 컬러와 대소문자 무시 검색)
+// Swagger UI 옵션 (화려한 컬러와 대소문자 무시 검색 + 다크 모드)
 export const swaggerUiOptions = {
   explorer: true,
   customCss: `
+    /* 다크 모드 토글 버튼 */
+    .dark-mode-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .dark-mode-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
     /* 기본 스타일 초기화 */
     .swagger-ui .topbar { display: none }
     
-    /* 헤더 스타일링 - 심플하게 */
+    /* 헤더 스타일링 */
     .swagger-ui .info h1 { 
       color: #3b82f6; 
       font-size: 2rem; 
@@ -932,7 +955,7 @@ export const swaggerUiOptions = {
       color: #1e40af; 
     }
     
-    /* 서버 선택 영역 - 기본 스타일 */
+    /* 서버 선택 영역 */
     .swagger-ui .scheme-container { 
       background: #f8fafc; 
       padding: 20px; 
@@ -940,7 +963,7 @@ export const swaggerUiOptions = {
       border: 1px solid #e2e8f0;
     }
     
-    /* HTTP 메소드별 컬러 - 기본 스타일 */
+    /* HTTP 메소드별 컬러 */
     .swagger-ui .opblock.opblock-post { 
       border-color: #10b981; 
       background: rgba(16, 185, 129, 0.1);
@@ -958,7 +981,7 @@ export const swaggerUiOptions = {
       background: rgba(239, 68, 68, 0.1);
     }
     
-    /* 태그별 화려한 스타일링 - API 폴더만 화려하게! */
+    /* 태그별 화려한 스타일링 */
     .swagger-ui .opblock-tag { 
       border-radius: 8px;
       margin: 10px 0;
@@ -969,14 +992,14 @@ export const swaggerUiOptions = {
       box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
     
-    /* Health Check - 화려하게! */
+    /* Health Check */
     .swagger-ui .opblock-tag[data-tag*="Health"] { 
       background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
       color: white;
       box-shadow: 0 4px 15px rgba(132, 250, 176, 0.3);
     }
     
-    /* Auth 관련 태그들 - 화려하게! */
+    /* Auth 관련 태그들 */
     .swagger-ui .opblock-tag[data-tag*="Auth"] { 
       background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
       color: #2d3748;
@@ -1003,7 +1026,7 @@ export const swaggerUiOptions = {
       box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
     
-    /* Concert 관련 태그들 - 화려하게! */
+    /* Concert 관련 태그들 */
     .swagger-ui .opblock-tag[data-tag*="Concerts - Basic"] { 
       background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
       color: white;
@@ -1025,7 +1048,7 @@ export const swaggerUiOptions = {
       box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
     }
     
-    /* Admin 태그 - 화려하게! */
+    /* Admin 태그 */
     .swagger-ui .opblock-tag[data-tag*="Admin"] { 
       background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
       color: white;
@@ -1038,7 +1061,7 @@ export const swaggerUiOptions = {
       text-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
-    /* 검색 필터 스타일링 - 기본 스타일 */
+    /* 검색 필터 스타일링 */
     .swagger-ui .filter-container { 
       background: #f8fafc;
       padding: 15px;
@@ -1054,7 +1077,7 @@ export const swaggerUiOptions = {
       font-size: 14px;
     }
     
-    /* 버튼 스타일링 - 기본 스타일 */
+    /* 버튼 스타일링 */
     .swagger-ui .btn { 
       border-radius: 6px;
       font-weight: 500;
@@ -1064,13 +1087,13 @@ export const swaggerUiOptions = {
       transform: translateY(-1px);
     }
     
-    /* 응답 코드 스타일링 - 기본 */
+    /* 응답 코드 스타일링 */
     .swagger-ui .responses-inner h4 { 
       color: #374151;
       font-weight: bold;
     }
     
-    /* 파라미터 테이블 스타일링 - 기본 */
+    /* 파라미터 테이블 스타일링 */
     .swagger-ui table thead tr td, .swagger-ui table thead tr th { 
       background: #f9fafb;
       color: #374151;
@@ -1078,14 +1101,14 @@ export const swaggerUiOptions = {
       border-bottom: 2px solid #e5e7eb;
     }
     
-    /* 모델 섹션 스타일링 - 기본 */
+    /* 모델 섹션 스타일링 */
     .swagger-ui .model-box { 
       background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
     }
     
-    /* 애니메이션 효과 - 약간만 */
+    /* 애니메이션 효과 */
     .swagger-ui .opblock { 
       transition: all 0.2s ease;
       border-radius: 6px;
@@ -1111,6 +1134,302 @@ export const swaggerUiOptions = {
     .swagger-ui ::-webkit-scrollbar-thumb:hover { 
       background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
     }
+
+    /* 다크 모드 스타일 - 더 자연스러운 배경색 */
+    [data-theme="dark"] body,
+    [data-theme="dark"] .swagger-ui,
+    [data-theme="dark"] .swagger-ui .wrapper {
+      background-color: #1a202c !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .info h1 {
+      color: #63b3ed !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .info .title {
+      color: #90cdf4 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .info .description {
+      color: #cbd5e0 !important;
+    }
+
+    /* 다크 모드에서 버전 뱃지 스타일 */
+    [data-theme="dark"] .swagger-ui .info .version {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .info .version-stamp {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .info .version-stamp pre {
+      background: transparent !important;
+      color: #e2e8f0 !important;
+    }
+
+    /* OpenAPI 버전 뱃지 */
+    [data-theme="dark"] .swagger-ui .info .version-stamp .version-stamp-oas {
+      background: #38a169 !important;
+      color: white !important;
+      border: 1px solid #2f855a !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .scheme-container {
+      background: #1a202c !important;
+      border-color: #2d3748 !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .filter-container {
+      background: #1a202c !important;
+      border-color: #2d3748 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .filter .operation-filter-input {
+      background: #2d3748 !important;
+      border-color: #4a5568 !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .filter .operation-filter-input::placeholder {
+      color: #a0aec0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock {
+      background: #2d3748 !important;
+      border-color: #4a5568 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock .opblock-summary {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border-color: #718096 !important;
+    }
+
+    /* 다크 모드에서 API 경로 가시성 개선 */
+    [data-theme="dark"] .swagger-ui .opblock-summary-path {
+      color: #f7fafc !important;
+      font-weight: 600 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-summary-description {
+      color: #cbd5e0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-summary-method {
+      color: white !important;
+      font-weight: bold !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-body {
+      background: #2d3748 !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .parameters,
+    [data-theme="dark"] .swagger-ui .responses-wrapper,
+    [data-theme="dark"] .swagger-ui .model-box-control {
+      background: #2d3748 !important;
+      color: #e2e8f0 !important;
+      border-color: #4a5568 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui table,
+    [data-theme="dark"] .swagger-ui table thead tr td,
+    [data-theme="dark"] .swagger-ui table thead tr th {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border-color: #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui table tbody tr td {
+      background: #2d3748 !important;
+      color: #e2e8f0 !important;
+      border-color: #4a5568 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .model-box {
+      background: #2d3748 !important;
+      border-color: #4a5568 !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui input[type="text"],
+    [data-theme="dark"] .swagger-ui input[type="email"],
+    [data-theme="dark"] .swagger-ui input[type="password"],
+    [data-theme="dark"] .swagger-ui textarea,
+    [data-theme="dark"] .swagger-ui select {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border-color: #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .highlight-code,
+    [data-theme="dark"] .swagger-ui .microlight,
+    [data-theme="dark"] .swagger-ui pre,
+    [data-theme="dark"] .swagger-ui code {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .responses-inner h4,
+    [data-theme="dark"] .swagger-ui .response-col_status {
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .btn {
+      background: #4299e1 !important;
+      color: white !important;
+      border-color: #3182ce !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .btn:hover {
+      background: #3182ce !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .btn.execute {
+      background: #48bb78 !important;
+      border-color: #38a169 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .btn.execute:hover {
+      background: #38a169 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui ::-webkit-scrollbar-track {
+      background: #2d3748 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #4a5568 0%, #718096 100%) !important;
+    }
+
+    /* 다크 모드 인증 모달 스타일 */
+    [data-theme="dark"] .swagger-ui .dialog-ux .modal-ux {
+      background: #1a202c !important;
+      border: 1px solid #4a5568 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .dialog-ux .modal-ux-header {
+      background: #2d3748 !important;
+      color: #e2e8f0 !important;
+      border-bottom: 1px solid #4a5568 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .dialog-ux .modal-ux-content {
+      background: #1a202c !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container {
+      background: #1a202c !important;
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container h4,
+    [data-theme="dark"] .swagger-ui .auth-container h5,
+    [data-theme="dark"] .swagger-ui .auth-container label {
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container .auth-btn-wrapper {
+      background: #2d3748 !important;
+      border: 1px solid #4a5568 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container input[type="text"],
+    [data-theme="dark"] .swagger-ui .auth-container input[type="password"] {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container textarea {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container .auth-btn-wrapper input {
+      background: #4a5568 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #718096 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container .auth-btn-wrapper button {
+      background: #4299e1 !important;
+      color: white !important;
+      border: 1px solid #3182ce !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container .auth-btn-wrapper button:hover {
+      background: #3182ce !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container .close-modal {
+      color: #e2e8f0 !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .auth-container .close-modal:hover {
+      color: #f7fafc !important;
+    }
+
+    /* 모달 오버레이 */
+    [data-theme="dark"] .swagger-ui .dialog-ux .backdrop-ux {
+      background: rgba(0, 0, 0, 0.7) !important;
+    }
+
+    /* 다크 모드에서 그라디언트 태그들이 더 잘 보이도록 조정 */
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Health"] { 
+      box-shadow: 0 4px 15px rgba(132, 250, 176, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Auth"] { 
+      box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Registration"] { 
+      box-shadow: 0 4px 15px rgba(255, 236, 210, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Password"] { 
+      box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Profile"] { 
+      box-shadow: 0 4px 15px rgba(168, 202, 186, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Verification"] { 
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Basic"] { 
+      box-shadow: 0 4px 15px rgba(116, 185, 255, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Like"] { 
+      box-shadow: 0 4px 15px rgba(253, 121, 168, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Search"] { 
+      box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Batch"] { 
+      box-shadow: 0 4px 15px rgba(253, 203, 110, 0.4) !important;
+    }
+
+    [data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Admin"] { 
+      box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4) !important;
+    }
   `,
   customSiteTitle: "LiveLink API Documentation",
   customfavIcon: "/favicon.ico",
@@ -1119,29 +1438,57 @@ export const swaggerUiOptions = {
     displayRequestDuration: true,
     filter: true,
     tryItOutEnabled: true,
-    docExpansion: "none", // 처음에는 모든 섹션 접힌 상태
+    docExpansion: "none",
     defaultModelsExpandDepth: 1,
     defaultModelExpandDepth: 1,
-    tagsSorter: "alpha", // 태그를 알파벳 순으로 정렬
-    operationsSorter: "alpha", // 작업을 알파벳 순으로 정렬
+    tagsSorter: "alpha",
+    operationsSorter: "alpha",
 
-    // 검색 시 대소문자 구분 안함 (커스텀 필터 함수)
     onComplete: function () {
       try {
-        // 더 안전한 방식으로 필터 함수 오버라이드
+        // 다크 모드 토글 버튼 생성
+        const toggleButton = document.createElement("button");
+        toggleButton.className = "dark-mode-toggle";
+        toggleButton.innerHTML = "🌙";
+        toggleButton.title = "다크 모드 토글";
+
+        // 현재 테마 상태 확인
+        const currentTheme = localStorage.getItem("swagger-theme") || "light";
+        if (currentTheme === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+          toggleButton.innerHTML = "☀️";
+        }
+
+        // 토글 기능
+        toggleButton.addEventListener("click", () => {
+          const isDark =
+            document.documentElement.getAttribute("data-theme") === "dark";
+
+          if (isDark) {
+            document.documentElement.removeAttribute("data-theme");
+            toggleButton.innerHTML = "🌙";
+            localStorage.setItem("swagger-theme", "light");
+          } else {
+            document.documentElement.setAttribute("data-theme", "dark");
+            toggleButton.innerHTML = "☀️";
+            localStorage.setItem("swagger-theme", "dark");
+          }
+        });
+
+        // 버튼을 DOM에 추가
+        document.body.appendChild(toggleButton);
+
+        // 검색 필터 기능
         setTimeout(() => {
           const win = window as any;
 
-          // Swagger UI가 완전히 로드되었을 때 실행
           if (win.ui && win.ui.getSystem) {
             const system = win.ui.getSystem();
             const layoutSelectors = system.layoutSelectors;
 
-            // 기존 필터 함수 찾기
             if (layoutSelectors && layoutSelectors.taggedOperations) {
               const originalTaggedOps = layoutSelectors.taggedOperations;
 
-              // 새로운 필터 함수로 오버라이드
               system.layoutSelectors.taggedOperations = function (
                 state: any,
                 tagFilter: string
@@ -1156,7 +1503,7 @@ export const swaggerUiOptions = {
 
                 return taggedOps.filter((taggedOp: any) => {
                   try {
-                    // 태그명 확인
+                    // 태그명 검색
                     const tagName = taggedOp.get
                       ? taggedOp.get("tagName")
                       : taggedOp.tagName;
@@ -1167,18 +1514,31 @@ export const swaggerUiOptions = {
                       return true;
                     }
 
-                    // 오퍼레이션들 확인
+                    // 태그 설명 검색
+                    const tagObj = taggedOp.get
+                      ? taggedOp.get("tag")
+                      : taggedOp.tag;
+                    if (tagObj) {
+                      const description = tagObj.get
+                        ? tagObj.get("description")
+                        : tagObj.description;
+                      if (
+                        description &&
+                        description.toLowerCase().includes(lowerFilter)
+                      ) {
+                        return true;
+                      }
+                    }
+
+                    // 오퍼레이션들 내부 검색
                     const operations = taggedOp.get
                       ? taggedOp.get("operations")
                       : taggedOp.operations;
                     if (operations && operations.some) {
                       return operations.some((op: any) => {
                         try {
-                          const operation = op.get
-                            ? op.get("operation")
-                            : op.operation;
+                          // API 경로 검색
                           const path = op.get ? op.get("path") : op.path;
-
                           if (
                             path &&
                             path.toLowerCase().includes(lowerFilter)
@@ -1186,25 +1546,67 @@ export const swaggerUiOptions = {
                             return true;
                           }
 
+                          const operation = op.get
+                            ? op.get("operation")
+                            : op.operation;
                           if (operation) {
+                            // HTTP 메소드 검색
                             const method = operation.get
                               ? operation.get("method")
                               : operation.method;
+                            if (
+                              method &&
+                              method.toLowerCase().includes(lowerFilter)
+                            ) {
+                              return true;
+                            }
+
+                            // API 요약 검색
                             const summary = operation.get
                               ? operation.get("summary")
                               : operation.summary;
+                            if (
+                              summary &&
+                              summary.toLowerCase().includes(lowerFilter)
+                            ) {
+                              return true;
+                            }
+
+                            // API 설명 검색
+                            const description = operation.get
+                              ? operation.get("description")
+                              : operation.description;
+                            if (
+                              description &&
+                              description.toLowerCase().includes(lowerFilter)
+                            ) {
+                              return true;
+                            }
+
+                            // operationId 검색
                             const operationId = operation.get
                               ? operation.get("operationId")
                               : operation.operationId;
+                            if (
+                              operationId &&
+                              operationId.toLowerCase().includes(lowerFilter)
+                            ) {
+                              return true;
+                            }
 
-                            return (
-                              (method &&
-                                method.toLowerCase().includes(lowerFilter)) ||
-                              (summary &&
-                                summary.toLowerCase().includes(lowerFilter)) ||
-                              (operationId &&
-                                operationId.toLowerCase().includes(lowerFilter))
-                            );
+                            // 태그 검색 (operation 레벨)
+                            const tags = operation.get
+                              ? operation.get("tags")
+                              : operation.tags;
+                            if (tags && Array.isArray(tags)) {
+                              if (
+                                tags.some((tag) =>
+                                  tag.toLowerCase().includes(lowerFilter)
+                                )
+                              ) {
+                                return true;
+                              }
+                            }
                           }
 
                           return false;
@@ -1227,7 +1629,7 @@ export const swaggerUiOptions = {
             }
           }
 
-          // 대안: DOM 기반 검색도 추가
+          // DOM 기반 검색 백업 (더 강력한 검색)
           const searchInput = document.querySelector(
             ".operation-filter-input"
           ) as HTMLInputElement;
@@ -1238,18 +1640,72 @@ export const swaggerUiOptions = {
 
             // 새로운 검색 로직
             newInput.addEventListener("input", function (e) {
-              const searchTerm = (
-                e.target as HTMLInputElement
-              ).value.toLowerCase();
-              const tags = document.querySelectorAll(".opblock-tag");
+              const searchTerm = (e.target as HTMLInputElement).value
+                .toLowerCase()
+                .trim();
 
+              if (!searchTerm) {
+                // 검색어가 없으면 모든 태그 표시
+                const tags = document.querySelectorAll(".opblock-tag");
+                tags.forEach((tag) => {
+                  (tag as HTMLElement).style.display = "block";
+                });
+                return;
+              }
+
+              const tags = document.querySelectorAll(".opblock-tag");
               tags.forEach((tag) => {
                 const tagElement = tag as HTMLElement;
+                let shouldShow = false;
+
+                // 태그 제목 검색
                 const tagTitle =
                   tagElement.querySelector("h3")?.textContent?.toLowerCase() ||
                   "";
+                if (tagTitle.includes(searchTerm)) {
+                  shouldShow = true;
+                }
 
-                if (!searchTerm || tagTitle.includes(searchTerm)) {
+                // 개별 API 검색
+                const operations = tagElement.querySelectorAll(".opblock");
+                let hasMatchingOperation = false;
+
+                operations.forEach((operation) => {
+                  const opElement = operation as HTMLElement;
+
+                  // API 경로 검색
+                  const pathElement = opElement.querySelector(
+                    ".opblock-summary-path"
+                  );
+                  const path = pathElement?.textContent?.toLowerCase() || "";
+
+                  // API 요약 검색
+                  const summaryElement = opElement.querySelector(
+                    ".opblock-summary-description"
+                  );
+                  const summary =
+                    summaryElement?.textContent?.toLowerCase() || "";
+
+                  // HTTP 메소드 검색
+                  const methodElement = opElement.querySelector(
+                    ".opblock-summary-method"
+                  );
+                  const method =
+                    methodElement?.textContent?.toLowerCase() || "";
+
+                  if (
+                    path.includes(searchTerm) ||
+                    summary.includes(searchTerm) ||
+                    method.includes(searchTerm)
+                  ) {
+                    hasMatchingOperation = true;
+                    opElement.style.display = "block";
+                  } else {
+                    opElement.style.display = "none";
+                  }
+                });
+
+                if (shouldShow || hasMatchingOperation) {
                   tagElement.style.display = "block";
                 } else {
                   tagElement.style.display = "none";
@@ -1259,12 +1715,11 @@ export const swaggerUiOptions = {
 
             console.log("✅ DOM 기반 검색이 추가되었습니다.");
           }
-        }, 2000); // 더 긴 지연시간
+        }, 2000);
       } catch (error) {
         console.log("검색 필터 초기화 중 오류:", error);
       }
 
-      // 추가적인 UI 개선
       try {
         const style = document.createElement("style");
         style.textContent = `
@@ -1284,16 +1739,15 @@ export const swaggerUiOptions = {
         `;
         document.head.appendChild(style);
 
-        // 검색 placeholder 텍스트 변경 (타입 안전성 고려)
         setTimeout(() => {
           const filterInput = document.querySelector(
             ".operation-filter-input"
           ) as HTMLInputElement;
           if (filterInput && "placeholder" in filterInput) {
             filterInput.placeholder =
-              "🔍 태그 검색... (예: admin, auth, concert)";
+              "🔍 검색... (태그, API 경로, 메소드, 설명)";
           }
-        }, 3000); // DOM이 완전히 로드된 후 실행
+        }, 3000);
       } catch (error) {
         console.log("UI 개선 적용 중 오류:", error);
       }
@@ -1315,19 +1769,28 @@ if (process.env.NODE_ENV !== "production") {
       console.log("⚠️  API가 감지되지 않음 - @swagger 주석 확인 필요");
     } else {
       console.log("✅ Swagger 문서 생성 완료");
-      console.log("🎨 화려한 UI 테마 적용");
-      console.log("🔍 대소문자 구분 없는 검색 기능 활성화");
+      console.log("화려한 UI 테마 적용");
+      console.log("다크 모드 지원");
+      console.log("대소문자 구분 없는 검색 기능 활성화");
       console.log("📖 포함된 API: Auth, Concert, Admin");
-      console.log("🔐 인증 방식: Session-based (Redis)");
+      console.log("인증 방식: Session-based (Redis)");
     }
 
-    console.log("\n🎯 주요 기능:");
+    console.log("\n주요 기능:");
     console.log("  • 세션 기반 인증 (Redis)");
     console.log("  • 동적 서버 URL 설정 (배포환경 자동 감지)");
     console.log("  • 그라디언트 컬러 테마");
     console.log("  • 대소문자 무시 검색");
     console.log("  • 호버 애니메이션 효과");
     console.log("  • 태그별 컬러 구분");
+    console.log("  • 반응형 디자인");
+    console.log("  • localStorage 테마 저장");
+
+    console.log("\n다크 모드 기능:");
+    console.log("  • 수동 토글 버튼 (우상단 🌙/☀️)");
+    console.log("  • 모든 컴포넌트 다크 모드 대응");
+    console.log("  • 부드러운 전환 애니메이션");
+    console.log("  • 테마 설정 자동 저장");
   } catch (error) {
     console.log("⚠️  Swagger 초기화 오류:", error);
   }
