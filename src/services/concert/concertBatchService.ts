@@ -1,10 +1,10 @@
-import { getConcertModel } from "../../models/concert";
+import { getConcertModel } from "../../models/concert/concert";
 import type {
   IConcert, // IConcert → Concert 변경
   ILocation, // ILocation → Location 변경
   IPrice, // IPrice → Price 변경
   ITicketLink, // ITicketLink → TicketLink 변경
-} from "../../models/concert";
+} from "../../models/concert/concert";
 import {
   validateConcertData,
   generateObjectIdFromUid,

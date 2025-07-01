@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { getConcertModel } from "../../models/concert";
+import { getConcertModel } from "../../models/concert/concert";
 import {
   validateConcertData,
   validateConcertUpdateData, // 새로 추가
@@ -38,7 +38,7 @@ import type {
   IPrice,
   ITicketLink,
   ILike,
-} from "../../models/concert";
+} from "../../models/concert/concert";
 
 export class ConcertService {
   /**
