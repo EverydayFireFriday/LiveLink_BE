@@ -1,6 +1,6 @@
 import express from "express";
 import { redisClient } from "../../index";
-import { getConcertModel } from "../../models/concert";
+import { getConcertModel } from "../../models/concert/concert";
 
 /**
  * @swagger

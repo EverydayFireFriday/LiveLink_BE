@@ -1,5 +1,5 @@
-import { getConcertModel } from "../../models/concert";
-import type { IConcert } from "../../models/concert";
+import { getConcertModel } from "../../models/concert/concert";
+import type { IConcert } from "../../models/concert/concert";
 
 export interface ConcertServiceResponse {
   success: boolean;
