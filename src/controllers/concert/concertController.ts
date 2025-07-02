@@ -17,6 +17,13 @@ import { ConcertService } from "../../services/concert/concertService";
  *       **업데이트된 스키마**:
  *       - location: 문자열 배열로 간소화됨
  *       - infoImages: 이미지 URL 배열 (기존 info에서 변경)
+ * 
+ *       **state 상태값**:
+ *       - upcoming - 예정
+ *       - ongoing - 진행 중
+ *       - completed - 완료
+ *       - cancelled - 취소
+ * 
  *     tags: [Concerts - Basic]
  *     security:
  *       - sessionAuth: []
