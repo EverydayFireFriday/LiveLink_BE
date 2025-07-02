@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { getConcertModel } from "../../models/concert/concert";
 import {
   validateConcertData,
-  validateConcertUpdateData, // 새로 추가
+  validateConcertUpdateData,
   generateObjectIdFromUid,
   normalizeConcertData,
   isValidImageUrl,
@@ -12,7 +12,7 @@ export interface CreateConcertRequest {
   uid: string;
   title: string;
   artist?: string[];
-  location: Array<{ location: string }>;
+  location: string[]; // ILocation[] -> string[]로 변경
   datetime: string[];
   price?: Array<{ tier: string; amount: number }>;
   description?: string;
@@ -20,7 +20,7 @@ export interface CreateConcertRequest {
   ticketLink?: Array<{ platform: string; url: string }>;
   ticketOpenDate?: string;
   posterImage?: string;
-  info?: string[];
+  infoImages?: string[]; // info -> infoImages로 변경
   tags?: string[];
 }
 
@@ -34,7 +34,6 @@ export interface ConcertServiceResponse {
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
 import type {
   IConcert,
-  ILocation,
   IPrice,
   ITicketLink,
   ILike,
@@ -82,7 +81,20 @@ export class ConcertService {
         };
       }
 
-      // 4. ObjectId 생성
+      // 4. infoImages URL 유효성 검증 (선택사항)
+      if (concertData.infoImages && Array.isArray(concertData.infoImages)) {
+        for (const imageUrl of concertData.infoImages) {
+          if (!isValidImageUrl(imageUrl)) {
+            return {
+              success: false,
+              error: "올바르지 않은 정보 이미지 URL입니다.",
+              statusCode: 400,
+            };
+          }
+        }
+      }
+
+      // 5. ObjectId 생성
       let mongoId: ObjectId;
       try {
         mongoId = generateObjectIdFromUid(concertData.uid);
@@ -96,7 +108,7 @@ export class ConcertService {
         mongoId = new ObjectId();
       }
 
-      // 5. 데이터 정규화 및 준비 - Model의 Concert 타입 사용
+      // 6. 데이터 정규화 및 준비 - Model의 Concert 타입 사용
       const processedData: Omit<IConcert, "createdAt" | "updatedAt"> = {
         _id: mongoId,
         uid: concertData.uid,
@@ -108,7 +120,7 @@ export class ConcertService {
             : [],
         location: Array.isArray(concertData.location)
           ? concertData.location
-          : [concertData.location],
+          : [concertData.location], // string 배열로 변경
         datetime: Array.isArray(concertData.datetime)
           ? concertData.datetime.map((dt) => new Date(dt)) // string을 Date로 변환
           : [new Date(concertData.datetime)],
@@ -132,14 +144,14 @@ export class ConcertService {
           ? new Date(concertData.ticketOpenDate)
           : undefined,
         posterImage: concertData.posterImage || "",
-        info: concertData.info || [],
+        infoImages: concertData.infoImages || [], // info -> infoImages로 변경
         tags: concertData.tags || [],
         status: "upcoming",
         likes: [],
         likesCount: 0,
       };
 
-      // 6. MongoDB에 저장
+      // 7. MongoDB에 저장
       const newConcert = await ConcertModel.create(processedData);
 
       return {
@@ -156,7 +168,7 @@ export class ConcertService {
           ticketLink: processedData.ticketLink,
           ticketOpenDate: processedData.ticketOpenDate,
           posterImage: processedData.posterImage,
-          info: processedData.info,
+          infoImages: processedData.infoImages, // info -> infoImages로 변경
           tags: processedData.tags,
           status: processedData.status,
           likesCount: 0,
@@ -263,7 +275,7 @@ export class ConcertService {
       const filter: any = {};
       if (category) filter.category = { $in: [category] };
       if (artist) filter.artist = { $in: [new RegExp(artist, "i")] };
-      if (location) filter["location.location"] = new RegExp(location, "i");
+      if (location) filter.location = new RegExp(location, "i"); // location이 string 배열이므로 직접 검색
       if (status) filter.status = status;
 
       // 정렬 조건 구성
@@ -384,7 +396,23 @@ export class ConcertService {
         };
       }
 
-      // 5. 날짜 필드 타입 변환
+      // 5. infoImages URL 유효성 검증 (수정하는 경우)
+      if (
+        cleanUpdateData.infoImages &&
+        Array.isArray(cleanUpdateData.infoImages)
+      ) {
+        for (const imageUrl of cleanUpdateData.infoImages) {
+          if (!isValidImageUrl(imageUrl)) {
+            return {
+              success: false,
+              error: "올바르지 않은 정보 이미지 URL입니다.",
+              statusCode: 400,
+            };
+          }
+        }
+      }
+
+      // 6. 날짜 필드 타입 변환
       if (cleanUpdateData.datetime) {
         cleanUpdateData.datetime = Array.isArray(cleanUpdateData.datetime)
           ? cleanUpdateData.datetime.map((dt: string) => new Date(dt))
@@ -397,7 +425,7 @@ export class ConcertService {
         );
       }
 
-      // 6. 업데이트 실행
+      // 7. 업데이트 실행
       const updatedConcert = await ConcertModel.updateById(id, cleanUpdateData);
 
       if (!updatedConcert) {
