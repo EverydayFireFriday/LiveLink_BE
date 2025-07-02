@@ -1,5 +1,5 @@
-import { MongoClient, Db } from 'mongodb';
-import { initializeConcertModel } from '../models/concert';
+import { MongoClient, Db } from "mongodb";
+import { initializeConcertModel } from "../models/concert/concert";
 
 let client: MongoClient;
 let db: Db;
@@ -8,19 +8,19 @@ export const connectDB = async (): Promise<Db> => {
   try {
     const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
     const DB_NAME = process.env.MONGO_DB_NAME || "livelink";
-    
+
     client = new MongoClient(MONGO_URI);
     await client.connect();
-    
+
     db = client.db(DB_NAME);
-    
+
     // 연결 테스트
     await db.admin().ping();
-    
+
     console.log("✅ MongoDB Native Driver connected");
     console.log(`📍 Database: ${DB_NAME}`);
     console.log("📚 Collections: users, concerts");
-    
+
     return db;
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
