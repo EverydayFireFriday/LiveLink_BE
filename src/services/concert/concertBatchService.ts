@@ -1,10 +1,9 @@
-import { getConcertModel } from "../../models/concert";
+import { getConcertModel } from "../../models/concert/concert";
 import type {
-  IConcert, // IConcert → Concert 변경
-  ILocation, // ILocation → Location 변경
-  IPrice, // IPrice → Price 변경
-  ITicketLink, // ITicketLink → TicketLink 변경
-} from "../../models/concert";
+  IConcert,
+  IPrice,
+  ITicketLink,
+} from "../../models/concert/concert";
 import {
   validateConcertData,
   generateObjectIdFromUid,
@@ -182,7 +181,7 @@ export class ConcertBatchService {
               : [],
           location: Array.isArray(concertData.location)
             ? concertData.location
-            : [concertData.location],
+            : [concertData.location], // string 배열로 변경
           datetime: Array.isArray(concertData.datetime)
             ? concertData.datetime.map((dt: any) => new Date(dt))
             : [new Date(concertData.datetime)],
@@ -206,7 +205,7 @@ export class ConcertBatchService {
             ? new Date(concertData.ticketOpenDate)
             : undefined,
           posterImage: concertData.posterImage || "",
-          info: concertData.info || [],
+          infoImages: concertData.infoImages || [], // info → infoImages로 변경
           tags: concertData.tags || [],
           status: "upcoming",
           likes: [],

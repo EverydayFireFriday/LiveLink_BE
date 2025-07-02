@@ -34,7 +34,7 @@ console.log("");
 import {
   connectDatabase as connectUserDB,
   disconnectDatabase as disconnectUserDB,
-} from "./models/user";
+} from "./models/auth/user";
 import {
   connectDB as connectConcertDB,
   initializeConcertModel,

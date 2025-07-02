@@ -1,4 +1,4 @@
-import { UserModel } from "../../models/user";
+import { UserModel } from "../../models/auth/user";
 import { User } from "../../types/auth/authTypes";
 
 export class UserService {

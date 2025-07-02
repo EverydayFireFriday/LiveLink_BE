@@ -13,6 +13,17 @@ import { ConcertService } from "../../services/concert/concertService";
  *       **프로덕션 환경**: 로그인 필수
  *
  *       세션 구조: email, userId, username, profileImage?, loginTime
+ *
+ *       **업데이트된 스키마**:
+ *       - location: 문자열 배열로 간소화됨
+ *       - infoImages: 이미지 URL 배열 (기존 info에서 변경)
+ * 
+ *       **state 상태값**:
+ *       - upcoming - 예정
+ *       - ongoing - 진행 중
+ *       - completed - 완료
+ *       - cancelled - 취소
+ * 
  *     tags: [Concerts - Basic]
  *     security:
  *       - sessionAuth: []
@@ -22,7 +33,99 @@ import { ConcertService } from "../../services/concert/concertService";
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ConcertCreateRequest'
+ *             type: object
+ *             required:
+ *               - uid
+ *               - title
+ *               - location
+ *               - datetime
+ *             properties:
+ *               uid:
+ *                 type: string
+ *                 description: 고유 콘서트 ID (timestamp 포함)
+ *                 example: "concert_1703123456789_iu2024"
+ *               title:
+ *                 type: string
+ *                 description: 콘서트 제목
+ *                 example: "아이유 콘서트 2024"
+ *                 maxLength: 200
+ *               artist:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 아티스트 목록 (빈 배열 허용)
+ *                 example: ["아이유", "특별 게스트"]
+ *               location:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 공연 장소 목록 (문자열 배열로 간소화)
+ *                 example: ["올림픽공원 체조경기장", "부산 BEXCO"]
+ *                 minItems: 1
+ *               datetime:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: date-time
+ *                 description: 공연 일시 목록
+ *                 example: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
+ *                 minItems: 1
+ *               price:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     tier: { type: string, example: "VIP" }
+ *                     amount: { type: number, example: 200000 }
+ *                 description: 가격 정보 (선택사항)
+ *               description:
+ *                 type: string
+ *                 description: 콘서트 설명
+ *                 maxLength: 2000
+ *                 example: "아이유의 특별한 콘서트"
+ *               category:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "hiphop", "electronic", "folk", "r&b", "country", "musical", "opera", "ballad", "dance", "trot", "rap", "hip-hop", "edm", "house", "techno", "dubstep", "reggae", "blues", "soul", "funk", "punk", "metal", "alternative", "grunge", "fusion", "world", "latin", "gospel", "new-age", "ambient", "instrumental", "acoustic", "live", "concert", "festival", "other"]
+ *                 description: 음악 카테고리
+ *                 example: ["pop", "k-pop"]
+ *               ticketLink:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     platform: { type: string, example: "인터파크" }
+ *                     url: { type: string, example: "https://ticket.interpark.com/example" }
+ *                 description: 티켓 예매 링크
+ *               ticketOpenDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: 티켓 오픈 일시
+ *                 example: "2024-05-01T10:00:00+09:00"
+ *               posterImage:
+ *                 type: string
+ *                 format: uri
+ *                 description: 포스터 이미지 URL
+ *                 example: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
+ *               infoImages:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uri
+ *                 description: 추가 정보 이미지 URL 배열 (기존 info에서 변경)
+ *                 example: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg"]
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 태그 목록
+ *                 example: ["발라드", "K-POP", "솔로"]
+ *               status:
+ *                 type: string
+ *                 enum: ["upcoming", "ongoing", "completed", "cancelled"]
+ *                 default: "upcoming"
+ *                 description: 콘서트 상태
  *           examples:
  *             fullExample:
  *               summary: 완전한 콘서트 등록 예시
@@ -30,15 +133,15 @@ import { ConcertService } from "../../services/concert/concertService";
  *                 uid: "concert_1703123456789_iu2024"
  *                 title: "아이유 콘서트 2024"
  *                 artist: ["아이유", "특별 게스트"]
- *                 location: [{"location": "올림픽공원 체조경기장"}]
+ *                 location: ["올림픽공원 체조경기장", "부산 BEXCO"]
  *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
  *                 price: [{"tier": "VIP", "amount": 200000}, {"tier": "R석", "amount": 150000}]
  *                 description: "아이유의 특별한 콘서트"
- *                 category: ["pop", "kpop"]
+ *                 category: ["pop", "k-pop"]
  *                 ticketLink: [{"platform": "인터파크", "url": "https://ticket.interpark.com/example"}]
  *                 ticketOpenDate: "2024-05-01T10:00:00+09:00"
  *                 posterImage: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
- *                 info: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info2.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info3.jpg"]
+ *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info2.jpg"]
  *                 tags: ["발라드", "K-POP", "솔로"]
  *                 status: "upcoming"
  *             minimalExample:
@@ -46,7 +149,7 @@ import { ConcertService } from "../../services/concert/concertService";
  *               value:
  *                 uid: "concert_1703123456789_minimal"
  *                 title: "최소 데이터 콘서트"
- *                 location: [{"location": "어딘가 공연장"}]
+ *                 location: ["어딘가 공연장"]
  *                 datetime: ["2024-07-01T20:00:00+09:00"]
  *             emptyArtistExample:
  *               summary: 빈 아티스트 배열 (허용됨)
@@ -54,9 +157,19 @@ import { ConcertService } from "../../services/concert/concertService";
  *                 uid: "concert_1703123456789_unknown"
  *                 title: "미정 콘서트"
  *                 artist: []
- *                 location: [{"location": "미정"}]
+ *                 location: ["미정"]
  *                 datetime: ["2024-12-31T19:00:00+09:00"]
- *                 info: ["https://your-bucket.s3.amazonaws.com/concerts/unknown/placeholder.jpg"]
+ *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/unknown/placeholder.jpg"]
+ *                 status: "upcoming"
+ *             multiLocationExample:
+ *               summary: 여러 장소 공연 예시
+ *               value:
+ *                 uid: "concert_1703123456789_multi"
+ *                 title: "전국투어 콘서트 2024"
+ *                 artist: ["아티스트"]
+ *                 location: ["서울 올림픽공원", "부산 BEXCO", "대구 엑스코"]
+ *                 datetime: ["2024-08-15T19:00:00+09:00", "2024-08-20T19:00:00+09:00", "2024-08-25T19:00:00+09:00"]
+ *                 category: ["pop", "live"]
  *                 status: "upcoming"
  *     responses:
  *       201:
@@ -64,32 +177,28 @@ import { ConcertService } from "../../services/concert/concertService";
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/SuccessResponse'
- *                 - type: object
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "콘서트 정보 업로드 성공"
+ *                 data:
+ *                   $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
  *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Concert'
- *             example:
- *               message: "콘서트 정보 업로드 성공"
- *               data:
- *                 _id: "507f1f77bcf86cd799439011"
- *                 uid: "concert_1703123456789_iu2024"
- *                 title: "아이유 콘서트 2024"
- *                 artist: ["아이유"]
- *                 location: [{"location": "올림픽공원 체조경기장"}]
- *                 datetime: ["2024-06-15T19:00:00+09:00"]
- *                 likesCount: 0
- *                 status: "upcoming"
- *                 createdAt: "2024-06-21T12:00:00Z"
- *                 updatedAt: "2024-06-21T12:00:00Z"
- *               imageInfo:
- *                 posterImageProvided: true
- *                 infoItemsCount: 3
- *               userInfo:
- *                 uploadedBy: "dev-user@localhost"
- *                 environment: "development"
- *               timestamp: "2024-06-21T12:00:00Z"
+ *                     imageInfo:
+ *                       type: object
+ *                       properties:
+ *                         posterImageProvided: { type: boolean }
+ *                         infoImagesCount: { type: integer }
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         uploadedBy: { type: string }
+ *                         username: { type: string }
+ *                         environment: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  *       400:
  *         description: 잘못된 요청 데이터
  *       401:
@@ -133,7 +242,9 @@ export const uploadConcert = async (
         metadata: {
           imageInfo: {
             posterImageProvided: !!result.data.posterImage,
-            infoItemsCount: result.data.info ? result.data.info.length : 0,
+            infoImagesCount: result.data.infoImages
+              ? result.data.infoImages.length
+              : 0, // info → infoImages
           },
           userInfo: {
             uploadedBy: userInfo.email,
@@ -153,7 +264,6 @@ export const uploadConcert = async (
     } else {
       res.status(result.statusCode || 400).json({
         message: result.error || "콘서트 업로드 실패",
-
         timestamp: new Date().toISOString(),
       });
     }
@@ -196,6 +306,10 @@ export const uploadConcert = async (
  *       ObjectId 또는 UID로 특정 콘서트의 상세 정보를 조회합니다.
  *       로그인한 사용자의 경우 좋아요 여부도 포함됩니다.
  *       인증 없이 접근 가능합니다.
+ *
+ *       **업데이트된 스키마**:
+ *       - location: 문자열 배열로 반환
+ *       - infoImages: 이미지 URL 배열로 반환
  *     tags: [Concerts - Basic]
  *     parameters:
  *       - in: path
@@ -211,12 +325,30 @@ export const uploadConcert = async (
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/SuccessResponse'
- *                 - type: object
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "콘서트 정보 조회 성공"
+ *                 data:
+ *                   $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
  *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Concert'
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         isAuthenticated: { type: boolean }
+ *                         userId: { type: string }
+ *                         likedByUser: { type: boolean }
+ *                     concertInfo:
+ *                       type: object
+ *                       properties:
+ *                         likesCount: { type: integer }
+ *                         status: { type: string }
+ *                         hasTicketInfo: { type: boolean }
+ *                         upcomingDates: { type: integer }
+ *                 timestamp: { type: string, format: date-time }
  *       404:
  *         description: 콘서트를 찾을 수 없음
  *       500:
@@ -257,7 +389,7 @@ export const getConcert = async (
                 userId: req.session?.user?.userId,
                 email: req.session?.user?.email,
                 username: req.session?.user?.username,
-                likedByUser: result.data.isLikedByUser || false,
+                likedByUser: result.data.isLiked || false,
               }
             : {
                 isAuthenticated: false,
@@ -306,6 +438,10 @@ export const getConcert = async (
  *       모든 콘서트 목록을 페이지네이션과 필터링을 통해 조회합니다.
  *       로그인한 사용자의 경우 좋아요 상태도 포함됩니다.
  *       인증 없이 접근 가능합니다.
+ *
+ *       **업데이트된 스키마**:
+ *       - location: 문자열 배열로 반환
+ *       - infoImages: 이미지 URL 배열로 반환
  *     tags: [Concerts - Search]
  *     parameters:
  *       - in: query
@@ -371,7 +507,27 @@ export const getConcert = async (
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ConcertListResponse'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     concerts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Concert'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         currentPage: { type: integer }
+ *                         totalPages: { type: integer }
+ *                         totalConcerts: { type: integer }
+ *                         limit: { type: integer }
+ *                 metadata:
+ *                   type: object
+ *                 timestamp: { type: string, format: date-time }
  *       500:
  *         description: 서버 에러
  */
@@ -476,7 +632,6 @@ export const getAllConcerts = async (
     });
   }
 };
-
 /**
  * @swagger
  * /concert/{id}:
@@ -486,6 +641,10 @@ export const getAllConcerts = async (
  *       ObjectId 또는 UID로 특정 콘서트의 정보를 수정합니다.
  *       인증이 필요합니다. 세션의 user.email, user.userId 정보를 사용하여 권한을 확인합니다.
  *       좋아요 관련 필드(likes, likesCount)와 UID는 수정할 수 없습니다.
+ *
+ *       **업데이트된 스키마**:
+ *       - location: 문자열 배열로 수정
+ *       - infoImages: 이미지 URL 배열로 수정
  *     tags: [Concerts - Basic]
  *     security:
  *       - sessionAuth: []
@@ -507,48 +666,190 @@ export const getAllConcerts = async (
  *               title:
  *                 type: string
  *                 example: "아이유 콘서트 2024 - 수정됨"
+ *                 maxLength: 200
+ *                 description: 콘서트 제목
  *               artist:
  *                 type: array
  *                 items:
  *                   type: string
  *                 example: ["아이유", "새로운 특별 게스트"]
- *               description:
- *                 type: string
- *                 example: "수정된 콘서트 설명"
- *               status:
- *                 type: string
- *                 enum: [upcoming, ongoing, completed, cancelled]
- *                 example: "upcoming"
+ *                 description: 아티스트 목록
  *               location:
  *                 type: array
  *                 items:
- *                   type: object
- *                   properties:
- *                     location:
- *                       type: string
+ *                   type: string
+ *                 description: 공연 장소 목록 (문자열 배열)
+ *                 example: ["서울 올림픽공원 체조경기장"]
+ *                 minItems: 1
  *               datetime:
  *                 type: array
  *                 items:
  *                   type: string
  *                   format: date-time
+ *                 description: 공연 일시 목록
+ *                 example: ["2024-06-15T19:00:00+09:00"]
+ *                 minItems: 1
+ *               description:
+ *                 type: string
+ *                 example: "수정된 콘서트 설명"
+ *                 maxLength: 2000
+ *                 description: 콘서트 상세 설명
+ *               status:
+ *                 type: string
+ *                 enum: [upcoming, ongoing, completed, cancelled]
+ *                 example: "upcoming"
+ *                 description: 콘서트 상태
  *               ticketOpenDate:
  *                 type: string
  *                 format: date-time
+ *                 example: "2024-05-15T10:00:00+09:00"
+ *                 description: 티켓 오픈 일시
  *               category:
  *                 type: array
  *                 items:
  *                   type: string
+ *                   enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "other"]
+ *                 example: ["k-pop", "pop"]
+ *                 description: 음악 카테고리
+ *               posterImage:
+ *                 type: string
+ *                 format: uri
+ *                 description: 포스터 이미지 URL
+ *                 example: "https://your-bucket.s3.amazonaws.com/concerts/updated/poster.jpg"
+ *               infoImages:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uri
+ *                 description: 정보 이미지 URL 배열 (기존 info에서 변경)
+ *                 example: ["https://your-bucket.s3.amazonaws.com/concerts/updated/info1.jpg"]
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 태그 목록
+ *                 example: ["수정된태그", "업데이트"]
+ *               price:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     tier: { type: string, example: "VIP" }
+ *                     amount: { type: number, example: 180000 }
+ *                 description: 가격 정보 (선택사항)
+ *               ticketLink:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     platform: { type: string, example: "티켓링크" }
+ *                     url: { type: string, example: "https://ticketlink.co.kr/example" }
+ *                 description: 티켓 예매 링크
+ *           examples:
+ *             titleUpdate:
+ *               summary: 제목만 수정
+ *               value:
+ *                 title: "아이유 콘서트 2024 - 추가 공연 확정"
+ *             statusUpdate:
+ *               summary: 상태 변경
+ *               value:
+ *                 status: "ongoing"
+ *             fullUpdate:
+ *               summary: 여러 필드 동시 수정
+ *               value:
+ *                 title: "아이유 콘서트 2024 - HEREH WORLD TOUR"
+ *                 location: ["서울 올림픽공원 체조경기장", "부산 BEXCO"]
+ *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
+ *                 description: "아이유의 월드투어 한국 공연"
+ *                 category: ["k-pop", "pop"]
+ *                 tags: ["월드투어", "스페셜 에디션"]
  *     responses:
  *       200:
  *         description: 콘서트 수정 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "콘서트 정보 수정 성공"
+ *                 data:
+ *                   $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         modifiedBy:
+ *                           type: string
+ *                           example: "admin@example.com"
+ *                         username:
+ *                           type: string
+ *                           example: "admin-user"
+ *                         modifiedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           example: "2024-07-02T10:30:00Z"
+ *                     changes:
+ *                       type: object
+ *                       properties:
+ *                         fieldsModified:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: ["title", "location", "datetime"]
+ *                         restrictedFieldsIgnored:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: []
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-07-02T10:30:00Z"
  *       400:
  *         description: 잘못된 요청 데이터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "수정할 데이터가 없습니다." }
+ *                 error: { type: string }
+ *                 requestedId: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  *       401:
  *         description: 인증이 필요합니다
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "인증이 필요합니다." }
+ *                 timestamp: { type: string, format: date-time }
  *       404:
  *         description: 콘서트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "콘서트를 찾을 수 없습니다." }
+ *                 requestedId: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  *       500:
  *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "콘서트 수정 실패" }
+ *                 error: { type: string }
+ *                 requestedId: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  */
 export const updateConcert = async (
   req: express.Request,
@@ -561,6 +862,7 @@ export const updateConcert = async (
     if (!id || id.trim().length === 0) {
       return res.status(400).json({
         message: "콘서트 ID가 필요합니다.",
+        requestedId: id,
         timestamp: new Date().toISOString(),
       });
     }
@@ -569,6 +871,7 @@ export const updateConcert = async (
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         message: "수정할 데이터가 없습니다.",
+        requestedId: id,
         timestamp: new Date().toISOString(),
       });
     }
@@ -581,10 +884,24 @@ export const updateConcert = async (
 
     if (providedRestrictedFields.length > 0) {
       console.log(
-        `⚠️ 수정 불가능한 필드 감지: ${providedRestrictedFields.join(", ")}`
+        `⚠️ 수정 불가능한 필드 감지: ${providedRestrictedFields.join(", ")} - 해당 필드들은 무시됩니다.`
       );
       // 경고만 하고 해당 필드들을 제거
       providedRestrictedFields.forEach((field) => delete req.body[field]);
+    }
+
+    // 수정 가능한 필드가 남아있는지 확인
+    const modifiableFields = Object.keys(req.body).filter(
+      (key) => !restrictedFields.includes(key)
+    );
+
+    if (modifiableFields.length === 0) {
+      return res.status(400).json({
+        message: "수정 가능한 필드가 없습니다.",
+        restrictedFieldsProvided: providedRestrictedFields,
+        requestedId: id,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // 미들웨어에서 이미 인증 확인됨
@@ -598,7 +915,7 @@ export const updateConcert = async (
       };
 
       console.log(
-        `✅ 콘서트 정보 수정 완료: ${id} - 수정 사용자: ${userInfo.username} (${userInfo.email})`
+        `✅ 콘서트 정보 수정 완료: ${id} - 수정 필드: [${modifiableFields.join(", ")}] - 수정 사용자: ${userInfo.username} (${userInfo.email})`
       );
 
       res.status(result.statusCode || 200).json({
@@ -611,10 +928,9 @@ export const updateConcert = async (
             modifiedAt: new Date().toISOString(),
           },
           changes: {
-            fieldsModified: Object.keys(req.body).filter(
-              (key) => !restrictedFields.includes(key)
-            ),
+            fieldsModified: modifiableFields,
             restrictedFieldsIgnored: providedRestrictedFields,
+            totalFieldsModified: modifiableFields.length,
           },
         },
         timestamp: new Date().toISOString(),
@@ -632,13 +948,24 @@ export const updateConcert = async (
     console.error("❌ 콘서트 수정 컨트롤러 에러:", error);
 
     // 구체적인 에러 타입에 따른 응답
-    if (error instanceof Error && error.message.includes("유효성 검사 실패")) {
-      return res.status(400).json({
-        message: "수정 데이터가 유효하지 않습니다.",
-        error: error.message,
-        requestedId: req.params.id,
-        timestamp: new Date().toISOString(),
-      });
+    if (error instanceof Error) {
+      if (error.message.includes("유효성 검사 실패")) {
+        return res.status(400).json({
+          message: "수정 데이터가 유효하지 않습니다.",
+          error: error.message,
+          requestedId: req.params.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (error.message.includes("찾을 수 없")) {
+        return res.status(404).json({
+          message: "콘서트를 찾을 수 없습니다.",
+          error: error.message,
+          requestedId: req.params.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     res.status(500).json({
@@ -649,7 +976,6 @@ export const updateConcert = async (
     });
   }
 };
-
 /**
  * @swagger
  * /concert/{id}:
@@ -659,6 +985,11 @@ export const updateConcert = async (
  *       ObjectId 또는 UID로 특정 콘서트를 삭제합니다.
  *       인증이 필요합니다. 세션의 user.email, user.userId 정보를 사용하여 권한을 확인합니다.
  *       삭제된 콘서트는 복구할 수 없으므로 주의가 필요합니다.
+ *
+ *       **주의사항**:
+ *       - 삭제된 데이터는 복구할 수 없습니다
+ *       - 좋아요 정보도 함께 삭제됩니다
+ *       - 관련된 이미지 파일은 별도로 정리해야 합니다
  *     tags: [Concerts - Basic]
  *     security:
  *       - sessionAuth: []
@@ -673,12 +1004,116 @@ export const updateConcert = async (
  *     responses:
  *       200:
  *         description: 콘서트 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "콘서트 삭제 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "507f1f77bcf86cd799439011"
+ *                     uid:
+ *                       type: string
+ *                       example: "concert_1703123456789_abc123"
+ *                     title:
+ *                       type: string
+ *                       example: "아이유 콘서트 2024"
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         deletedBy:
+ *                           type: string
+ *                           example: "admin@example.com"
+ *                           description: 삭제를 수행한 사용자 이메일
+ *                         username:
+ *                           type: string
+ *                           example: "admin-user"
+ *                           description: 삭제를 수행한 사용자명
+ *                         deletedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           example: "2024-07-02T10:30:00Z"
+ *                           description: 삭제된 시간
+ *                     deletedConcert:
+ *                       type: object
+ *                       properties:
+ *                         title:
+ *                           type: string
+ *                           example: "아이유 콘서트 2024"
+ *                           description: 삭제된 콘서트 제목
+ *                         uid:
+ *                           type: string
+ *                           example: "concert_1703123456789_abc123"
+ *                           description: 삭제된 콘서트 UID
+ *                         likesCount:
+ *                           type: integer
+ *                           example: 150
+ *                           description: 삭제 당시 좋아요 수
+ *                         status:
+ *                           type: string
+ *                           example: "upcoming"
+ *                           description: 삭제 당시 콘서트 상태
+ *                         locationCount:
+ *                           type: integer
+ *                           example: 2
+ *                           description: 공연 장소 개수
+ *                         datetimeCount:
+ *                           type: integer
+ *                           example: 3
+ *                           description: 공연 일정 개수
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-07-02T10:30:00Z"
+ *       400:
+ *         description: 잘못된 요청 데이터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "콘서트 ID가 필요합니다." }
+ *                 requestedId: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  *       401:
  *         description: 인증이 필요합니다
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "인증이 필요합니다." }
+ *                 timestamp: { type: string, format: date-time }
  *       404:
  *         description: 콘서트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "콘서트를 찾을 수 없습니다." }
+ *                 requestedId: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  *       500:
  *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "콘서트 삭제 실패" }
+ *                 error: { type: string }
+ *                 requestedId: { type: string }
+ *                 timestamp: { type: string, format: date-time }
  */
 export const deleteConcert = async (
   req: express.Request,
@@ -691,9 +1126,16 @@ export const deleteConcert = async (
     if (!id || id.trim().length === 0) {
       return res.status(400).json({
         message: "콘서트 ID가 필요합니다.",
+        requestedId: id,
         timestamp: new Date().toISOString(),
       });
     }
+
+    console.log(`🗑️ 콘서트 삭제 요청: ID=${id}`);
+
+    // 삭제 전에 콘서트 정보 조회 (삭제 로그용)
+    const existingConcert = await ConcertService.getConcert(id);
+    const concertInfo = existingConcert.success ? existingConcert.data : null;
 
     // 미들웨어에서 이미 인증 확인됨
     const result = await ConcertService.deleteConcert(id);
@@ -706,8 +1148,15 @@ export const deleteConcert = async (
       };
 
       console.log(
-        `✅ 콘서트 삭제 완료: ${id} (제목: ${result.data?.title || "제목 없음"}) - 삭제 사용자: ${userInfo.username} (${userInfo.email})`
+        `✅ 콘서트 삭제 완료: ${id} (제목: ${result.data?.title || concertInfo?.title || "제목 없음"}) - 삭제 사용자: ${userInfo.username} (${userInfo.email})`
       );
+
+      // 삭제된 콘서트의 상세 정보 로깅
+      if (concertInfo) {
+        console.log(
+          `📊 삭제된 콘서트 정보: 좋아요 ${concertInfo.likesCount || 0}개, 상태: ${concertInfo.status || "unknown"}`
+        );
+      }
 
       res.status(result.statusCode || 200).json({
         message: "콘서트 삭제 성공",
@@ -719,10 +1168,26 @@ export const deleteConcert = async (
             deletedAt: new Date().toISOString(),
           },
           deletedConcert: {
-            title: result.data?.title || "제목 없음",
+            title: result.data?.title || concertInfo?.title || "제목 없음",
             uid: result.data?.uid || id,
-            likesCount: result.data?.likesCount || 0,
-            status: result.data?.status || "unknown",
+            likesCount: result.data?.likesCount || concertInfo?.likesCount || 0,
+            status: result.data?.status || concertInfo?.status || "unknown",
+            locationCount: Array.isArray(concertInfo?.location)
+              ? concertInfo.location.length
+              : 0,
+            datetimeCount: Array.isArray(concertInfo?.datetime)
+              ? concertInfo.datetime.length
+              : 0,
+            hadPosterImage: !!(
+              result.data?.posterImage || concertInfo?.posterImage
+            ),
+            infoImagesCount: Array.isArray(concertInfo?.infoImages)
+              ? concertInfo.infoImages.length
+              : 0,
+          },
+          warning: {
+            message: "삭제된 데이터는 복구할 수 없습니다.",
+            deletedAt: new Date().toISOString(),
           },
         },
         timestamp: new Date().toISOString(),
@@ -730,6 +1195,9 @@ export const deleteConcert = async (
     } else {
       const statusCode =
         result.statusCode || (result.error?.includes("찾을 수 없") ? 404 : 500);
+
+      console.log(`❌ 콘서트 삭제 실패: ${id} - ${result.error}`);
+
       res.status(statusCode).json({
         message: result.error || "콘서트 삭제 실패",
         requestedId: id,
@@ -738,415 +1206,32 @@ export const deleteConcert = async (
     }
   } catch (error) {
     console.error("❌ 콘서트 삭제 컨트롤러 에러:", error);
+
+    // 구체적인 에러 타입에 따른 응답
+    if (error instanceof Error) {
+      if (error.message.includes("찾을 수 없")) {
+        return res.status(404).json({
+          message: "콘서트를 찾을 수 없습니다.",
+          error: error.message,
+          requestedId: req.params.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (error.message.includes("권한")) {
+        return res.status(403).json({
+          message: "콘서트 삭제 권한이 없습니다.",
+          error: error.message,
+          requestedId: req.params.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
     res.status(500).json({
       message: "콘서트 삭제 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
       requestedId: req.params.id,
-      timestamp: new Date().toISOString(),
-    });
-  }
-};
-
-/**
- * @swagger
- * /concert/{id}/like:
- *   post:
- *     summary: 콘서트 좋아요 추가
- *     description: |
- *       특정 콘서트에 좋아요를 추가합니다.
- *       인증이 필요하며, 이미 좋아요한 콘서트인 경우 에러를 반환합니다.
- *     tags: [Concerts - Likes]
- *     security:
- *       - sessionAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: 콘서트 ObjectId 또는 UID
- *         example: concert_1703123456789_abc123
- *     responses:
- *       200:
- *         description: 좋아요 추가 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 data:
- *                   $ref: '#/components/schemas/Concert'
- *                 metadata:
- *                   type: object
- *                   properties:
- *                     userInfo:
- *                       type: object
- *                     likeInfo:
- *                       type: object
- *       400:
- *         description: 이미 좋아요한 콘서트
- *       401:
- *         description: 인증이 필요합니다
- *       404:
- *         description: 콘서트를 찾을 수 없음
- *       500:
- *         description: 서버 에러
- */
-export const likeConcert = async (
-  req: express.Request,
-  res: express.Response
-) => {
-  try {
-    const { id } = req.params;
-
-    // ID 유효성 검사
-    if (!id || id.trim().length === 0) {
-      return res.status(400).json({
-        message: "콘서트 ID가 필요합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 사용자 인증 확인 (미들웨어에서 이미 처리되었지만 재확인)
-    const userId = req.session?.user?.userId;
-    if (!userId) {
-      return res.status(401).json({
-        message: "로그인이 필요합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 좋아요 기능이 아직 서비스에 구현되지 않은 경우 임시 응답
-    // const result = await ConcertService.likeConcert(id, userId);
-
-    // 임시로 에러 응답 반환
-    res.status(501).json({
-      message: "좋아요 기능이 아직 구현되지 않았습니다.",
-      requestedId: id,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("❌ 좋아요 추가 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "좋아요 추가 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
-      requestedId: req.params.id,
-      timestamp: new Date().toISOString(),
-    });
-  }
-};
-
-/**
- * @swagger
- * /concert/{id}/unlike:
- *   delete:
- *     summary: 콘서트 좋아요 취소
- *     description: |
- *       특정 콘서트의 좋아요를 취소합니다.
- *       인증이 필요합니다.
- *     tags: [Concerts - Likes]
- *     security:
- *       - sessionAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: 콘서트 ObjectId 또는 UID
- *         example: concert_1703123456789_abc123
- *     responses:
- *       200:
- *         description: 좋아요 취소 성공
- *       401:
- *         description: 인증이 필요합니다
- *       404:
- *         description: 콘서트를 찾을 수 없음
- *       500:
- *         description: 서버 에러
- */
-export const unlikeConcert = async (
-  req: express.Request,
-  res: express.Response
-) => {
-  try {
-    const { id } = req.params;
-
-    // ID 유효성 검사
-    if (!id || id.trim().length === 0) {
-      return res.status(400).json({
-        message: "콘서트 ID가 필요합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 사용자 인증 확인
-    const userId = req.session?.user?.userId;
-    if (!userId) {
-      return res.status(401).json({
-        message: "로그인이 필요합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 좋아요 취소 기능이 아직 서비스에 구현되지 않은 경우 임시 응답
-    // const result = await ConcertService.unlikeConcert(id, userId);
-
-    // 임시로 에러 응답 반환
-    res.status(501).json({
-      message: "좋아요 취소 기능이 아직 구현되지 않았습니다.",
-      requestedId: id,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("❌ 좋아요 취소 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "좋아요 취소 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
-      requestedId: req.params.id,
-      timestamp: new Date().toISOString(),
-    });
-  }
-};
-
-/**
- * @swagger
- * /concert/liked:
- *   get:
- *     summary: 사용자가 좋아요한 콘서트 목록 조회
- *     description: |
- *       현재 로그인한 사용자가 좋아요한 콘서트 목록을 조회합니다.
- *       인증이 필요합니다.
- *     tags: [Concerts - Likes]
- *     security:
- *       - sessionAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: 페이지 번호
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 20
- *         description: 페이지당 항목 수
- *     responses:
- *       200:
- *         description: 좋아요한 콘서트 목록 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ConcertListResponse'
- *       401:
- *         description: 인증이 필요합니다
- *       500:
- *         description: 서버 에러
- */
-export const getLikedConcerts = async (
-  req: express.Request,
-  res: express.Response
-) => {
-  try {
-    // 사용자 인증 확인
-    const userId = req.session?.user?.userId;
-    if (!userId) {
-      return res.status(401).json({
-        message: "로그인이 필요합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 쿼리 파라미터 유효성 검사
-    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-    const limit = Math.min(
-      Math.max(parseInt(req.query.limit as string) || 20, 1),
-      100
-    );
-
-    // 좋아요한 콘서트 조회 기능이 아직 서비스에 구현되지 않은 경우 임시 응답
-    // const result = await ConcertService.getLikedConcerts(userId, { page, limit });
-
-    // 임시로 에러 응답 반환
-    res.status(501).json({
-      message: "좋아요한 콘서트 조회 기능이 아직 구현되지 않았습니다.",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("❌ 좋아요한 콘서트 목록 조회 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "좋아요한 콘서트 목록 조회 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
-      timestamp: new Date().toISOString(),
-    });
-  }
-};
-
-/**
- * @swagger
- * /concert/search:
- *   get:
- *     summary: 콘서트 텍스트 검색
- *     description: |
- *       제목, 아티스트, 설명 등에서 텍스트 검색을 수행합니다.
- *       MongoDB의 텍스트 인덱스를 활용한 전체 텍스트 검색입니다.
- *       인증 없이 접근 가능합니다.
- *     tags: [Concerts - Search]
- *     parameters:
- *       - in: query
- *         name: q
- *         required: true
- *         schema:
- *           type: string
- *         description: 검색 키워드
- *         example: "아이유 콘서트"
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: 페이지 번호
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 20
- *         description: 페이지당 항목 수
- *     responses:
- *       200:
- *         description: 검색 성공
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ConcertListResponse'
- *       400:
- *         description: 검색 키워드가 필요합니다
- *       500:
- *         description: 서버 에러
- */
-export const searchConcerts = async (
-  req: express.Request,
-  res: express.Response
-) => {
-  try {
-    const searchQuery = req.query.q as string;
-
-    // 검색 키워드 유효성 검사
-    if (!searchQuery || searchQuery.trim().length === 0) {
-      return res.status(400).json({
-        message: "검색 키워드가 필요합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    if (searchQuery.trim().length < 2) {
-      return res.status(400).json({
-        message: "검색 키워드는 최소 2자 이상이어야 합니다.",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 쿼리 파라미터 유효성 검사
-    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-    const limit = Math.min(
-      Math.max(parseInt(req.query.limit as string) || 20, 1),
-      100
-    );
-
-    // 사용자 ID 가져오기 (로그인된 경우)
-    const userId = req.session?.user?.userId;
-
-    console.log(
-      `🔍 콘서트 텍스트 검색: "${searchQuery}" - 사용자: ${userId ? "로그인됨" : "비로그인"}`
-    );
-
-    // 검색 기능이 아직 서비스에 구현되지 않은 경우 임시 응답
-    // const result = await ConcertService.searchConcerts(searchQuery, { page, limit }, userId);
-
-    // 임시로 에러 응답 반환
-    res.status(501).json({
-      message: "콘서트 검색 기능이 아직 구현되지 않았습니다.",
-      searchQuery,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("❌ 콘서트 검색 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "콘서트 검색 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
-      searchQuery: req.query.q,
-      timestamp: new Date().toISOString(),
-    });
-  }
-};
-
-/**
- * @swagger
- * /concert/stats:
- *   get:
- *     summary: 콘서트 통계 정보 조회
- *     description: |
- *       전체 콘서트의 상태별 통계와 좋아요 통계 정보를 조회합니다.
- *       인증 없이 접근 가능합니다.
- *     tags: [Concerts - Analytics]
- *     responses:
- *       200:
- *         description: 통계 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                     upcoming:
- *                       type: integer
- *                     ongoing:
- *                       type: integer
- *                     completed:
- *                       type: integer
- *                     cancelled:
- *                       type: integer
- *                     totalLikes:
- *                       type: integer
- *                     averageLikes:
- *                       type: number
- *       500:
- *         description: 서버 에러
- */
-export const getConcertStats = async (
-  req: express.Request,
-  res: express.Response
-) => {
-  try {
-    // 통계 기능이 아직 서비스에 구현되지 않은 경우 임시 응답
-    // const result = await ConcertService.getConcertStats();
-
-    // 임시로 에러 응답 반환
-    res.status(501).json({
-      message: "콘서트 통계 조회 기능이 아직 구현되지 않았습니다.",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("❌ 콘서트 통계 조회 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "콘서트 통계 조회 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
       timestamp: new Date().toISOString(),
     });
   }
