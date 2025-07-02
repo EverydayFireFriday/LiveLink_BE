@@ -1,9 +1,6 @@
 import { ObjectId, Collection, Db } from "mongodb";
 
-// Location 인터페이스 - 간소화
-export interface ILocation {
-  location: string;
-}
+// Location 인터페이스 제거 - 이제 string 배열 사용
 
 // Price 인터페이스
 export interface IPrice {
@@ -29,7 +26,7 @@ export interface IConcert {
   uid: string; // 사용자 지정 ID (timestamp 포함)
   title: string;
   artist: string[]; // 빈 배열이면 400 -> 200으로 변경
-  location: ILocation[];
+  location: string[]; // ILocation[] -> string[]로 변경
   datetime: Date[];
   price?: IPrice[];
   description?: string;
@@ -37,7 +34,7 @@ export interface IConcert {
   ticketLink?: ITicketLink[];
   ticketOpenDate?: Date; // 티켓 오픈 날짜/시간 추가
   posterImage?: string; // S3 URL
-  info?: string[]; // galleryImages에서 info로 이름 변경
+  infoImages?: string[]; // info에서 infoImages로 이름 변경
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
   tags?: string[];
   likes?: ILike[]; // 좋아요 배열
@@ -66,11 +63,11 @@ export class ConcertModel {
       await this.collection.createIndex({ uid: 1 }, { unique: true });
       console.log("✅ uid 인덱스 생성");
 
-      // 2. 텍스트 검색 인덱스 (검색 기능용) - location 필드명 수정
+      // 2. 텍스트 검색 인덱스 (검색 기능용) - location이 이제 string 배열
       await this.collection.createIndex({
         title: "text",
         artist: "text",
-        "location.location": "text",
+        location: "text", // location 필드가 string 배열이므로 직접 참조
         description: "text",
       });
       console.log("✅ 텍스트 검색 인덱스 생성");
@@ -168,16 +165,16 @@ export class ConcertModel {
       errors.push("description은 2000자를 초과할 수 없습니다.");
     }
 
-    // location 필드 검증 - 간소화된 구조 (제공된 경우에만)
+    // location 필드 검증 - string 배열로 변경
     if (concertData.location && Array.isArray(concertData.location)) {
       concertData.location.forEach((loc, index) => {
-        if (!loc.location || loc.location.trim().length === 0) {
-          errors.push(`location[${index}].location은 필수입니다.`);
-        }
-        if (loc.location && loc.location.length > 150) {
+        if (typeof loc !== "string" || loc.trim().length === 0) {
           errors.push(
-            `location[${index}].location은 150자를 초과할 수 없습니다.`
+            `location[${index}]은 비어있지 않은 문자열이어야 합니다.`
           );
+        }
+        if (loc && loc.length > 150) {
+          errors.push(`location[${index}]은 150자를 초과할 수 없습니다.`);
         }
       });
     }
@@ -294,14 +291,16 @@ export class ConcertModel {
       errors.push("posterImage는 유효한 이미지 URL이어야 합니다.");
     }
 
-    // info 필드 검증 (galleryImages에서 변경됨) (제공된 경우에만)
-    if (concertData.info && Array.isArray(concertData.info)) {
-      concertData.info.forEach((infoItem, index) => {
-        if (typeof infoItem !== "string" || infoItem.trim().length === 0) {
-          errors.push(`info[${index}]는 비어있지 않은 문자열이어야 합니다.`);
+    // infoImages 필드 검증 (info에서 infoImages로 변경됨) (제공된 경우에만)
+    if (concertData.infoImages && Array.isArray(concertData.infoImages)) {
+      concertData.infoImages.forEach((infoImage, index) => {
+        if (typeof infoImage !== "string" || infoImage.trim().length === 0) {
+          errors.push(
+            `infoImages[${index}]는 비어있지 않은 문자열이어야 합니다.`
+          );
         }
-        if (infoItem && infoItem.length > 500) {
-          errors.push(`info[${index}]는 500자를 초과할 수 없습니다.`);
+        if (infoImage && !imageUrlPattern.test(infoImage)) {
+          errors.push(`infoImages[${index}]는 유효한 이미지 URL이어야 합니다.`);
         }
       });
     }
@@ -952,11 +951,11 @@ export class ConcertModel {
       .toArray();
   }
 
-  // 도시별 콘서트 조회 - location 필드명 수정
+  // 도시별 콘서트 조회 - location이 이제 string 배열
   async findByLocation(location: string): Promise<IConcert[]> {
     return await this.collection
       .find({
-        "location.location": new RegExp(location, "i"),
+        location: new RegExp(location, "i"),
       })
       .sort({ datetime: 1 })
       .toArray();

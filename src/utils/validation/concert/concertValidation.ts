@@ -112,25 +112,13 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     };
   }
 
-  // location 필드 내용 검증
+  // location 필드 내용 검증 - string 배열로 변경
   for (let i = 0; i < concertData.location.length; i++) {
     const loc = concertData.location[i];
-    if (!loc || typeof loc !== "object") {
+    if (typeof loc !== "string" || loc.trim().length === 0) {
       return {
         isValid: false,
-        message: `location[${i}]는 객체여야 합니다.`,
-        field: "location",
-      };
-    }
-
-    if (
-      !loc.location ||
-      typeof loc.location !== "string" ||
-      loc.location.trim().length === 0
-    ) {
-      return {
-        isValid: false,
-        message: `location[${i}].location은 비어있지 않은 문자열이어야 합니다.`,
+        message: `location[${i}]는 비어있지 않은 문자열이어야 합니다.`,
         field: "location",
       };
     }
@@ -269,23 +257,32 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     }
   }
 
-  // info 배열 검증 (선택적 필드)
-  if (concertData.info !== undefined) {
-    if (!Array.isArray(concertData.info)) {
+  // infoImages 배열 검증 (info에서 infoImages로 변경됨)
+  if (concertData.infoImages !== undefined) {
+    if (!Array.isArray(concertData.infoImages)) {
       return {
         isValid: false,
-        message: "info는 배열이어야 합니다.",
-        field: "info",
+        message: "infoImages는 배열이어야 합니다.",
+        field: "infoImages",
       };
     }
 
-    for (let i = 0; i < concertData.info.length; i++) {
-      const infoItem = concertData.info[i];
-      if (typeof infoItem !== "string" || infoItem.trim().length === 0) {
+    for (let i = 0; i < concertData.infoImages.length; i++) {
+      const infoImage = concertData.infoImages[i];
+      if (typeof infoImage !== "string" || infoImage.trim().length === 0) {
         return {
           isValid: false,
-          message: `info[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "info",
+          message: `infoImages[${i}]는 비어있지 않은 문자열이어야 합니다.`,
+          field: "infoImages",
+        };
+      }
+
+      // 이미지 URL 유효성 검증
+      if (!isValidImageUrl(infoImage)) {
+        return {
+          isValid: false,
+          message: `infoImages[${i}]는 유효한 이미지 URL이어야 합니다.`,
+          field: "infoImages",
         };
       }
     }
@@ -377,7 +374,7 @@ export const validateConcertUpdateData = (
     "price",
     "ticketOpenDate",
     "posterImage",
-    "info",
+    "infoImages", // info -> infoImages로 변경
     "tags",
     "datetime",
     "artist",
@@ -474,7 +471,7 @@ export const validateConcertUpdateData = (
     }
   }
 
-  // location 배열 검증
+  // location 배열 검증 - string 배열로 변경
   if (updateData.location !== undefined) {
     if (!Array.isArray(updateData.location)) {
       return {
@@ -494,22 +491,10 @@ export const validateConcertUpdateData = (
 
     for (let i = 0; i < updateData.location.length; i++) {
       const loc = updateData.location[i];
-      if (!loc || typeof loc !== "object") {
+      if (typeof loc !== "string" || loc.trim().length === 0) {
         return {
           isValid: false,
-          message: `location[${i}]는 객체여야 합니다.`,
-          field: "location",
-        };
-      }
-
-      if (
-        !loc.location ||
-        typeof loc.location !== "string" ||
-        loc.location.trim().length === 0
-      ) {
-        return {
-          isValid: false,
-          message: `location[${i}].location은 비어있지 않은 문자열이어야 합니다.`,
+          message: `location[${i}]는 비어있지 않은 문자열이어야 합니다.`,
           field: "location",
         };
       }
@@ -719,23 +704,32 @@ export const validateConcertUpdateData = (
     }
   }
 
-  // info 배열 검증
-  if (updateData.info !== undefined) {
-    if (!Array.isArray(updateData.info)) {
+  // infoImages 배열 검증 (info에서 infoImages로 변경됨)
+  if (updateData.infoImages !== undefined) {
+    if (!Array.isArray(updateData.infoImages)) {
       return {
         isValid: false,
-        message: "info는 배열이어야 합니다.",
-        field: "info",
+        message: "infoImages는 배열이어야 합니다.",
+        field: "infoImages",
       };
     }
 
-    for (let i = 0; i < updateData.info.length; i++) {
-      const infoItem = updateData.info[i];
-      if (typeof infoItem !== "string" || infoItem.trim().length === 0) {
+    for (let i = 0; i < updateData.infoImages.length; i++) {
+      const infoImage = updateData.infoImages[i];
+      if (typeof infoImage !== "string" || infoImage.trim().length === 0) {
         return {
           isValid: false,
-          message: `info[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "info",
+          message: `infoImages[${i}]는 비어있지 않은 문자열이어야 합니다.`,
+          field: "infoImages",
+        };
+      }
+
+      // 이미지 URL 유효성 검증
+      if (!isValidImageUrl(infoImage)) {
+        return {
+          isValid: false,
+          message: `infoImages[${i}]는 유효한 이미지 URL이어야 합니다.`,
+          field: "infoImages",
         };
       }
     }
@@ -961,7 +955,7 @@ export const normalizeConcertData = (rawData: any): any => {
         ? [rawData.artist.trim()]
         : [],
     location: Array.isArray(rawData.location)
-      ? rawData.location
+      ? rawData.location.filter((l: string) => l && l.trim().length > 0) // string 배열로 변경
       : [rawData.location],
     datetime: Array.isArray(rawData.datetime)
       ? rawData.datetime
@@ -986,8 +980,8 @@ export const normalizeConcertData = (rawData: any): any => {
       ? new Date(rawData.ticketOpenDate)
       : undefined,
     posterImage: rawData.posterImage?.trim() || "",
-    info: Array.isArray(rawData.info)
-      ? rawData.info.filter((i: string) => i && i.trim().length > 0)
+    infoImages: Array.isArray(rawData.infoImages) // info -> infoImages로 변경
+      ? rawData.infoImages.filter((i: string) => i && i.trim().length > 0)
       : [],
     tags: Array.isArray(rawData.tags)
       ? rawData.tags.filter((t: string) => t && t.trim().length > 0)
