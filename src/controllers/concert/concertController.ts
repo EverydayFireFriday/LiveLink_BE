@@ -80,9 +80,9 @@ import { ConcertService } from "../../services/concert/concertService";
  *                 type: array
  *                 items:
  *                   type: string
- *                   enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "other"]
+ *                   enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "hiphop", "electronic", "folk", "r&b", "country", "musical", "opera", "ballad", "dance", "trot", "rap", "hip-hop", "edm", "house", "techno", "dubstep", "reggae", "blues", "soul", "funk", "punk", "metal", "alternative", "grunge", "fusion", "world", "latin", "gospel", "new-age", "ambient", "instrumental", "acoustic", "live", "concert", "festival", "other"]
  *                 description: 음악 카테고리
- *                 example: ["pop", "kpop"]
+ *                 example: ["pop", "k-pop"]
  *               ticketLink:
  *                 type: array
  *                 items:
@@ -126,7 +126,7 @@ import { ConcertService } from "../../services/concert/concertService";
  *                 uid: "concert_1703123456789_iu2024"
  *                 title: "아이유 콘서트 2024"
  *                 artist: ["아이유", "특별 게스트"]
- *                 location: ["올림픽공원 체조경기장"]
+ *                 location: ["올림픽공원 체조경기장", "부산 BEXCO"]
  *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
  *                 price: [{"tier": "VIP", "amount": 200000}, {"tier": "R석", "amount": 150000}]
  *                 description: "아이유의 특별한 콘서트"
@@ -134,7 +134,7 @@ import { ConcertService } from "../../services/concert/concertService";
  *                 ticketLink: [{"platform": "인터파크", "url": "https://ticket.interpark.com/example"}]
  *                 ticketOpenDate: "2024-05-01T10:00:00+09:00"
  *                 posterImage: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
- *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg"]
+ *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info2.jpg"]
  *                 tags: ["발라드", "K-POP", "솔로"]
  *                 status: "upcoming"
  *             minimalExample:
@@ -153,6 +153,16 @@ import { ConcertService } from "../../services/concert/concertService";
  *                 location: ["미정"]
  *                 datetime: ["2024-12-31T19:00:00+09:00"]
  *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/unknown/placeholder.jpg"]
+ *                 status: "upcoming"
+ *             multiLocationExample:
+ *               summary: 여러 장소 공연 예시
+ *               value:
+ *                 uid: "concert_1703123456789_multi"
+ *                 title: "전국투어 콘서트 2024"
+ *                 artist: ["아티스트"]
+ *                 location: ["서울 올림픽공원", "부산 BEXCO", "대구 엑스코"]
+ *                 datetime: ["2024-08-15T19:00:00+09:00", "2024-08-20T19:00:00+09:00", "2024-08-25T19:00:00+09:00"]
+ *                 category: ["pop", "live"]
  *                 status: "upcoming"
  *     responses:
  *       201:
