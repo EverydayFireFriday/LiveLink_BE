@@ -1,6 +1,7 @@
 // controllers/article/articleCommentController.ts
 import express from "express";
 import { getArticleCommentService } from "../../services/article";
+import { safeParseInt } from "../../utils/numberUtils";
 
 export class ArticleCommentController {
   private articleCommentService = getArticleCommentService();
@@ -70,7 +71,7 @@ export class ArticleCommentController {
       const { author_id, content, parent_id } = req.body;
 
       const comment = await this.articleCommentService.createComment({
-        article_id: parseInt(articleId),
+        article_id: articleId,
         author_id,
         content,
         parent_id,
@@ -157,8 +158,8 @@ export class ArticleCommentController {
   ) => {
     try {
       const { articleId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
 
       const result = await this.articleCommentService.getCommentsByArticle(
         articleId,
@@ -526,8 +527,8 @@ export class ArticleCommentController {
   getRepliesByComment = async (req: express.Request, res: express.Response) => {
     try {
       const { commentId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
 
       const result = await this.articleCommentService.getRepliesByComment(
         commentId,
@@ -614,8 +615,8 @@ export class ArticleCommentController {
   getCommentsByAuthor = async (req: express.Request, res: express.Response) => {
     try {
       const { authorId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
 
       const result = await this.articleCommentService.getCommentsByAuthor(
         authorId,

@@ -1,6 +1,7 @@
 // controllers/article/articleLikeController.ts
 import express from "express";
 import { getArticleLikeService } from "../../services/article";
+import { safeParseInt } from "../../utils/numberUtils";
 
 export class ArticleLikeController {
   private articleLikeService = getArticleLikeService();
@@ -64,7 +65,7 @@ export class ArticleLikeController {
       const { user_id } = req.body;
 
       const result = await this.articleLikeService.likeArticle({
-        article_id: parseInt(articleId),
+        article_id: articleId,
         user_id,
       });
 
@@ -146,7 +147,7 @@ export class ArticleLikeController {
       const { user_id } = req.body;
 
       const result = await this.articleLikeService.unlikeArticle({
-        article_id: parseInt(articleId),
+        article_id: articleId,
         user_id,
       });
 
@@ -355,8 +356,8 @@ export class ArticleLikeController {
   getArticleLikers = async (req: express.Request, res: express.Response) => {
     try {
       const { articleId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
 
       const result = await this.articleLikeService.getArticleLikers(articleId, {
         page,
@@ -441,8 +442,8 @@ export class ArticleLikeController {
   ) => {
     try {
       const { userId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
 
       const result = await this.articleLikeService.getUserLikedArticles(
         userId,

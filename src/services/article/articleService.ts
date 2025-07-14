@@ -77,7 +77,7 @@ export class ArticleService {
     id: string,
     options: { withTags?: boolean; withStats?: boolean } = {}
   ): Promise<any> {
-    articleIdSchema.parse({ id: parseInt(id) });
+    articleIdSchema.parse({ id });
 
     const article = await this.articleModel.findById(id);
     if (!article) {
@@ -173,7 +173,7 @@ export class ArticleService {
 
   // 게시글 업데이트
   async updateArticle(id: string, data: any): Promise<IArticle> {
-    articleIdSchema.parse({ id: parseInt(id) });
+    articleIdSchema.parse({ id });
     const validatedData = updateArticleSchema.parse(data);
 
     // 게시글 존재 확인
@@ -229,7 +229,7 @@ export class ArticleService {
 
   // 게시글 삭제
   async deleteArticle(id: string): Promise<void> {
-    articleIdSchema.parse({ id: parseInt(id) });
+    articleIdSchema.parse({ id });
 
     const article = await this.articleModel.findById(id);
     if (!article) {
@@ -249,7 +249,7 @@ export class ArticleService {
 
   // 조회수 증가
   async incrementViews(id: string): Promise<void> {
-    incrementViewSchema.parse({ article_id: parseInt(id) });
+    incrementViewSchema.parse({ article_id: id });
     await this.articleModel.incrementViews(id);
   }
 
