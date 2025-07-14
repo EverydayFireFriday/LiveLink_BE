@@ -1,6 +1,7 @@
 // controllers/article/articleBookmarkController.ts
 import express from "express";
 import { getArticleBookmarkService } from "../../services/article";
+import { safeParseInt } from "../../utils/numberUtils";
 
 export class ArticleBookmarkController {
   private articleBookmarkService = getArticleBookmarkService();
@@ -61,7 +62,7 @@ export class ArticleBookmarkController {
       const { user_id } = req.body;
 
       const bookmark = await this.articleBookmarkService.bookmarkArticle({
-        article_id: parseInt(articleId),
+        article_id: articleId,
         user_id,
       });
 
@@ -139,9 +140,9 @@ export class ArticleBookmarkController {
       const { user_id } = req.body;
 
       const result = await this.articleBookmarkService.unbookmarkArticle({
-        article_id: parseInt(articleId),
-        user_id,
-      });
+      article_id: articleId,
+      user_id: req.session.user!.userId,
+    });
 
       res.status(200).json({
         message: "북마크가 삭제되었습니다.",
@@ -388,8 +389,8 @@ export class ArticleBookmarkController {
   getUserBookmarks = async (req: express.Request, res: express.Response) => {
     try {
       const { userId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
 
       const result = await this.articleBookmarkService.getUserBookmarks(
         userId,
@@ -543,9 +544,9 @@ export class ArticleBookmarkController {
     res: express.Response
   ) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const days = parseInt(req.query.days as string) || 30;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
+      const days = safeParseInt(req.query.days, 30);
 
       const result = await this.articleBookmarkService.getPopularBookmarkedArticles({
           page,

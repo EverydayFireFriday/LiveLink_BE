@@ -1,5 +1,6 @@
 import express from "express";
 import { UserService } from "../../services/auth/userService";
+import { safeParseInt } from "../../utils/numberUtils";
 
 export class AdminController {
   private userService: UserService;
@@ -71,8 +72,8 @@ export class AdminController {
    */
   getAllUsers = async (req: express.Request, res: express.Response) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
-      const skip = parseInt(req.query.skip as string) || 0;
+      const limit = safeParseInt(req.query.limit, 50);
+      const skip = safeParseInt(req.query.skip, 0);
       const search = req.query.search as string;
 
       const users = await this.userService.getAllUsers(limit, skip);

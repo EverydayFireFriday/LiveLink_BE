@@ -1,10 +1,10 @@
 // types/article/articleTypes.ts
 export interface Article {
-  id: number;
+  id: string;
   title: string;
   content_url: string;
-  author_id: number;
-  category_id: number | null;
+  author_id: string;
+  category_id: string | null;
   is_published: boolean;
   published_at: Date | null;
   created_at: Date;
@@ -15,16 +15,16 @@ export interface Article {
 
 export interface ArticleWithRelations extends Article {
   author: {
-    id: number;
+    id: string;
     username: string;
     email: string;
   };
   category: {
-    id: number;
+    id: string;
     name: string;
   } | null;
   tags: {
-    id: number;
+    id: string;
     name: string;
   }[];
 }
@@ -32,9 +32,9 @@ export interface ArticleWithRelations extends Article {
 export interface CreateArticleInput {
   title: string;
   content_url: string;
-  author_id: number;
-  category_id?: number;
-  tag_ids?: number[];
+  author_id: string;
+  category_id?: string;
+  tag_ids?: string[];
   is_published?: boolean;
   published_at?: Date;
 }
@@ -42,8 +42,8 @@ export interface CreateArticleInput {
 export interface UpdateArticleInput {
   title?: string;
   content_url?: string;
-  category_id?: number;
-  tag_ids?: number[];
+  category_id?: string;
+  tag_ids?: string[];
   is_published?: boolean;
   published_at?: Date;
 }
