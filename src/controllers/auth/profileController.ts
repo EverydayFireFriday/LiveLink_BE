@@ -1,6 +1,7 @@
 import express from "express";
 import { UserService } from "../../services/auth/userService";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
+import { safeParseInt } from "../../utils/numberUtils";
 
 export class ProfileController {
   private userService: UserService;
@@ -461,8 +462,8 @@ export class ProfileController {
    */
   getAllUsers = async (req: express.Request, res: express.Response) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
-      const skip = parseInt(req.query.skip as string) || 0;
+      const limit = safeParseInt(req.query.limit, 50);
+      const skip = safeParseInt(req.query.skip, 0);
 
       const users = await this.userService.getAllUsers(limit, skip);
       const totalUsers = await this.userService.countUsers();

@@ -1,6 +1,7 @@
 // controllers/article/articleController.ts
 import express from "express";
 import { getArticleService } from "../../services/article";
+import { safeParseInt } from "../../utils/numberUtils";
 
 export class ArticleController {
   private articleService = getArticleService();
@@ -225,8 +226,8 @@ export class ArticleController {
    */
   getPublishedArticles = async (req: express.Request, res: express.Response) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
       const category_id = req.query.category_id as string;
       const tag_id = req.query.tag_id as string;
       const search = req.query.search as string;
@@ -456,8 +457,8 @@ export class ArticleController {
   getArticlesByAuthor = async (req: express.Request, res: express.Response) => {
     try {
       const { authorId } = req.params;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
       const includeUnpublished = req.query.includeUnpublished === 'true';
 
       const result = await this.articleService.getArticlesByAuthor(authorId, {
@@ -540,9 +541,9 @@ export class ArticleController {
    */
   getPopularArticles = async (req: express.Request, res: express.Response) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const days = parseInt(req.query.days as string) || 7;
+      const page = safeParseInt(req.query.page, 1);
+      const limit = safeParseInt(req.query.limit, 20);
+      const days = safeParseInt(req.query.days, 7);
 
       const result = await this.articleService.getPopularArticles({
         page,
