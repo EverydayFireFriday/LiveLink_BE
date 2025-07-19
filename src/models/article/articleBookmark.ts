@@ -114,6 +114,128 @@ export class ArticleBookmarkModel {
     });
   }
 
+  // 여러 게시글의 북마크 수를 한 번에 조회 (N+1 해결)
+  async countByArticleIds(
+    articleIds: string[]
+  ): Promise<Record<string, number>> {
+    if (articleIds.length === 0) return {};
+
+    // 유효한 ObjectId만 필터링
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            article_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$article_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 북마크가 없는 게시글들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
+  }
+
+  // 여러 게시글에 대한 특정 사용자의 북마크 상태 확인 (배치)
+  async checkBookmarkStatusForArticles(
+    userId: string,
+    articleIds: string[]
+  ): Promise<Record<string, boolean>> {
+    if (!ObjectId.isValid(userId) || articleIds.length === 0) return {};
+
+    const validArticleIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validArticleIds.length === 0) return {};
+
+    const userObjectId = new ObjectId(userId);
+    const articleObjectIds = validArticleIds.map((id) => new ObjectId(id));
+
+    const bookmarks = await this.collection
+      .find({
+        user_id: userObjectId,
+        article_id: { $in: articleObjectIds },
+      })
+      .toArray();
+
+    const bookmarkStatusMap: Record<string, boolean> = {};
+
+    // 북마크한 게시글들을 true로 설정
+    bookmarks.forEach((bookmark) => {
+      bookmarkStatusMap[bookmark.article_id.toString()] = true;
+    });
+
+    // 북마크하지 않은 게시글들은 false로 초기화
+    validArticleIds.forEach((id) => {
+      if (!bookmarkStatusMap[id]) {
+        bookmarkStatusMap[id] = false;
+      }
+    });
+
+    return bookmarkStatusMap;
+  }
+
+  // 여러 사용자의 북마크 수를 한 번에 조회
+  async countByUserIds(userIds: string[]): Promise<Record<string, number>> {
+    if (userIds.length === 0) return {};
+
+    const validIds = userIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            user_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$user_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 북마크가 없는 사용자들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
+  }
+
   // 사용자가 북마크한 게시글 ID 목록
   async findArticleIdsByUser(
     userId: string,
@@ -296,6 +418,20 @@ export class ArticleBookmarkModel {
     return result.deletedCount || 0;
   }
 
+  // 특정 게시글들의 북마크 관계를 배치로 삭제
+  async deleteByArticleIds(articleIds: string[]): Promise<void> {
+    if (articleIds.length === 0) return;
+
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return;
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    await this.collection.deleteMany({
+      article_id: { $in: objectIds },
+    });
+  }
+
   // 사용자 삭제시 관련 북마크 삭제
   async deleteByUser(userId: string): Promise<number> {
     if (!ObjectId.isValid(userId)) {
@@ -307,6 +443,20 @@ export class ArticleBookmarkModel {
     });
 
     return result.deletedCount || 0;
+  }
+
+  // 특정 사용자들의 북마크 관계를 배치로 삭제
+  async deleteByUserIds(userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+
+    const validIds = userIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return;
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    await this.collection.deleteMany({
+      user_id: { $in: objectIds },
+    });
   }
 
   // 인기 북마크 게시글 조회 (북마크 수 기준)
@@ -373,6 +523,75 @@ export class ArticleBookmarkModel {
     const total = totalResult.length > 0 ? totalResult[0].total : 0;
 
     return { articles, total };
+  }
+
+  // 사용자별 북마크 폴더 기능을 위한 메서드 (선택사항)
+  async findBookmarkedArticlesByUserWithFolders(
+    userId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      folderId?: string; // 특정 폴더의 북마크만 조회
+    } = {}
+  ): Promise<{
+    bookmarks: Array<{ article: any; created_at: Date; folder?: string }>;
+    total: number;
+  }> {
+    if (!ObjectId.isValid(userId)) {
+      return { bookmarks: [], total: 0 };
+    }
+
+    const { page = 1, limit = 20, folderId } = options;
+    const skip = (page - 1) * limit;
+
+    const matchStage: any = {
+      user_id: new ObjectId(userId),
+    };
+
+    if (folderId && ObjectId.isValid(folderId)) {
+      matchStage.folder_id = new ObjectId(folderId);
+    }
+
+    const pipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: "articles",
+          localField: "article_id",
+          foreignField: "_id",
+          as: "article",
+        },
+      },
+      {
+        $unwind: "$article",
+      },
+      {
+        $match: {
+          "article.is_published": true, // 발행된 게시글만
+        },
+      },
+      {
+        $sort: { created_at: -1 },
+      },
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ];
+
+    const [result] = await this.collection.aggregate(pipeline).toArray();
+
+    const bookmarks = (result.data || []).map((item: any) => ({
+      article: item.article,
+      created_at: item.created_at,
+      folder: item.folder_id ? item.folder_id.toString() : undefined,
+    }));
+
+    const total = result.totalCount[0]?.count || 0;
+
+    return { bookmarks, total };
   }
 }
 

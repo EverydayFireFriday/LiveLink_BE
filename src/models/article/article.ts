@@ -151,6 +151,30 @@ export class ArticleModel {
     return await this.collection.findOne({ _id: new ObjectId(id) });
   }
 
+  // 여러 ID로 Article들을 한 번에 조회 (N+1 해결용)
+  async findByIds(ids: string[]): Promise<IArticle[]> {
+    if (ids.length === 0) return [];
+
+    // 유효하지 않은 ID 필터링
+    const validIds = ids.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return [];
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const articles = await this.collection
+      .find({ _id: { $in: objectIds } })
+      .sort({ created_at: -1 })
+      .toArray();
+
+    // 원본 순서 유지를 위한 정렬 (필요시)
+    const articlesMap = new Map(
+      articles.map((article) => [article._id.toString(), article])
+    );
+    return validIds
+      .map((id) => articlesMap.get(id))
+      .filter(Boolean) as IArticle[];
+  }
+
   // Article 목록 조회 (페이지네이션)
   async findMany(
     filter: any = {},
@@ -331,6 +355,65 @@ export class ArticleModel {
     ]);
 
     return { articles, total };
+  }
+
+  // 인기 게시글 조회 (조회수 + 좋아요 기준)
+  async findPopular(
+    options: {
+      page?: number;
+      limit?: number;
+      days?: number;
+    } = {}
+  ): Promise<{ articles: IArticle[]; total: number }> {
+    const { page = 1, limit = 20, days = 7 } = options;
+    const skip = (page - 1) * limit;
+
+    // 최근 N일간의 게시글만 대상으로 인기도 계산
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    const filter: any = {
+      is_published: true,
+      published_at: { $gte: dateThreshold },
+    };
+
+    // 조회수와 좋아요 수를 종합한 인기도 점수로 정렬
+    const [articles, total] = await Promise.all([
+      this.collection
+        .find(filter)
+        .sort({
+          likes_count: -1, // 좋아요 우선
+          views: -1, // 조회수 보조
+          published_at: -1, // 최신순 보조
+        })
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
+      this.collection.countDocuments(filter),
+    ]);
+
+    return { articles, total };
+  }
+
+  // 배치로 게시글들의 기본 통계 업데이트 (좋아요 수 동기화용)
+  async updateStatsForArticles(
+    statsUpdates: { id: string; likes_count: number }[]
+  ): Promise<void> {
+    if (statsUpdates.length === 0) return;
+
+    const bulkOps = statsUpdates.map((update) => ({
+      updateOne: {
+        filter: { _id: new ObjectId(update.id) },
+        update: {
+          $set: {
+            likes_count: update.likes_count,
+            updated_at: new Date(),
+          },
+        },
+      },
+    }));
+
+    await this.collection.bulkWrite(bulkOps);
   }
 }
 

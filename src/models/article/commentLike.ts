@@ -21,17 +21,17 @@ export class CommentLikeModel {
   private async createIndexes() {
     try {
       console.log("CommentLike 인덱스 생성 시작...");
-      
+
       // 중복 좋아요 방지를 위한 복합 유니크 인덱스
       await this.collection.createIndex(
-        { comment_id: 1, user_id: 1 }, 
+        { comment_id: 1, user_id: 1 },
         { unique: true }
       );
-      
+
       // 조회 최적화 인덱스
       await this.collection.createIndex({ comment_id: 1, created_at: -1 });
       await this.collection.createIndex({ user_id: 1, created_at: -1 });
-      
+
       console.log("✅ CommentLike 인덱스 생성 완료");
     } catch (error) {
       console.error("❌ CommentLike 인덱스 생성 중 오류:", error);
@@ -73,7 +73,10 @@ export class CommentLikeModel {
   }
 
   // 댓글 좋아요 삭제
-  async delete(commentId: string, userId: string): Promise<ICommentLike | null> {
+  async delete(
+    commentId: string,
+    userId: string
+  ): Promise<ICommentLike | null> {
     if (!ObjectId.isValid(commentId) || !ObjectId.isValid(userId)) {
       return null;
     }
@@ -111,6 +114,86 @@ export class CommentLikeModel {
     });
   }
 
+  // 여러 댓글의 좋아요 수를 한 번에 조회 (N+1 해결)
+  async countByCommentIds(
+    commentIds: string[]
+  ): Promise<Record<string, number>> {
+    if (commentIds.length === 0) return {};
+
+    const validIds = commentIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            comment_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$comment_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 좋아요가 없는 댓글들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
+  }
+
+  // 여러 댓글에 대한 특정 사용자의 좋아요 상태 확인 (배치)
+  async checkLikeStatusForComments(
+    userId: string,
+    commentIds: string[]
+  ): Promise<Record<string, boolean>> {
+    if (!ObjectId.isValid(userId) || commentIds.length === 0) return {};
+
+    const validCommentIds = commentIds.filter((id) => ObjectId.isValid(id));
+    if (validCommentIds.length === 0) return {};
+
+    const userObjectId = new ObjectId(userId);
+    const commentObjectIds = validCommentIds.map((id) => new ObjectId(id));
+
+    const likes = await this.collection
+      .find({
+        user_id: userObjectId,
+        comment_id: { $in: commentObjectIds },
+      })
+      .toArray();
+
+    const likeStatusMap: Record<string, boolean> = {};
+
+    // 좋아요한 댓글들을 true로 설정
+    likes.forEach((like) => {
+      likeStatusMap[like.comment_id.toString()] = true;
+    });
+
+    // 좋아요하지 않은 댓글들은 false로 초기화
+    validCommentIds.forEach((id) => {
+      if (!likeStatusMap[id]) {
+        likeStatusMap[id] = false;
+      }
+    });
+
+    return likeStatusMap;
+  }
+
   // 사용자가 좋아요한 댓글 ID 목록
   async findCommentIdsByUser(
     userId: string,
@@ -136,7 +219,7 @@ export class CommentLikeModel {
       this.collection.countDocuments({ user_id: new ObjectId(userId) }),
     ]);
 
-    const commentIds = likes.map(like => like.comment_id.toString());
+    const commentIds = likes.map((like) => like.comment_id.toString());
     return { commentIds, total };
   }
 
@@ -165,7 +248,7 @@ export class CommentLikeModel {
       this.collection.countDocuments({ comment_id: new ObjectId(commentId) }),
     ]);
 
-    const userIds = likes.map(like => like.user_id.toString());
+    const userIds = likes.map((like) => like.user_id.toString());
     return { userIds, total };
   }
 
@@ -181,8 +264,8 @@ export class CommentLikeModel {
     }
 
     const validCommentIds = commentIds
-      .filter(id => ObjectId.isValid(id))
-      .map(id => new ObjectId(id));
+      .filter((id) => ObjectId.isValid(id))
+      .map((id) => new ObjectId(id));
 
     if (validCommentIds.length === 0) {
       return likeStatusMap;
@@ -196,14 +279,14 @@ export class CommentLikeModel {
       .toArray();
 
     // 모든 commentId를 false로 초기화
-    commentIds.forEach(id => {
+    commentIds.forEach((id) => {
       if (ObjectId.isValid(id)) {
         likeStatusMap.set(id, false);
       }
     });
 
     // 좋아요한 댓글들을 true로 설정
-    likes.forEach(like => {
+    likes.forEach((like) => {
       likeStatusMap.set(like.comment_id.toString(), true);
     });
 
@@ -226,8 +309,8 @@ export class CommentLikeModel {
   // 여러 댓글 삭제시 관련 좋아요 삭제
   async deleteByComments(commentIds: string[]): Promise<number> {
     const validCommentIds = commentIds
-      .filter(id => ObjectId.isValid(id))
-      .map(id => new ObjectId(id));
+      .filter((id) => ObjectId.isValid(id))
+      .map((id) => new ObjectId(id));
 
     if (validCommentIds.length === 0) {
       return 0;
@@ -269,7 +352,7 @@ export class CommentLikeModel {
       return 0;
     }
 
-    const commentIds = comments.map(comment => comment._id);
+    const commentIds = comments.map((comment) => comment._id);
 
     // 해당 댓글들의 모든 좋아요 삭제
     const result = await this.collection.deleteMany({
@@ -277,6 +360,110 @@ export class CommentLikeModel {
     });
 
     return result.deletedCount || 0;
+  }
+
+  // 인기 댓글 좋아요 통계 (최근 N일간)
+  async getMostLikedCommentsStats(
+    options: {
+      days?: number;
+      limit?: number;
+    } = {}
+  ): Promise<
+    Array<{ comment_id: string; likeCount: number; latestLike: Date }>
+  > {
+    const { days = 7, limit = 20 } = options;
+
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    const pipeline = [
+      {
+        $match: {
+          created_at: { $gte: dateThreshold },
+        },
+      },
+      {
+        $group: {
+          _id: "$comment_id",
+          likeCount: { $sum: 1 },
+          latestLike: { $max: "$created_at" },
+        },
+      },
+      {
+        $sort: {
+          likeCount: -1,
+          latestLike: -1,
+        },
+      },
+      {
+        $limit: limit,
+      },
+    ];
+
+    const results = await this.collection.aggregate(pipeline).toArray();
+
+    return results.map((item) => ({
+      comment_id: item._id.toString(),
+      likeCount: item.likeCount,
+      latestLike: item.latestLike,
+    }));
+  }
+
+  // 사용자별 댓글 좋아요 활동 통계
+  async getUserCommentLikeActivity(
+    userId: string,
+    days: number = 30
+  ): Promise<{
+    totalLikes: number;
+    recentLikes: number;
+    mostLikedComment?: { comment_id: string; likeCount: number };
+  }> {
+    if (!ObjectId.isValid(userId)) {
+      return { totalLikes: 0, recentLikes: 0 };
+    }
+
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    // 사용자가 준 좋아요 통계
+    const [totalLikes, recentLikes] = await Promise.all([
+      this.collection.countDocuments({ user_id: new ObjectId(userId) }),
+      this.collection.countDocuments({
+        user_id: new ObjectId(userId),
+        created_at: { $gte: dateThreshold },
+      }),
+    ]);
+
+    // 사용자가 작성한 댓글 중 가장 좋아요가 많이 받은 댓글 찾기
+    const commentCollection = this.db.collection("comments");
+    const userComments = await commentCollection
+      .find({ author_id: new ObjectId(userId) })
+      .toArray();
+
+    if (userComments.length === 0) {
+      return { totalLikes, recentLikes };
+    }
+
+    const commentIds = userComments.map((comment) => comment._id);
+    const commentLikeCounts = await this.countByCommentIds(
+      commentIds.map((id) => id.toString())
+    );
+
+    let mostLikedComment: { comment_id: string; likeCount: number } | undefined;
+    let maxLikes = 0;
+
+    Object.entries(commentLikeCounts).forEach(([commentId, likeCount]) => {
+      if (likeCount > maxLikes) {
+        maxLikes = likeCount;
+        mostLikedComment = { comment_id: commentId, likeCount };
+      }
+    });
+
+    return {
+      totalLikes,
+      recentLikes,
+      mostLikedComment: maxLikes > 0 ? mostLikedComment : undefined,
+    };
   }
 }
 
