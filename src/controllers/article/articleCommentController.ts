@@ -6,6 +6,20 @@ import { safeParseInt } from "../../utils/numberUtils";
 export class ArticleCommentController {
   private articleCommentService = getArticleCommentService();
 
+  // 🛡️ 세션 검증 헬퍼 메서드
+  private validateSession(
+    req: express.Request,
+    res: express.Response
+  ): boolean {
+    if (!req.session?.user?.userId) {
+      res.status(401).json({
+        message: "로그인이 필요합니다.",
+      });
+      return false;
+    }
+    return true;
+  }
+
   /**
    * @swagger
    * /article/{articleId}/comment:
@@ -67,6 +81,9 @@ export class ArticleCommentController {
    */
   createComment = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { author_id, content, parent_id } = req.body;
 
@@ -225,7 +242,8 @@ export class ArticleCommentController {
   getCommentById = async (req: express.Request, res: express.Response) => {
     try {
       const { commentId } = req.params;
-      const comment = await this.articleCommentService.getCommentById(commentId);
+      const comment =
+        await this.articleCommentService.getCommentById(commentId);
 
       res.status(200).json({
         message: "댓글 조회 성공",
@@ -302,6 +320,9 @@ export class ArticleCommentController {
    */
   updateComment = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { commentId } = req.params;
       const { content, author_id } = req.body;
 
@@ -381,6 +402,9 @@ export class ArticleCommentController {
    */
   deleteComment = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { commentId } = req.params;
       const { author_id } = req.body;
 
@@ -454,6 +478,9 @@ export class ArticleCommentController {
    */
   toggleCommentLike = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { commentId } = req.params;
       const { user_id } = req.body;
 
@@ -614,6 +641,9 @@ export class ArticleCommentController {
    */
   getCommentsByAuthor = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { authorId } = req.params;
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
@@ -676,7 +706,8 @@ export class ArticleCommentController {
   getCommentCount = async (req: express.Request, res: express.Response) => {
     try {
       const { articleId } = req.params;
-      const commentCount = await this.articleCommentService.getCommentCount(articleId);
+      const commentCount =
+        await this.articleCommentService.getCommentCount(articleId);
 
       res.status(200).json({
         message: "댓글 수 조회 성공",
