@@ -6,6 +6,20 @@ import { safeParseInt } from "../../utils/numberUtils";
 export class ArticleLikeController {
   private articleLikeService = getArticleLikeService();
 
+  // 🛡️ 세션 검증 헬퍼 메서드
+  private validateSession(
+    req: express.Request,
+    res: express.Response
+  ): boolean {
+    if (!req.session?.user?.userId) {
+      res.status(401).json({
+        message: "로그인이 필요합니다.",
+      });
+      return false;
+    }
+    return true;
+  }
+
   /**
    * @swagger
    * /article/{articleId}/like:
@@ -61,6 +75,9 @@ export class ArticleLikeController {
    */
   likeArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.body;
 
@@ -143,6 +160,9 @@ export class ArticleLikeController {
    */
   unlikeArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.body;
 
@@ -219,6 +239,9 @@ export class ArticleLikeController {
    */
   toggleLike = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.body;
 
@@ -284,6 +307,9 @@ export class ArticleLikeController {
    */
   getLikeStatus = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.query;
 
@@ -441,6 +467,9 @@ export class ArticleLikeController {
     res: express.Response
   ) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { userId } = req.params;
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
@@ -531,6 +560,9 @@ export class ArticleLikeController {
    */
   getBatchLikeStatus = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { article_ids, user_id } = req.body;
 
       if (!Array.isArray(article_ids) || !user_id) {

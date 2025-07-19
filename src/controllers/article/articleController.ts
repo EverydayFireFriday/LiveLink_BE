@@ -6,6 +6,20 @@ import { safeParseInt } from "../../utils/numberUtils";
 export class ArticleController {
   private articleService = getArticleService();
 
+  // 🛡️ 세션 검증 헬퍼 메서드
+  private validateSession(
+    req: express.Request,
+    res: express.Response
+  ): boolean {
+    if (!req.session?.user?.userId) {
+      res.status(401).json({
+        message: "로그인이 필요합니다.",
+      });
+      return false;
+    }
+    return true;
+  }
+
   /**
    * @swagger
    * /article:
@@ -77,6 +91,9 @@ export class ArticleController {
    */
   createArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const article = await this.articleService.createArticle(req.body);
 
       res.status(201).json({
@@ -85,10 +102,10 @@ export class ArticleController {
       });
     } catch (error: any) {
       console.error("게시글 생성 에러:", error);
-      
-      if (error.message.includes('유효성 검사')) {
+
+      if (error.message.includes("유효성 검사")) {
         res.status(400).json({ message: error.message });
-      } else if (error.message.includes('존재하지 않는')) {
+      } else if (error.message.includes("존재하지 않는")) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "게시글 생성에 실패했습니다." });
@@ -143,10 +160,13 @@ export class ArticleController {
   getArticleById = async (req: express.Request, res: express.Response) => {
     try {
       const { id } = req.params;
-      const withTags = req.query.withTags !== 'false';
-      const withStats = req.query.withStats !== 'false';
+      const withTags = req.query.withTags !== "false";
+      const withStats = req.query.withStats !== "false";
 
-      const article = await this.articleService.getArticleById(id, { withTags, withStats });
+      const article = await this.articleService.getArticleById(id, {
+        withTags,
+        withStats,
+      });
 
       // 조회수 증가
       await this.articleService.incrementViews(id);
@@ -157,8 +177,8 @@ export class ArticleController {
       });
     } catch (error: any) {
       console.error("게시글 조회 에러:", error);
-      
-      if (error.message.includes('찾을 수 없습니다')) {
+
+      if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "게시글 조회에 실패했습니다." });
@@ -224,7 +244,10 @@ export class ArticleController {
    *       500:
    *         description: 서버 에러
    */
-  getPublishedArticles = async (req: express.Request, res: express.Response) => {
+  getPublishedArticles = async (
+    req: express.Request,
+    res: express.Response
+  ) => {
     try {
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
@@ -326,6 +349,9 @@ export class ArticleController {
    */
   updateArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { id } = req.params;
       const article = await this.articleService.updateArticle(id, req.body);
 
@@ -335,10 +361,10 @@ export class ArticleController {
       });
     } catch (error: any) {
       console.error("게시글 수정 에러:", error);
-      
-      if (error.message.includes('유효성 검사')) {
+
+      if (error.message.includes("유효성 검사")) {
         res.status(400).json({ message: error.message });
-      } else if (error.message.includes('찾을 수 없습니다')) {
+      } else if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "게시글 수정에 실패했습니다." });
@@ -382,6 +408,9 @@ export class ArticleController {
    */
   deleteArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { id } = req.params;
       await this.articleService.deleteArticle(id);
 
@@ -390,8 +419,8 @@ export class ArticleController {
       });
     } catch (error: any) {
       console.error("게시글 삭제 에러:", error);
-      
-      if (error.message.includes('찾을 수 없습니다')) {
+
+      if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "게시글 삭제에 실패했습니다." });
@@ -459,7 +488,7 @@ export class ArticleController {
       const { authorId } = req.params;
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
-      const includeUnpublished = req.query.includeUnpublished === 'true';
+      const includeUnpublished = req.query.includeUnpublished === "true";
 
       const result = await this.articleService.getArticlesByAuthor(authorId, {
         page,

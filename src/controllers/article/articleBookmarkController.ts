@@ -6,6 +6,20 @@ import { safeParseInt } from "../../utils/numberUtils";
 export class ArticleBookmarkController {
   private articleBookmarkService = getArticleBookmarkService();
 
+  // 🛡️ 세션 검증 헬퍼 메서드
+  private validateSession(
+    req: express.Request,
+    res: express.Response
+  ): boolean {
+    if (!req.session?.user?.userId) {
+      res.status(401).json({
+        message: "로그인이 필요합니다.",
+      });
+      return false;
+    }
+    return true;
+  }
+
   /**
    * @swagger
    * /article/{articleId}/bookmark:
@@ -58,6 +72,9 @@ export class ArticleBookmarkController {
    */
   bookmarkArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증 먼저 수행
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.body;
 
@@ -136,13 +153,17 @@ export class ArticleBookmarkController {
    */
   unbookmarkArticle = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증 먼저 수행
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
-      const { user_id } = req.body;
+      // ✅ 수정: 세션에서 안전하게 user_id 가져오기
+      const userId = req.session.user!.userId; // 이미 검증했으므로 안전
 
       const result = await this.articleBookmarkService.unbookmarkArticle({
-      article_id: articleId,
-      user_id: req.session.user!.userId,
-    });
+        article_id: articleId,
+        user_id: userId, // ✅ 수정: 세션에서 가져온 userId 사용
+      });
 
       res.status(200).json({
         message: "북마크가 삭제되었습니다.",
@@ -208,6 +229,9 @@ export class ArticleBookmarkController {
    */
   toggleBookmark = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.body;
 
@@ -322,6 +346,9 @@ export class ArticleBookmarkController {
    */
   getBookmarkStatus = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { articleId } = req.params;
       const { user_id } = req.query;
 
@@ -374,7 +401,8 @@ export class ArticleBookmarkController {
   getBookmarkCount = async (req: express.Request, res: express.Response) => {
     try {
       const { articleId } = req.params;
-      const bookmarkCount = await this.articleBookmarkService.getBookmarkCount(articleId);
+      const bookmarkCount =
+        await this.articleBookmarkService.getBookmarkCount(articleId);
 
       res.status(200).json({
         message: "북마크 수 조회 성공",
@@ -388,6 +416,9 @@ export class ArticleBookmarkController {
 
   getUserBookmarks = async (req: express.Request, res: express.Response) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { userId } = req.params;
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
@@ -461,8 +492,12 @@ export class ArticleBookmarkController {
     res: express.Response
   ) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { userId } = req.params;
-      const stats = await this.articleBookmarkService.getUserBookmarkStats(userId);
+      const stats =
+        await this.articleBookmarkService.getUserBookmarkStats(userId);
 
       res.status(200).json({
         message: "사용자 북마크 통계 조회 성공",
@@ -548,7 +583,8 @@ export class ArticleBookmarkController {
       const limit = safeParseInt(req.query.limit, 20);
       const days = safeParseInt(req.query.days, 30);
 
-      const result = await this.articleBookmarkService.getPopularBookmarkedArticles({
+      const result =
+        await this.articleBookmarkService.getPopularBookmarkedArticles({
           page,
           limit,
           days,
@@ -629,6 +665,9 @@ export class ArticleBookmarkController {
     res: express.Response
   ) => {
     try {
+      // 🛡️ 세션 검증
+      if (!this.validateSession(req, res)) return;
+
       const { article_ids, user_id } = req.body;
 
       if (!Array.isArray(article_ids) || !user_id) {
@@ -636,10 +675,11 @@ export class ArticleBookmarkController {
         return;
       }
 
-      const result = await this.articleBookmarkService.checkMultipleBookmarkStatus(
-        article_ids,
-        user_id
-      );
+      const result =
+        await this.articleBookmarkService.checkMultipleBookmarkStatus(
+          article_ids,
+          user_id
+        );
 
       // Map을 Object로 변환
       const bookmarkStatus: Record<string, boolean> = {};
