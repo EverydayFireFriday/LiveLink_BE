@@ -251,6 +251,49 @@ export class CommentModel {
     });
   }
 
+  // 여러 게시글의 댓글 수를 배치로 조회 (N+1 해결)
+  async countByArticleIds(
+    articleIds: string[]
+  ): Promise<Record<string, number>> {
+    if (articleIds.length === 0) return {};
+
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            article_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$article_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 댓글이 없는 게시글들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
+  }
+
   // 게시글 삭제시 관련 댓글 삭제
   async deleteByArticle(articleId: string): Promise<number> {
     if (!ObjectId.isValid(articleId)) {
@@ -315,6 +358,171 @@ export class CommentModel {
     );
 
     return { comments: commentsWithReplies, total };
+  }
+
+  // 인기 댓글 조회 (좋아요 수 기준, 특정 게시글)
+  async findPopularCommentsByArticle(
+    articleId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      days?: number;
+    } = {}
+  ): Promise<{ comments: IComment[]; total: number }> {
+    if (!ObjectId.isValid(articleId)) {
+      return { comments: [], total: 0 };
+    }
+
+    const { page = 1, limit = 20, days = 7 } = options;
+    const skip = (page - 1) * limit;
+
+    // 최근 N일간의 댓글만 대상
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    const filter: any = {
+      article_id: new ObjectId(articleId),
+      created_at: { $gte: dateThreshold },
+    };
+
+    const [comments, total] = await Promise.all([
+      this.collection
+        .find(filter)
+        .sort({
+          likes_count: -1, // 좋아요 수 우선
+          created_at: -1, // 최신순 보조
+        })
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
+      this.collection.countDocuments(filter),
+    ]);
+
+    return { comments, total };
+  }
+
+  // 전체 인기 댓글 조회 (모든 게시글 대상)
+  async findMostPopularComments(
+    options: {
+      page?: number;
+      limit?: number;
+      days?: number;
+      minLikes?: number;
+    } = {}
+  ): Promise<{ comments: IComment[]; total: number }> {
+    const { page = 1, limit = 20, days = 7, minLikes = 1 } = options;
+    const skip = (page - 1) * limit;
+
+    // 최근 N일간의 댓글만 대상
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    const filter: any = {
+      created_at: { $gte: dateThreshold },
+      likes_count: { $gte: minLikes },
+    };
+
+    const [comments, total] = await Promise.all([
+      this.collection
+        .find(filter)
+        .sort({
+          likes_count: -1, // 좋아요 수 우선
+          created_at: -1, // 최신순 보조
+        })
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
+      this.collection.countDocuments(filter),
+    ]);
+
+    return { comments, total };
+  }
+
+  // 여러 댓글의 좋아요 수를 배치로 업데이트 (동기화용)
+  async updateLikesCountForComments(
+    updates: { id: string; likes_count: number }[]
+  ): Promise<void> {
+    if (updates.length === 0) return;
+
+    const bulkOps = updates.map((update) => ({
+      updateOne: {
+        filter: { _id: new ObjectId(update.id) },
+        update: {
+          $set: {
+            likes_count: update.likes_count,
+            updated_at: new Date(),
+          },
+        },
+      },
+    }));
+
+    await this.collection.bulkWrite(bulkOps);
+  }
+
+  // 사용자의 댓글 활동 통계
+  async getUserCommentActivity(
+    userId: string,
+    days: number = 30
+  ): Promise<{
+    totalComments: number;
+    recentComments: number;
+    totalLikesReceived: number;
+    avgLikesPerComment: number;
+  }> {
+    if (!ObjectId.isValid(userId)) {
+      return {
+        totalComments: 0,
+        recentComments: 0,
+        totalLikesReceived: 0,
+        avgLikesPerComment: 0,
+      };
+    }
+
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    const pipeline = [
+      {
+        $match: {
+          author_id: new ObjectId(userId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalComments: { $sum: 1 },
+          totalLikesReceived: { $sum: "$likes_count" },
+          recentComments: {
+            $sum: {
+              $cond: [{ $gte: ["$created_at", dateThreshold] }, 1, 0],
+            },
+          },
+        },
+      },
+    ];
+
+    const [result] = await this.collection.aggregate(pipeline).toArray();
+
+    if (!result) {
+      return {
+        totalComments: 0,
+        recentComments: 0,
+        totalLikesReceived: 0,
+        avgLikesPerComment: 0,
+      };
+    }
+
+    const avgLikesPerComment =
+      result.totalComments > 0
+        ? result.totalLikesReceived / result.totalComments
+        : 0;
+
+    return {
+      totalComments: result.totalComments,
+      recentComments: result.recentComments,
+      totalLikesReceived: result.totalLikesReceived,
+      avgLikesPerComment: Math.round(avgLikesPerComment * 100) / 100,
+    };
   }
 }
 

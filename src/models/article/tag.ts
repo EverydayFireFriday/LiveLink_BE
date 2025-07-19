@@ -78,12 +78,30 @@ export class TagModel {
     return await this.collection.findOne({ _id: new ObjectId(id) });
   }
 
+  // 여러 Tag ID로 조회 (배치 처리)
+  async findByIds(ids: string[]): Promise<ITag[]> {
+    if (ids.length === 0) return [];
+
+    const validIds = ids.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return [];
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    return await this.collection
+      .find({ _id: { $in: objectIds } })
+      .sort({ name: 1 })
+      .toArray();
+  }
+
   // 여러 Tag 이름으로 조회
   async findManyByName(names: string[]): Promise<ITag[]> {
     if (names.length === 0) {
       return [];
     }
-    return await this.collection.find({ name: { $in: names } }).toArray();
+    return await this.collection
+      .find({ name: { $in: names } })
+      .sort({ name: 1 })
+      .toArray();
   }
 
   // Tag 목록 조회
@@ -115,6 +133,36 @@ export class TagModel {
     return { tags, total };
   }
 
+  // 모든 Tag 조회 (페이지네이션 없음)
+  async findAll(): Promise<ITag[]> {
+    return await this.collection.find({}).sort({ name: 1 }).toArray();
+  }
+
+  // Tag 업데이트
+  async updateById(id: string, name: string): Promise<ITag | null> {
+    if (!ObjectId.isValid(id)) {
+      return null;
+    }
+
+    // 같은 이름의 다른 태그가 있는지 확인
+    const existingTag = await this.collection.findOne({
+      name,
+      _id: { $ne: new ObjectId(id) },
+    });
+
+    if (existingTag) {
+      throw new Error("이미 존재하는 태그 이름입니다.");
+    }
+
+    const result = await this.collection.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: { name } },
+      { returnDocument: "after" }
+    );
+
+    return result || null;
+  }
+
   // Tag 삭제
   async deleteById(id: string): Promise<ITag | null> {
     if (!ObjectId.isValid(id)) {
@@ -136,16 +184,387 @@ export class TagModel {
     return await this.create(name);
   }
 
-  // 여러 Tag 이름으로 찾거나 생성
+  // 여러 Tag 이름으로 찾거나 생성 (최적화된 배치 처리)
   async findOrCreateMany(names: string[]): Promise<ITag[]> {
-    const tags: ITag[] = [];
+    if (names.length === 0) return [];
 
-    for (const name of names) {
-      const tag = await this.findOrCreate(name);
-      tags.push(tag);
+    // 중복 제거
+    const uniqueNames = [...new Set(names)];
+
+    // 기존 태그들 조회
+    const existingTags = await this.findManyByName(uniqueNames);
+    const existingNames = new Set(existingTags.map((tag) => tag.name));
+
+    // 생성해야 할 새 태그들
+    const newNames = uniqueNames.filter((name) => !existingNames.has(name));
+
+    if (newNames.length === 0) {
+      return existingTags;
     }
 
-    return tags;
+    // 새 태그들 배치 생성
+    const now = new Date();
+    const newTags: ITag[] = newNames.map((name) => ({
+      _id: new ObjectId(),
+      name,
+      created_at: now,
+    }));
+
+    try {
+      await this.collection.insertMany(newTags);
+      return [...existingTags, ...newTags];
+    } catch (error: any) {
+      // 중복 에러가 발생하면 개별적으로 처리 (동시성 문제 대응)
+      if (error.code === 11000) {
+        const tags: ITag[] = [];
+        for (const name of uniqueNames) {
+          const tag = await this.findOrCreate(name);
+          tags.push(tag);
+        }
+        return tags;
+      }
+      throw error;
+    }
+  }
+
+  // 태그별 게시글 수 조회 (통계용) - 타입 에러 수정
+  async getTagArticleCounts(): Promise<
+    Array<{ tag: ITag; articleCount: number }>
+  > {
+    const pipeline: any[] = [
+      {
+        $lookup: {
+          from: "article_tags",
+          localField: "_id",
+          foreignField: "tag_id",
+          as: "articleTags",
+        },
+      },
+      {
+        $addFields: {
+          articleCount: { $size: "$articleTags" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          created_at: 1,
+          articleCount: 1,
+        },
+      },
+      {
+        $sort: { articleCount: -1, name: 1 },
+      },
+    ];
+
+    const results = await this.collection.aggregate(pipeline).toArray();
+
+    return results.map((item: any) => ({
+      tag: {
+        _id: item._id,
+        name: item.name,
+        created_at: item.created_at,
+      },
+      articleCount: item.articleCount,
+    }));
+  }
+
+  // 인기 태그 조회 (발행된 게시글 수 기준) - 타입 에러 수정
+  async getPopularTags(
+    options: {
+      limit?: number;
+      publishedOnly?: boolean;
+      days?: number;
+    } = {}
+  ): Promise<Array<{ tag: ITag; articleCount: number }>> {
+    const { limit = 20, publishedOnly = true, days } = options;
+
+    const pipeline: any[] = [
+      {
+        $lookup: {
+          from: "article_tags",
+          localField: "_id",
+          foreignField: "tag_id",
+          as: "articleTags",
+        },
+      },
+    ];
+
+    if (publishedOnly || days) {
+      pipeline.push({
+        $lookup: {
+          from: "articles",
+          localField: "articleTags.article_id",
+          foreignField: "_id",
+          as: "articles",
+        },
+      });
+
+      const articleFilter: any = {};
+
+      if (publishedOnly) {
+        articleFilter["articles.is_published"] = true;
+      }
+
+      if (days) {
+        const dateThreshold = new Date();
+        dateThreshold.setDate(dateThreshold.getDate() - days);
+        articleFilter["articles.created_at"] = { $gte: dateThreshold };
+      }
+
+      if (Object.keys(articleFilter).length > 0) {
+        pipeline.push({
+          $addFields: {
+            filteredArticles: {
+              $filter: {
+                input: "$articles",
+                as: "article",
+                cond: {
+                  $and: Object.entries(articleFilter).map(([field, value]) => ({
+                    $eq: [`$$${field}`, value],
+                  })),
+                },
+              },
+            },
+          },
+        } as any);
+
+        pipeline.push({
+          $addFields: {
+            articleCount: { $size: "$filteredArticles" },
+          },
+        } as any);
+      } else {
+        pipeline.push({
+          $addFields: {
+            articleCount: { $size: "$articles" },
+          },
+        } as any);
+      }
+    } else {
+      pipeline.push({
+        $addFields: {
+          articleCount: { $size: "$articleTags" },
+        },
+      } as any);
+    }
+
+    pipeline.push(
+      {
+        $match: {
+          articleCount: { $gt: 0 },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          created_at: 1,
+          articleCount: 1,
+        },
+      },
+      {
+        $sort: { articleCount: -1, name: 1 },
+      },
+      {
+        $limit: limit,
+      }
+    );
+
+    const results = await this.collection.aggregate(pipeline).toArray();
+
+    return results.map((item: any) => ({
+      tag: {
+        _id: item._id,
+        name: item.name,
+        created_at: item.created_at,
+      },
+      articleCount: item.articleCount,
+    }));
+  }
+
+  // 사용되지 않은 태그 조회 - 타입 에러 수정
+  async getUnusedTags(): Promise<ITag[]> {
+    const pipeline = [
+      {
+        $lookup: {
+          from: "article_tags",
+          localField: "_id",
+          foreignField: "tag_id",
+          as: "articleTags",
+        },
+      },
+      {
+        $match: {
+          articleTags: { $size: 0 },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          created_at: 1,
+        },
+      },
+      {
+        $sort: { name: 1 },
+      },
+    ];
+
+    const results = await this.collection.aggregate(pipeline).toArray();
+    return results.map((item: any) => ({
+      _id: item._id,
+      name: item.name,
+      created_at: item.created_at,
+    }));
+  }
+
+  // 태그 검색 (자동완성용) - 타입 에러 수정
+  async searchTags(
+    query: string,
+    options: {
+      limit?: number;
+      excludeUnused?: boolean;
+    } = {}
+  ): Promise<ITag[]> {
+    const { limit = 10, excludeUnused = false } = options;
+
+    const pipeline: any[] = [
+      {
+        $match: {
+          name: new RegExp(query, "i"),
+        },
+      },
+    ];
+
+    if (excludeUnused) {
+      pipeline.push(
+        {
+          $lookup: {
+            from: "article_tags",
+            localField: "_id",
+            foreignField: "tag_id",
+            as: "articleTags",
+          },
+        },
+        {
+          $match: {
+            articleTags: { $not: { $size: 0 } },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            created_at: 1,
+          },
+        }
+      );
+    }
+
+    pipeline.push(
+      {
+        $sort: { name: 1 },
+      },
+      {
+        $limit: limit,
+      }
+    );
+
+    const results = await this.collection.aggregate(pipeline).toArray();
+    return results.map((item: any) => ({
+      _id: item._id,
+      name: item.name,
+      created_at: item.created_at,
+    }));
+  }
+
+  // 관련 태그 추천 (같이 사용되는 태그들) - 타입 에러 수정
+  async getRelatedTags(
+    tagId: string,
+    options: {
+      limit?: number;
+    } = {}
+  ): Promise<Array<{ tag: ITag; coOccurrenceCount: number }>> {
+    if (!ObjectId.isValid(tagId)) return [];
+
+    const { limit = 10 } = options;
+
+    const pipeline = [
+      // 해당 태그가 사용된 게시글들 찾기
+      {
+        $match: {
+          tag_id: new ObjectId(tagId),
+        },
+      },
+
+      // 같은 게시글의 다른 태그들 찾기
+      {
+        $lookup: {
+          from: "article_tags",
+          localField: "article_id",
+          foreignField: "article_id",
+          as: "relatedTags",
+        },
+      },
+
+      // 배열 풀기
+      { $unwind: "$relatedTags" },
+
+      // 자기 자신 제외
+      {
+        $match: {
+          "relatedTags.tag_id": { $ne: new ObjectId(tagId) },
+        },
+      },
+
+      // 태그별로 그룹핑하여 동시 출현 횟수 세기
+      {
+        $group: {
+          _id: "$relatedTags.tag_id",
+          coOccurrenceCount: { $sum: 1 },
+        },
+      },
+
+      // 태그 정보 조인
+      {
+        $lookup: {
+          from: "tags",
+          localField: "_id",
+          foreignField: "_id",
+          as: "tag",
+        },
+      },
+
+      { $unwind: "$tag" },
+
+      {
+        $project: {
+          tag: {
+            _id: "$tag._id",
+            name: "$tag.name",
+            created_at: "$tag.created_at",
+          },
+          coOccurrenceCount: 1,
+        },
+      },
+
+      { $sort: { coOccurrenceCount: -1, "tag.name": 1 } },
+      { $limit: limit },
+    ];
+
+    const articleTagCollection = this.db.collection("article_tags");
+    const results = await articleTagCollection.aggregate(pipeline).toArray();
+
+    return results.map((item: any) => ({
+      tag: {
+        _id: item.tag._id,
+        name: item.tag.name,
+        created_at: item.tag.created_at,
+      },
+      coOccurrenceCount: item.coOccurrenceCount,
+    }));
   }
 }
 

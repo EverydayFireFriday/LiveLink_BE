@@ -163,6 +163,128 @@ export class ArticleLikeModel {
     });
   }
 
+  // 여러 게시글의 좋아요 수를 한 번에 조회 (N+1 해결)
+  async countByArticleIds(
+    articleIds: string[]
+  ): Promise<Record<string, number>> {
+    if (articleIds.length === 0) return {};
+
+    // 유효한 ObjectId만 필터링
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            article_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$article_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 좋아요가 없는 게시글들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
+  }
+
+  // 여러 게시글에 대한 특정 사용자의 좋아요 상태 확인 (배치)
+  async checkLikeStatusForArticles(
+    userId: string,
+    articleIds: string[]
+  ): Promise<Record<string, boolean>> {
+    if (!ObjectId.isValid(userId) || articleIds.length === 0) return {};
+
+    const validArticleIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validArticleIds.length === 0) return {};
+
+    const userObjectId = new ObjectId(userId);
+    const articleObjectIds = validArticleIds.map((id) => new ObjectId(id));
+
+    const likes = await this.collection
+      .find({
+        user_id: userObjectId,
+        article_id: { $in: articleObjectIds },
+      })
+      .toArray();
+
+    const likeStatusMap: Record<string, boolean> = {};
+
+    // 좋아요한 게시글들을 true로 설정
+    likes.forEach((like) => {
+      likeStatusMap[like.article_id.toString()] = true;
+    });
+
+    // 좋아요하지 않은 게시글들은 false로 초기화
+    validArticleIds.forEach((id) => {
+      if (!likeStatusMap[id]) {
+        likeStatusMap[id] = false;
+      }
+    });
+
+    return likeStatusMap;
+  }
+
+  // 여러 사용자의 좋아요 수를 한 번에 조회
+  async countByUserIds(userIds: string[]): Promise<Record<string, number>> {
+    if (userIds.length === 0) return {};
+
+    const validIds = userIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            user_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$user_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 좋아요가 없는 사용자들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
+  }
+
   // 사용자가 좋아요한 게시글 ID 목록
   async findArticleIdsByUser(
     userId: string,
@@ -262,6 +384,63 @@ export class ArticleLikeModel {
     return likeStatusMap;
   }
 
+  // 인기 게시글 조회 (최근 N일간 좋아요 수 기준)
+  async findMostLikedArticles(
+    options: {
+      page?: number;
+      limit?: number;
+      days?: number;
+    } = {}
+  ): Promise<{
+    articles: Array<{ article_id: string; likeCount: number }>;
+    total: number;
+  }> {
+    const { page = 1, limit = 20, days = 7 } = options;
+    const skip = (page - 1) * limit;
+
+    // 최근 N일간의 좋아요만 집계
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
+    const pipeline = [
+      {
+        $match: {
+          created_at: { $gte: dateThreshold },
+        },
+      },
+      {
+        $group: {
+          _id: "$article_id",
+          likeCount: { $sum: 1 },
+          latestLike: { $max: "$created_at" },
+        },
+      },
+      {
+        $sort: {
+          likeCount: -1,
+          latestLike: -1,
+        },
+      },
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ];
+
+    const [result] = await this.collection.aggregate(pipeline).toArray();
+
+    const articles = (result.data || []).map((item: any) => ({
+      article_id: item._id.toString(),
+      likeCount: item.likeCount,
+    }));
+
+    const total = result.totalCount[0]?.count || 0;
+
+    return { articles, total };
+  }
+
   // 게시글 삭제시 관련 좋아요 삭제
   async deleteByArticle(articleId: string): Promise<number> {
     if (!ObjectId.isValid(articleId)) {
@@ -275,6 +454,20 @@ export class ArticleLikeModel {
     return result.deletedCount || 0;
   }
 
+  // 특정 게시글들의 좋아요 관계를 배치로 삭제
+  async deleteByArticleIds(articleIds: string[]): Promise<void> {
+    if (articleIds.length === 0) return;
+
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return;
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    await this.collection.deleteMany({
+      article_id: { $in: objectIds },
+    });
+  }
+
   // 사용자 삭제시 관련 좋아요 삭제
   async deleteByUser(userId: string): Promise<number> {
     if (!ObjectId.isValid(userId)) {
@@ -286,6 +479,20 @@ export class ArticleLikeModel {
     });
 
     return result.deletedCount || 0;
+  }
+
+  // 특정 사용자들의 좋아요 관계를 배치로 삭제
+  async deleteByUserIds(userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+
+    const validIds = userIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return;
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    await this.collection.deleteMany({
+      user_id: { $in: objectIds },
+    });
   }
 }
 
