@@ -194,6 +194,69 @@ export class ArticleTagModel {
     return await this.collection.aggregate(pipeline).toArray();
   }
 
+  // 여러 게시글의 태그들을 한 번에 조회하여 매핑된 형태로 반환 (N+1 해결)
+  async findTagsByArticleIds(
+    articleIds: string[]
+  ): Promise<Record<string, any[]>> {
+    if (articleIds.length === 0) return {};
+
+    // 유효한 ObjectId만 필터링
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    // Aggregation을 사용하여 article_tags와 tags를 조인
+    const articleTags = await this.collection
+      .aggregate([
+        {
+          $match: {
+            article_id: { $in: objectIds },
+          },
+        },
+        {
+          $lookup: {
+            from: "tags",
+            localField: "tag_id",
+            foreignField: "_id",
+            as: "tag",
+          },
+        },
+        {
+          $unwind: "$tag",
+        },
+        {
+          $group: {
+            _id: "$article_id",
+            tags: {
+              $push: {
+                _id: "$tag._id",
+                name: "$tag.name",
+                created_at: "$tag.created_at",
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    // 결과를 Record<string, any[]> 형태로 변환
+    const tagsMap: Record<string, any[]> = {};
+
+    articleTags.forEach((item) => {
+      tagsMap[item._id.toString()] = item.tags;
+    });
+
+    // 태그가 없는 게시글들은 빈 배열로 초기화
+    validIds.forEach((id) => {
+      if (!tagsMap[id]) {
+        tagsMap[id] = [];
+      }
+    });
+
+    return tagsMap;
+  }
+
   // 태그의 게시글 목록 조회
   async findArticlesByTag(
     tagId: string,
@@ -300,6 +363,105 @@ export class ArticleTagModel {
     }
 
     return await this.createMany(articleId, tagIds);
+  }
+
+  // 여러 게시글의 태그 관계를 배치로 생성 (성능 최적화)
+  async createManyForArticles(
+    articleTagRelations: { articleId: string; tagIds: string[] }[]
+  ): Promise<void> {
+    if (articleTagRelations.length === 0) return;
+
+    const bulkOps: any[] = [];
+    const now = new Date();
+
+    articleTagRelations.forEach(({ articleId, tagIds }) => {
+      if (!ObjectId.isValid(articleId)) return;
+
+      tagIds.forEach((tagId) => {
+        if (!ObjectId.isValid(tagId)) return;
+
+        bulkOps.push({
+          insertOne: {
+            document: {
+              _id: new ObjectId(),
+              article_id: new ObjectId(articleId),
+              tag_id: new ObjectId(tagId),
+              created_at: now,
+            },
+          },
+        });
+      });
+    });
+
+    if (bulkOps.length > 0) {
+      await this.collection.bulkWrite(bulkOps);
+    }
+  }
+
+  // 여러 게시글의 태그 관계를 배치로 삭제
+  async deleteByArticleIds(articleIds: string[]): Promise<void> {
+    if (articleIds.length === 0) return;
+
+    const validIds = articleIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return;
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    await this.collection.deleteMany({
+      article_id: { $in: objectIds },
+    });
+  }
+
+  // 특정 태그가 사용된 게시글 수 조회 (태그 인기도 측정용)
+  async countArticlesByTag(tagId: string): Promise<number> {
+    if (!ObjectId.isValid(tagId)) return 0;
+
+    return await this.collection.countDocuments({
+      tag_id: new ObjectId(tagId),
+    });
+  }
+
+  // 여러 태그가 사용된 게시글 수를 배치 조회
+  async countArticlesByTagIds(
+    tagIds: string[]
+  ): Promise<Record<string, number>> {
+    if (tagIds.length === 0) return {};
+
+    const validIds = tagIds.filter((id) => ObjectId.isValid(id));
+    if (validIds.length === 0) return {};
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const results = await this.collection
+      .aggregate([
+        {
+          $match: {
+            tag_id: { $in: objectIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$tag_id",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const countsMap: Record<string, number> = {};
+
+    results.forEach((item) => {
+      countsMap[item._id.toString()] = item.count;
+    });
+
+    // 사용되지 않은 태그들은 0으로 초기화
+    validIds.forEach((id) => {
+      if (!countsMap[id]) {
+        countsMap[id] = 0;
+      }
+    });
+
+    return countsMap;
   }
 
   // 인기 태그 조회 (게시글 수 기준)
