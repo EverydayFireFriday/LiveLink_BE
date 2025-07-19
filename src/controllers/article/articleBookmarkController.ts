@@ -157,8 +157,13 @@ export class ArticleBookmarkController {
       if (!this.validateSession(req, res)) return;
 
       const { articleId } = req.params;
-      // ✅ 수정: 더욱 안전한 세션에서 user_id 가져오기
-      const userId = req.session?.user?.userId!; // 이중 안전장치
+      // ✅ 수정: 완전히 안전한 세션에서 user_id 가져오기
+      const userId = req.session?.user?.userId; // 완전 안전
+
+      if (!userId) {
+        res.status(401).json({ message: "유효하지 않은 세션입니다." });
+        return;
+      }
 
       const result = await this.articleBookmarkService.unbookmarkArticle({
         article_id: articleId,
