@@ -6,6 +6,9 @@
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
-    "typeRoots": ["./node_modules/@types"]
-  }
+    "skipLibCheck": true,
+    "typeRoots": ["./node_modules/@types", "./types"]
+  },
+  "include": ["src/**/*", "types/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

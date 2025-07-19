@@ -1,5 +1,6 @@
 import express from "express";
 import { ConcertLikeService } from "../../services/concert/concertLikeService";
+import { safeParseInt } from "../../utils/numberUtils";
 
 /**
  * @swagger
@@ -214,8 +215,8 @@ export const getLikedConcerts = async (
     const { page, limit } = req.query;
 
     const result = await ConcertLikeService.getLikedConcerts(userId, {
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {

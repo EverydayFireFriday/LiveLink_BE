@@ -1,5 +1,6 @@
 import express from "express";
 import { ConcertService } from "../../services/concert/concertService";
+import { safeParseInt } from "../../utils/numberUtils";
 
 /**
  * @swagger
@@ -537,8 +538,8 @@ export const getAllConcerts = async (
 ) => {
   try {
     // 쿼리 파라미터 유효성 검사
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const page = safeParseInt(req.query.page, 1);
+    const limit = Math.min(safeParseInt(req.query.limit, 20), 100);
 
     if (page < 1) {
       return res.status(400).json({
