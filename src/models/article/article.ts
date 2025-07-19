@@ -20,11 +20,32 @@ export interface IArticle {
 export class ArticleModel {
   private db: Db;
   private collection: Collection<IArticle>;
+  private indexesCreated = false; // ✅ 인덱스 생성 상태 추적
 
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<IArticle>("articles");
-    this.createIndexes();
+    // 🚀 생성자에서 인덱스 생성하지 않음
+  }
+
+  // 🛡️ 지연된 인덱스 생성 - 실제 사용 시점에 호출
+  private async ensureIndexes(): Promise<void> {
+    if (this.indexesCreated) return;
+
+    try {
+      await this.createIndexes();
+      this.indexesCreated = true;
+      console.log("✅ Article indexes created successfully");
+    } catch (error) {
+      console.error("❌ Failed to create Article indexes:", error);
+      // 인덱스 생성 실패해도 앱은 계속 실행
+    }
+  }
+
+  // 🔧 모든 데이터베이스 작업 전에 인덱스 확인
+  private async withIndexes<T>(operation: () => Promise<T>): Promise<T> {
+    await this.ensureIndexes();
+    return operation();
   }
 
   private async createIndexes() {
@@ -118,64 +139,65 @@ export class ArticleModel {
     }
   }
 
-  // Article 생성
+  // ✅ 모든 메서드에 withIndexes() 적용
   async create(
     articleData: Omit<
       IArticle,
       "_id" | "created_at" | "updated_at" | "views" | "likes_count"
     >
   ): Promise<IArticle> {
-    const now = new Date();
-    const article: IArticle = {
-      _id: new ObjectId(),
-      ...articleData,
-      views: 0,
-      likes_count: 0,
-      created_at: now,
-      updated_at: now,
-    };
+    return this.withIndexes(async () => {
+      const now = new Date();
+      const article: IArticle = {
+        _id: new ObjectId(),
+        ...articleData,
+        views: 0,
+        likes_count: 0,
+        created_at: now,
+        updated_at: now,
+      };
 
-    const result = await this.collection.insertOne(article);
-    if (!result.insertedId) {
-      throw new Error("게시글 생성에 실패했습니다.");
-    }
+      const result = await this.collection.insertOne(article);
+      if (!result.insertedId) {
+        throw new Error("게시글 생성에 실패했습니다.");
+      }
 
-    return article;
+      return article;
+    });
   }
 
-  // ID로 Article 조회
   async findById(id: string): Promise<IArticle | null> {
-    if (!ObjectId.isValid(id)) {
-      return null;
-    }
-    return await this.collection.findOne({ _id: new ObjectId(id) });
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(id)) {
+        return null;
+      }
+      return await this.collection.findOne({ _id: new ObjectId(id) });
+    });
   }
 
-  // 여러 ID로 Article들을 한 번에 조회 (N+1 해결용)
   async findByIds(ids: string[]): Promise<IArticle[]> {
-    if (ids.length === 0) return [];
+    return this.withIndexes(async () => {
+      if (ids.length === 0) return [];
 
-    // 유효하지 않은 ID 필터링
-    const validIds = ids.filter((id) => ObjectId.isValid(id));
-    if (validIds.length === 0) return [];
+      const validIds = ids.filter((id) => ObjectId.isValid(id));
+      if (validIds.length === 0) return [];
 
-    const objectIds = validIds.map((id) => new ObjectId(id));
+      const objectIds = validIds.map((id) => new ObjectId(id));
 
-    const articles = await this.collection
-      .find({ _id: { $in: objectIds } })
-      .sort({ created_at: -1 })
-      .toArray();
+      const articles = await this.collection
+        .find({ _id: { $in: objectIds } })
+        .sort({ created_at: -1 })
+        .toArray();
 
-    // 원본 순서 유지를 위한 정렬 (필요시)
-    const articlesMap = new Map(
-      articles.map((article) => [article._id.toString(), article])
-    );
-    return validIds
-      .map((id) => articlesMap.get(id))
-      .filter(Boolean) as IArticle[];
+      const articlesMap = new Map(
+        articles.map((article) => [article._id.toString(), article])
+      );
+      return validIds
+        .map((id) => articlesMap.get(id))
+        .filter(Boolean) as IArticle[];
+    });
   }
 
-  // Article 목록 조회 (페이지네이션)
   async findMany(
     filter: any = {},
     options: {
@@ -184,18 +206,24 @@ export class ArticleModel {
       sort?: any;
     } = {}
   ): Promise<{ articles: IArticle[]; total: number }> {
-    const { page = 1, limit = 20, sort = { created_at: -1 } } = options;
-    const skip = (page - 1) * limit;
+    return this.withIndexes(async () => {
+      const { page = 1, limit = 20, sort = { created_at: -1 } } = options;
+      const skip = (page - 1) * limit;
 
-    const [articles, total] = await Promise.all([
-      this.collection.find(filter).sort(sort).skip(skip).limit(limit).toArray(),
-      this.collection.countDocuments(filter),
-    ]);
+      const [articles, total] = await Promise.all([
+        this.collection
+          .find(filter)
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        this.collection.countDocuments(filter),
+      ]);
 
-    return { articles, total };
+      return { articles, total };
+    });
   }
 
-  // 발행된 Article 목록 조회
   async findPublished(
     options: {
       page?: number;
@@ -203,97 +231,104 @@ export class ArticleModel {
       category_id?: string;
     } = {}
   ): Promise<{ articles: IArticle[]; total: number }> {
-    const { page = 1, limit = 20, category_id } = options;
-    const skip = (page - 1) * limit;
+    return this.withIndexes(async () => {
+      const { page = 1, limit = 20, category_id } = options;
+      const skip = (page - 1) * limit;
 
-    const filter: any = { is_published: true };
-    if (category_id) {
-      filter.category_id = new ObjectId(category_id);
-    }
+      const filter: any = { is_published: true };
+      if (category_id) {
+        filter.category_id = new ObjectId(category_id);
+      }
 
-    const [articles, total] = await Promise.all([
-      this.collection
-        .find(filter)
-        .sort({ published_at: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray(),
-      this.collection.countDocuments(filter),
-    ]);
+      const [articles, total] = await Promise.all([
+        this.collection
+          .find(filter)
+          .sort({ published_at: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        this.collection.countDocuments(filter),
+      ]);
 
-    return { articles, total };
+      return { articles, total };
+    });
   }
 
-  // Article 업데이트
   async updateById(
     id: string,
     updateData: Partial<IArticle>
   ): Promise<IArticle | null> {
-    if (!ObjectId.isValid(id)) {
-      return null;
-    }
-
-    // 수정 불가능한 필드 제거
-    delete updateData._id;
-    delete updateData.views;
-    delete updateData.likes_count;
-    delete updateData.created_at;
-
-    updateData.updated_at = new Date();
-
-    if (updateData.category_id && typeof updateData.category_id === "string") {
-      updateData.category_id = new ObjectId(updateData.category_id);
-    }
-
-    const result = await this.collection.findOneAndUpdate(
-      { _id: new ObjectId(id) },
-      { $set: updateData },
-      { returnDocument: "after" }
-    );
-
-    return result || null;
-  }
-
-  // Article 삭제
-  async deleteById(id: string): Promise<IArticle | null> {
-    if (!ObjectId.isValid(id)) {
-      return null;
-    }
-
-    const result = await this.collection.findOneAndDelete({
-      _id: new ObjectId(id),
-    });
-    return result || null;
-  }
-
-  // 조회수 증가
-  async incrementViews(id: string): Promise<void> {
-    if (!ObjectId.isValid(id)) {
-      return;
-    }
-
-    await this.collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $inc: { views: 1 }, $set: { updated_at: new Date() } }
-    );
-  }
-
-  // 좋아요 수 업데이트
-  async updateLikesCount(id: string, increment: number): Promise<void> {
-    if (!ObjectId.isValid(id)) {
-      return;
-    }
-
-    await this.collection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $inc: { likes_count: increment },
-        $set: { updated_at: new Date() },
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(id)) {
+        return null;
       }
-    );
+
+      delete updateData._id;
+      delete updateData.views;
+      delete updateData.likes_count;
+      delete updateData.created_at;
+
+      updateData.updated_at = new Date();
+
+      if (
+        updateData.category_id &&
+        typeof updateData.category_id === "string"
+      ) {
+        updateData.category_id = new ObjectId(updateData.category_id);
+      }
+
+      const result = await this.collection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: updateData },
+        { returnDocument: "after" }
+      );
+
+      return result || null;
+    });
   }
 
-  // 작성자별 Article 조회
+  async deleteById(id: string): Promise<IArticle | null> {
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(id)) {
+        return null;
+      }
+
+      const result = await this.collection.findOneAndDelete({
+        _id: new ObjectId(id),
+      });
+      return result || null;
+    });
+  }
+
+  async incrementViews(id: string): Promise<void> {
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(id)) {
+        return;
+      }
+
+      await this.collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $inc: { views: 1 }, $set: { updated_at: new Date() } }
+      );
+    });
+  }
+
+  async updateLikesCount(id: string, increment: number): Promise<void> {
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(id)) {
+        return;
+      }
+
+      await this.collection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $inc: { likes_count: increment },
+          $set: { updated_at: new Date() },
+        }
+      );
+    });
+  }
+
   async findByAuthor(
     authorId: string,
     options: {
@@ -302,32 +337,33 @@ export class ArticleModel {
       includeUnpublished?: boolean;
     } = {}
   ): Promise<{ articles: IArticle[]; total: number }> {
-    if (!ObjectId.isValid(authorId)) {
-      return { articles: [], total: 0 };
-    }
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(authorId)) {
+        return { articles: [], total: 0 };
+      }
 
-    const { page = 1, limit = 20, includeUnpublished = false } = options;
-    const skip = (page - 1) * limit;
+      const { page = 1, limit = 20, includeUnpublished = false } = options;
+      const skip = (page - 1) * limit;
 
-    const filter: any = { author_id: new ObjectId(authorId) };
-    if (!includeUnpublished) {
-      filter.is_published = true;
-    }
+      const filter: any = { author_id: new ObjectId(authorId) };
+      if (!includeUnpublished) {
+        filter.is_published = true;
+      }
 
-    const [articles, total] = await Promise.all([
-      this.collection
-        .find(filter)
-        .sort({ created_at: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray(),
-      this.collection.countDocuments(filter),
-    ]);
+      const [articles, total] = await Promise.all([
+        this.collection
+          .find(filter)
+          .sort({ created_at: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        this.collection.countDocuments(filter),
+      ]);
 
-    return { articles, total };
+      return { articles, total };
+    });
   }
 
-  // 텍스트 검색
   async search(
     query: string,
     options: {
@@ -336,28 +372,29 @@ export class ArticleModel {
       publishedOnly?: boolean;
     } = {}
   ): Promise<{ articles: IArticle[]; total: number }> {
-    const { page = 1, limit = 20, publishedOnly = true } = options;
-    const skip = (page - 1) * limit;
+    return this.withIndexes(async () => {
+      const { page = 1, limit = 20, publishedOnly = true } = options;
+      const skip = (page - 1) * limit;
 
-    const filter: any = { $text: { $search: query } };
-    if (publishedOnly) {
-      filter.is_published = true;
-    }
+      const filter: any = { $text: { $search: query } };
+      if (publishedOnly) {
+        filter.is_published = true;
+      }
 
-    const [articles, total] = await Promise.all([
-      this.collection
-        .find(filter, { projection: { score: { $meta: "textScore" } } })
-        .sort({ score: { $meta: "textScore" } })
-        .skip(skip)
-        .limit(limit)
-        .toArray(),
-      this.collection.countDocuments(filter),
-    ]);
+      const [articles, total] = await Promise.all([
+        this.collection
+          .find(filter, { projection: { score: { $meta: "textScore" } } })
+          .sort({ score: { $meta: "textScore" } })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        this.collection.countDocuments(filter),
+      ]);
 
-    return { articles, total };
+      return { articles, total };
+    });
   }
 
-  // 인기 게시글 조회 (조회수 + 좋아요 기준)
   async findPopular(
     options: {
       page?: number;
@@ -365,55 +402,56 @@ export class ArticleModel {
       days?: number;
     } = {}
   ): Promise<{ articles: IArticle[]; total: number }> {
-    const { page = 1, limit = 20, days = 7 } = options;
-    const skip = (page - 1) * limit;
+    return this.withIndexes(async () => {
+      const { page = 1, limit = 20, days = 7 } = options;
+      const skip = (page - 1) * limit;
 
-    // 최근 N일간의 게시글만 대상으로 인기도 계산
-    const dateThreshold = new Date();
-    dateThreshold.setDate(dateThreshold.getDate() - days);
+      const dateThreshold = new Date();
+      dateThreshold.setDate(dateThreshold.getDate() - days);
 
-    const filter: any = {
-      is_published: true,
-      published_at: { $gte: dateThreshold },
-    };
+      const filter: any = {
+        is_published: true,
+        published_at: { $gte: dateThreshold },
+      };
 
-    // 조회수와 좋아요 수를 종합한 인기도 점수로 정렬
-    const [articles, total] = await Promise.all([
-      this.collection
-        .find(filter)
-        .sort({
-          likes_count: -1, // 좋아요 우선
-          views: -1, // 조회수 보조
-          published_at: -1, // 최신순 보조
-        })
-        .skip(skip)
-        .limit(limit)
-        .toArray(),
-      this.collection.countDocuments(filter),
-    ]);
+      const [articles, total] = await Promise.all([
+        this.collection
+          .find(filter)
+          .sort({
+            likes_count: -1,
+            views: -1,
+            published_at: -1,
+          })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        this.collection.countDocuments(filter),
+      ]);
 
-    return { articles, total };
+      return { articles, total };
+    });
   }
 
-  // 배치로 게시글들의 기본 통계 업데이트 (좋아요 수 동기화용)
   async updateStatsForArticles(
     statsUpdates: { id: string; likes_count: number }[]
   ): Promise<void> {
-    if (statsUpdates.length === 0) return;
+    return this.withIndexes(async () => {
+      if (statsUpdates.length === 0) return;
 
-    const bulkOps = statsUpdates.map((update) => ({
-      updateOne: {
-        filter: { _id: new ObjectId(update.id) },
-        update: {
-          $set: {
-            likes_count: update.likes_count,
-            updated_at: new Date(),
+      const bulkOps = statsUpdates.map((update) => ({
+        updateOne: {
+          filter: { _id: new ObjectId(update.id) },
+          update: {
+            $set: {
+              likes_count: update.likes_count,
+              updated_at: new Date(),
+            },
           },
         },
-      },
-    }));
+      }));
 
-    await this.collection.bulkWrite(bulkOps);
+      await this.collection.bulkWrite(bulkOps);
+    });
   }
 }
 
