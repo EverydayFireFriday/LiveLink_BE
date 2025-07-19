@@ -10,59 +10,86 @@ export interface ITag {
 export class TagModel {
   private db: Db;
   private collection: Collection<ITag>;
+  private indexesInitialized = false;
 
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<ITag>("tags");
-    this.createIndexes();
+    // 비동기로 인덱스 생성 - 앱 시작을 블로킹하지 않음
+    this.initializeIndexes();
   }
 
-  private async createIndexes() {
-    try {
-      console.log("Tag 인덱스 생성 시작...");
+  private async initializeIndexes() {
+    if (this.indexesInitialized) return;
 
-      // name 필드에 유니크 인덱스 생성 (중복 처리)
-      try {
+    try {
+      console.log("🔄 Tag 인덱스 백그라운드 초기화 시작...");
+
+      // 기존 인덱스 조회로 중복 생성 방지
+      const existingIndexes = await this.collection.listIndexes().toArray();
+      const indexNames = existingIndexes.map((index) => index.name);
+
+      // name 유니크 인덱스가 없으면 생성
+      if (!indexNames.includes("tag_name_unique")) {
         await this.collection.createIndex(
           { name: 1 },
-          { unique: true, name: "tag_name_unique" }
+          {
+            unique: true,
+            name: "tag_name_unique",
+            background: true, // 백그라운드에서 생성
+          }
         );
-        console.log("✅ Tag name 유니크 인덱스 생성");
-      } catch (error: any) {
-        if (error.code === 85) {
-          // IndexOptionsConflict
-          console.log("ℹ️ Tag name 유니크 인덱스가 이미 존재함 (스킵)");
-        } else {
-          console.warn("⚠️ Tag name 인덱스 생성 실패:", error.message);
-        }
+        console.log("✅ Tag name 유니크 인덱스 생성 완료");
+      } else {
+        console.log("ℹ️ Tag name 유니크 인덱스 이미 존재");
       }
 
-      console.log("🎉 Tag 인덱스 생성 완료");
+      this.indexesInitialized = true;
+      console.log("🎉 Tag 인덱스 백그라운드 초기화 완료");
     } catch (error) {
-      console.error("❌ Tag 인덱스 생성 중 오류:", error);
-      console.log("⚠️ 인덱스 없이 계속 진행합니다...");
+      console.error("❌ Tag 인덱스 초기화 실패:", error);
+      // 인덱스 생성 실패해도 앱은 계속 동작
     }
   }
 
-  // Tag 생성
+  // 인덱스 준비 상태 확인 (선택적)
+  async waitForIndexes(timeoutMs = 5000): Promise<boolean> {
+    const start = Date.now();
+    while (!this.indexesInitialized && Date.now() - start < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return this.indexesInitialized;
+  }
+
+  // Tag 생성 - 인덱스 없어도 동작하도록 최적화
   async create(name: string): Promise<ITag> {
-    const existingTag = await this.collection.findOne({ name });
-    if (existingTag) {
-      throw new Error("이미 존재하는 태그입니다.");
+    try {
+      const tag: ITag = {
+        _id: new ObjectId(),
+        name,
+        created_at: new Date(),
+      };
+
+      const result = await this.collection.insertOne(tag);
+      if (!result.insertedId) {
+        throw new Error("태그 생성에 실패했습니다.");
+      }
+
+      return tag;
+    } catch (error: any) {
+      // 중복 키 에러 처리 (인덱스가 있는 경우)
+      if (error.code === 11000) {
+        throw new Error("이미 존재하는 태그입니다.");
+      }
+
+      // 인덱스가 없는 경우 수동으로 중복 검사
+      const existingTag = await this.collection.findOne({ name });
+      if (existingTag) {
+        throw new Error("이미 존재하는 태그입니다.");
+      }
+
+      throw error;
     }
-
-    const tag: ITag = {
-      _id: new ObjectId(),
-      name,
-      created_at: new Date(),
-    };
-
-    const result = await this.collection.insertOne(tag);
-    if (!result.insertedId) {
-      throw new Error("태그 생성에 실패했습니다.");
-    }
-
-    return tag;
   }
 
   // Tag 조회 (이름으로)
@@ -138,29 +165,38 @@ export class TagModel {
     return await this.collection.find({}).sort({ name: 1 }).toArray();
   }
 
-  // Tag 업데이트
+  // Tag 업데이트 - 인덱스 없어도 동작하도록 최적화
   async updateById(id: string, name: string): Promise<ITag | null> {
     if (!ObjectId.isValid(id)) {
       return null;
     }
 
-    // 같은 이름의 다른 태그가 있는지 확인
-    const existingTag = await this.collection.findOne({
-      name,
-      _id: { $ne: new ObjectId(id) },
-    });
+    try {
+      const result = await this.collection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: { name } },
+        { returnDocument: "after" }
+      );
 
-    if (existingTag) {
-      throw new Error("이미 존재하는 태그 이름입니다.");
+      return result || null;
+    } catch (error: any) {
+      // 중복 키 에러 처리 (인덱스가 있는 경우)
+      if (error.code === 11000) {
+        throw new Error("이미 존재하는 태그 이름입니다.");
+      }
+
+      // 인덱스가 없는 경우 수동으로 중복 검사
+      const existingTag = await this.collection.findOne({
+        name,
+        _id: { $ne: new ObjectId(id) },
+      });
+
+      if (existingTag) {
+        throw new Error("이미 존재하는 태그 이름입니다.");
+      }
+
+      throw error;
     }
-
-    const result = await this.collection.findOneAndUpdate(
-      { _id: new ObjectId(id) },
-      { $set: { name } },
-      { returnDocument: "after" }
-    );
-
-    return result || null;
   }
 
   // Tag 삭제
@@ -211,15 +247,21 @@ export class TagModel {
     }));
 
     try {
-      await this.collection.insertMany(newTags);
+      await this.collection.insertMany(newTags, { ordered: false });
       return [...existingTags, ...newTags];
     } catch (error: any) {
       // 중복 에러가 발생하면 개별적으로 처리 (동시성 문제 대응)
-      if (error.code === 11000) {
-        const tags: ITag[] = [];
-        for (const name of uniqueNames) {
-          const tag = await this.findOrCreate(name);
-          tags.push(tag);
+      if (error.code === 11000 || error.writeErrors) {
+        const tags: ITag[] = [...existingTags];
+        for (const name of newNames) {
+          try {
+            const tag = await this.findOrCreate(name);
+            if (!tags.find((t) => t.name === tag.name)) {
+              tags.push(tag);
+            }
+          } catch (createError) {
+            console.warn(`태그 생성 실패: ${name}`, createError);
+          }
         }
         return tags;
       }
@@ -227,7 +269,7 @@ export class TagModel {
     }
   }
 
-  // 태그별 게시글 수 조회 (통계용) - 타입 에러 수정
+  // 태그별 게시글 수 조회 (통계용)
   async getTagArticleCounts(): Promise<
     Array<{ tag: ITag; articleCount: number }>
   > {
@@ -270,7 +312,7 @@ export class TagModel {
     }));
   }
 
-  // 인기 태그 조회 (발행된 게시글 수 기준) - 타입 에러 수정
+  // 인기 태그 조회 (발행된 게시글 수 기준)
   async getPopularTags(
     options: {
       limit?: number;
@@ -384,7 +426,7 @@ export class TagModel {
     }));
   }
 
-  // 사용되지 않은 태그 조회 - 타입 에러 수정
+  // 사용되지 않은 태그 조회
   async getUnusedTags(): Promise<ITag[]> {
     const pipeline = [
       {
@@ -420,7 +462,7 @@ export class TagModel {
     }));
   }
 
-  // 태그 검색 (자동완성용) - 타입 에러 수정
+  // 태그 검색 (자동완성용)
   async searchTags(
     query: string,
     options: {
@@ -480,7 +522,7 @@ export class TagModel {
     }));
   }
 
-  // 관련 태그 추천 (같이 사용되는 태그들) - 타입 에러 수정
+  // 관련 태그 추천 (같이 사용되는 태그들)
   async getRelatedTags(
     tagId: string,
     options: {
@@ -565,6 +607,11 @@ export class TagModel {
       },
       coOccurrenceCount: item.coOccurrenceCount,
     }));
+  }
+
+  // 인덱스 강제 생성 (관리용)
+  async forceCreateIndexes(): Promise<void> {
+    await this.initializeIndexes();
   }
 }
 
