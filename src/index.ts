@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 
 // ✅ Swagger import (새로 추가)
-import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./swagger";
+import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
