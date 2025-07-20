@@ -1,5 +1,6 @@
 import express from "express";
 import { ConcertSearchService } from "../../services/concert/concertSearchService";
+import { safeParseInt } from "../../utils/numberUtils";
 
 /**
  * @swagger
@@ -48,8 +49,8 @@ export const searchConcerts = async (
 
     const result = await ConcertSearchService.searchConcerts({
       query: query as string,
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
@@ -108,8 +109,8 @@ export const getUpcomingConcerts = async (
     const { page, limit } = req.query;
 
     const result = await ConcertSearchService.getUpcomingConcerts({
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
@@ -181,10 +182,10 @@ export const getPopularConcerts = async (
     const { page, limit, status, minLikes } = req.query;
 
     const result = await ConcertSearchService.getPopularConcerts({
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
       status: status as string,
-      minLikes: minLikes ? parseInt(minLikes as string) : undefined,
+      minLikes: safeParseInt(minLikes, 1),
     });
 
     if (result.success) {
@@ -243,8 +244,8 @@ export const getTicketOpenConcerts = async (
     const { page, limit } = req.query;
 
     const result = await ConcertSearchService.getTicketOpenConcerts({
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
@@ -312,8 +313,8 @@ export const getConcertsByArtist = async (
 
     const result = await ConcertSearchService.getConcertsByArtist({
       artist,
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
@@ -381,8 +382,8 @@ export const getConcertsByLocation = async (
 
     const result = await ConcertSearchService.getConcertsByLocation({
       location,
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
@@ -451,8 +452,8 @@ export const getConcertsByCategory = async (
 
     const result = await ConcertSearchService.getConcertsByCategory({
       category,
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
@@ -523,8 +524,8 @@ export const getConcertsByStatus = async (
 
     const result = await ConcertSearchService.getConcertsByStatus({
       status,
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
     });
 
     if (result.success) {
