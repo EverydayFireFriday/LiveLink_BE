@@ -1,3 +1,4 @@
+import { createServer } from "http";
 import express from "express";
 import session from "express-session";
 import { createClient } from "redis";
@@ -8,6 +9,8 @@ import rateLimit from "express-rate-limit";
 
 // ✅ Swagger import (새로 추가)
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
+import { SocketServer } from "./socket/socketServer";
+import { chatRoutes } from "./routes/chat";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -19,9 +22,8 @@ console.log("🔄 REDIS_URL:", process.env.REDIS_URL ? "✅ 설정됨" : "❌ �
 console.log("👑 ADMIN_EMAILS 원본:", process.env.ADMIN_EMAILS);
 console.log(
   "👑 ADMIN_EMAILS 존재:",
-  !!process.env.ADMIN_EMAILS ? "✅ 설정됨" : "❌ 누락"
+  process.env.ADMIN_EMAILS ? "✅ 설정됨" : "❌ 누락"
 );
-
 if (process.env.ADMIN_EMAILS) {
   const adminEmails = process.env.ADMIN_EMAILS.split(",").map((email) =>
     email.trim()
@@ -54,6 +56,10 @@ import healthRouter from "./routes/health/healthRoutes"; // ✅ Health Check 라
 const RedisStore = require("connect-redis")(session);
 
 const app = express();
+
+// HTTP 서버 생성
+const httpServer = createServer(app);
+
 const PORT = process.env.PORT || 3000;
 
 // 보안 헤더 설정
@@ -107,7 +113,6 @@ redisClient.on("error", (err) => {
   console.error("❌ Redis Error:", err.message);
 });
 redisClient.on("end", () => console.log("ℹ️ Redis connection ended"));
-
 redisClient.connect().catch(console.error);
 
 // 미들웨어 설정
@@ -203,6 +208,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
 app.use("/health", healthRouter);
 app.use("/auth", authRouter);
 app.use("/concert", concertRouter);
+app.use("/chat", chatRoutes);
 
 // 우아한 종료 처리
 const gracefulShutdown = async (signal: string) => {
@@ -306,15 +312,24 @@ const startServer = async () => {
       });
     });
 
-    app.listen(PORT, () => {
+    // HTTP 서버 생성
+    const httpServer = createServer(app);
+
+    // Socket.io 서버 초기화
+    const socketServer = new SocketServer(httpServer);
+
+    // Express app.listen을 httpServer.listen으로 변경
+    httpServer.listen(PORT, () => {
       console.log("🎉 ================================");
       console.log(`🚀 Unified API Server running at http://localhost:${PORT}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+      console.log(`💬 Chat API: http://localhost:${PORT}/chat`);
       console.log(`🔐 Auth API: http://localhost:${PORT}/auth`);
       console.log(`🎵 Concert API: http://localhost:${PORT}/concert`);
       console.log(`📝 Article API: http://localhost:${PORT}/article`);
       console.log(`💾 Database: MongoDB Native Driver`);
       console.log(`🗄️  Session Store: Redis`);
+      console.log(`🔌 Socket.io: Real-time chat enabled`);
       console.log("🎉 ================================");
     });
   } catch (err) {
@@ -339,3 +354,4 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 export { redisClient };
+export { socketServer };
