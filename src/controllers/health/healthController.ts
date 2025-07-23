@@ -1,5 +1,5 @@
 import express from "express";
-import { redisClient } from "../../index";
+import { redisClient } from "../../app";
 import { getConcertModel } from "../../models/concert/concert";
 
 /**
