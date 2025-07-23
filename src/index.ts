@@ -3,6 +3,8 @@ import session from "express-session";
 import { createClient } from "redis";
 import dotenv from "dotenv";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 // ✅ Swagger import (새로 추가)
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
@@ -54,16 +56,18 @@ const RedisStore = require("connect-redis")(session);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 기본 보안 헤더 설정 (helmet 대신)
-app.use(
-  (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("X-Frame-Options", "DENY");
-    res.setHeader("X-XSS-Protection", "1; mode=block");
-    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-    next();
-  }
-);
+// 보안 헤더 설정
+app.use(helmet());
+
+// 요청 제한 설정
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 100, // 각 IP당 15분에 100개의 요청으로 제한
+  standardHeaders: true, // `RateLimit-*` 헤더 사용
+  legacyHeaders: false, // `X-RateLimit-*` 헤더 비활성화
+  message: "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
+});
+app.use(limiter);
 
 // 기본 로깅 (morgan 대신)
 app.use(
@@ -71,36 +75,6 @@ app.use(
     const timestamp = new Date().toISOString();
     console.log(`${timestamp} ${req.method} ${req.url} - ${req.ip}`);
     next();
-  }
-);
-
-// 기본 Rate limiting (express-rate-limit 대신)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15분
-const RATE_LIMIT_MAX = 100; // 최대 100 요청
-
-app.use(
-  (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const clientId = req.ip || "unknown";
-    const now = Date.now();
-
-    const clientData = rateLimitMap.get(clientId);
-
-    if (!clientData || now > clientData.resetTime) {
-      rateLimitMap.set(clientId, {
-        count: 1,
-        resetTime: now + RATE_LIMIT_WINDOW,
-      });
-      next();
-    } else if (clientData.count < RATE_LIMIT_MAX) {
-      clientData.count++;
-      next();
-    } else {
-      res.status(429).json({
-        error: "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
-      });
-      return;
-    }
   }
 );
 
