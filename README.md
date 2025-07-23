@@ -16,30 +16,6 @@
 - **Testing**: Jest
 - **Code Quality**: ESLint + Prettier
 
-### 🏗 System Architecture
-
-```mermaid
-flowchart TB
-    Client[Client Applications]
-    API[Express API Server]
-    Auth[Authentication Service]
-    Article[Article Service]
-    Concert[Concert Service]
-    MongoDB[(MongoDB)]
-    Redis[(Redis)]
-    Email[Email Service]
-
-    Client --&gt; API
-    API --&gt; Auth
-    API --&gt; Article
-    API --&gt; Concert
-    Auth --&gt; MongoDB
-    Auth --&gt; Redis
-    Auth --&gt; Email
-    Article --&gt; MongoDB
-    Concert --&gt; MongoDB
-    API --&gt; Redis
-```
 
 ## 🔄 Service Flow Diagrams
 
