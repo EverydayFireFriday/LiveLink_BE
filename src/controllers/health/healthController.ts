@@ -1,3 +1,5 @@
+import logger from "../../utils/logger";
+import { asyncHandler, sendSuccess, logPerformance } from "../../utils/controllerHelper";
 import express from "express";
 import { redisClient } from "../../app";
 import { getConcertModel } from "../../models/concert/concert";
@@ -33,10 +35,17 @@ import { getConcertModel } from "../../models/concert/concert";
  *                   type: string
  *                   example: "1.0.0"
  */
-export const basicHealthCheck = (
+export const basicHealthCheck = asyncHandler(
   req: express.Request,
   res: express.Response
 ) => {
+  const startTime = Date.now();
+  const operation = "basicHealthCheck";
+  
+  logger.info("Basic health check started", {
+    operation,
+    correlationId: req.correlationId
+  });
   const uptime = process.uptime();
   const hours = Math.floor(uptime / 3600);
   const minutes = Math.floor((uptime % 3600) / 60);
@@ -46,6 +55,19 @@ export const basicHealthCheck = (
     status: "healthy",
     message: "서버가 정상적으로 작동 중입니다.",
     timestamp: new Date().toISOString(),
+    uptime: `${hours}시간 ${minutes}분 ${seconds}초`,
+    correlationId: req.correlationId,
+    version: "1.0.0",
+    environment: process.env.NODE_ENV || "development",
+  });
+  
+  logPerformance(req, operation, startTime);
+  
+  res.status(200).json({
+    status: "healthy",
+    message: "서버가 정상적으로 작동 중입니다.",
+    timestamp: new Date().toISOString(),
+    correlationId: req.correlationId,
     uptime: `${hours}시간 ${minutes}분 ${seconds}초`,
     version: "1.0.0",
     environment: process.env.NODE_ENV || "development",
@@ -107,6 +129,13 @@ export const detailedHealthCheck = async (
 
   try {
     // 1. 서버 상태
+  const startTime = Date.now();
+  const operation = "basicHealthCheck";
+  
+  logger.info("Basic health check started", {
+    operation,
+    correlationId: req.correlationId
+  });
     const uptime = process.uptime();
     const memoryUsage = process.memoryUsage();
 

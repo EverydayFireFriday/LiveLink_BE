@@ -1,5 +1,11 @@
+import { asyncHandler, sendSuccess, handleControllerError, logPerformance } from "../../utils/controllerHelper";
+import logger, { ErrorCategory } from "../../utils/logger";
 // controllers/article/articleController.ts
+import { asyncHandler, sendSuccess, handleControllerError, logPerformance } from "../../utils/controllerHelper";
+import logger, { ErrorCategory } from "../../utils/logger";
 import express from "express";
+import { asyncHandler, sendSuccess, handleControllerError, logPerformance } from "../../utils/controllerHelper";
+import logger from "../../utils/logger";
 import { getArticleService } from "../../services/article";
 import { safeParseInt } from "../../utils/numberUtils";
 
@@ -14,6 +20,93 @@ export class ArticleController {
     if (!req.session?.user?.userId) {
       res.status(401).json({
         message: "로그인이 필요합니다.",
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
       return false;
     }
@@ -89,29 +182,28 @@ export class ArticleController {
    *       500:
    *         description: 서버 에러
    */
-  createArticle = async (req: express.Request, res: express.Response) => {
+  createArticle = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = "createArticle";
     try {
       // 🛡️ 세션 검증
       if (!this.validateSession(req, res)) return;
 
       const article = await this.articleService.createArticle(req.body);
 
-      res.status(201).json({
-        message: "게시글이 성공적으로 생성되었습니다.",
-        article,
-      });
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
     } catch (error: any) {
-      console.error("게시글 생성 에러:", error);
-
-      if (error.message.includes("유효성 검사")) {
-        res.status(400).json({ message: error.message });
+      handleControllerError(req, operation, error);
+    }
+  });
       } else if (error.message.includes("존재하지 않는")) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "게시글 생성에 실패했습니다." });
       }
     }
-  };
+  });
 
   /**
    * @swagger
@@ -157,7 +249,7 @@ export class ArticleController {
    *       500:
    *         description: 서버 에러
    */
-  getArticleById = async (req: express.Request, res: express.Response) => {
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
     try {
       const { id } = req.params;
       const withTags = req.query.withTags !== "false";
@@ -166,6 +258,93 @@ export class ArticleController {
       const article = await this.articleService.getArticleById(id, {
         withTags,
         withStats,
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
 
       // 조회수 증가
@@ -174,17 +353,103 @@ export class ArticleController {
       res.status(200).json({
         message: "게시글 조회 성공",
         article,
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
     } catch (error: any) {
-      console.error("게시글 조회 에러:", error);
-
-      if (error.message.includes("찾을 수 없습니다")) {
-        res.status(404).json({ message: error.message });
+      handleControllerError(req, operation, error);
+    }
+  });
       } else {
         res.status(500).json({ message: "게시글 조회에 실패했습니다." });
       }
     }
-  };
+  });
 
   /**
    * @swagger
@@ -261,6 +526,93 @@ export class ArticleController {
         category_id,
         tag_id,
         search,
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
 
       res.status(200).json({
@@ -272,105 +624,175 @@ export class ArticleController {
           total: result.total,
           totalPages: result.totalPages,
         },
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
     } catch (error) {
-      console.error("게시글 목록 조회 에러:", error);
-      res.status(500).json({ message: "게시글 목록 조회에 실패했습니다." });
+      handleControllerError(req, "getArticles", error);
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
     }
-  };
+  });
 
-  /**
-   * @swagger
-   * /article/{id}:
-   *   put:
-   *     summary: 게시글 수정
-   *     description: 기존 게시글을 수정합니다.
-   *     tags: [Article]
-   *     security:
-   *       - sessionAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: string
-   *         description: 게시글 ID
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               title:
-   *                 type: string
-   *                 maxLength: 200
-   *                 example: "수정된 게시글 제목"
-   *               content_url:
-   *                 type: string
-   *                 format: uri
-   *                 example: "https://storage.example.com/articles/updated-content.md"
-   *               category_name: # Changed from category_id
-   *                 type: string
-   *                 example: "Frontend"
-   *               tag_names: # Changed from tag_ids
-   *                 type: array
-   *                 items:
-   *                   type: string
-   *                 example: ["JavaScript", "Node.js"]
-   *               is_published:
-   *                 type: boolean
-   *                 example: true
-   *               published_at:
-   *                 type: string
-   *                 format: date-time
-   *                 example: "2024-01-15T15:30:00Z"
-   *     responses:
-   *       200:
-   *         description: 게시글 수정 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "게시글이 성공적으로 수정되었습니다."
-   *                 article:
-   *                   $ref: '#/components/schemas/Article'
-   *       400:
-   *         description: 잘못된 요청 데이터
-   *       401:
-   *         description: 로그인 필요
-   *       404:
-   *         description: 게시글을 찾을 수 없음
-   *       500:
-   *         description: 서버 에러
-   */
-  updateArticle = async (req: express.Request, res: express.Response) => {
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
     try {
-      // 🛡️ 세션 검증
-      if (!this.validateSession(req, res)) return;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
 
-      const { id } = req.params;
-      const article = await this.articleService.updateArticle(id, req.body);
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
 
-      res.status(200).json({
-        message: "게시글이 성공적으로 수정되었습니다.",
-        article,
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
     } catch (error: any) {
-      console.error("게시글 수정 에러:", error);
-
-      if (error.message.includes("유효성 검사")) {
-        res.status(400).json({ message: error.message });
+      handleControllerError(req, operation, error);
+    }
+  });
       } else if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "게시글 수정에 실패했습니다." });
       }
     }
-  };
+  });
 
   /**
    * @swagger
@@ -416,17 +838,103 @@ export class ArticleController {
 
       res.status(200).json({
         message: "게시글이 성공적으로 삭제되었습니다.",
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
     } catch (error: any) {
-      console.error("게시글 삭제 에러:", error);
-
-      if (error.message.includes("찾을 수 없습니다")) {
-        res.status(404).json({ message: error.message });
+      handleControllerError(req, operation, error);
+    }
+  });
       } else {
         res.status(500).json({ message: "게시글 삭제에 실패했습니다." });
       }
     }
-  };
+  });
 
   /**
    * @swagger
@@ -494,6 +1002,93 @@ export class ArticleController {
         page,
         limit,
         includeUnpublished,
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
 
       res.status(200).json({
@@ -505,12 +1100,99 @@ export class ArticleController {
           total: result.total,
           totalPages: result.totalPages,
         },
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
     } catch (error) {
       console.error("작성자별 게시글 조회 에러:", error);
       res.status(500).json({ message: "작성자별 게시글 조회에 실패했습니다." });
     }
-  };
+  });
 
   /**
    * @swagger
@@ -578,6 +1260,93 @@ export class ArticleController {
         page,
         limit,
         days,
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
 
       res.status(200).json({
@@ -589,10 +1358,97 @@ export class ArticleController {
           total: result.total,
           totalPages: result.totalPages,
         },
+      logPerformance(req, operation, startTime, { articleId: article.id });
+      sendSuccess(res, req, "게시글이 성공적으로 생성되었습니다.", { article }, 201);
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticleById = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticleById';
+    
+    try {
+      const { id } = req.params;
+      
+      logger.debug('Article retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        articleId: id
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const article = await this.articleService.getArticleById(id);
+
+      logPerformance(req, operation, startTime);
+      sendSuccess(res, req, "게시글 조회 성공", { article });
+      
+    } catch (error: any) {
+      handleControllerError(req, operation, error);
+    }
+  });
+
+  getArticles = asyncHandler(async (req: express.Request, res: express.Response) => {
+    const startTime = Date.now();
+    const operation = 'getArticles';
+    
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const sortBy = req.query.sortBy as string || "createdAt";
+      const order = req.query.order as string || "desc";
+
+      logger.debug('Articles list retrieval started', {
+        operation,
+        correlationId: req.correlationId,
+        metadata: { page, limit, category, sortBy, order }
+      });
+
+      // 지연 로딩
+      if (!this.articleService) {
+        const { ArticleService } = await import("../../services/article/articleService");
+        this.articleService = new ArticleService();
+      }
+
+      const result = await this.articleService.getArticles({
+        page,
+        limit,
+        category,
+        sortBy,
+        order,
+      });
+
+      logPerformance(req, operation, startTime, { 
+        articlesCount: result.articles.length,
+        totalArticles: result.total 
+      });
+      
+      sendSuccess(res, req, "게시글 목록 조회 성공", {
+        articles: result.articles,
+        pagination: {
+          currentPage: page,
+          limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        }
+      });
+      
+    } catch (error) {
+      handleControllerError(req, operation, error);
+    }
+  });
       });
     } catch (error) {
       console.error("인기 게시글 조회 에러:", error);
       res.status(500).json({ message: "인기 게시글 조회에 실패했습니다." });
     }
-  };
+  });
 }

@@ -185,3 +185,13 @@ npm run test:coverage
 Tests are organized by feature:
 
 git add .
+# 에러 로깅 시스템 구축 완료!
+## 새로운 로깅 기능:
+- Winston 기반 구조화된 로깅
+- Correlation ID 추적
+- 중앙화된 에러 처리
+- 성능 모니터링
+- 로깅 시스템 헬스체크 (/health/logs)
+
+## 설치 필요 의존성:
+npm install winston winston-daily-rotate-file uuid @types/uuid
