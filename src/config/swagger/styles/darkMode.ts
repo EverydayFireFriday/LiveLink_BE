@@ -23,7 +23,7 @@ export const darkModeStyles = `
   }
 
   /* 다크 모드 스타일 - 더 자연스러운 배경색 */
-  [data-theme="dark"] body,
+  body[data-theme='dark'] .swagger-ui {
   [data-theme="dark"] .swagger-ui,
   [data-theme="dark"] .swagger-ui .wrapper {
     background-color: #1a202c !important;

@@ -7,3 +7,4 @@ export const customStyles = `
   ${darkModeStyles}
   ${animationStyles}
 `;
+
