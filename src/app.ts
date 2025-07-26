@@ -1,3 +1,4 @@
+import { createServer } from "http";
 import express from "express";
 import session from "express-session";
 import { createClient } from "redis";
@@ -8,6 +9,8 @@ import rateLimit from "express-rate-limit";
 
 // ✅ Swagger import (새로 추가)
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
+import { ChatSocketServer } from "./socket";
+import { initializeChatModels } from "./models/chat";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -54,6 +57,8 @@ import healthRouter from "./routes/health/healthRoutes"; // ✅ Health Check 라
 const RedisStore = require("connect-redis")(session);
 
 const app = express();
+const httpServer = createServer(app);
+let chatSocketServer: ChatSocketServer;
 const PORT = process.env.PORT || 3000;
 
 // 보안 헤더 설정
@@ -153,6 +158,7 @@ app.use(
 let isUserDBConnected = false;
 let isConcertDBConnected = false;
 let isArticleDBConnected = false;
+let isChatDBConnected = false;
 
 // 데이터베이스 연결 상태 확인 미들웨어
 app.use(
@@ -168,6 +174,11 @@ app.use(
       });
     }
     if (req.path.startsWith("/article") && !isArticleDBConnected) {
+    if (req.path.startsWith("/chat") && !isChatDBConnected) {
+      return res.status(503).json({
+        message: "채팅 데이터베이스 연결이 준비되지 않았습니다.",
+      });
+    }
       return res.status(503).json({
         message: "게시글 데이터베이스 연결이 준비되지 않았습니다.",
       });
@@ -194,6 +205,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
       auth: "/auth",
       concerts: "/concert",
       articles: "/article",
+      chat: "/chat",
     },
     timestamp: new Date().toISOString(),
   });
@@ -240,6 +252,10 @@ const initializeDatabases = async () => {
     initializeAllArticleModels(concertDB);
     isArticleDBConnected = true;
     console.log("✅ Article Database initialized and models ready");
+    console.log("🔌 Initializing Chat Database...");
+    initializeChatModels();
+    isChatDBConnected = true;
+    console.log("✅ Chat Database initialized and models ready");
 
     return true;
   } catch (error) {
@@ -258,6 +274,14 @@ const startServer = async () => {
     const { default: articleRouter } = await import("./routes/article/index");
     app.use("/article", articleRouter);
     console.log("✅ Article routes loaded and connected");
+    console.log("🔌 Loading Chat routes...");
+    const { default: chatRouter } = await import("./routes/chat/index");
+    app.use("/chat", chatRouter);
+    console.log("✅ Chat routes loaded and connected");
+
+    console.log("🔌 Initializing Socket.IO server...");
+    chatSocketServer = new ChatSocketServer(httpServer);
+    console.log("✅ Socket.IO server initialized");
 
     // 에러 핸들링 미들웨어 (모든 라우터 뒤에 위치)
     app.use(
@@ -301,18 +325,21 @@ const startServer = async () => {
           auth: "/auth/*",
           concert: "/concert/*",
           article: "/article/*",
+          chat: "/chat/*",
         },
         timestamp: new Date().toISOString(),
       });
     });
 
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log("🎉 ================================");
       console.log(`🚀 Unified API Server running at http://localhost:${PORT}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
       console.log(`🔐 Auth API: http://localhost:${PORT}/auth`);
       console.log(`🎵 Concert API: http://localhost:${PORT}/concert`);
       console.log(`📝 Article API: http://localhost:${PORT}/article`);
+      console.log(`💬 Chat API: http://localhost:${PORT}/chat`);
+      console.log(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);
       console.log(`💾 Database: MongoDB Native Driver`);
       console.log(`🗄️  Session Store: Redis`);
       console.log("🎉 ================================");
@@ -338,4 +365,4 @@ process.on("unhandledRejection", (reason, promise) => {
   gracefulShutdown("unhandledRejection");
 });
 
-export { redisClient };
+export { redisClient, chatSocketServer };
