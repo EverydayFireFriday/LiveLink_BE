@@ -47,10 +47,15 @@ export const authSchemas = {
   User: {
     type: "object",
     properties: {
-      id: { type: "string" },
+      _id: { type: "string" },
       email: { type: "string", format: "email" },
       username: { type: "string" },
       profileImage: { type: "string", format: "uri" },
+      isEmailVerified: { type: "boolean" },
+      verificationCode: { type: "string" },
+      verificationCodeExpires: { type: "string", format: "date-time" },
+      status: { type: "string", enum: ["active", "inactive", "suspended", "banned"] },
+      role: { type: "string", enum: ["user", "admin", "moderator"] },
       createdAt: { type: "string", format: "date-time" },
       updatedAt: { type: "string", format: "date-time" },
     },
