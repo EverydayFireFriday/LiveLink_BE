@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import logger from './utils/logger';
 
 // ✅ Swagger import (새로 추가)
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
@@ -16,24 +17,21 @@ import { initializeChatModels } from "./models/chat";
 dotenv.config();
 
 // 🔍 관리자 설정 디버깅
-console.log("\n🔧 환경변수 검증 중...");
-console.log("📧 EMAIL_USER:", process.env.EMAIL_USER ? "✅ 설정됨" : "❌ 누락");
-console.log("🔄 REDIS_URL:", process.env.REDIS_URL ? "✅ 설정됨" : "❌ 누락");
-console.log("👑 ADMIN_EMAILS 원본:", process.env.ADMIN_EMAILS);
-console.log(
-  "👑 ADMIN_EMAILS 존재:",
-  !!process.env.ADMIN_EMAILS ? "✅ 설정됨" : "❌ 누락"
-);
+logger.info("\n🔧 환경변수 검증 중...");
+logger.info(`📧 EMAIL_USER: ${process.env.EMAIL_USER ? "✅ 설정됨" : "❌ 누락"}`);
+logger.info(`🔄 REDIS_URL: ${process.env.REDIS_URL ? "✅ 설정됨" : "❌ 누락"}`);
+logger.info(`👑 ADMIN_EMAILS 원본: ${process.env.ADMIN_EMAILS}`);
+logger.info(`👑 ADMIN_EMAILS 존재: ${!!process.env.ADMIN_EMAILS ? "✅ 설정됨" : "❌ 누락"}`);
 
 if (process.env.ADMIN_EMAILS) {
   const adminEmails = process.env.ADMIN_EMAILS.split(",").map((email) =>
     email.trim()
   );
-  console.log("👑 관리자 계정 개수:", adminEmails.length);
+  logger.info(`👑 관리자 계정 개수: ${adminEmails.length}`);
 } else {
-  console.warn("⚠️  ADMIN_EMAILS가 설정되지 않았습니다!");
+  logger.warn("⚠️  ADMIN_EMAILS가 설정되지 않았습니다!");
 }
-console.log("");
+logger.info("");
 
 // 데이터베이스 연결 함수들
 import {
@@ -58,7 +56,7 @@ const RedisStore = require("connect-redis")(session);
 
 const app = express();
 const httpServer = createServer(app);
-let chatSocketServer: ChatSocketServer;
+let chatSocketServer;
 const PORT = process.env.PORT || 3000;
 
 // 보안 헤더 설정
@@ -74,14 +72,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// 기본 로깅 (morgan 대신)
-app.use(
-  (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const timestamp = new Date().toISOString();
-    console.log(`${timestamp} ${req.method} ${req.url} - ${req.ip}`);
-    next();
-  }
-);
+// 기본 로깅 (winston 사용)
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.info(`${req.method} ${req.url} - ${req.ip}`);
+  next();
+});
 
 // CORS 설정
 app.use(
@@ -100,8 +95,8 @@ const redisClient = createClient({
 });
 
 // Redis 이벤트 핸들링 (에러 필터링)
-redisClient.on("connect", () => console.log("✅ Redis connected"));
-redisClient.on("error", (err) => {
+redisClient.on("connect", () => logger.info("✅ Redis connected"));
+redisClient.on("error", (err: Error) => {
   if (
     err.message?.includes("Disconnects client") ||
     err.message?.includes("destroy") ||
@@ -109,11 +104,11 @@ redisClient.on("error", (err) => {
   ) {
     return;
   }
-  console.error("❌ Redis Error:", err.message);
+  logger.error(`❌ Redis Error: ${err.message}`);
 });
-redisClient.on("end", () => console.log("ℹ️ Redis connection ended"));
+redisClient.on("end", () => logger.info("ℹ️ Redis connection ended"));
 
-redisClient.connect().catch(console.error);
+redisClient.connect().catch((e: Error) => logger.error(e.message));
 
 // 미들웨어 설정
 app.use(
@@ -174,13 +169,13 @@ app.use(
       });
     }
     if (req.path.startsWith("/article") && !isArticleDBConnected) {
+      return res.status(503).json({
+        message: "게시글 데이터베이스 연결이 준비되지 않았습니다.",
+      });
+    }
     if (req.path.startsWith("/chat") && !isChatDBConnected) {
       return res.status(503).json({
         message: "채팅 데이터베이스 연결이 준비되지 않았습니다.",
-      });
-    }
-      return res.status(503).json({
-        message: "게시글 데이터베이스 연결이 준비되지 않았습니다.",
       });
     }
     next();
@@ -218,48 +213,48 @@ app.use("/concert", concertRouter);
 
 // 우아한 종료 처리
 const gracefulShutdown = async (signal: string) => {
-  console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
+  logger.info(`\n🛑 ${signal} received. Starting graceful shutdown...`);
   try {
     if (redisClient?.isOpen) {
       await redisClient.disconnect();
     }
-    console.log("✅ Redis disconnected");
+    logger.info("✅ Redis disconnected");
     await disconnectUserDB();
-    console.log("✅ User MongoDB disconnected");
-    console.log("👋 Graceful shutdown completed");
+    logger.info("✅ User MongoDB disconnected");
+    logger.info("👋 Graceful shutdown completed");
     process.exit(0);
   } catch (error) {
-    console.log("👋 Graceful shutdown completed");
-    process.exit(0);
+    logger.error("Graceful shutdown failed", error);
+    process.exit(1);
   }
 };
 
 // 데이터베이스 초기화 함수
 const initializeDatabases = async () => {
   try {
-    console.log("🔌 Connecting to User Database...");
+    logger.info("🔌 Connecting to User Database...");
     await connectUserDB();
     isUserDBConnected = true;
-    console.log("✅ User Database connected");
+    logger.info("✅ User Database connected");
 
-    console.log("🔌 Connecting to Concert Database...");
+    logger.info("🔌 Connecting to Concert Database...");
     const concertDB = await connectConcertDB();
     initializeConcertModel(concertDB);
     isConcertDBConnected = true;
-    console.log("✅ Concert Database connected and models initialized");
+    logger.info("✅ Concert Database connected and models initialized");
 
-    console.log("🔌 Initializing Article Database...");
+    logger.info("🔌 Initializing Article Database...");
     initializeAllArticleModels(concertDB);
     isArticleDBConnected = true;
-    console.log("✅ Article Database initialized and models ready");
-    console.log("🔌 Initializing Chat Database...");
+    logger.info("✅ Article Database initialized and models ready");
+    logger.info("🔌 Initializing Chat Database...");
     initializeChatModels();
     isChatDBConnected = true;
-    console.log("✅ Chat Database initialized and models ready");
+    logger.info("✅ Chat Database initialized and models ready");
 
     return true;
   } catch (error) {
-    console.error("❌ Database initialization failed:", error);
+    logger.error("❌ Database initialization failed:", { error });
     throw error;
   }
 };
@@ -270,18 +265,18 @@ const startServer = async () => {
     await Promise.all([initializeDatabases(), redisClient.ping()]);
 
     // 동적 Article 라우터 로드 및 연결
-    console.log("🔌 Loading Article routes...");
+    logger.info("🔌 Loading Article routes...");
     const { default: articleRouter } = await import("./routes/article/index");
     app.use("/article", articleRouter);
-    console.log("✅ Article routes loaded and connected");
-    console.log("🔌 Loading Chat routes...");
+    logger.info("✅ Article routes loaded and connected");
+    logger.info("🔌 Loading Chat routes...");
     const { default: chatRouter } = await import("./routes/chat/index");
     app.use("/chat", chatRouter);
-    console.log("✅ Chat routes loaded and connected");
+    logger.info("✅ Chat routes loaded and connected");
 
-    console.log("🔌 Initializing Socket.IO server...");
+    logger.info("🔌 Initializing Socket.IO server...");
     chatSocketServer = new ChatSocketServer(httpServer);
-    console.log("✅ Socket.IO server initialized");
+    logger.info("✅ Socket.IO server initialized");
 
     // 에러 핸들링 미들웨어 (모든 라우터 뒤에 위치)
     app.use(
@@ -294,7 +289,7 @@ const startServer = async () => {
         if (res.headersSent) {
           return next(err);
         }
-        console.error("🔥 Error:", err);
+        logger.error("🔥 Error:", { error: err });
         const isDevelopment = process.env.NODE_ENV === "development";
         if (err.type === "entity.parse.failed" || err.message?.includes("JSON")) {
           return res.status(400).json({
@@ -315,6 +310,7 @@ const startServer = async () => {
 
     // 404 핸들러 (가장 마지막에 위치)
     app.use("*", (req: express.Request, res: express.Response) => {
+      logger.warn(`404 Not Found: ${req.originalUrl}`);
       res.status(404).json({
         message: "요청한 경로를 찾을 수 없습니다.",
         requestedPath: req.originalUrl,
@@ -332,20 +328,20 @@ const startServer = async () => {
     });
 
     httpServer.listen(PORT, () => {
-      console.log("🎉 ================================");
-      console.log(`🚀 Unified API Server running at http://localhost:${PORT}`);
-      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-      console.log(`🔐 Auth API: http://localhost:${PORT}/auth`);
-      console.log(`🎵 Concert API: http://localhost:${PORT}/concert`);
-      console.log(`📝 Article API: http://localhost:${PORT}/article`);
-      console.log(`💬 Chat API: http://localhost:${PORT}/chat`);
-      console.log(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);
-      console.log(`💾 Database: MongoDB Native Driver`);
-      console.log(`🗄️  Session Store: Redis`);
-      console.log("🎉 ================================");
+      logger.info("🎉 ================================");
+      logger.info(`🚀 Unified API Server running at http://localhost:${PORT}`);
+      logger.info(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+      logger.info(`🔐 Auth API: http://localhost:${PORT}/auth`);
+      logger.info(`🎵 Concert API: http://localhost:${PORT}/concert`);
+      logger.info(`📝 Article API: http://localhost:${PORT}/article`);
+      logger.info(`💬 Chat API: http://localhost:${PORT}/chat`);
+      logger.info(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);
+      logger.info(`💾 Database: MongoDB Native Driver`);
+      logger.info(`🗄️  Session Store: Redis`);
+      logger.info("🎉 ================================");
     });
   } catch (err) {
-    console.error("❌ Startup failed", err);
+    logger.error("❌ Startup failed", { error: err });
     process.exit(1);
   }
 };
@@ -357,11 +353,11 @@ startServer();
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("uncaughtException", (error) => {
-  console.error("💥 Uncaught Exception:", error);
+  logger.error("💥 Uncaught Exception:", { error });
   gracefulShutdown("uncaughtException");
 });
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("💥 Unhandled Rejection at:", promise, "reason:", reason);
+  logger.error("💥 Unhandled Rejection at:", { promise, reason });
   gracefulShutdown("unhandledRejection");
 });
 
