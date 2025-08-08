@@ -1,30 +1,52 @@
-# 1. Base Image: Node.js 18 on Alpine Linux for a smaller image size
-FROM node:18-alpine
+#------------------- Builder Stage -------------------#
+# Using a specific version of Node.js for reproducibility
+FROM node:18-alpine AS builder
 
-# 2. Set working directory inside the container
+# Set the working directory
 WORKDIR /usr/src/app
 
-# 3. Copy package.json and package-lock.json for dependency installation
-# This leverages Docker's layer caching. These files are copied first,
-# so dependencies are only re-installed if they change.
+# Copy package files
 COPY package*.json ./
 
-# 4. Install production dependencies
-# Using --only=production in a multi-stage build is a good practice,
-# but for simplicity here we install all dependencies first and prune later if needed.
-RUN npm install
+# Install production dependencies using npm ci for faster, more reliable builds
+# and --omit=dev to exclude development dependencies
+RUN npm ci --omit=dev
 
-# 5. Copy all other source files into the working directory
+# Copy the rest of the application source code
 COPY . .
 
-# 6. Build TypeScript to JavaScript
-# This command compiles the .ts files into .js files in the 'dist' directory.
+# Build the TypeScript source code
 RUN npm run build
 
-# 7. Expose the application port
+#------------------- Production Stage -------------------#
+# Use a slim, secure base image for the final stage
+FROM node:18-alpine
+
+# Set NODE_ENV to production
+ENV NODE_ENV=production
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Create a non-root user and group for security
+# -S: create a system user
+# -G: add user to a group
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copy dependencies and built application from the builder stage
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/dist ./dist
+COPY package.json .
+
+# Create and set permissions for the logs directory
+# The appuser needs to be able to write logs
+RUN mkdir -p logs && chown -R appuser:appgroup logs
+
+# Switch to the non-root user
+USER appuser
+
+# Expose the port the app runs on
 EXPOSE 3000
 
-# 8. Define the command to run the application
-# This will start the server when the container launches.
-CMD [ "node", "dist/app.js" ]
-
+# The command to run the application
+CMD ["node", "dist/app.js"]
