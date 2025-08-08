@@ -10,8 +10,7 @@ import logger from "./utils/logger";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
-
-// ✅ 환경변수 검증 import (dotenv 이후)
+// ✅ 환경변수 검증 실행 (dotenv 직후)
 import { env, isDevelopment, shouldSkipAuth } from "./config/env";
 
 // ✅ Swagger import
@@ -61,8 +60,10 @@ app.use(limiter);
 import morgan from "morgan";
 import { stream } from "./utils/logger";
 
-// 기본 로깅 (morgan과 winston 연결)
-app.use(morgan("combined", { stream }));
+// 환경별 로그 포맷 설정
+const logFormat = isDevelopment() ? "dev" : "combined";
+// 프로덕션에서 트래픽이 많다면 'short' 또는 'tiny' 사용 권장
+app.use(morgan(logFormat, { stream }));
 
 // CORS 설정
 app.use(
@@ -175,7 +176,7 @@ app.use(
   swaggerUi.setup(swaggerSpec, swaggerUiOptions)
 );
 
-// 🩺 간단한 헬스체크 엔드포인트 (루트 레벨)
+// 🩺 헬스체크 엔드포인트들 (인증 없음 - 오케스트레이터/로드밸런서용)
 app.get("/health", (req: express.Request, res: express.Response) => {
   res.status(200).json({
     status: "healthy",
@@ -191,6 +192,51 @@ app.get("/health", (req: express.Request, res: express.Response) => {
       redis: redisClient?.isOpen || false,
     },
   });
+});
+
+// 🔍 Liveness Probe (단순 생존 확인)
+app.get("/health/liveness", (req: express.Request, res: express.Response) => {
+  res.status(200).json({
+    status: "alive",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+  });
+});
+
+// ⚡ Readiness Probe (서비스 준비 상태 확인)
+app.get("/health/readiness", (req: express.Request, res: express.Response) => {
+  const allServicesReady =
+    isUserDBConnected &&
+    isConcertDBConnected &&
+    isArticleDBConnected &&
+    isChatDBConnected &&
+    (redisClient?.isOpen || false);
+
+  if (allServicesReady) {
+    res.status(200).json({
+      status: "ready",
+      timestamp: new Date().toISOString(),
+      services: {
+        userDB: isUserDBConnected,
+        concertDB: isConcertDBConnected,
+        articleDB: isArticleDBConnected,
+        chatDB: isChatDBConnected,
+        redis: redisClient?.isOpen || false,
+      },
+    });
+  } else {
+    res.status(503).json({
+      status: "not ready",
+      timestamp: new Date().toISOString(),
+      services: {
+        userDB: isUserDBConnected,
+        concertDB: isConcertDBConnected,
+        articleDB: isArticleDBConnected,
+        chatDB: isChatDBConnected,
+        redis: redisClient?.isOpen || false,
+      },
+    });
+  }
 });
 
 // 기본 라우트
