@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import logger from "../logger";
+import logger from "../../logger";
 
 /**
  * 콘서트 데이터 유효성 검증 결과 인터페이스
