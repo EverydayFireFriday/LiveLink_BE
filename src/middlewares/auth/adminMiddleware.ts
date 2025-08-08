@@ -1,10 +1,11 @@
 import express from "express";
+import logger from "../../utils/logger";
 
 // 관리자 이메일 목록 확인
 const getAdminEmails = (): string[] => {
   const adminEmailsString = process.env.ADMIN_EMAILS;
   if (!adminEmailsString) {
-    console.warn('⚠️ ADMIN_EMAILS 환경변수가 설정되지 않았습니다.');
+    logger.warn('⚠️ ADMIN_EMAILS 환경변수가 설정되지 않았습니다.');
     return [];
   }
   
@@ -33,7 +34,7 @@ export const requireAdmin = (
   const userEmail = req.session.user.email.toLowerCase();
   
   if (!adminEmails.includes(userEmail)) {
-    console.log(`🚫 관리자 권한 없음: ${userEmail} (허용된 관리자: ${adminEmails.join(', ')})`);
+    logger.info(`🚫 관리자 권한 없음: ${userEmail} (허용된 관리자: ${adminEmails.join(', ')})`);
     res.status(403).json({ 
       message: "관리자 권한이 필요합니다.",
       currentUser: req.session.user.email,
@@ -43,7 +44,7 @@ export const requireAdmin = (
   }
 
   // 관리자 접근 로그
-  console.log(`👑 관리자 접근: ${userEmail} → ${req.method} ${req.path}`);
+  logger.info(`👑 관리자 접근: ${userEmail} → ${req.method} ${req.path}`);
   
   next();
 };

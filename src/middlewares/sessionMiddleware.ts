@@ -1,6 +1,7 @@
 import express from "express";
 import session from "express-session";
 import { createClient } from "redis";
+import logger from "../utils/logger";
 
 // connect-redis v6.1.3 방식
 const RedisStore = require("connect-redis")(session);
@@ -12,18 +13,18 @@ const redisClient = createClient({
 });
 
 // Redis 이벤트 핸들링 (에러 필터링)
-redisClient.on("connect", () => console.log("✅ Redis connected (session)"));
+redisClient.on("connect", () => logger.info("✅ Redis connected (session)"));
 redisClient.on("error", (err) => {
   // 종료 과정에서 발생하는 에러는 무시
   if (err.message?.includes('Disconnects client') || 
       err.message?.includes('destroy')) {
     return;
   }
-  console.error("❌ Redis Error (session):", err);
+  logger.info("❌ Redis Error (session):", err);
 });
 
 // Redis 연결
-redisClient.connect().catch(console.error);
+redisClient.connect().catch(logger.error);
 
 export const sessionMiddleware = (app: express.Application) => {
   app.use(
@@ -50,8 +51,8 @@ export const disconnectRedis = async (): Promise<void> => {
     if (redisClient?.isOpen) {
       await redisClient.disconnect();
     }
-    console.log("✅ Redis disconnected (session)");
+    logger.info("✅ Redis disconnected (session)");
   } catch (error) {
-    console.log("✅ Redis disconnected (session)");
+    logger.info("✅ Redis disconnected (session)");
   }
 };
