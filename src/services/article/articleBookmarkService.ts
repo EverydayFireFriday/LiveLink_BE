@@ -1,4 +1,3 @@
-// services/article/articleBookmarkService.ts
 import {
   getArticleModel,
   getArticleBookmarkModel,

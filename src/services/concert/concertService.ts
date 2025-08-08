@@ -1,10 +1,11 @@
 import { ObjectId } from "mongodb";
 import { getConcertModel } from "../../models/concert/concert";
+import logger from "../../utils/logger";
+
 import {
   validateConcertData,
   validateConcertUpdateData,
   generateObjectIdFromUid,
-  normalizeConcertData,
   isValidImageUrl,
 } from "../../utils/validation/concert/concertValidation";
 
@@ -33,10 +34,7 @@ export interface ConcertServiceResponse {
 
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
 import type {
-  IConcert,
-  IPrice,
-  ITicketLink,
-  ILike,
+  IConcert
 } from "../../models/concert/concert";
 
 export class ConcertService {
@@ -178,7 +176,7 @@ export class ConcertService {
         statusCode: 201,
       };
     } catch (error) {
-      console.error("콘서트 생성 서비스 에러:", error);
+      logger.error("콘서트 생성 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "콘서트 생성 실패",
@@ -221,7 +219,7 @@ export class ConcertService {
             });
           }
         } catch (error) {
-          console.warn("좋아요 상태 확인 에러:", error);
+          logger.warn("좋아요 상태 확인 에러:", error);
         }
       }
 
@@ -234,7 +232,7 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("콘서트 조회 서비스 에러:", error);
+      logger.error("콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "콘서트 조회 실패",
@@ -336,7 +334,7 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("콘서트 목록 조회 서비스 에러:", error);
+      logger.error("콘서트 목록 조회 서비스 에러:", error);
       return {
         success: false,
         error: "콘서트 목록 조회 실패",
@@ -442,7 +440,7 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("콘서트 수정 서비스 에러:", error);
+      logger.error("콘서트 수정 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "콘서트 수정 실패",
@@ -488,7 +486,7 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("콘서트 삭제 서비스 에러:", error);
+      logger.error("콘서트 삭제 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "콘서트 삭제 실패",

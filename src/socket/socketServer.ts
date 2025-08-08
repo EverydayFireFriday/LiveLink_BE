@@ -9,6 +9,9 @@ import {
   SocketData,
   SocketUser 
 } from '../types/chat';
+import logger from "../utils/logger";
+import { log } from 'console';
+
 
 export class ChatSocketServer {
   private io: SocketServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -31,7 +34,7 @@ export class ChatSocketServer {
 
   private setupSocketEvents() {
     this.io.on('connection', (socket) => {
-      console.log(`🔌 Socket connected: ${socket.id}`);
+      logger.info(`🔌 Socket connected: ${socket.id}`);
 
       socket.use((packet, next) => {
         if (!socket.data.user) {
@@ -54,7 +57,7 @@ export class ChatSocketServer {
           await socket.join(roomId);
           socket.to(roomId).emit('userJoined', user, roomId);
           
-          console.log(`👤 User ${user.username} joined room ${roomId}`);
+          logger.info(`👤 User ${user.username} joined room ${roomId}`);
         } catch (error: any) {
           socket.emit('error', error.message);
         }
@@ -68,7 +71,7 @@ export class ChatSocketServer {
           await socket.leave(roomId);
           socket.to(roomId).emit('userLeft', user, roomId);
           
-          console.log(`👤 User ${user.username} left room ${roomId}`);
+          logger.info(`👤 User ${user.username} left room ${roomId}`);
         } catch (error: any) {
           socket.emit('error', error.message);
         }
@@ -87,7 +90,7 @@ export class ChatSocketServer {
 
           this.io.to(roomId).emit('message', message);
           
-          console.log(`💬 Message sent in room ${roomId} by ${user.username}`);
+          logger.info(`💬 Message sent in room ${roomId} by ${user.username}`);
         } catch (error: any) {
           socket.emit('error', error.message);
         }
@@ -106,7 +109,7 @@ export class ChatSocketServer {
       });
 
       socket.on('disconnect', (reason) => {
-        console.log(`🔌 Socket disconnected: ${socket.id}, reason: ${reason}`);
+        logger.info(`🔌 Socket disconnected: ${socket.id}, reason: ${reason}`);
       });
     });
   }

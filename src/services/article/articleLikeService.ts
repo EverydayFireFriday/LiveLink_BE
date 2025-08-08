@@ -1,4 +1,3 @@
-// services/article/articleLikeService.ts
 import {
   getArticleModel,
   getArticleLikeModel,

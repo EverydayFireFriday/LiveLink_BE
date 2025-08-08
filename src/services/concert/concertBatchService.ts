@@ -9,6 +9,7 @@ import {
   generateObjectIdFromUid,
   validateAndNormalizeBatchSize,
 } from "../../utils/validation/concert/concertValidation";
+import logger from "../../utils/logger";
 
 export interface ConcertServiceResponse {
   success: boolean;
@@ -77,7 +78,7 @@ export class ConcertBatchService {
         duplicates: [] as any[],
       };
 
-      console.log(`⚡ 배치 콘서트 등록 시작: ${concerts.length}개 콘서트`);
+      logger.info(`⚡ 배치 콘서트 등록 시작: ${concerts.length}개 콘서트`);
       const startTime = Date.now();
 
       // 1. 모든 콘서트 데이터 유효성 검증
@@ -295,7 +296,7 @@ export class ConcertBatchService {
         statusCode: 201,
       };
     } catch (error) {
-      console.error("❌ 콘서트 일괄 등록 서비스 에러:", error);
+      logger.error("❌ 콘서트 일괄 등록 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "콘서트 일괄 등록 실패",
@@ -443,7 +444,7 @@ export class ConcertBatchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("❌ 콘서트 일괄 수정 서비스 에러:", error);
+      logger.error("❌ 콘서트 일괄 수정 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "콘서트 일괄 수정 실패",
@@ -620,7 +621,7 @@ export class ConcertBatchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("❌ 콘서트 일괄 삭제 서비스 에러:", error);
+      logger.error("❌ 콘서트 일괄 삭제 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "콘서트 일괄 삭제 실패",
@@ -791,7 +792,7 @@ export class ConcertBatchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("❌ 좋아요 일괄 처리 서비스 에러:", error);
+      logger.error("❌ 좋아요 일괄 처리 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "좋아요 일괄 처리 실패",

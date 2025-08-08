@@ -1,5 +1,7 @@
 import Redis from "ioredis";
 import { VerificationData } from "../../types/auth/authTypes";
+import logger from "../../utils/logger";
+
 
 export class VerificationService {
   private redis: Redis;
@@ -34,7 +36,7 @@ export class VerificationService {
 
       return JSON.parse(data) as VerificationData;
     } catch (error) {
-      console.error("Redis 데이터 파싱 에러:", error);
+      logger.error("Redis 데이터 파싱 에러:", error);
       return null;
     }
   }

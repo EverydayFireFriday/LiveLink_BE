@@ -1,5 +1,5 @@
 import { getConcertModel } from "../../models/concert/concert";
-import type { IConcert } from "../../models/concert/concert";
+import logger from "../../utils/logger";
 
 export interface ConcertServiceResponse {
   success: boolean;
@@ -55,7 +55,7 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("좋아요 상태 조회 서비스 에러:", error);
+      logger.error("좋아요 상태 조회 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "좋아요 상태 조회 실패",
@@ -100,13 +100,13 @@ export class ConcertLikeService {
             try {
               return like.userId.toString() === userId.toString();
             } catch (error) {
-              console.warn("좋아요 중복 검사 비교 중 에러:", error);
+              logger.warn("좋아요 중복 검사 비교 중 에러:", error);
               return false;
             }
           });
         }
       } catch (error) {
-        console.warn("좋아요 중복 검사 전체 에러:", error);
+        logger.warn("좋아요 중복 검사 전체 에러:", error);
         isAlreadyLiked = false;
       }
 
@@ -132,7 +132,7 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("좋아요 추가 서비스 에러:", error);
+      logger.error("좋아요 추가 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "좋아요 추가 실패",
@@ -182,7 +182,7 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("좋아요 삭제 서비스 에러:", error);
+      logger.error("좋아요 삭제 서비스 에러:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "좋아요 삭제 실패",
@@ -237,7 +237,7 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("좋아요한 콘서트 목록 조회 서비스 에러:", error);
+      logger.error("좋아요한 콘서트 목록 조회 서비스 에러:", error);
       return {
         success: false,
         error:
