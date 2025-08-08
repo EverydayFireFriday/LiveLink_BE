@@ -61,7 +61,7 @@ const envSchema = z.object({
     .default("info"),
 });
 
-// 🔍 환경변수 검증 및 파싱
+// 🔍 환경변수 검증 및 파싱 (즉시 실행)
 const validateEnv = () => {
   logger.info("\n🔧 환경변수 검증 중...");
 
@@ -100,8 +100,12 @@ const validateEnv = () => {
         logger.error(`   ${issue.path.join(".")}: ${issue.message}`);
       });
       logger.error("\n📋 필수 환경변수 목록:");
-      logger.error("   MONGO_URI - MongoDB 연결 문자열");
-      logger.error("   REDIS_URL - Redis 연결 문자열");
+      logger.error(
+        "   MONGO_URI - MongoDB 연결 문자열 (예: mongodb://localhost:27017/livelink)"
+      );
+      logger.error(
+        "   REDIS_URL - Redis 연결 문자열 (예: redis://localhost:6379)"
+      );
       logger.error("   SESSION_SECRET - 세션 암호화 키 (32자 이상)");
       logger.error("   EMAIL_USER - 이메일 발송용 계정");
       logger.error("   ADMIN_EMAILS - 관리자 이메일 목록 (쉼표로 구분)");
@@ -109,11 +113,14 @@ const validateEnv = () => {
     } else {
       logger.error("❌ 환경변수 검증 중 예상치 못한 오류:", error);
     }
+
+    // 🚨 검증 실패 시 즉시 프로세스 종료
+    logger.error("🚨 환경변수 검증 실패로 서버를 시작할 수 없습니다.");
     process.exit(1);
   }
 };
 
-// 🔧 환경변수 검증 및 내보내기
+// 🔧 환경변수 검증 및 내보내기 (모듈 로드 시 즉시 실행)
 export const env = validateEnv();
 
 // 🎯 타입 정의 (TypeScript 지원)
@@ -126,7 +133,9 @@ export const isTest = () => env.NODE_ENV === "test";
 
 // 📧 관리자 이메일 확인 헬퍼
 export const isAdminEmail = (email: string): boolean => {
-  return env.ADMIN_EMAILS.includes(email.trim().toLowerCase());
+  return env.ADMIN_EMAILS.some(
+    (adminEmail) => adminEmail.toLowerCase() === email.trim().toLowerCase()
+  );
 };
 
 // 🔐 인증 스킵 여부 확인
