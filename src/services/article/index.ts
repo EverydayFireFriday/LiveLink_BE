@@ -1,4 +1,3 @@
-// services/article/index.ts
 export { ArticleService, getArticleService } from "./articleService";
 export {
   ArticleLikeService,

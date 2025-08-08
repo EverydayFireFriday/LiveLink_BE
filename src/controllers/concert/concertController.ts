@@ -1,6 +1,8 @@
 import express from "express";
 import { ConcertService } from "../../services/concert/concertService";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
+
 
 /**
  * @swagger
@@ -233,7 +235,7 @@ export const uploadConcert = async (
         userId: req.session?.user?.userId || "unknown-id",
       };
 
-      console.log(
+      logger.info(
         `✅ 콘서트 정보 저장 완료: ${result.data.title} (UID: ${result.data.uid}) - 업로드 사용자: ${userInfo.username} (${userInfo.email})`
       );
 
@@ -269,7 +271,7 @@ export const uploadConcert = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 업로드 컨트롤러 에러:", error);
+    logger.error("❌ 콘서트 업로드 컨트롤러 에러:", error);
 
     // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
@@ -373,7 +375,7 @@ export const getConcert = async (
     // 세션에서 사용자 ID 가져오기 (로그인하지 않은 경우 undefined)
     const userId = req.session?.user?.userId;
 
-    console.log(
+    logger.info(
       `🔍 콘서트 조회 요청: ID=${id}, 사용자=${userId ? "로그인됨" : "비로그인"}`
     );
 
@@ -420,7 +422,7 @@ export const getConcert = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 조회 컨트롤러 에러:", error);
+    logger.info("❌ 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -558,7 +560,7 @@ export const getAllConcerts = async (
     // 사용자 ID 가져오기 (로그인된 경우)
     const userId = req.session?.user?.userId;
 
-    console.log(
+    logger.info(
       `📋 콘서트 목록 조회: page=${page}, limit=${limit}, 사용자=${userId ? "로그인됨" : "비로그인"}`
     );
 
@@ -577,7 +579,7 @@ export const getAllConcerts = async (
       .filter(([key, value]) => value)
       .map(([key]) => key);
     if (activeFilters.length > 0) {
-      console.log(`🔍 적용된 필터: ${activeFilters.join(", ")}`);
+      logger.info(`🔍 적용된 필터: ${activeFilters.join(", ")}`);
     }
 
     const result = await ConcertService.getAllConcerts(
@@ -625,7 +627,7 @@ export const getAllConcerts = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 목록 조회 컨트롤러 에러:", error);
+    logger.error("❌ 콘서트 목록 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "콘서트 목록 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -884,7 +886,7 @@ export const updateConcert = async (
     );
 
     if (providedRestrictedFields.length > 0) {
-      console.log(
+      logger.info(
         `⚠️ 수정 불가능한 필드 감지: ${providedRestrictedFields.join(", ")} - 해당 필드들은 무시됩니다.`
       );
       // 경고만 하고 해당 필드들을 제거
@@ -915,7 +917,7 @@ export const updateConcert = async (
         userId: req.session?.user?.userId || "unknown-id",
       };
 
-      console.log(
+      logger.info(
         `✅ 콘서트 정보 수정 완료: ${id} - 수정 필드: [${modifiableFields.join(", ")}] - 수정 사용자: ${userInfo.username} (${userInfo.email})`
       );
 
@@ -946,7 +948,7 @@ export const updateConcert = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 수정 컨트롤러 에러:", error);
+    logger.info("❌ 콘서트 수정 컨트롤러 에러:", error);
 
     // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
@@ -1132,7 +1134,7 @@ export const deleteConcert = async (
       });
     }
 
-    console.log(`🗑️ 콘서트 삭제 요청: ID=${id}`);
+    logger.info(`🗑️ 콘서트 삭제 요청: ID=${id}`);
 
     // 삭제 전에 콘서트 정보 조회 (삭제 로그용)
     const existingConcert = await ConcertService.getConcert(id);
@@ -1148,13 +1150,13 @@ export const deleteConcert = async (
         userId: req.session?.user?.userId || "unknown-id",
       };
 
-      console.log(
+      logger.info(
         `✅ 콘서트 삭제 완료: ${id} (제목: ${result.data?.title || concertInfo?.title || "제목 없음"}) - 삭제 사용자: ${userInfo.username} (${userInfo.email})`
       );
 
       // 삭제된 콘서트의 상세 정보 로깅
       if (concertInfo) {
-        console.log(
+        logger.info(
           `📊 삭제된 콘서트 정보: 좋아요 ${concertInfo.likesCount || 0}개, 상태: ${concertInfo.status || "unknown"}`
         );
       }
@@ -1197,7 +1199,7 @@ export const deleteConcert = async (
       const statusCode =
         result.statusCode || (result.error?.includes("찾을 수 없") ? 404 : 500);
 
-      console.log(`❌ 콘서트 삭제 실패: ${id} - ${result.error}`);
+      logger.info(`❌ 콘서트 삭제 실패: ${id} - ${result.error}`);
 
       res.status(statusCode).json({
         message: result.error || "콘서트 삭제 실패",
@@ -1206,7 +1208,7 @@ export const deleteConcert = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 삭제 컨트롤러 에러:", error);
+    logger.error("❌ 콘서트 삭제 컨트롤러 에러:", error);
 
     // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {

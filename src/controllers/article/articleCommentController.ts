@@ -1,7 +1,7 @@
-// controllers/article/articleCommentController.ts
 import express from "express";
 import { getArticleCommentService } from "../../services/article";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
 
 export class ArticleCommentController {
   private articleCommentService = getArticleCommentService();
@@ -99,7 +99,7 @@ export class ArticleCommentController {
         comment,
       });
     } catch (error: any) {
-      console.error("댓글 생성 에러:", error);
+      logger.error("댓글 생성 에러:", error);
 
       if (error.message.includes("유효성 검사")) {
         res.status(400).json({ message: error.message });
@@ -197,7 +197,7 @@ export class ArticleCommentController {
         },
       });
     } catch (error: any) {
-      console.error("댓글 목록 조회 에러:", error);
+      logger.error("댓글 목록 조회 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -250,7 +250,7 @@ export class ArticleCommentController {
         comment,
       });
     } catch (error: any) {
-      console.error("댓글 조회 에러:", error);
+      logger.error("댓글 조회 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -337,7 +337,7 @@ export class ArticleCommentController {
         comment,
       });
     } catch (error: any) {
-      console.error("댓글 수정 에러:", error);
+      logger.error("댓글 수정 에러:", error);
 
       if (error.message.includes("유효성 검사")) {
         res.status(400).json({ message: error.message });
@@ -414,7 +414,7 @@ export class ArticleCommentController {
         message: "댓글이 성공적으로 삭제되었습니다.",
       });
     } catch (error: any) {
-      console.error("댓글 삭제 에러:", error);
+      logger.error("댓글 삭제 에러:", error);
 
       if (error.message.includes("권한이 없습니다")) {
         res.status(403).json({ message: error.message });
@@ -495,7 +495,7 @@ export class ArticleCommentController {
         newLikesCount: result.newLikesCount,
       });
     } catch (error) {
-      console.error("댓글 좋아요 토글 에러:", error);
+      logger.error("댓글 좋아요 토글 에러:", error);
       res.status(500).json({ message: "댓글 좋아요 토글에 실패했습니다." });
     }
   };
@@ -576,7 +576,7 @@ export class ArticleCommentController {
         },
       });
     } catch (error: any) {
-      console.error("대댓글 목록 조회 에러:", error);
+      logger.error("대댓글 목록 조회 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -667,7 +667,7 @@ export class ArticleCommentController {
         },
       });
     } catch (error) {
-      console.error("작성자별 댓글 조회 에러:", error);
+      logger.error("작성자별 댓글 조회 에러:", error);
       res.status(500).json({ message: "작성자별 댓글 조회에 실패했습니다." });
     }
   };
@@ -714,7 +714,7 @@ export class ArticleCommentController {
         commentCount,
       });
     } catch (error) {
-      console.error("댓글 수 조회 에러:", error);
+      logger.error("댓글 수 조회 에러:", error);
       res.status(500).json({ message: "댓글 수 조회에 실패했습니다." });
     }
   };

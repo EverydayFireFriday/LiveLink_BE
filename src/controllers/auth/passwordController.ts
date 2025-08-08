@@ -1,6 +1,8 @@
 import express from "express";
 import { PasswordService } from "../../services/auth/passwordService";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
+import logger from "../../utils/logger";
+
 
 export class PasswordController {
   private passwordService: PasswordService;
@@ -118,7 +120,7 @@ export class PasswordController {
         res.status(statusCode).json({ message: result.message });
       }
     } catch (error) {
-      console.error("비밀번호 재설정 요청 에러:", error);
+      logger.error("비밀번호 재설정 요청 에러:", error);
       res.status(500).json({ message: "서버 에러가 발생했습니다." });
     }
   };
@@ -257,7 +259,7 @@ export class PasswordController {
         res.status(statusCode).json({ message: result.message });
       }
     } catch (error) {
-      console.error("비밀번호 재설정 에러:", error);
+      logger.error("비밀번호 재설정 에러:", error);
       res.status(500).json({ message: "서버 에러가 발생했습니다." });
     }
   };
@@ -375,7 +377,7 @@ export class PasswordController {
         res.status(statusCode).json({ message: result.message });
       }
     } catch (error) {
-      console.error("비밀번호 변경 에러:", error);
+      logger.error("비밀번호 변경 에러:", error);
       res.status(500).json({ message: "서버 에러가 발생했습니다." });
     }
   };

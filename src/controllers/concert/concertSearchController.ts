@@ -1,6 +1,8 @@
 import express from "express";
 import { ConcertSearchService } from "../../services/concert/concertSearchService";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
+
 
 /**
  * @swagger
@@ -64,7 +66,7 @@ export const searchConcerts = async (
       });
     }
   } catch (error) {
-    console.error("콘서트 검색 컨트롤러 에러:", error);
+    logger.error("콘서트 검색 컨트롤러 에러:", error);
     res.status(500).json({
       message: "콘서트 검색 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -124,7 +126,7 @@ export const getUpcomingConcerts = async (
       });
     }
   } catch (error) {
-    console.error("다가오는 콘서트 조회 컨트롤러 에러:", error);
+    logger.error("다가오는 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "다가오는 콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -199,7 +201,7 @@ export const getPopularConcerts = async (
       });
     }
   } catch (error) {
-    console.error("인기 콘서트 목록 조회 컨트롤러 에러:", error);
+    logger.error("인기 콘서트 목록 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "인기 콘서트 목록 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -259,7 +261,7 @@ export const getTicketOpenConcerts = async (
       });
     }
   } catch (error) {
-    console.error("티켓 오픈 예정 콘서트 조회 컨트롤러 에러:", error);
+    logger.error("티켓 오픈 예정 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "티켓 오픈 예정 콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -328,7 +330,7 @@ export const getConcertsByArtist = async (
       });
     }
   } catch (error) {
-    console.error("아티스트별 콘서트 조회 컨트롤러 에러:", error);
+    logger.error("아티스트별 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "아티스트별 콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -397,7 +399,7 @@ export const getConcertsByLocation = async (
       });
     }
   } catch (error) {
-    console.error("지역별 콘서트 조회 컨트롤러 에러:", error);
+    logger.error("지역별 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "지역별 콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -467,7 +469,7 @@ export const getConcertsByCategory = async (
       });
     }
   } catch (error) {
-    console.error("카테고리별 콘서트 조회 컨트롤러 에러:", error);
+    logger.error("카테고리별 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "카테고리별 콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -539,7 +541,7 @@ export const getConcertsByStatus = async (
       });
     }
   } catch (error) {
-    console.error("상태별 콘서트 조회 컨트롤러 에러:", error);
+    logger.error("상태별 콘서트 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "상태별 콘서트 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -578,7 +580,7 @@ export const getConcertStats = async (
       });
     }
   } catch (error) {
-    console.error("콘서트 통계 조회 컨트롤러 에러:", error);
+    logger.error("콘서트 통계 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "콘서트 통계 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",

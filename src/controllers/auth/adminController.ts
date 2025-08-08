@@ -1,6 +1,8 @@
 import express from "express";
 import { UserService } from "../../services/auth/userService";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
+
 
 export class AdminController {
   private userService: UserService;
@@ -110,7 +112,7 @@ export class AdminController {
         searchQuery: search || null,
       });
     } catch (error) {
-      console.error("관리자 사용자 목록 조회 에러:", error);
+      logger.error("관리자 사용자 목록 조회 에러:", error);
       res.status(500).json({ message: "사용자 목록 조회 실패" });
     }
   };
@@ -176,7 +178,7 @@ export class AdminController {
         },
       });
     } catch (error) {
-      console.error("관리자 사용자 상세 조회 에러:", error);
+      logger.error("관리자 사용자 상세 조회 에러:", error);
       res.status(500).json({ message: "사용자 상세 조회 실패" });
     }
   };
@@ -242,7 +244,7 @@ export class AdminController {
       // 추후 사용자 상태 필드가 추가되면 실제 업데이트 구현
       // await this.userService.updateUser(userId, { status, statusReason: reason });
 
-      console.log(
+      logger.info(
         `👑 관리자 조치: 사용자 ${user.username} 상태를 ${status}로 변경 (사유: ${reason})`
       );
 
@@ -258,7 +260,7 @@ export class AdminController {
         },
       });
     } catch (error) {
-      console.error("사용자 상태 변경 에러:", error);
+      logger.error("사용자 상태 변경 에러:", error);
       res.status(500).json({ message: "사용자 상태 변경 실패" });
     }
   };
@@ -319,7 +321,7 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("관리자 통계 조회 에러:", error);
+      logger.error("관리자 통계 조회 에러:", error);
       res.status(500).json({ message: "통계 조회 실패" });
     }
   };

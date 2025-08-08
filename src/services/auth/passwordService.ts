@@ -1,4 +1,5 @@
 import { EmailService } from "../../utils/emailService";
+import logger from "../../utils/logger";
 
 export class PasswordService {
   async requestPasswordReset(
@@ -69,7 +70,7 @@ export class PasswordService {
         },
       };
     } catch (error) {
-      console.error("비밀번호 재설정 요청 에러:", error);
+      logger.error("비밀번호 재설정 요청 에러:", error);
       return {
         success: false,
         message: "서버 에러가 발생했습니다.",
@@ -133,7 +134,7 @@ export class PasswordService {
         message: "비밀번호가 성공적으로 재설정되었습니다.",
       };
     } catch (error) {
-      console.error("비밀번호 재설정 에러:", error);
+      logger.error("비밀번호 재설정 에러:", error);
       return {
         success: false,
         message: "비밀번호 재설정에 실패했습니다.",
@@ -185,7 +186,7 @@ export class PasswordService {
         message: "비밀번호가 성공적으로 변경되었습니다.",
       };
     } catch (error) {
-      console.error("비밀번호 변경 에러:", error);
+      logger.error("비밀번호 변경 에러:", error);
       return {
         success: false,
         message: "비밀번호 변경에 실패했습니다.",

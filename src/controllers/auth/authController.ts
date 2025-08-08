@@ -1,5 +1,7 @@
 import express from "express";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
+import logger from "../../utils/logger";
+
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
@@ -156,7 +158,7 @@ export class AuthController {
         sessionId: req.sessionID,
       });
     } catch (error) {
-      console.error("로그인 에러:", error);
+      logger.error("로그인 에러:", error);
       res.status(500).json({ message: "서버 에러로 로그인 실패" });
     }
   };
@@ -200,7 +202,7 @@ export class AuthController {
 
     req.session.destroy((err) => {
       if (err) {
-        console.error("로그아웃 에러:", err);
+        logger.error("로그아웃 에러:", err);
         res.status(500).json({ message: "로그아웃 실패" });
         return;
       }

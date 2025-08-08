@@ -1,4 +1,3 @@
-// services/article/articleCommentService.ts
 import {
   getArticleModel,
   getCommentModel,

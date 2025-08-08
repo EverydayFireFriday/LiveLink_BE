@@ -1,5 +1,5 @@
-// models/article/tag.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
 
 export interface ITag {
   _id: ObjectId;
@@ -23,7 +23,7 @@ export class TagModel {
     if (this.indexesInitialized) return;
 
     try {
-      console.log("🔄 Tag 인덱스 백그라운드 초기화 시작...");
+      logger.info("🔄 Tag 인덱스 백그라운드 초기화 시작...");
 
       // 기존 인덱스 조회로 중복 생성 방지
       const existingIndexes = await this.collection.listIndexes().toArray();
@@ -39,15 +39,15 @@ export class TagModel {
             background: true, // 백그라운드에서 생성
           }
         );
-        console.log("✅ Tag name 유니크 인덱스 생성 완료");
+        logger.info("✅ Tag name 유니크 인덱스 생성 완료");
       } else {
-        console.log("ℹ️ Tag name 유니크 인덱스 이미 존재");
+        logger.info("ℹ️ Tag name 유니크 인덱스 이미 존재");
       }
 
       this.indexesInitialized = true;
-      console.log("🎉 Tag 인덱스 백그라운드 초기화 완료");
+      logger.info("🎉 Tag 인덱스 백그라운드 초기화 완료");
     } catch (error) {
-      console.error("❌ Tag 인덱스 초기화 실패:", error);
+      logger.error("❌ Tag 인덱스 초기화 실패:", error);
       // 인덱스 생성 실패해도 앱은 계속 동작
     }
   }
@@ -260,7 +260,7 @@ export class TagModel {
               tags.push(tag);
             }
           } catch (createError) {
-            console.warn(`태그 생성 실패: ${name}`, createError);
+            logger.warn(`태그 생성 실패: ${name}`, createError);
           }
         }
         return tags;

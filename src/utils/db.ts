@@ -1,5 +1,6 @@
 import { MongoClient, Db } from "mongodb";
 import { initializeConcertModel } from "../models/concert/concert";
+import { logger } from "./index";
 
 let client: MongoClient;
 let db: Db;
@@ -14,16 +15,15 @@ export const connectDB = async (): Promise<Db> => {
 
     db = client.db(DB_NAME);
 
-    // 연결 테스트
     await db.admin().ping();
 
-    console.log("✅ MongoDB Native Driver connected");
-    console.log(`📍 Database: ${DB_NAME}`);
-    console.log("📚 Collections: users, concerts");
+    logger.info("✅ MongoDB Native Driver connected");
+    logger.info(`📍 Database: ${DB_NAME}`);
+    logger.info("📚 Collections: users, concerts");
 
     return db;
   } catch (error) {
-    console.error("❌ MongoDB connection error:", error);
+    logger.error("❌ MongoDB connection error:", { error });
     throw error;
   }
 };
@@ -32,10 +32,10 @@ export const disconnectDB = async (): Promise<void> => {
   try {
     if (client) {
       await client.close();
-      console.log("✅ MongoDB disconnected");
+      logger.info("✅ MongoDB disconnected");
     }
   } catch (error) {
-    console.error("❌ MongoDB disconnect error:", error);
+    logger.error("❌ MongoDB disconnect error:", { error });
     throw error;
   }
 };
@@ -54,10 +54,8 @@ export const getClient = (): MongoClient => {
   return client;
 };
 
-// Concert 모델 초기화를 위해 export
 export { initializeConcertModel };
 
-// 편의를 위한 별칭들
 export const connectDatabase = connectDB;
 export const disconnectDatabase = disconnectDB;
 export const getDatabase = getDB;

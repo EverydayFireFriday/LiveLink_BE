@@ -1,5 +1,5 @@
-// models/article/comment.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
 
 export interface IComment {
   _id: ObjectId;
@@ -30,9 +30,9 @@ export class CommentModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      console.log("✅ Comment indexes created successfully");
+      logger.info("✅ Comment indexes created successfully");
     } catch (error) {
-      console.error("❌ Failed to create Comment indexes:", error);
+      logger.error("❌ Failed to create Comment indexes:", error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -45,16 +45,16 @@ export class CommentModel {
 
   private async createIndexes() {
     try {
-      console.log("Comment 인덱스 생성 시작...");
+      logger.info("Comment 인덱스 생성 시작...");
 
       // 조회 최적화 인덱스
       await this.collection.createIndex({ article_id: 1, created_at: -1 });
       await this.collection.createIndex({ parent_id: 1, created_at: 1 });
       await this.collection.createIndex({ author_id: 1, created_at: -1 });
 
-      console.log("✅ Comment 인덱스 생성 완료");
+      logger.info("✅ Comment 인덱스 생성 완료");
     } catch (error) {
-      console.error("❌ Comment 인덱스 생성 중 오류:", error);
+      logger.error("❌ Comment 인덱스 생성 중 오류:", error);
     }
   }
 

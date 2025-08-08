@@ -1,3 +1,5 @@
+import logger from "../../../utils/logger";
+
 export const setupSearchFilter = function () {
   try {
     // 다크 모드 토글 버튼 생성
@@ -9,7 +11,7 @@ export const setupSearchFilter = function () {
     // UI 개선 적용
     setupUIEnhancements();
   } catch (error) {
-    console.log("검색 필터 초기화 중 오류:", error);
+    logger.info("검색 필터 초기화 중 오류:", error);
   }
 };
 
@@ -157,7 +159,7 @@ const setupAdvancedSearch = () => {
           });
         };
 
-        console.log("✅ Swagger 검색 필터가 성공적으로 오버라이드되었습니다.");
+        logger.info("✅ Swagger 검색 필터가 성공적으로 오버라이드되었습니다.");
       }
     }
 
@@ -239,7 +241,7 @@ const setupDOMBasedSearch = () => {
       });
     });
 
-    console.log("✅ DOM 기반 검색이 추가되었습니다.");
+    logger.info("✅ DOM 기반 검색이 추가되었습니다.");
   }
 };
 
@@ -272,6 +274,6 @@ const setupUIEnhancements = () => {
       }
     }, 3000);
   } catch (error) {
-    console.log("UI 개선 적용 중 오류:", error);
+    logger.info("UI 개선 적용 중 오류:", error);
   }
 };

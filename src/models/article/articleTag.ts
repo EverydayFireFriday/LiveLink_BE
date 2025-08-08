@@ -1,5 +1,6 @@
-// models/article/articleTag.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
+
 
 export interface IArticleTag {
   _id: ObjectId;
@@ -26,9 +27,9 @@ export class ArticleTagModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      console.log("✅ ArticleTag indexes created successfully");
+      logger.info("✅ ArticleTag indexes created successfully");
     } catch (error) {
-      console.error("❌ Failed to create ArticleTag indexes:", error);
+      logger.error("❌ Failed to create ArticleTag indexes:", error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -41,7 +42,7 @@ export class ArticleTagModel {
 
   private async createIndexes() {
     try {
-      console.log("ArticleTag 인덱스 생성 시작...");
+      logger.info("ArticleTag 인덱스 생성 시작...");
 
       // 중복 연결 방지를 위한 복합 유니크 인덱스
       await this.collection.createIndex(
@@ -53,9 +54,9 @@ export class ArticleTagModel {
       await this.collection.createIndex({ article_id: 1 });
       await this.collection.createIndex({ tag_id: 1 });
 
-      console.log("✅ ArticleTag 인덱스 생성 완료");
+      logger.info("✅ ArticleTag 인덱스 생성 완료");
     } catch (error) {
-      console.error("❌ ArticleTag 인덱스 생성 중 오류:", error);
+      logger.error("❌ ArticleTag 인덱스 생성 중 오류:", error);
     }
   }
 

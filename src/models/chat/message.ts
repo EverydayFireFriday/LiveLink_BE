@@ -1,5 +1,6 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { getDatabase } from '../auth/user';
+import logger from "../../utils/logger";
 
 export interface Message {
   _id?: ObjectId;
@@ -31,7 +32,7 @@ export class MessageModel {
       await this.messageCollection.createIndex({ senderId: 1 });
       await this.messageCollection.createIndex({ replyToMessageId: 1 });
     } catch (error) {
-      console.error('Failed to create message indexes:', error);
+      logger.error('Failed to create message indexes:', error);
     }
   }
 

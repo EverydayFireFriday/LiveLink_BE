@@ -1,6 +1,8 @@
 import express from "express";
 import { VerificationService } from "../../services/auth/verificationService";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
+import logger from "../../utils/logger";
+
 
 export class VerificationController {
   private verificationService: VerificationService;
@@ -140,7 +142,7 @@ export class VerificationController {
           type === "email_verification" ? !!storedCode.userData : false,
       });
     } catch (error) {
-      console.error("인증 코드 상태 확인 에러:", error);
+      logger.error("인증 코드 상태 확인 에러:", error);
       res.status(500).json({ message: "인증 코드 상태 확인 실패" });
     }
   };
@@ -263,7 +265,7 @@ export class VerificationController {
         type,
       });
     } catch (error) {
-      console.error("인증 프로세스 취소 에러:", error);
+      logger.error("인증 프로세스 취소 에러:", error);
       res.status(500).json({ message: "인증 프로세스 취소 실패" });
     }
   };

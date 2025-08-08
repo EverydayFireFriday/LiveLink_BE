@@ -5,6 +5,8 @@ import { VerificationService } from "../../services/auth/verificationService";
 import { EmailService } from "../../utils/emailService";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
+import logger from "../../utils/logger";
+
 
 export class RegistrationController {
   private authService: AuthService;
@@ -243,7 +245,7 @@ export class RegistrationController {
         expiresIn: "3분",
       });
     } catch (error) {
-      console.error("회원가입 인증 이메일 전송 에러:", error);
+      logger.error("회원가입 인증 이메일 전송 에러:", error);
       res.status(500).json({ message: "이메일 전송 실패" });
     }
   };
@@ -410,7 +412,7 @@ export class RegistrationController {
             email: newUser.email,
           });
         } catch (emailError) {
-          console.error("환영 이메일 전송 실패:", emailError);
+          logger.error("환영 이메일 전송 실패:", emailError);
         }
       });
 
@@ -425,7 +427,7 @@ export class RegistrationController {
         },
       });
     } catch (error: any) {
-      console.error("회원가입 인증 완료 에러:", error);
+      logger.error("회원가입 인증 완료 에러:", error);
       res.status(500).json({ message: "서버 에러로 회원가입 실패" });
     }
   };
@@ -531,7 +533,7 @@ export class RegistrationController {
         generatedFrom: base ? `기본값: ${base}` : `이메일: ${email}`,
       });
     } catch (error) {
-      console.error("사용자명 생성 에러:", error);
+      logger.error("사용자명 생성 에러:", error);
       res.status(500).json({ message: "사용자명 생성 실패" });
     }
   };
@@ -627,7 +629,7 @@ export class RegistrationController {
         });
       }
     } catch (error) {
-      console.error("별명 중복 확인 에러:", error);
+      logger.error("별명 중복 확인 에러:", error);
       res.status(500).json({ message: "별명 중복 확인 실패" });
     }
   };

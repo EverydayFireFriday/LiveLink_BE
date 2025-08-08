@@ -1,6 +1,7 @@
 import express from "express";
 import { redisClient } from "../../app";
 import { getConcertModel } from "../../models/concert/concert";
+import logger from "../../utils/logger";
 
 /**
  * @swagger
@@ -187,7 +188,7 @@ export const detailedHealthCheck = async (
     const statusCode = overallHealthy ? 200 : 503;
     res.status(statusCode).json(healthData);
   } catch (error) {
-    console.error("Health check error:", error);
+    logger.error("Health check error:", error);
     res.status(503).json({
       status: "unhealthy",
       timestamp: new Date().toISOString(),
@@ -248,7 +249,7 @@ export const redisHealthCheck = async (
       totalResponseTime: `${Date.now() - startTime}ms`,
     });
   } catch (error) {
-    console.error("Redis health check error:", error);
+    logger.error("Redis health check error:", error);
     res.status(503).json({
       status: "unhealthy",
       connected: false,
@@ -335,7 +336,7 @@ export const databaseHealthCheck = async (
     const statusCode = overallHealthy ? 200 : 503;
     res.status(statusCode).json(healthData);
   } catch (error) {
-    console.error("Database health check error:", error);
+    logger.error("Database health check error:", error);
     res.status(503).json({
       status: "unhealthy",
       timestamp: new Date().toISOString(),

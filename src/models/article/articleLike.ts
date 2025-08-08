@@ -1,5 +1,6 @@
-// models/article/articleLike.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
+
 
 export interface IArticleLike {
   _id: ObjectId;
@@ -11,24 +12,24 @@ export interface IArticleLike {
 export class ArticleLikeModel {
   private db: Db;
   private collection: Collection<IArticleLike>;
-  private indexesCreated = false; // ✅ 인덱스 생성 상태 추적
+  private indexesCreated = false; // 인덱스 생성 상태 추적
 
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<IArticleLike>("article_likes");
-    // 🚀 생성자에서 인덱스 생성하지 않음
+    // 생성자에서 인덱스 생성하지 않음
   }
 
-  // 🛡️ 지연된 인덱스 생성 - 실제 사용 시점에 호출
+  // 지연된 인덱스 생성 - 실제 사용 시점에 호출
   private async ensureIndexes(): Promise<void> {
     if (this.indexesCreated) return;
 
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      console.log("✅ ArticleLike indexes created successfully");
+      logger.info("✅ ArticleLike indexes created successfully");
     } catch (error) {
-      console.error("❌ Failed to create ArticleLike indexes:", error);
+      logger.error("❌ Failed to create ArticleLike indexes:", error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -41,7 +42,7 @@ export class ArticleLikeModel {
 
   private async createIndexes() {
     try {
-      console.log("ArticleLike 인덱스 생성 시작...");
+      logger.info("ArticleLike 인덱스 생성 시작...");
 
       // 개별 인덱스 생성으로 타입 에러 방지
 
@@ -51,12 +52,12 @@ export class ArticleLikeModel {
           { article_id: 1, user_id: 1 },
           { unique: true, name: "article_like_unique" }
         );
-        console.log("✅ article_like_unique 인덱스 생성");
+        logger.info("✅ article_like_unique 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
-          console.log("ℹ️ article_like_unique 인덱스가 이미 존재함 (스킵)");
+          logger.info("ℹ️ article_like_unique 인덱스가 이미 존재함 (스킵)");
         } else {
-          console.warn(
+          logger.warn(
             "⚠️ article_like_unique 인덱스 생성 실패:",
             error.message
           );
@@ -69,14 +70,14 @@ export class ArticleLikeModel {
           { article_id: 1, created_at: -1 },
           { name: "article_like_article_idx" }
         );
-        console.log("✅ article_like_article_idx 인덱스 생성");
+        logger.info("✅ article_like_article_idx 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
-          console.log(
+          logger.info(
             "ℹ️ article_like_article_idx 인덱스가 이미 존재함 (스킵)"
           );
         } else {
-          console.warn(
+          logger.warn(
             "⚠️ article_like_article_idx 인덱스 생성 실패:",
             error.message
           );
@@ -89,22 +90,22 @@ export class ArticleLikeModel {
           { user_id: 1, created_at: -1 },
           { name: "article_like_user_idx" }
         );
-        console.log("✅ article_like_user_idx 인덱스 생성");
+        logger.info("✅ article_like_user_idx 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
-          console.log("ℹ️ article_like_user_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info("ℹ️ article_like_user_idx 인덱스가 이미 존재함 (스킵)");
         } else {
-          console.warn(
+          logger.warn(
             "⚠️ article_like_user_idx 인덱스 생성 실패:",
             error.message
           );
         }
       }
 
-      console.log("✅ ArticleLike 인덱스 생성 완료");
+      logger.info("✅ ArticleLike 인덱스 생성 완료");
     } catch (error) {
-      console.error("❌ ArticleLike 인덱스 생성 중 오류:", error);
-      console.log("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.error("❌ ArticleLike 인덱스 생성 중 오류:", error);
+      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
     }
   }
 

@@ -1,9 +1,9 @@
 import { getConcertModel } from "../../models/concert/concert";
-import type { IConcert } from "../../models/concert/concert";
 import {
   normalizeSearchQuery,
   validateAndNormalizePagination,
 } from "../../utils/validation/concert/concertValidation";
+import logger from "../../utils/logger";
 
 export interface ConcertServiceResponse {
   success: boolean;
@@ -61,7 +61,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("콘서트 검색 서비스 에러:", error);
+      logger.error("콘서트 검색 서비스 에러:", error);
       return {
         success: false,
         error: "콘서트 검색 실패",
@@ -106,7 +106,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("다가오는 콘서트 조회 서비스 에러:", error);
+      logger.error("다가오는 콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "다가오는 콘서트 조회 실패",
@@ -156,7 +156,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("인기 콘서트 목록 조회 서비스 에러:", error);
+      logger.error("인기 콘서트 목록 조회 서비스 에러:", error);
       return {
         success: false,
         error: "인기 콘서트 목록 조회 실패",
@@ -204,7 +204,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("티켓 오픈 예정 콘서트 조회 서비스 에러:", error);
+      logger.error("티켓 오픈 예정 콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "티켓 오픈 예정 콘서트 조회 실패",
@@ -251,7 +251,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("아티스트별 콘서트 조회 서비스 에러:", error);
+      logger.error("아티스트별 콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "아티스트별 콘서트 조회 실패",
@@ -298,7 +298,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("지역별 콘서트 조회 서비스 에러:", error);
+      logger.error("지역별 콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "지역별 콘서트 조회 실패",
@@ -345,7 +345,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("카테고리별 콘서트 조회 서비스 에러:", error);
+      logger.error("카테고리별 콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "카테고리별 콘서트 조회 실패",
@@ -401,7 +401,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("상태별 콘서트 조회 서비스 에러:", error);
+      logger.error("상태별 콘서트 조회 서비스 에러:", error);
       return {
         success: false,
         error: "상태별 콘서트 조회 실패",
@@ -424,7 +424,7 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("콘서트 통계 조회 서비스 에러:", error);
+      logger.error("콘서트 통계 조회 서비스 에러:", error);
       return {
         success: false,
         error: "콘서트 통계 조회 실패",

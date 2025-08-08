@@ -1,7 +1,8 @@
-// controllers/article/articleController.ts
 import express from "express";
 import { getArticleService } from "../../services/article";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
+
 
 export class ArticleController {
   private articleService = getArticleService();
@@ -101,7 +102,7 @@ export class ArticleController {
         article,
       });
     } catch (error: any) {
-      console.error("게시글 생성 에러:", error);
+      logger.error("게시글 생성 에러:", error);
 
       if (error.message.includes("유효성 검사")) {
         res.status(400).json({ message: error.message });
@@ -176,7 +177,7 @@ export class ArticleController {
         article,
       });
     } catch (error: any) {
-      console.error("게시글 조회 에러:", error);
+      logger.error("게시글 조회 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -274,7 +275,7 @@ export class ArticleController {
         },
       });
     } catch (error) {
-      console.error("게시글 목록 조회 에러:", error);
+      logger.error("게시글 목록 조회 에러:", error);
       res.status(500).json({ message: "게시글 목록 조회에 실패했습니다." });
     }
   };
@@ -360,7 +361,7 @@ export class ArticleController {
         article,
       });
     } catch (error: any) {
-      console.error("게시글 수정 에러:", error);
+      logger.error("게시글 수정 에러:", error);
 
       if (error.message.includes("유효성 검사")) {
         res.status(400).json({ message: error.message });
@@ -418,7 +419,7 @@ export class ArticleController {
         message: "게시글이 성공적으로 삭제되었습니다.",
       });
     } catch (error: any) {
-      console.error("게시글 삭제 에러:", error);
+      logger.error("게시글 삭제 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -507,7 +508,7 @@ export class ArticleController {
         },
       });
     } catch (error) {
-      console.error("작성자별 게시글 조회 에러:", error);
+      logger.error("작성자별 게시글 조회 에러:", error);
       res.status(500).json({ message: "작성자별 게시글 조회에 실패했습니다." });
     }
   };
@@ -591,7 +592,7 @@ export class ArticleController {
         },
       });
     } catch (error) {
-      console.error("인기 게시글 조회 에러:", error);
+      logger.error("인기 게시글 조회 에러:", error);
       res.status(500).json({ message: "인기 게시글 조회에 실패했습니다." });
     }
   };
