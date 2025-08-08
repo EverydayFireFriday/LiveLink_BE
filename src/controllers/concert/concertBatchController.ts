@@ -1,5 +1,7 @@
 import express from "express";
 import { ConcertBatchService } from "../../services/concert/concertBatchService";
+import logger from "../../utils/logger";
+
 
 /**
  * @swagger
@@ -217,7 +219,7 @@ export const batchUploadConcerts = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 일괄 등록 컨트롤러 에러:", error);
+    logger.error("❌ 콘서트 일괄 등록 컨트롤러 에러:", error);
     res.status(500).json({
       message: "서버 에러로 콘서트 일괄 등록 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -427,7 +429,7 @@ export const batchUpdateConcerts = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 일괄 수정 컨트롤러 에러:", error);
+    logger.error("❌ 콘서트 일괄 수정 컨트롤러 에러:", error);
     res.status(500).json({
       message: "서버 에러로 콘서트 일괄 수정 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -570,7 +572,7 @@ export const batchDeleteConcerts = async (
       });
     }
   } catch (error) {
-    console.error("❌ 콘서트 일괄 삭제 컨트롤러 에러:", error);
+    logger.error("❌ 콘서트 일괄 삭제 컨트롤러 에러:", error);
     res.status(500).json({
       message: "서버 에러로 콘서트 일괄 삭제 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -718,7 +720,7 @@ export const batchLikeConcerts = async (
       });
     }
   } catch (error) {
-    console.error("❌ 좋아요 일괄 처리 컨트롤러 에러:", error);
+    logger.error("❌ 좋아요 일괄 처리 컨트롤러 에러:", error);
     res.status(500).json({
       message: "서버 에러로 좋아요 일괄 처리 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",

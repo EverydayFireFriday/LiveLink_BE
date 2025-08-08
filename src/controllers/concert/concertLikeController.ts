@@ -1,6 +1,7 @@
 import express from "express";
 import { ConcertLikeService } from "../../services/concert/concertLikeService";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
 
 /**
  * @swagger
@@ -51,7 +52,7 @@ export const getLikeStatus = async (
       res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
-    console.error("좋아요 상태 조회 컨트롤러 에러:", error);
+    logger.info("좋아요 상태 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "좋아요 상태 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -107,7 +108,7 @@ export const addLike = async (req: express.Request, res: express.Response) => {
       res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
-    console.error("좋아요 추가 컨트롤러 에러:", error);
+    logger.info("좋아요 추가 컨트롤러 에러:", error);
     res.status(500).json({
       message: "좋아요 추가 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -164,7 +165,7 @@ export const removeLike = async (
       res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
-    console.error("좋아요 삭제 컨트롤러 에러:", error);
+    logger.error("좋아요 삭제 컨트롤러 에러:", error);
     res.status(500).json({
       message: "좋아요 삭제 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",
@@ -228,7 +229,7 @@ export const getLikedConcerts = async (
       res.status(result.statusCode!).json({ message: result.error });
     }
   } catch (error) {
-    console.error("좋아요한 콘서트 목록 조회 컨트롤러 에러:", error);
+    logger.error("좋아요한 콘서트 목록 조회 컨트롤러 에러:", error);
     res.status(500).json({
       message: "좋아요한 콘서트 목록 조회 실패",
       error: error instanceof Error ? error.message : "알 수 없는 에러",

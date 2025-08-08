@@ -1,7 +1,7 @@
-// controllers/article/articleBookmarkController.ts
 import express from "express";
 import { getArticleBookmarkService } from "../../services/article";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
 
 export class ArticleBookmarkController {
   private articleBookmarkService = getArticleBookmarkService();
@@ -88,7 +88,7 @@ export class ArticleBookmarkController {
         bookmark,
       });
     } catch (error: any) {
-      console.error("게시글 북마크 에러:", error);
+      logger.error("게시글 북마크 에러:", error);
 
       if (error.message.includes("이미 북마크한")) {
         res.status(400).json({ message: error.message });
@@ -175,7 +175,7 @@ export class ArticleBookmarkController {
         success: result.success,
       });
     } catch (error: any) {
-      console.error("게시글 북마크 삭제 에러:", error);
+      logger.error("게시글 북마크 삭제 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -250,7 +250,7 @@ export class ArticleBookmarkController {
         isBookmarked: result.isBookmarked,
       });
     } catch (error) {
-      console.error("북마크 토글 에러:", error);
+      logger.error("북마크 토글 에러:", error);
       res.status(500).json({ message: "북마크 토글에 실패했습니다." });
     }
   };
@@ -367,7 +367,7 @@ export class ArticleBookmarkController {
         isBookmarked: result.isBookmarked,
       });
     } catch (error) {
-      console.error("북마크 상태 조회 에러:", error);
+      logger.error("북마크 상태 조회 에러:", error);
       res.status(500).json({ message: "북마크 상태 조회에 실패했습니다." });
     }
   };
@@ -414,7 +414,7 @@ export class ArticleBookmarkController {
         bookmarkCount,
       });
     } catch (error) {
-      console.error("북마크 수 조회 에러:", error);
+      logger.error("북마크 수 조회 에러:", error);
       res.status(500).json({ message: "북마크 수 조회에 실패했습니다." });
     }
   };
@@ -444,7 +444,7 @@ export class ArticleBookmarkController {
         },
       });
     } catch (error) {
-      console.error("사용자 북마크 조회 에러:", error);
+      logger.error("사용자 북마크 조회 에러:", error);
       res.status(500).json({ message: "사용자 북마크 조회에 실패했습니다." });
     }
   };
@@ -509,7 +509,7 @@ export class ArticleBookmarkController {
         stats,
       });
     } catch (error) {
-      console.error("사용자 북마크 통계 조회 에러:", error);
+      logger.error("사용자 북마크 통계 조회 에러:", error);
       res
         .status(500)
         .json({ message: "사용자 북마크 통계 조회에 실패했습니다." });
@@ -606,7 +606,7 @@ export class ArticleBookmarkController {
         },
       });
     } catch (error) {
-      console.error("인기 북마크 게시글 조회 에러:", error);
+      logger.error("인기 북마크 게시글 조회 에러:", error);
       res
         .status(500)
         .json({ message: "인기 북마크 게시글 조회에 실패했습니다." });
@@ -697,7 +697,7 @@ export class ArticleBookmarkController {
         bookmarkStatus,
       });
     } catch (error) {
-      console.error("일괄 북마크 상태 조회 에러:", error);
+      logger.error("일괄 북마크 상태 조회 에러:", error);
       res
         .status(500)
         .json({ message: "일괄 북마크 상태 조회에 실패했습니다." });

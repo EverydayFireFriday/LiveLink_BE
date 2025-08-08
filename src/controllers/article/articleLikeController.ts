@@ -1,7 +1,8 @@
-// controllers/article/articleLikeController.ts
 import express from "express";
 import { getArticleLikeService } from "../../services/article";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
+
 
 export class ArticleLikeController {
   private articleLikeService = getArticleLikeService();
@@ -92,7 +93,7 @@ export class ArticleLikeController {
         newLikesCount: result.newLikesCount,
       });
     } catch (error: any) {
-      console.error("게시글 좋아요 에러:", error);
+      logger.error("게시글 좋아요 에러:", error);
 
       if (error.message.includes("이미 좋아요한")) {
         res.status(400).json({ message: error.message });
@@ -177,7 +178,7 @@ export class ArticleLikeController {
         newLikesCount: result.newLikesCount,
       });
     } catch (error: any) {
-      console.error("게시글 좋아요 취소 에러:", error);
+      logger.error("게시글 좋아요 취소 에러:", error);
 
       if (error.message.includes("찾을 수 없습니다")) {
         res.status(404).json({ message: error.message });
@@ -256,7 +257,7 @@ export class ArticleLikeController {
         newLikesCount: result.newLikesCount,
       });
     } catch (error) {
-      console.error("좋아요 토글 에러:", error);
+      logger.error("좋아요 토글 에러:", error);
       res.status(500).json({ message: "좋아요 토글에 실패했습니다." });
     }
   };
@@ -324,7 +325,7 @@ export class ArticleLikeController {
         likesCount: result.likesCount,
       });
     } catch (error) {
-      console.error("좋아요 상태 조회 에러:", error);
+      logger.error("좋아요 상태 조회 에러:", error);
       res.status(500).json({ message: "좋아요 상태 조회에 실패했습니다." });
     }
   };
@@ -401,7 +402,7 @@ export class ArticleLikeController {
         },
       });
     } catch (error) {
-      console.error("좋아요한 사용자 목록 조회 에러:", error);
+      logger.error("좋아요한 사용자 목록 조회 에러:", error);
       res
         .status(500)
         .json({ message: "좋아요한 사용자 목록 조회에 실패했습니다." });
@@ -490,7 +491,7 @@ export class ArticleLikeController {
         },
       });
     } catch (error) {
-      console.error("사용자 좋아요 게시글 조회 에러:", error);
+      logger.error("사용자 좋아요 게시글 조회 에러:", error);
       res
         .status(500)
         .json({ message: "사용자 좋아요 게시글 조회에 실패했습니다." });
@@ -589,7 +590,7 @@ export class ArticleLikeController {
         likeStatus,
       });
     } catch (error) {
-      console.error("일괄 좋아요 상태 조회 에러:", error);
+      logger.error("일괄 좋아요 상태 조회 에러:", error);
       res
         .status(500)
         .json({ message: "일괄 좋아요 상태 조회에 실패했습니다." });

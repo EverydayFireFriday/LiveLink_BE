@@ -2,6 +2,8 @@ import express from "express";
 import { UserService } from "../../services/auth/userService";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
 import { safeParseInt } from "../../utils/numberUtils";
+import logger from "../../utils/logger";
+
 
 export class ProfileController {
   private userService: UserService;
@@ -109,7 +111,7 @@ export class ProfileController {
         session: req.session.user,
       });
     } catch (error) {
-      console.error("프로필 조회 에러:", error);
+      logger.error("프로필 조회 에러:", error);
       res.status(500).json({ message: "프로필 조회 실패" });
     }
   };
@@ -214,7 +216,7 @@ export class ProfileController {
         },
       });
     } catch (error) {
-      console.error("프로필 업데이트 에러:", error);
+      logger.error("프로필 업데이트 에러:", error);
       res.status(500).json({ message: "프로필 업데이트 실패" });
     }
   };
@@ -370,7 +372,7 @@ export class ProfileController {
         previousUsername: currentUser.username,
       });
     } catch (error) {
-      console.error("별명 변경 에러:", error);
+      logger.error("별명 변경 에러:", error);
       res.status(500).json({ message: "별명 변경 실패" });
     }
   };
@@ -485,7 +487,7 @@ export class ProfileController {
         users: safeUsers,
       });
     } catch (error) {
-      console.error("사용자 목록 조회 에러:", error);
+      logger.error("사용자 목록 조회 에러:", error);
       res.status(500).json({ message: "사용자 목록 조회 실패" });
     }
   };
