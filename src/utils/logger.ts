@@ -5,6 +5,7 @@ import path from 'path';
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
 const logDir = path.join(__dirname, '..', '..', 'logs');
+const logLevel = process.env.LOG_LEVEL || 'info';
 
 const logFormat = combine(
   timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -22,7 +23,7 @@ const logger = winston.createLogger({
   format: logFormat,
   transports: [
     new winstonDaily({
-      level: 'info',
+      level: logLevel,
       datePattern: 'YYYY-MM-DD',
       dirname: logDir,
       filename: `%DATE%.log`,
@@ -54,7 +55,7 @@ if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new winston.transports.Console({
       format: combine(colorize({ all: true }), logFormat),
-      level: 'debug',
+      level: logLevel,
     })
   );
 }
