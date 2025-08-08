@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { logger } from './index';
 import {
   EmailTemplates,
   EmailTemplateData,
@@ -35,9 +36,6 @@ export class EmailService {
     this.transporter = this.createTransporter();
   }
 
-  /**
-   * 이메일 설정 구성
-   */
   private getEmailConfig(): EmailConfig {
     const emailUser = process.env.EMAIL_USER;
     const emailPass = process.env.EMAIL_PASS;
@@ -52,10 +50,10 @@ export class EmailService {
       service: "gmail",
       host: "smtp.gmail.com",
       port: 587,
-      secure: false, // true for 465, false for other ports
+      secure: false,
       auth: {
         user: emailUser,
-        pass: emailPass, // Gmail 앱 비밀번호 사용
+        pass: emailPass,
       },
       tls: {
         rejectUnauthorized: false,
@@ -63,22 +61,15 @@ export class EmailService {
     };
   }
 
-  /**
-   * Nodemailer transporter 생성
-   */
   private createTransporter(): nodemailer.Transporter {
     try {
-      // createTransport로 수정 (createTransporter 아님)
       return nodemailer.createTransport(this.config);
     } catch (error) {
-      console.error("이메일 transporter 생성 실패:", error);
+      logger.error("이메일 transporter 생성 실패:", { error });
       throw new Error("이메일 서비스 초기화 실패");
     }
   }
 
-  /**
-   * 기본 이메일 발송 메서드
-   */
   private async sendEmail(
     to: string,
     subject: string,
@@ -94,7 +85,6 @@ export class EmailService {
         to,
         subject,
         html,
-        // priority를 올바른 타입으로 수정
         priority: "normal" as "normal" | "high" | "low",
         headers: {
           "X-Mailer": "LiveLink Email Service",
@@ -102,17 +92,16 @@ export class EmailService {
         },
       };
 
-      // 타입 어서션으로 수정
       const info = (await this.transporter.sendMail(mailOptions)) as any;
 
-      console.log(`✅ 이메일 전송 성공: ${to} - Message ID: ${info.messageId}`);
+      logger.info(`✅ 이메일 전송 성공: ${to} - Message ID: ${info.messageId}`);
 
       return {
         success: true,
         messageId: info.messageId,
       };
     } catch (error) {
-      console.error(`❌ 이메일 전송 실패: ${to}`, error);
+      logger.error(`❌ 이메일 전송 실패: ${to}`, { error });
 
       return {
         success: false,
@@ -121,9 +110,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * 회원가입 인증 이메일 전송
-   */
   async sendRegistrationVerification(
     data: EmailTemplateData
   ): Promise<EmailSendResult> {
@@ -133,7 +119,7 @@ export class EmailService {
     const result = await this.sendEmail(data.email, subject, html, "LiveLink");
 
     if (result.success) {
-      console.log(
+      logger.info(
         `📧 회원가입 인증 이메일 전송: ${data.username || "Unknown"} (${data.email})`
       );
     }
@@ -141,9 +127,6 @@ export class EmailService {
     return result;
   }
 
-  /**
-   * 비밀번호 재설정 이메일 전송
-   */
   async sendPasswordReset(data: EmailTemplateData): Promise<EmailSendResult> {
     const subject = `[LiveLink] 비밀번호 재설정 인증 코드`;
     const html = EmailTemplates.getPasswordResetEmail(data);
@@ -156,7 +139,7 @@ export class EmailService {
     );
 
     if (result.success) {
-      console.log(
+      logger.info(
         `🔒 비밀번호 재설정 이메일 전송: ${data.username || "Unknown"} (${data.email})`
       );
     }
@@ -164,9 +147,6 @@ export class EmailService {
     return result;
   }
 
-  /**
-   * 환영 이메일 전송
-   */
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<EmailSendResult> {
     const subject = `[LiveLink] 가입을 환영합니다!`;
     const html = EmailTemplates.getWelcomeEmail(data);
@@ -179,15 +159,12 @@ export class EmailService {
     );
 
     if (result.success) {
-      console.log(`🎉 환영 이메일 전송: ${data.username} (${data.email})`);
+      logger.info(`🎉 환영 이메일 전송: ${data.username} (${data.email})`);
     }
 
     return result;
   }
 
-  /**
-   * 보안 알림 이메일 전송
-   */
   async sendSecurityAlert(data: SecurityAlertData): Promise<EmailSendResult> {
     const subject = `[LiveLink] 계정 보안 알림`;
     const html = EmailTemplates.getSecurityAlertEmail(data);
@@ -200,7 +177,7 @@ export class EmailService {
     );
 
     if (result.success) {
-      console.log(
+      logger.info(
         `🚨 보안 알림 이메일 전송: ${data.username} (${data.email}) - ${data.action}`
       );
     }
@@ -208,23 +185,17 @@ export class EmailService {
     return result;
   }
 
-  /**
-   * 이메일 서비스 연결 상태 확인
-   */
   async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();
-      console.log("✅ 이메일 서비스 연결 확인 성공");
+      logger.info("✅ 이메일 서비스 연결 확인 성공");
       return true;
     } catch (error) {
-      console.error("❌ 이메일 서비스 연결 실패:", error);
+      logger.error("❌ 이메일 서비스 연결 실패:", { error });
       return false;
     }
   }
 
-  /**
-   * 이메일 서비스 상태 정보 조회
-   */
   async getServiceStatus(): Promise<{
     connected: boolean;
     config: {
@@ -256,9 +227,6 @@ export class EmailService {
     };
   }
 
-  /**
-   * 대량 이메일 전송 (향후 마케팅 등에 사용)
-   */
   async sendBulkEmails(
     recipients: string[],
     subject: string,
@@ -273,7 +241,6 @@ export class EmailService {
     let totalSent = 0;
     let totalFailed = 0;
 
-    // 배치 단위로 전송하여 서버 부하 방지
     for (let i = 0; i < recipients.length; i += batchSize) {
       const batch = recipients.slice(i, i + batchSize);
 
@@ -284,7 +251,6 @@ export class EmailService {
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
 
-      // 성공/실패 카운트
       batchResults.forEach((result) => {
         if (result.success) {
           totalSent++;
@@ -293,13 +259,12 @@ export class EmailService {
         }
       });
 
-      // 배치 간 딜레이 (API 제한 방지)
       if (i + batchSize < recipients.length) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
-    console.log(
+    logger.info(
       `📊 대량 이메일 전송 완료: 성공 ${totalSent}건, 실패 ${totalFailed}건`
     );
 
@@ -310,9 +275,6 @@ export class EmailService {
     };
   }
 
-  /**
-   * 이메일 템플릿 미리보기 생성 (개발/테스트용)
-   */
   generatePreview(
     type: "registration" | "password_reset" | "welcome" | "security_alert"
   ): string {
@@ -360,15 +322,12 @@ export class EmailService {
     }
   }
 
-  /**
-   * 리소스 정리
-   */
   async cleanup(): Promise<void> {
     try {
       this.transporter.close();
-      console.log("✅ 이메일 서비스 리소스 정리 완료");
+      logger.info("✅ 이메일 서비스 리소스 정리 완료");
     } catch (error) {
-      console.error("❌ 이메일 서비스 정리 실패:", error);
+      logger.error("❌ 이메일 서비스 정리 실패:", { error });
     }
   }
 }

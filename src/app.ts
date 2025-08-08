@@ -72,11 +72,13 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// 기본 로깅 (winston 사용)
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.info(`${req.method} ${req.url} - ${req.ip}`);
-  next();
-});
+import morgan from 'morgan';
+import { stream } from './utils/logger';
+
+// ... (다른 import 구문들)
+
+// 기본 로깅 (morgan과 winston 연결)
+app.use(morgan('combined', { stream }));
 
 // CORS 설정
 app.use(
