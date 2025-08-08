@@ -1,6 +1,8 @@
 export { ChatRoom, ChatRoomModel } from './chatRoom';
 export { Message, MessageModel } from './message';
+import logger from "../../utils/logger";
+
 
 export function initializeChatModels() {
-  console.log('✅ Chat models initialized');
+  logger.info('✅ Chat models initialized');
 }

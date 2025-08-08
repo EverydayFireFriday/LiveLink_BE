@@ -1,5 +1,3 @@
-// models/article/index.ts
-// 개별적으로 export하여 이름 충돌 방지
 export { IArticle, ArticleModel, initializeArticleModel, getArticleModel, Article } from './article';
 export { ITag, TagModel, initializeTagModel, getTagModel, Tag } from './tag';
 export { ICategory, CategoryModel, initializeCategoryModel, getCategoryModel, Category } from './category';
@@ -8,6 +6,8 @@ export { IComment, CommentModel, initializeCommentModel, getCommentModel, Commen
 export { ICommentLike, CommentLikeModel, initializeCommentLikeModel, getCommentLikeModel, CommentLike } from './commentLike';
 export { IArticleBookmark, ArticleBookmarkModel, initializeArticleBookmarkModel, getArticleBookmarkModel, ArticleBookmark } from './articleBookmark';
 export { IArticleTag, ArticleTagModel, initializeArticleTagModel, getArticleTagModel, ArticleTag } from './articleTag';
+import logger from "../../utils/logger";
+
 
 import { Db } from 'mongodb';
 import { initializeArticleModel } from './article';
@@ -21,7 +21,7 @@ import { initializeArticleTagModel } from './articleTag';
 
 // 모든 Article 관련 모델을 한 번에 초기화하는 함수
 export const initializeAllArticleModels = (db: Db) => {
-  console.log('🚀 Article 모델들 초기화 시작...');
+  logger.info('🚀 Article 모델들 초기화 시작...');
   
   const models = {
     article: initializeArticleModel(db),
@@ -34,6 +34,6 @@ export const initializeAllArticleModels = (db: Db) => {
     articleTag: initializeArticleTagModel(db),
   };
   
-  console.log('✅ Article 모델들 초기화 완료!');
+  logger.info('✅ Article 모델들 초기화 완료!');
   return models;
 };

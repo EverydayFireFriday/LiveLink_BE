@@ -1,4 +1,6 @@
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
+
 
 // Location 인터페이스 제거 - 이제 string 배열 사용
 
@@ -57,11 +59,11 @@ export class ConcertModel {
   // 최소한의 필수 인덱스만 생성
   private async createMinimalIndexes() {
     try {
-      console.log("Concert 최소 인덱스 생성 시작...");
+      logger.info("Concert 최소 인덱스 생성 시작...");
 
       // 1. uid 유니크 인덱스 (필수 - 중복 방지)
       await this.collection.createIndex({ uid: 1 }, { unique: true });
-      console.log("✅ uid 인덱스 생성");
+      logger.info("✅ uid 인덱스 생성");
 
       // 2. 텍스트 검색 인덱스 (검색 기능용) - location이 이제 string 배열
       await this.collection.createIndex({
@@ -70,21 +72,21 @@ export class ConcertModel {
         location: "text", // location 필드가 string 배열이므로 직접 참조
         description: "text",
       });
-      console.log("✅ 텍스트 검색 인덱스 생성");
+      logger.info("✅ 텍스트 검색 인덱스 생성");
 
       // 3. 좋아요 사용자 인덱스 (좋아요 기능용)
       await this.collection.createIndex({ "likes.userId": 1 });
-      console.log("✅ likes.userId 인덱스 생성");
+      logger.info("✅ likes.userId 인덱스 생성");
 
       // 4. 배치 처리를 위한 추가 인덱스
       await this.collection.createIndex({ _id: 1 });
-      console.log("✅ _id 인덱스 생성");
+      logger.info("✅ _id 인덱스 생성");
 
-      console.log("🎉 Concert 최소 인덱스 생성 완료 (총 4개)");
+      logger.info("🎉 Concert 최소 인덱스 생성 완료 (총 4개)");
     } catch (error) {
-      console.error("❌ 인덱스 생성 중 오류:", error);
+      logger.error("❌ 인덱스 생성 중 오류:", error);
       // 인덱스 생성 실패해도 계속 진행
-      console.log("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
     }
   }
 
@@ -273,7 +275,7 @@ export class ConcertModel {
           errors.push(
             `category[${index}] '${cat}'는 유효한 카테고리가 아닙니다.`
           );
-          console.log(
+          logger.info(
             `💡 허용된 카테고리: ${validCategories.slice(0, 10).join(", ")}... (총 ${validCategories.length}개)`
           );
         }
@@ -491,7 +493,7 @@ export class ConcertModel {
                 like.userId.toString() === userId.toString()
               );
             } catch (error) {
-              console.warn("좋아요 중복 검사 중 에러:", error);
+              logger.warn("좋아요 중복 검사 중 에러:", error);
               return false;
             }
           })
@@ -579,7 +581,7 @@ export class ConcertModel {
     } = {}
   ): Promise<{ concerts: IConcert[]; total: number }> {
     if (!userId) {
-      console.log("❌ findLikedByUser: 사용자 ID가 없음");
+      logger.info("❌ findLikedByUser: 사용자 ID가 없음");
       return { concerts: [], total: 0 };
     }
 
@@ -590,11 +592,11 @@ export class ConcertModel {
     try {
       userObjectId = new ObjectId(userId);
     } catch (error) {
-      console.error("❌ findLikedByUser: 잘못된 사용자 ID 형식:", userId);
+      logger.error("❌ findLikedByUser: 잘못된 사용자 ID 형식:", userId);
       return { concerts: [], total: 0 };
     }
 
-    console.log("🔍 findLikedByUser 검색 조건:", {
+    logger.log("🔍 findLikedByUser 검색 조건:", {
       userId,
       userObjectId: userObjectId.toString(),
       page,
@@ -616,14 +618,14 @@ export class ConcertModel {
         }),
       ]);
 
-      console.log("✅ findLikedByUser 결과:", {
+      logger.log("✅ findLikedByUser 결과:", {
         찾은콘서트수: concerts.length,
         전체개수: total,
       });
 
       return { concerts, total };
     } catch (error) {
-      console.error("❌ findLikedByUser 쿼리 실행 에러:", error);
+      logger.error("❌ findLikedByUser 쿼리 실행 에러:", error);
       return { concerts: [], total: 0 };
     }
   }
@@ -640,7 +642,7 @@ export class ConcertModel {
       }
       return await this.collection.find({ uid: { $in: uids } }).toArray();
     } catch (error) {
-      console.error("findByUids 에러:", error);
+      logger.error("findByUids 에러:", error);
       return [];
     }
   }
@@ -670,7 +672,7 @@ export class ConcertModel {
 
       return await this.collection.find({ _id: { $in: objectIds } }).toArray();
     } catch (error) {
-      console.error("findByIds 에러:", error);
+      logger.error("findByIds 에러:", error);
       return [];
     }
   }
@@ -730,7 +732,7 @@ export class ConcertModel {
         .find({ _id: { $in: insertedIds } })
         .toArray();
     } catch (error) {
-      console.error("insertMany 에러:", error);
+      logger.error("insertMany 에러:", error);
       throw error;
     }
   }
@@ -763,7 +765,7 @@ export class ConcertModel {
       });
       return result.deletedCount || 0;
     } catch (error) {
-      console.error("deleteByIds 에러:", error);
+      logger.error("deleteByIds 에러:", error);
       return 0;
     }
   }
@@ -808,7 +810,7 @@ export class ConcertModel {
 
       return likeStatusMap;
     } catch (error) {
-      console.error("findLikeStatusBatch 에러:", error);
+      logger.error("findLikeStatusBatch 에러:", error);
       return new Map();
     }
   }
@@ -828,7 +830,7 @@ export class ConcertModel {
 
       return await this.collection.bulkWrite(operations, options);
     } catch (error) {
-      console.error("bulkWrite 에러:", error);
+      logger.error("bulkWrite 에러:", error);
       throw error;
     }
   }
@@ -923,7 +925,7 @@ export class ConcertModel {
 
       return { success: successCount, failed: failedCount, errors };
     } catch (error) {
-      console.error("batchLikeOperations 에러:", error);
+      logger.error("batchLikeOperations 에러:", error);
       throw error;
     }
   }

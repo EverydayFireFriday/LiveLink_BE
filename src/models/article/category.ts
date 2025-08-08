@@ -1,5 +1,5 @@
-// models/article/category.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
 
 export interface ICategory {
   _id: ObjectId;
@@ -25,9 +25,9 @@ export class CategoryModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      console.log("✅ Category indexes created successfully");
+      logger.info("✅ Category indexes created successfully");
     } catch (error) {
-      console.error("❌ Failed to create Category indexes:", error);
+      logger.error("❌ Failed to create Category indexes:", error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -40,7 +40,7 @@ export class CategoryModel {
 
   private async createIndexes() {
     try {
-      console.log("Category 인덱스 생성 시작...");
+      logger.info("Category 인덱스 생성 시작...");
 
       // name 필드에 유니크 인덱스 생성 (중복 처리)
       try {
@@ -48,20 +48,20 @@ export class CategoryModel {
           { name: 1 },
           { unique: true, name: "category_name_unique" }
         );
-        console.log("✅ Category name 유니크 인덱스 생성");
+        logger.info("✅ Category name 유니크 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
           // IndexOptionsConflict
-          console.log("ℹ️ Category name 유니크 인덱스가 이미 존재함 (스킵)");
+          logger.info("ℹ️ Category name 유니크 인덱스가 이미 존재함 (스킵)");
         } else {
-          console.warn("⚠️ Category name 인덱스 생성 실패:", error.message);
+          logger.warn("⚠️ Category name 인덱스 생성 실패:", error.message);
         }
       }
 
-      console.log("🎉 Category 인덱스 생성 완료");
+      logger.info("🎉 Category 인덱스 생성 완료");
     } catch (error) {
-      console.error("❌ Category 인덱스 생성 중 오류:", error);
-      console.log("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.error("❌ Category 인덱스 생성 중 오류:", error);
+      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
     }
   }
 

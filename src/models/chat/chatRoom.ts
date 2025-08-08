@@ -1,5 +1,6 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { getDatabase } from '../auth/user';
+import logger from "../../utils/logger";
 
 export interface ChatRoom {
   _id?: ObjectId;
@@ -29,7 +30,7 @@ export class ChatRoomModel {
       await this.chatRoomCollection.createIndex({ participants: 1 });
       await this.chatRoomCollection.createIndex({ lastActivity: -1 });
     } catch (error) {
-      console.error('Failed to create chat room indexes:', error);
+      logger.error('Failed to create chat room indexes:', error);
     }
   }
 

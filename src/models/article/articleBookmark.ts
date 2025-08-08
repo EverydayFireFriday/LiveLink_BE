@@ -1,5 +1,6 @@
-// models/article/articleBookmark.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
+
 
 export interface IArticleBookmark {
   _id: ObjectId;
@@ -26,9 +27,9 @@ export class ArticleBookmarkModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      console.log("✅ ArticleBookmark indexes created successfully");
+      logger.info("✅ ArticleBookmark indexes created successfully");
     } catch (error) {
-      console.error("❌ Failed to create ArticleBookmark indexes:", error);
+      logger.error("❌ Failed to create ArticleBookmark indexes:", error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -41,7 +42,7 @@ export class ArticleBookmarkModel {
 
   private async createIndexes() {
     try {
-      console.log("ArticleBookmark 인덱스 생성 시작...");
+      logger.info("ArticleBookmark 인덱스 생성 시작...");
 
       // 중복 북마크 방지를 위한 복합 유니크 인덱스
       await this.collection.createIndex(
@@ -53,9 +54,9 @@ export class ArticleBookmarkModel {
       await this.collection.createIndex({ article_id: 1, created_at: -1 });
       await this.collection.createIndex({ user_id: 1, created_at: -1 });
 
-      console.log("✅ ArticleBookmark 인덱스 생성 완료");
+      logger.info("✅ ArticleBookmark 인덱스 생성 완료");
     } catch (error) {
-      console.error("❌ ArticleBookmark 인덱스 생성 중 오류:", error);
+      logger.error("❌ ArticleBookmark 인덱스 생성 중 오류:", error);
     }
   }
 

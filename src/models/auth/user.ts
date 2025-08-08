@@ -1,4 +1,5 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import logger from "../../utils/logger";
 
 // User 인터페이스 정의 - 이메일 필드 추가
 export interface User {
@@ -33,13 +34,13 @@ class Database {
       this.client = new MongoClient(process.env.MONGO_URI as string);
       await this.client.connect();
       this.db = this.client.db(process.env.MONGO_DB_NAME || 'livelink');
-      console.log('✅ MongoDB Native Driver connected');
+      logger.info('✅ MongoDB Native Driver connected');
       
       // 인덱스 생성 (username과 email 모두 유니크)
       await this.getUserCollection().createIndex({ username: 1 }, { unique: true });
       await this.getUserCollection().createIndex({ email: 1 }, { unique: true });
     } catch (error) {
-      console.error('❌ MongoDB connection failed:', error);
+      logger.error('❌ MongoDB connection failed:', error);
       throw error;
     }
   }
@@ -47,7 +48,7 @@ class Database {
   public async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.close();
-      console.log('✅ MongoDB disconnected');
+      logger.info('✅ MongoDB disconnected');
     }
   }
 

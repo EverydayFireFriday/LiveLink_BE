@@ -1,5 +1,6 @@
-// models/article/article.ts
 import { ObjectId, Collection, Db } from "mongodb";
+import logger from "../../utils/logger";
+
 
 // Article 인터페이스
 export interface IArticle {
@@ -35,9 +36,9 @@ export class ArticleModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      console.log("✅ Article indexes created successfully");
+      logger.info("✅ Article indexes created successfully");
     } catch (error) {
-      console.error("❌ Failed to create Article indexes:", error);
+      logger.error("❌ Failed to create Article indexes:", error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -50,7 +51,7 @@ export class ArticleModel {
 
   private async createIndexes() {
     try {
-      console.log("Article 인덱스 생성 시작...");
+      logger.info("Article 인덱스 생성 시작...");
 
       // 1. 기존 텍스트 인덱스 확인 및 삭제
       try {
@@ -61,19 +62,19 @@ export class ArticleModel {
         );
 
         if (textIndex) {
-          console.log(
+          logger.info(
             `🔄 기존 텍스트 인덱스 발견: ${textIndex.name}, 삭제 중...`
           );
           await this.collection.dropIndex(textIndex.name);
-          console.log("✅ 기존 텍스트 인덱스 삭제 완료");
+          logger.info("✅ 기존 텍스트 인덱스 삭제 완료");
         }
       } catch (error) {
-        console.log("ℹ️ 기존 텍스트 인덱스 없음 또는 삭제 불가 (정상)");
+        logger.info("ℹ️ 기존 텍스트 인덱스 없음 또는 삭제 불가 (정상)");
       }
 
       // 2. 새 텍스트 검색 인덱스 생성
       await this.collection.createIndex({ title: "text", content_url: "text" });
-      console.log("✅ 텍스트 검색 인덱스 생성");
+      logger.info("✅ 텍스트 검색 인덱스 생성");
 
       // 3. 조회 최적화 인덱스들 생성 (개별 생성으로 타입 에러 방지)
 
@@ -83,12 +84,12 @@ export class ArticleModel {
           { is_published: 1, published_at: -1 },
           { name: "published_status_idx" }
         );
-        console.log("✅ published_status_idx 인덱스 생성");
+        logger.info("✅ published_status_idx 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
-          console.log("ℹ️ published_status_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info("ℹ️ published_status_idx 인덱스가 이미 존재함 (스킵)");
         } else {
-          console.warn(
+          logger.warn(
             "⚠️ published_status_idx 인덱스 생성 실패:",
             error.message
           );
@@ -101,12 +102,12 @@ export class ArticleModel {
           { author_id: 1, created_at: -1 },
           { name: "author_created_idx" }
         );
-        console.log("✅ author_created_idx 인덱스 생성");
+        logger.info("✅ author_created_idx 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
-          console.log("ℹ️ author_created_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info("ℹ️ author_created_idx 인덱스가 이미 존재함 (스킵)");
         } else {
-          console.warn(
+          logger.warn(
             "⚠️ author_created_idx 인덱스 생성 실패:",
             error.message
           );
@@ -119,23 +120,23 @@ export class ArticleModel {
           { category_id: 1, created_at: -1 },
           { name: "category_created_idx" }
         );
-        console.log("✅ category_created_idx 인덱스 생성");
+        logger.info("✅ category_created_idx 인덱스 생성");
       } catch (error: any) {
         if (error.code === 85) {
-          console.log("ℹ️ category_created_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info("ℹ️ category_created_idx 인덱스가 이미 존재함 (스킵)");
         } else {
-          console.warn(
+          logger.warn(
             "⚠️ category_created_idx 인덱스 생성 실패:",
             error.message
           );
         }
       }
 
-      console.log("🎉 Article 인덱스 생성 완료");
+      logger.info("🎉 Article 인덱스 생성 완료");
     } catch (error) {
-      console.error("❌ 인덱스 생성 중 오류:", error);
+      logger.error("❌ 인덱스 생성 중 오류:", error);
       // 인덱스 생성 실패해도 애플리케이션은 계속 실행
-      console.log("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
     }
   }
 
