@@ -28,6 +28,9 @@ ENV NODE_ENV=production
 # Set the working directory
 WORKDIR /usr/src/app
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Create a non-root user and group for security
 # -S: create a system user
 # -G: add user to a group
