@@ -75,6 +75,7 @@ const validateEnv = () => {
     logger.info(`👑 관리자 계정 개수: ${parsed.ADMIN_EMAILS.length}`);
     logger.info(`🌍 환경: ${parsed.NODE_ENV}`);
     logger.info(`🚪 포트: ${parsed.PORT}`);
+    logger.info(`📊 로그 레벨: ${parsed.LOG_LEVEL}`);
     logger.info(
       `🔐 세션 만료시간: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE) / 1000 / 60)}분`
     );
