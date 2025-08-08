@@ -6,32 +6,18 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import logger from './utils/logger';
-
-// ✅ Swagger import (새로 추가)
-import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
-import { ChatSocketServer } from "./socket";
-import { initializeChatModels } from "./models/chat";
+import logger from "./utils/logger";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
 
-// 🔍 관리자 설정 디버깅
-logger.info("\n🔧 환경변수 검증 중...");
-logger.info(`📧 EMAIL_USER: ${process.env.EMAIL_USER ? "✅ 설정됨" : "❌ 누락"}`);
-logger.info(`🔄 REDIS_URL: ${process.env.REDIS_URL ? "✅ 설정됨" : "❌ 누락"}`);
-logger.info(`👑 ADMIN_EMAILS 원본: ${process.env.ADMIN_EMAILS}`);
-logger.info(`👑 ADMIN_EMAILS 존재: ${!!process.env.ADMIN_EMAILS ? "✅ 설정됨" : "❌ 누락"}`);
+// ✅ 환경변수 검증 import (dotenv 이후)
+import { env, isDevelopment, shouldSkipAuth } from "./config/env";
 
-if (process.env.ADMIN_EMAILS) {
-  const adminEmails = process.env.ADMIN_EMAILS.split(",").map((email) =>
-    email.trim()
-  );
-  logger.info(`👑 관리자 계정 개수: ${adminEmails.length}`);
-} else {
-  logger.warn("⚠️  ADMIN_EMAILS가 설정되지 않았습니다!");
-}
-logger.info("");
+// ✅ Swagger import
+import { swaggerSpec, swaggerUi, swaggerUiOptions } from "./config/swagger";
+import { ChatSocketServer } from "./socket";
+import { initializeChatModels } from "./models/chat";
 
 // 데이터베이스 연결 함수들
 import {
@@ -46,10 +32,10 @@ import {
 // ✅ Article 모델 초기화 함수 추가
 import { initializeAllArticleModels } from "./models/article";
 
-// 🔧 라우터 import 수정
-import authRouter from "./routes/auth/index"; // ✅ Auth 통합 라우터
-import concertRouter from "./routes/concert/index"; // ✅ Concert 통합 라우터 (수정됨)
-import healthRouter from "./routes/health/healthRoutes"; // ✅ Health Check 라우터
+// 🔧 라우터 import
+import authRouter from "./routes/auth/index";
+import concertRouter from "./routes/concert/index";
+import healthRouter from "./routes/health/healthRoutes";
 
 // connect-redis v6.1.3 방식
 const RedisStore = require("connect-redis")(session);
@@ -57,7 +43,7 @@ const RedisStore = require("connect-redis")(session);
 const app = express();
 const httpServer = createServer(app);
 let chatSocketServer;
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT;
 
 // 보안 헤더 설정
 app.use(helmet());
@@ -66,37 +52,35 @@ app.use(helmet());
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분
   max: 100, // 각 IP당 15분에 100개의 요청으로 제한
-  standardHeaders: true, // `RateLimit-*` 헤더 사용
-  legacyHeaders: false, // `X-RateLimit-*` 헤더 비활성화
+  standardHeaders: true,
+  legacyHeaders: false,
   message: "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
 });
 app.use(limiter);
 
-import morgan from 'morgan';
-import { stream } from './utils/logger';
-
-// ... (다른 import 구문들)
+import morgan from "morgan";
+import { stream } from "./utils/logger";
 
 // 기본 로깅 (morgan과 winston 연결)
-app.use(morgan('combined', { stream }));
+app.use(morgan("combined", { stream }));
 
 // CORS 설정
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: env.FRONTEND_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Redis 클라이언트 생성 (legacyMode 추가)
+// Redis 클라이언트 생성
 const redisClient = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379",
+  url: env.REDIS_URL,
   legacyMode: true,
 });
 
-// Redis 이벤트 핸들링 (에러 필터링)
+// Redis 이벤트 핸들링
 redisClient.on("connect", () => logger.info("✅ Redis connected"));
 redisClient.on("error", (err: Error) => {
   if (
@@ -137,15 +121,15 @@ app.use(
       client: redisClient,
       prefix: "app:sess:",
     }),
-    secret: process.env.SESSION_SECRET as string,
+    secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     rolling: true,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: parseInt(process.env.SESSION_MAX_AGE || "86400000"),
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: parseInt(env.SESSION_MAX_AGE),
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
     },
     name: "app.session.id",
   })
@@ -191,18 +175,42 @@ app.use(
   swaggerUi.setup(swaggerSpec, swaggerUiOptions)
 );
 
+// 🩺 간단한 헬스체크 엔드포인트 (루트 레벨)
+app.get("/health", (req: express.Request, res: express.Response) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    version: process.env.npm_package_version || "1.0.0",
+    environment: env.NODE_ENV,
+    services: {
+      userDB: isUserDBConnected,
+      concertDB: isConcertDBConnected,
+      articleDB: isArticleDBConnected,
+      chatDB: isChatDBConnected,
+      redis: redisClient?.isOpen || false,
+    },
+  });
+});
+
 // 기본 라우트
 app.get("/", (req: express.Request, res: express.Response) => {
   res.json({
     message: "LiveLink API",
     version: "1.0.0",
+    environment: env.NODE_ENV,
     endpoints: {
       documentation: "/api-docs",
       health: "/health",
+      "health-detailed": "/health/*",
       auth: "/auth",
       concerts: "/concert",
       articles: "/article",
       chat: "/chat",
+    },
+    features: {
+      authenticationSkip: shouldSkipAuth(),
+      adminEmails: env.ADMIN_EMAILS.length,
     },
     timestamp: new Date().toISOString(),
   });
@@ -249,6 +257,7 @@ const initializeDatabases = async () => {
     initializeAllArticleModels(concertDB);
     isArticleDBConnected = true;
     logger.info("✅ Article Database initialized and models ready");
+
     logger.info("🔌 Initializing Chat Database...");
     initializeChatModels();
     isChatDBConnected = true;
@@ -271,6 +280,7 @@ const startServer = async () => {
     const { default: articleRouter } = await import("./routes/article/index");
     app.use("/article", articleRouter);
     logger.info("✅ Article routes loaded and connected");
+
     logger.info("🔌 Loading Chat routes...");
     const { default: chatRouter } = await import("./routes/chat/index");
     app.use("/chat", chatRouter);
@@ -292,17 +302,20 @@ const startServer = async () => {
           return next(err);
         }
         logger.error("🔥 Error:", { error: err });
-        const isDevelopment = process.env.NODE_ENV === "development";
-        if (err.type === "entity.parse.failed" || err.message?.includes("JSON")) {
+
+        if (
+          err.type === "entity.parse.failed" ||
+          err.message?.includes("JSON")
+        ) {
           return res.status(400).json({
             message: "잘못된 JSON 형식입니다.",
-            error: isDevelopment ? err.message : "Invalid JSON format",
+            error: isDevelopment() ? err.message : "Invalid JSON format",
             timestamp: new Date().toISOString(),
           });
         }
         res.status(err.status || 500).json({
           message: err.message || "서버 내부 에러",
-          error: isDevelopment
+          error: isDevelopment()
             ? { stack: err.stack, details: err.message }
             : "알 수 없는 에러",
           timestamp: new Date().toISOString(),
