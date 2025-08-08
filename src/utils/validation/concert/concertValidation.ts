@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import logger from "../logger";
 
 /**
  * 콘서트 데이터 유효성 검증 결과 인터페이스
@@ -404,7 +405,7 @@ export const validateConcertUpdateData = (
     const foundFields = readOnlyFields.filter((field) =>
       updateData.hasOwnProperty(field)
     );
-    console.warn(
+    logger.warn(
       `수정 불가능한 필드가 포함되어 있습니다 (무시됨): ${foundFields.join(", ")}`
     );
   }
@@ -780,13 +781,13 @@ export const generateObjectIdFromUid = (uid: string): ObjectId => {
       return new ObjectId(timestampInSeconds);
     } else {
       // timestamp를 찾을 수 없으면 새로운 ObjectId 생성
-      console.warn(
+      logger.warn(
         `UID에서 timestamp를 찾을 수 없음: ${uid}, 새로운 ObjectId 생성`
       );
       return new ObjectId();
     }
   } catch (error) {
-    console.warn(
+    logger.warn(
       `UID를 ObjectId로 변환 실패: ${uid}, 새로운 ObjectId 생성`,
       error
     );
