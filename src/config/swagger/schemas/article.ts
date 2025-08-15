@@ -395,6 +395,62 @@ export const articleSchemas = {
   },
 
   // Like/Bookmark 관련 스키마
+  ArticleBookmark: {
+    type: "object",
+    required: ["id", "user_id", "article_id", "created_at"],
+    properties: {
+      id: {
+        type: "number",
+        description: "북마크 고유 ID",
+        example: 1,
+      },
+      user_id: {
+        type: "number",
+        description: "사용자 ID",
+        example: 101,
+      },
+      article_id: {
+        type: "number",
+        description: "아티클 ID",
+        example: 1,
+      },
+      created_at: {
+        type: "string",
+        format: "date-time",
+        description: "생성 일시",
+        example: "2024-07-15T10:00:00Z",
+      },
+    },
+  },
+
+  ArticleLike: {
+    type: "object",
+    required: ["id", "user_id", "article_id", "created_at"],
+    properties: {
+      id: {
+        type: "number",
+        description: "좋아요 고유 ID",
+        example: 1,
+      },
+      user_id: {
+        type: "number",
+        description: "사용자 ID",
+        example: 101,
+      },
+      article_id: {
+        type: "number",
+        description: "아티클 ID",
+        example: 1,
+      },
+      created_at: {
+        type: "string",
+        format: "date-time",
+        description: "생성 일시",
+        example: "2024-07-15T10:00:00Z",
+      },
+    },
+  },
+
   ArticleLikeResponse: {
     type: "object",
     properties: {
