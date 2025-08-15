@@ -60,4 +60,45 @@ export const authSchemas = {
       updatedAt: { type: "string", format: "date-time" },
     },
   },
+  AdminStats: {
+    type: "object",
+    properties: {
+      totalUsers: { type: "number", example: 150 },
+      activeUsers: { type: "number", example: 120 },
+      totalConcerts: { type: "number", example: 50 },
+      totalArticles: { type: "number", example: 300 },
+      totalComments: { type: "number", example: 1200 },
+    },
+  },
+  AdminUserView: {
+    type: "object",
+    properties: {
+      _id: { type: "string", example: "60d0fe4f5311236168a109ca" },
+      email: { type: "string", format: "email", example: "user@example.com" },
+      username: { type: "string", example: "johndoe" },
+      role: { type: "string", enum: ["user", "admin"], example: "user" },
+      status: { type: "string", enum: ["active", "inactive", "suspended", "banned"], example: "active" },
+      createdAt: { type: "string", format: "date-time", example: "2023-01-01T12:00:00Z" },
+    },
+  },
+  AdminUserDetail: {
+    allOf: [
+      { $ref: '#/components/schemas/User' },
+      {
+        type: "object",
+        properties: {
+          loginHistory: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                ip: { type: "string", example: "127.0.0.1" },
+                timestamp: { type: "string", format: "date-time", example: "2023-01-10T09:00:00Z" },
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
 };
