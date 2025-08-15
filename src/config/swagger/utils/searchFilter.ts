@@ -2,6 +2,15 @@ import logger from "../../../utils/logger";
 
 export const setupSearchFilter = function () {
   try {
+    console.log("🔧 setupSearchFilter 시작");
+
+    // 기존 다크모드 토글이 있다면 제거 (중복 방지)
+    const existingToggle = document.querySelector(".dark-mode-toggle");
+    if (existingToggle) {
+      existingToggle.remove();
+      console.log("🗑️ 기존 토글 제거");
+    }
+
     // 다크 모드 토글 버튼 생성
     setupDarkModeToggle();
 
@@ -11,42 +20,87 @@ export const setupSearchFilter = function () {
     // UI 개선 적용
     setupUIEnhancements();
   } catch (error) {
+    console.error("❌ 검색 필터 초기화 중 오류:", error);
     logger.info("검색 필터 초기화 중 오류:", error);
   }
 };
 
 const setupDarkModeToggle = () => {
+  console.log("🌙 다크모드 토글 설정");
+
   const toggleButton = document.createElement("button");
   toggleButton.className = "dark-mode-toggle";
   toggleButton.innerHTML = "🌙";
   toggleButton.title = "다크 모드 토글";
 
-  // 현재 테마 상태 확인
+  // 인라인 스타일로 버튼이 확실히 보이도록 설정
+  Object.assign(toggleButton.style, {
+    position: "fixed",
+    top: "20px",
+    right: "20px",
+    zIndex: "1001",
+    background: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "50px",
+    height: "50px",
+    cursor: "pointer",
+    fontSize: "18px",
+    transition: "all 0.3s ease",
+    boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  });
+
+  // 현재 테마 상태 확인 - localStorage 통일
   const currentTheme = localStorage.getItem("swagger-theme") || "light";
-  if (currentTheme === "dark") {
-    document.documentElement.setAttribute("data-theme", "dark");
-    toggleButton.innerHTML = "☀️";
-  }
+
+  // 테마 적용 함수 - DOM 일관성 맞추기
+  const applyTheme = (theme: string) => {
+    if (theme === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+      toggleButton.innerHTML = "☀️";
+      console.log("🌙 다크모드 적용");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      toggleButton.innerHTML = "🌙";
+      console.log("☀️ 라이트모드 적용");
+    }
+    localStorage.setItem("swagger-theme", theme);
+  };
+
+  // 초기 테마 적용
+  applyTheme(currentTheme);
 
   // 토글 기능
   toggleButton.addEventListener("click", () => {
     const isDark =
       document.documentElement.getAttribute("data-theme") === "dark";
+    const newTheme = isDark ? "light" : "dark";
+    applyTheme(newTheme);
+    console.log(
+      `🔄 테마 변경: ${isDark ? "다크" : "라이트"} → ${newTheme === "dark" ? "다크" : "라이트"}`
+    );
+  });
 
-    if (isDark) {
-      document.documentElement.removeAttribute("data-theme");
-      toggleButton.innerHTML = "🌙";
-      localStorage.setItem("swagger-theme", "light");
-    } else {
-      document.documentElement.setAttribute("data-theme", "dark");
-      toggleButton.innerHTML = "☀️";
-      localStorage.setItem("swagger-theme", "dark");
-    }
+  // 호버 효과
+  toggleButton.addEventListener("mouseenter", () => {
+    toggleButton.style.transform = "scale(1.1)";
+    toggleButton.style.boxShadow = "0 6px 20px rgba(59, 130, 246, 0.4)";
+  });
+
+  toggleButton.addEventListener("mouseleave", () => {
+    toggleButton.style.transform = "scale(1)";
+    toggleButton.style.boxShadow = "0 4px 15px rgba(59, 130, 246, 0.3)";
   });
 
   document.body.appendChild(toggleButton);
+  console.log("✅ 다크모드 토글 버튼 생성 완료");
 };
 
+// 나머지 함수들은 기존과 동일...
 const setupAdvancedSearch = () => {
   setTimeout(() => {
     const win = window as any;
@@ -159,6 +213,7 @@ const setupAdvancedSearch = () => {
           });
         };
 
+        console.log("✅ Swagger 검색 필터 오버라이드 완료");
         logger.info("✅ Swagger 검색 필터가 성공적으로 오버라이드되었습니다.");
       }
     }
@@ -241,6 +296,7 @@ const setupDOMBasedSearch = () => {
       });
     });
 
+    console.log("✅ DOM 기반 검색 설정 완료");
     logger.info("✅ DOM 기반 검색이 추가되었습니다.");
   }
 };
