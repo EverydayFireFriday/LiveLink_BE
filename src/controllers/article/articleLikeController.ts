@@ -376,7 +376,7 @@ export class ArticleLikeController {
    *                     type: string
    *                   example: ["123", "456", "789"]
    *                 pagination:
-   *                   $ref: '#/components/schemas/Pagination'
+   *                   $ref: '#/components/schemas/PaginationResponse'
    *       500:
    *         description: 서버 에러
    */
@@ -457,7 +457,7 @@ export class ArticleLikeController {
    *                     type: string
    *                   example: ["507f1f77bcf86cd799439011", "507f1f77bcf86cd799439012"]
    *                 pagination:
-   *                   $ref: '#/components/schemas/Pagination'
+   *                   $ref: '#/components/schemas/PaginationResponse'
    *       401:
    *         description: 로그인 필요
    *       500:

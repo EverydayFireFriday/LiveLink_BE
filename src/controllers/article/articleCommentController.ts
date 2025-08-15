@@ -163,7 +163,7 @@ export class ArticleCommentController {
    *                             items:
    *                               $ref: '#/components/schemas/Comment'
    *                 pagination:
-   *                   $ref: '#/components/schemas/Pagination'
+   *                   $ref: '#/components/schemas/PaginationResponse'
    *       404:
    *         description: 게시글을 찾을 수 없음
    *       500:
@@ -545,7 +545,7 @@ export class ArticleCommentController {
    *                   items:
    *                     $ref: '#/components/schemas/Comment'
    *                 pagination:
-   *                   $ref: '#/components/schemas/Pagination'
+   *                   $ref: '#/components/schemas/PaginationResponse'
    *       404:
    *         description: 부모 댓글을 찾을 수 없음
    *       500:
@@ -633,7 +633,7 @@ export class ArticleCommentController {
    *                   items:
    *                     $ref: '#/components/schemas/Comment'
    *                 pagination:
-   *                   $ref: '#/components/schemas/Pagination'
+   *                   $ref: '#/components/schemas/PaginationResponse'
    *       401:
    *         description: 로그인 필요
    *       500:

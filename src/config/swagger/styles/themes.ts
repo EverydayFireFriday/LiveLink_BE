@@ -133,6 +133,13 @@ export const baseStyles = `
     color: white;
     box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
   }
+
+  /* Chat 태그 */
+  .swagger-ui .opblock-tag[data-tag*="Chat"] {
+    background: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(94, 231, 223, 0.3);
+  }
   
   /* 모든 태그 제목 스타일 */
   .swagger-ui .opblock-tag .opblock-tag-section h3 {
