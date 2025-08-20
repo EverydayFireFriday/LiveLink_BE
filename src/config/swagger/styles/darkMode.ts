@@ -274,6 +274,11 @@ export const darkModeStyles = `
     color: #CCCCCC !important;
   }
 
+  /* API 설명 목록(li) 색상 */
+  html[data-theme="dark"] .swagger-ui .opblock-body li {
+    color: white !important;
+  }
+
   html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Auth"] { 
     box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
   }
