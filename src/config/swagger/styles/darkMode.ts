@@ -151,7 +151,7 @@ export const darkModeStyles = `
   html[data-theme="dark"] .swagger-ui textarea,
   html[data-theme="dark"] .swagger-ui select {
     background: #252526 !important;
-    color: #CCCCCC !important;
+    color: white !important;
     border: 1px solid #333333 !important;
   }
 
@@ -161,7 +161,7 @@ export const darkModeStyles = `
   html[data-theme="dark"] .swagger-ui pre,
   html[data-theme="dark"] .swagger-ui code {
     background: #252526 !important;
-    color: #CCCCCC !important;
+    color: white !important;
     border: 1px solid #333333 !important;
   }
 
@@ -279,6 +279,12 @@ export const darkModeStyles = `
     color: white !important;
   }
 
+  /* 인증 섹션 텍스트 색상 */
+  html[data-theme="dark"] .swagger-ui .security-schemes,
+  html[data-theme="dark"] .swagger-ui .security-schemes * {
+    color: white !important;
+  }
+
   html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Auth"] { 
     box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
   }
@@ -317,5 +323,44 @@ export const darkModeStyles = `
 
   html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Admin"] { 
     box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4) !important;
+  }
+
+  /* 인증 모달 가독성 개선 (Gemini) */
+  html[data-theme="dark"] .swagger-ui .auth-container {
+    background: #2d2d2d !important; /* 어두운 배경색으로 변경 */
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-container h4 {
+    color: #87ceeb !important; /* 밝은 하늘색으로 변경 */
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-container .renderedMarkdown p,
+  html[data-theme="dark"] .swagger-ui .auth-container .wrapper p {
+    color: #e0e0e0 !important; /* 밝은 회색으로 변경 */
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-container label {
+    color: #f0f0f0 !important; /* 더 밝은 흰색으로 변경 */
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-container input[type="text"] {
+    background: #3c3c3c !important;
+    color: #ffffff !important;
+    border: 1px solid #555555 !important;
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-btn-wrapper {
+    background-color: #2d2d2d !important;
+    border-top: 1px solid #444444 !important;
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-btn-wrapper .btn.authorize {
+    background-color: #007bff !important;
+    color: #ffffff !important;
+  }
+
+  html[data-theme="dark"] .swagger-ui .auth-btn-wrapper .btn.btn-done {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
   }
 `;
