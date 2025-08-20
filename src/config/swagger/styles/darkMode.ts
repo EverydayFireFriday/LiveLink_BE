@@ -62,9 +62,10 @@ export const darkModeStyles = `
   }
 
   html[data-theme="dark"] .swagger-ui .info .version {
-    background: #252526 !important;
-    color: #CCCCCC !important;
-    border: 1px solid #333333 !important;
+    background: transparent !important;
+    color: white !important;
+    border: none !important;
+    padding: 2px 5px !important; /* Add some padding */
   }
 
   html[data-theme="dark"] .swagger-ui .scheme-container,

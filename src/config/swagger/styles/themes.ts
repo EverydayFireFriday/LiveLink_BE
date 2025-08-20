@@ -210,4 +210,13 @@ export const baseStyles = `
   .swagger-ui ::-webkit-scrollbar-thumb:hover { 
     background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
   }
+
+  /* 설명 텍스트 색상 개선 */
+  .swagger-ui .description {
+    color: #333;
+  }
+  /* 다크 모드에서의 설명 텍스트 색상 */
+  [data-theme='dark'] .swagger-ui .description {
+    color: #ccc;
+  }
 `;

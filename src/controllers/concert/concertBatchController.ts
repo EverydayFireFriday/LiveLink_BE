@@ -16,6 +16,7 @@ import logger from "../../utils/logger";
  *       - 중복 UID 검사 및 처리 옵션
  *       - 상세한 결과 리포트 제공
  *       - 트랜잭션 기반 안전한 처리
+ *
  *       - location: 문자열 배열로 간소화됨
  *       - infoImages: 이미지 URL 배열 (기존 info에서 변경)
  *     security:
