@@ -1,7 +1,6 @@
 import { ObjectId, Collection, Db } from "mongodb";
 import logger from "../../utils/logger";
 
-
 // Location 인터페이스 제거 - 이제 string 배열 사용
 
 // Price 인터페이스
@@ -38,7 +37,7 @@ export interface IConcert {
   posterImage?: string; // S3 URL
   infoImages?: string[]; // info에서 infoImages로 이름 변경
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
-  
+
   likes?: ILike[]; // 좋아요 배열
   likesCount?: number; // 좋아요 개수
   createdAt: Date;
@@ -215,7 +214,7 @@ export class ConcertModel {
       "rap/hiphop/edm", //랩, 힙합, 이디엠
       "idol", //아이돌
       "folk/trot", //포크, 트로트
-      "r&b/ballad", //r&b, 발라드
+      "RnB/ballad", //r&b, 발라드
       "tour", //내한
       "festival", //페스티벌
       "fan", //팬클럽, 팬미팅
