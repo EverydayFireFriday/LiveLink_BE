@@ -35,7 +35,7 @@ export class EmailTemplates {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333;">회원가입 이메일 인증</h2>
             <p>안녕하세요${data.username ? `, <strong>${data.username}</strong>님` : ""}!</p>
-            <p><strong>LiveLink</strong>에 회원가입해주셔서 감사합니다.</p>
+            <p><strong>stagelives</strong>에 회원가입해주셔서 감사합니다.</p>
             <p>아래 인증 코드를 입력하여 회원가입을 완료해주세요.</p>
             <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
               <h3 style="color: #007bff; font-size: 24px; margin: 0;">인증 코드: ${data.verificationCode}</h3>
@@ -46,7 +46,7 @@ export class EmailTemplates {
               <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
               <li>본인이 요청하지 않았다면 이 이메일을 무시하세요.</li>
             </ul>
-            <p>감사합니다.<br>LiveLink 팀</p>
+            <p>감사합니다.<br>stagelives 팀</p>
           </div>
         </body>
         </html>
@@ -78,7 +78,7 @@ export class EmailTemplates {
               <li>인증 코드를 다른 사람과 공유하지 마세요.</li>
               <li>본인이 요청하지 않았다면 즉시 비밀번호를 변경해주세요.</li>
             </ul>
-            <p>감사합니다.<br>LiveLink 팀</p>
+            <p>감사합니다.<br>stagelives팀</p>
           </div>
         </body>
         </html>
@@ -100,19 +100,13 @@ export class EmailTemplates {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333;">가입을 환영합니다!</h2>
             <p>안녕하세요, <strong>${data.username}</strong>님!</p>
-            <p><strong>LiveLink</strong> 가족이 되어주셔서 진심으로 감사합니다.</p>
+            <p><strong>stagelives</strong> stagelives의 회원이 되어주셔서 진심으로 감사합니다.</p>
             <p>이제 모든 기능을 자유롭게 이용하실 수 있습니다.</p>
             <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
               <h3 style="color: #28a745; font-size: 20px; margin: 0;">환영합니다, ${data.username}님!</h3>
             </div>
-            <p><strong>다음 단계:</strong></p>
-            <ul>
-              <li>프로필 설정하기</li>
-              <li>다른 사용자들과 연결하기</li>
-              <li>새로운 기능들 탐험하기</li>
-            </ul>
             <p>문의사항이 있으시면 언제든지 연락주세요.</p>
-            <p>감사합니다.<br>LiveLink 팀</p>
+            <p>감사합니다.<br>stagelives 팀</p>
           </div>
         </body>
         </html>
@@ -145,7 +139,7 @@ export class EmailTemplates {
               <li>모든 기기에서 로그아웃하세요</li>
               <li>고객센터에 즉시 신고해주세요</li>
             </ul>
-            <p>감사합니다.<br>LiveLink 보안팀</p>
+            <p>감사합니다.<br>stagelives 보안팀</p>
           </div>
         </body>
         </html>
