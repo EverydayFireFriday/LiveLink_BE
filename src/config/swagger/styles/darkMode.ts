@@ -257,72 +257,12 @@ export const darkModeStyles = `
     background: rgba(0, 0, 0, 0.8) !important;
   }
 
-  /* 그라디언트 태그 그림자 효과 */
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Health"] { 
-    box-shadow: 0 4px 15px rgba(132, 250, 176, 0.4) !important;
-  }
-
-  /* 최종 스타일 수정 (Gemini) */
-
-  /* 인증 자물쇠 아이콘 색상 */
-  html[data-theme="dark"] .swagger-ui .auth-wrapper .btn.unlocked svg {
-    fill: #DDDDDD !important;
-  }
-
-  /* API 설명 문단(p) 색상 */
-  html[data-theme="dark"] .swagger-ui .opblock-body p {
-    color: #CCCCCC !important;
-  }
-
-  /* API 설명 목록(li) 색상 */
-  html[data-theme="dark"] .swagger-ui .opblock-body li {
-    color: white !important;
-  }
-
-  /* 인증 섹션 텍스트 색상 */
-  html[data-theme="dark"] .swagger-ui .security-schemes,
-  html[data-theme="dark"] .swagger-ui .security-schemes * {
-    color: white !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Auth"] { 
-    box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Registration"] { 
-    box-shadow: 0 4px 15px rgba(255, 236, 210, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Password"] { 
-    box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Profile"] { 
-    box-shadow: 0 4px 15px rgba(168, 202, 186, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Verification"] { 
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Basic"] { 
-    box-shadow: 0 4px 15px rgba(116, 185, 255, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Like"] { 
-    box-shadow: 0 4px 15px rgba(253, 121, 168, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Search"] { 
-    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Batch"] { 
-    box-shadow: 0 4px 15px rgba(253, 203, 110, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Admin"] { 
-    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4) !important;
+  /* 다크모드 태그 스타일 통일 */
+  html[data-theme="dark"] .swagger-ui .opblock-tag {
+    background-color: #222222 !important;
+    border: 1px solid #444444 !important;
+    color: #87CEEB !important;
+    box-shadow: none !important;
   }
 
   /* 인증 모달 가독성 개선 (Gemini) */
@@ -362,5 +302,16 @@ export const darkModeStyles = `
   html[data-theme="dark"] .swagger-ui .auth-btn-wrapper .btn.btn-done {
     background-color: #6c757d !important;
     color: #ffffff !important;
+  }
+
+  /* 다크 모드 작은 글씨 가독성 개선 */
+  html[data-theme="dark"] .swagger-ui small,
+  html[data-theme="dark"] .swagger-ui .renderedMarkdown,
+  html[data-theme="dark"] .swagger-ui .renderedMarkdown p,
+  html[data-theme="dark"] .swagger-ui p,
+  html[data-theme="dark"] .swagger-ui li,
+  html[data-theme="dark"] .swagger-ui td,
+  html[data-theme="dark"] .swagger-ui th {
+    color: #DDDDDD !important;
   }
 `;
