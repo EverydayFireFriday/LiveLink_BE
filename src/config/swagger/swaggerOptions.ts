@@ -8,14 +8,10 @@ export const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "LiveLink API",
+      title: "stagelives API",
       version: "1.0.0",
       description:
         "Authentication & Concert Management API with Redis Session & MongoDB Native Driver",
-      contact: {
-        name: "LiveLink API Support",
-        email: "support@livelink.com",
-      },
       license: {
         name: "MIT",
         url: "https://opensource.org/licenses/MIT",
@@ -25,7 +21,7 @@ export const swaggerOptions = {
       process.env.NODE_ENV === "production"
         ? [
             {
-              url: process.env.PRODUCTION_URL || "https://test.newyear.bio",
+              url: process.env.PRODUCTION_URL || "https://test.stagelives.com",
               description: "Production server",
             },
           ]

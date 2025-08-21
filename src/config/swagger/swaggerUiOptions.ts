@@ -5,7 +5,7 @@ export const swaggerUiOptions = {
   explorer: true,
   customCss: customStyles,
   customJs: '/swagger-assets/theme-initializer.js',
-  customSiteTitle: "LiveLink API Documentation",
+  customSiteTitle: "stagelives API Documentation",
   customfavIcon: "/favicon.ico",
   swaggerOptions: {
     persistAuthorization: true,
