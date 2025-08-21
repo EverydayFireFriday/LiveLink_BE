@@ -63,7 +63,10 @@ export class EmailService {
 
   private createTransporter(): nodemailer.Transporter {
     try {
-      return nodemailer.createTransport(this.config);
+      return nodemailer.createTransport({
+        ...this.config,
+        debug: true, // Add this line
+      });
     } catch (error) {
       logger.error("이메일 transporter 생성 실패:", { error });
       throw new Error("이메일 서비스 초기화 실패");

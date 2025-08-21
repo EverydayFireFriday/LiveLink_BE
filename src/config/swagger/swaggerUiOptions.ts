@@ -4,6 +4,7 @@ import { setupSearchFilter } from "./utils/searchFilter";
 export const swaggerUiOptions = {
   explorer: true,
   customCss: customStyles,
+  customJs: '/swagger-assets/theme-initializer.js',
   customSiteTitle: "LiveLink API Documentation",
   customfavIcon: "/favicon.ico",
   swaggerOptions: {
@@ -73,21 +74,9 @@ export const swaggerUiOptions = {
             }
           };
 
-          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-          const savedTheme = localStorage.getItem("swagger-theme");
-
-          if (savedTheme) {
-            applyTheme(savedTheme);
-          } else {
-            applyTheme(prefersDark.matches ? "dark" : "light");
-          }
-
-          prefersDark.addEventListener("change", (e) => {
-            const currentSavedTheme = localStorage.getItem("swagger-theme");
-            if (!currentSavedTheme) {
-              applyTheme(e.matches ? "dark" : "light");
-            }
-          });
+          // Initialize toggle button based on current theme
+          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+          applyTheme(isDark ? "dark" : "light");
 
           toggleButton.addEventListener("click", () => {
             const isDark =

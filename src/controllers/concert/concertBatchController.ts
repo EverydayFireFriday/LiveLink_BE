@@ -88,9 +88,9 @@ import logger from "../../utils/logger";
  *                       type: array
  *                       items:
  *                         type: string
- *                         enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "other"]
+ *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *                       description: 음악 카테고리
- *                       example: ["k-pop", "pop"]
+ *                       example: ["tour", "idol"]
  *                     ticketLink:
  *                       type: array
  *                       items:
@@ -116,12 +116,6 @@ import logger from "../../utils/logger";
  *                         format: uri
  *                       description: 추가 정보 이미지 URL 배열 (기존 info에서 변경)
  *                       example: ["https://example.com/info1.jpg", "https://example.com/info2.jpg"]
- *                     tags:
- *                       type: array
- *                       items:
- *                         type: string
- *                       description: 태그 목록
- *                       example: ["겨울콘서트", "발라드", "어쿠스틱"]
  *               skipDuplicates:
  *                 type: boolean
  *                 description: "중복 UID 발견 시 건너뛸지 여부"
@@ -313,7 +307,7 @@ export const batchUploadConcerts = async (
  *                       type: array
  *                       items:
  *                         type: string
- *                         enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "other"]
+ *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *                       description: 수정할 음악 카테고리 (선택사항)
  *                     ticketOpenDate:
  *                       type: string
@@ -330,11 +324,6 @@ export const batchUploadConcerts = async (
  *                         format: uri
  *                       description: 수정할 정보 이미지 URL 배열 (선택사항)
  *                       example: ["https://example.com/info1.jpg"]
- *                     tags:
- *                       type: array
- *                       items:
- *                         type: string
- *                       description: 수정할 태그 목록 (선택사항)
  *               continueOnError:
  *                 type: boolean
  *                 description: "에러 발생 시 계속 진행 여부"

@@ -207,7 +207,7 @@ export class ConcertBatchService {
             : undefined,
           posterImage: concertData.posterImage || "",
           infoImages: concertData.infoImages || [], // info → infoImages로 변경
-          tags: concertData.tags || [],
+          
           status: "upcoming",
           likes: [],
           likesCount: 0,
