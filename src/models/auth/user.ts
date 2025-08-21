@@ -5,6 +5,7 @@ export enum UserStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
+  DELETED = 'deleted',
   PENDING_VERIFICATION = 'pending_verification',
 }
 
@@ -15,6 +16,7 @@ export interface User {
   email: string; // 이메일 필드 추가
   passwordHash: string;
   status: UserStatus;
+  statusReason?: string; // 상태 변경 사유 추가
   profileImage?: string; // S3 URL 또는 파일 경로
   createdAt: Date;
   updatedAt: Date;

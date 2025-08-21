@@ -7,6 +7,7 @@ export interface User {
   username: string;
   passwordHash: string;
   status: UserStatus;
+  statusReason?: string; // 상태 변경 사유 추가
   profileImage?: string;
   createdAt: Date;
   updatedAt: Date;
