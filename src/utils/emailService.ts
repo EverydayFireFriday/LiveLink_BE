@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { logger } from './index';
+import { logger } from "./index";
 import {
   EmailTemplates,
   EmailTemplateData,
@@ -77,7 +77,7 @@ export class EmailService {
     to: string,
     subject: string,
     html: string,
-    fromName: string = "LiveLink"
+    fromName: string = "stagelives"
   ): Promise<EmailSendResult> {
     try {
       const mailOptions = {
@@ -90,7 +90,7 @@ export class EmailService {
         html,
         priority: "normal" as "normal" | "high" | "low",
         headers: {
-          "X-Mailer": "LiveLink Email Service",
+          "X-Mailer": "stagelives Email Service",
           "X-Priority": "3",
         },
       };
@@ -116,10 +116,15 @@ export class EmailService {
   async sendRegistrationVerification(
     data: EmailTemplateData
   ): Promise<EmailSendResult> {
-    const subject = `[LiveLink] 회원가입 이메일 인증`;
+    const subject = `[stagelives] 회원가입 이메일 인증`;
     const html = EmailTemplates.getRegistrationVerificationEmail(data);
 
-    const result = await this.sendEmail(data.email, subject, html, "LiveLink");
+    const result = await this.sendEmail(
+      data.email,
+      subject,
+      html,
+      "stagelives"
+    );
 
     if (result.success) {
       logger.info(
@@ -131,14 +136,14 @@ export class EmailService {
   }
 
   async sendPasswordReset(data: EmailTemplateData): Promise<EmailSendResult> {
-    const subject = `[LiveLink] 비밀번호 재설정 인증 코드`;
+    const subject = `[stagelives] 비밀번호 재설정 인증 코드`;
     const html = EmailTemplates.getPasswordResetEmail(data);
 
     const result = await this.sendEmail(
       data.email,
       subject,
       html,
-      "LiveLink Security"
+      "stagelives Security"
     );
 
     if (result.success) {
@@ -151,14 +156,14 @@ export class EmailService {
   }
 
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<EmailSendResult> {
-    const subject = `[LiveLink] 가입을 환영합니다!`;
+    const subject = `[stagelives] 가입을 환영합니다!`;
     const html = EmailTemplates.getWelcomeEmail(data);
 
     const result = await this.sendEmail(
       data.email,
       subject,
       html,
-      "LiveLink Team"
+      "stagelives Team"
     );
 
     if (result.success) {
@@ -169,14 +174,14 @@ export class EmailService {
   }
 
   async sendSecurityAlert(data: SecurityAlertData): Promise<EmailSendResult> {
-    const subject = `[LiveLink] 계정 보안 알림`;
+    const subject = `[stagelives] 계정 보안 알림`;
     const html = EmailTemplates.getSecurityAlertEmail(data);
 
     const result = await this.sendEmail(
       data.email,
       subject,
       html,
-      "LiveLink Security"
+      "stagelives Security"
     );
 
     if (result.success) {
