@@ -220,7 +220,7 @@ export const validateConcertData = (concertData: any): ValidationResult => {
       "idol", //아이돌
       "folk/trot", //포크, 트로트
       "r&b/ballad", //r&b, 발라드
-      "korea", //내한
+      "tour", //내한
       "festival", //페스티벌
       "fan", //팬클럽, 팬미팅
       "other", //그외 장르(디너쇼, 토크, 강연...)
