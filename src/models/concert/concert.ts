@@ -38,7 +38,7 @@ export interface IConcert {
   posterImage?: string; // S3 URL
   infoImages?: string[]; // info에서 infoImages로 이름 변경
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
-  tags?: string[];
+  
   likes?: ILike[]; // 좋아요 배열
   likesCount?: number; // 좋아요 개수
   createdAt: Date;

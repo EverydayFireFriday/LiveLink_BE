@@ -119,12 +119,6 @@ import logger from "../../utils/logger";
  *                   format: uri
  *                 description: 추가 정보 이미지 URL 배열 (기존 info에서 변경)
  *                 example: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg"]
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 태그 목록
- *                 example: ["발라드", "K-POP", "솔로"]
  *               status:
  *                 type: string
  *                 enum: ["upcoming", "ongoing", "completed", "cancelled"]
@@ -146,7 +140,6 @@ import logger from "../../utils/logger";
  *                 ticketOpenDate: "2024-05-01T10:00:00+09:00"
  *                 posterImage: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
  *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info2.jpg"]
- *                 tags: ["발라드", "K-POP", "솔로"]
  *                 status: "upcoming"
  *             minimalExample:
  *               summary: 최소 필수 데이터만
@@ -727,12 +720,6 @@ export const getAllConcerts = async (
  *                   format: uri
  *                 description: 정보 이미지 URL 배열 (기존 info에서 변경)
  *                 example: ["https://your-bucket.s3.amazonaws.com/concerts/updated/info1.jpg"]
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 태그 목록
- *                 example: ["수정된태그", "업데이트"]
  *               price:
  *                 type: array
  *                 items:
@@ -766,7 +753,6 @@ export const getAllConcerts = async (
  *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
  *                 description: "아이유의 월드투어 한국 공연"
  *                 category: ["k-pop", "pop"]
- *                 tags: ["월드투어", "스페셜 에디션"]
  *     responses:
  *       200:
  *         description: 콘서트 수정 성공
