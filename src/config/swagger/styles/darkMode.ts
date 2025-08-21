@@ -314,4 +314,9 @@ export const darkModeStyles = `
   html[data-theme="dark"] .swagger-ui th {
     color: #DDDDDD !important;
   }
+
+  /* 다크 모드 Authorize 버튼 색상 변경 */
+  html[data-theme="dark"] .swagger-ui .authorization__btn svg path {
+    fill: #FFFFFF !important;
+  }
 `;
