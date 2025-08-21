@@ -24,8 +24,9 @@ export const requireAuthInProductionMiddleware = (
   res: express.Response,
   next: express.NextFunction
 ) => {
-  if (process.env.NODE_ENV === "development") {
-    logger.info("🚀개발 환경: 인증 스킵");
+  // Only skip authentication if SKIP_AUTH is explicitly true
+  if (process.env.SKIP_AUTH === "true") {
+    logger.info("⚠️ SKIP_AUTH 환경변수로 인증 스킵됨");
 
     // 개발환경에서 세션이 없으면 임시 세션 생성
     if (!req.session?.user) {

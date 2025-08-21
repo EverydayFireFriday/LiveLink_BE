@@ -62,9 +62,10 @@ export const darkModeStyles = `
   }
 
   html[data-theme="dark"] .swagger-ui .info .version {
-    background: #252526 !important;
-    color: #CCCCCC !important;
-    border: 1px solid #333333 !important;
+    background: transparent !important;
+    color: white !important;
+    border: none !important;
+    padding: 2px 5px !important; /* Add some padding */
   }
 
   html[data-theme="dark"] .swagger-ui .scheme-container,
@@ -150,7 +151,7 @@ export const darkModeStyles = `
   html[data-theme="dark"] .swagger-ui textarea,
   html[data-theme="dark"] .swagger-ui select {
     background: #252526 !important;
-    color: #CCCCCC !important;
+    color: white !important;
     border: 1px solid #333333 !important;
   }
 
@@ -160,7 +161,7 @@ export const darkModeStyles = `
   html[data-theme="dark"] .swagger-ui pre,
   html[data-theme="dark"] .swagger-ui code {
     background: #252526 !important;
-    color: #CCCCCC !important;
+    color: white !important;
     border: 1px solid #333333 !important;
   }
 
@@ -256,60 +257,66 @@ export const darkModeStyles = `
     background: rgba(0, 0, 0, 0.8) !important;
   }
 
-  /* 그라디언트 태그 그림자 효과 */
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Health"] { 
-    box-shadow: 0 4px 15px rgba(132, 250, 176, 0.4) !important;
+  /* 다크모드 태그 스타일 통일 */
+  html[data-theme="dark"] .swagger-ui .opblock-tag {
+    background-color: #222222 !important;
+    border: 1px solid #444444 !important;
+    color: #87CEEB !important;
+    box-shadow: none !important;
   }
 
-  /* 최종 스타일 수정 (Gemini) */
-
-  /* 인증 자물쇠 아이콘 색상 */
-  html[data-theme="dark"] .swagger-ui .auth-wrapper .btn.unlocked svg {
-    fill: #DDDDDD !important;
+  /* 인증 모달 가독성 개선 (Gemini) */
+  html[data-theme="dark"] .swagger-ui .auth-container {
+    background: #2d2d2d !important; /* 어두운 배경색으로 변경 */
   }
 
-  /* API 설명 문단(p) 색상 */
-  html[data-theme="dark"] .swagger-ui .opblock-body p {
-    color: #CCCCCC !important;
+  html[data-theme="dark"] .swagger-ui .auth-container h4 {
+    color: #87ceeb !important; /* 밝은 하늘색으로 변경 */
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Auth"] { 
-    box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
+  html[data-theme="dark"] .swagger-ui .auth-container .renderedMarkdown p,
+  html[data-theme="dark"] .swagger-ui .auth-container .wrapper p {
+    color: #e0e0e0 !important; /* 밝은 회색으로 변경 */
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Registration"] { 
-    box-shadow: 0 4px 15px rgba(255, 236, 210, 0.4) !important;
+  html[data-theme="dark"] .swagger-ui .auth-container label {
+    color: #f0f0f0 !important; /* 더 밝은 흰색으로 변경 */
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Password"] { 
-    box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4) !important;
+  html[data-theme="dark"] .swagger-ui .auth-container input[type="text"] {
+    background: #3c3c3c !important;
+    color: #ffffff !important;
+    border: 1px solid #555555 !important;
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Profile"] { 
-    box-shadow: 0 4px 15px rgba(168, 202, 186, 0.4) !important;
+  html[data-theme="dark"] .swagger-ui .auth-btn-wrapper {
+    background-color: #2d2d2d !important;
+    border-top: 1px solid #444444 !important;
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Verification"] { 
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+  html[data-theme="dark"] .swagger-ui .auth-btn-wrapper .btn.authorize {
+    background-color: #007bff !important;
+    color: #ffffff !important;
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Basic"] { 
-    box-shadow: 0 4px 15px rgba(116, 185, 255, 0.4) !important;
+  html[data-theme="dark"] .swagger-ui .auth-btn-wrapper .btn.btn-done {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Like"] { 
-    box-shadow: 0 4px 15px rgba(253, 121, 168, 0.4) !important;
+  /* 다크 모드 작은 글씨 가독성 개선 */
+  html[data-theme="dark"] .swagger-ui small,
+  html[data-theme="dark"] .swagger-ui .renderedMarkdown,
+  html[data-theme="dark"] .swagger-ui .renderedMarkdown p,
+  html[data-theme="dark"] .swagger-ui p,
+  html[data-theme="dark"] .swagger-ui li,
+  html[data-theme="dark"] .swagger-ui td,
+  html[data-theme="dark"] .swagger-ui th {
+    color: #DDDDDD !important;
   }
 
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Search"] { 
-    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Concerts - Batch"] { 
-    box-shadow: 0 4px 15px rgba(253, 203, 110, 0.4) !important;
-  }
-
-  html[data-theme="dark"] .swagger-ui .opblock-tag[data-tag*="Admin"] { 
-    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4) !important;
+  /* 다크 모드 Authorize 버튼 색상 변경 */
+  html[data-theme="dark"] .swagger-ui .authorization__btn svg path {
+    fill: #FFFFFF !important;
   }
 `;

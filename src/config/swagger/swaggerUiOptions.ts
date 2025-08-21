@@ -63,9 +63,6 @@ export const swaggerUiOptions = {
             justifyContent: "center",
           });
 
-          const currentTheme =
-            localStorage.getItem("swagger-theme") || "light";
-
           const applyTheme = (theme: string) => {
             if (theme === "dark") {
               document.documentElement.setAttribute("data-theme", "dark");
@@ -74,16 +71,30 @@ export const swaggerUiOptions = {
               document.documentElement.removeAttribute("data-theme");
               toggleButton.innerHTML = "🌙";
             }
-            localStorage.setItem("swagger-theme", theme);
           };
 
-          applyTheme(currentTheme);
+          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+          const savedTheme = localStorage.getItem("swagger-theme");
+
+          if (savedTheme) {
+            applyTheme(savedTheme);
+          } else {
+            applyTheme(prefersDark.matches ? "dark" : "light");
+          }
+
+          prefersDark.addEventListener("change", (e) => {
+            const currentSavedTheme = localStorage.getItem("swagger-theme");
+            if (!currentSavedTheme) {
+              applyTheme(e.matches ? "dark" : "light");
+            }
+          });
 
           toggleButton.addEventListener("click", () => {
             const isDark =
               document.documentElement.getAttribute("data-theme") === "dark";
             const newTheme = isDark ? "light" : "dark";
             applyTheme(newTheme);
+            localStorage.setItem("swagger-theme", newTheme);
           });
 
           toggleButton.addEventListener("mouseenter", () => {
