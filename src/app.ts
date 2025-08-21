@@ -126,6 +126,9 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// 정적 파일 서빙
+app.use(express.static('public'));
+
 // 세션 미들웨어 설정
 app.use(
   session({
