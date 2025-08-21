@@ -22,7 +22,7 @@ export interface CreateConcertRequest {
   ticketOpenDate?: string;
   posterImage?: string;
   infoImages?: string[]; // info -> infoImages로 변경
-  tags?: string[];
+  
 }
 
 export interface ConcertServiceResponse {
@@ -143,7 +143,7 @@ export class ConcertService {
           : undefined,
         posterImage: concertData.posterImage || "",
         infoImages: concertData.infoImages || [], // info -> infoImages로 변경
-        tags: concertData.tags || [],
+        
         status: "upcoming",
         likes: [],
         likesCount: 0,
@@ -167,7 +167,7 @@ export class ConcertService {
           ticketOpenDate: processedData.ticketOpenDate,
           posterImage: processedData.posterImage,
           infoImages: processedData.infoImages, // info -> infoImages로 변경
-          tags: processedData.tags,
+          
           status: processedData.status,
           likesCount: 0,
           createdAt: newConcert.createdAt,

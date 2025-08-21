@@ -1,13 +1,15 @@
 import { ObjectId } from "mongodb";
+import { UserStatus } from "../../models/auth/user";
 
 export interface User {
   _id?: ObjectId; // string 대신 ObjectId 사용
   email: string;
   username: string;
   passwordHash: string;
+  status: UserStatus;
   profileImage?: string;
   createdAt: Date;
-  updatedAt?: Date;
+  updatedAt: Date;
 }
 
 export interface SessionUser {

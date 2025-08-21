@@ -38,7 +38,7 @@ export interface IConcert {
   posterImage?: string; // S3 URL
   infoImages?: string[]; // info에서 infoImages로 이름 변경
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
-  tags?: string[];
+  
   likes?: ILike[]; // 좋아요 배열
   likesCount?: number; // 좋아요 개수
   createdAt: Date;
@@ -210,57 +210,16 @@ export class ConcertModel {
 
     // category 검증 - 확장된 카테고리 목록 (제공된 경우에만)
     const validCategories = [
-      // 기본 장르
-      "pop",
-      "rock",
-      "jazz",
-      "classical",
-      "hiphop",
-      "electronic",
-      "indie",
-      "folk",
-      "r&b",
-      "country",
-      "musical",
-      "opera",
-      // K-POP 및 아시아 음악
-      "k-pop",
-      "kpop",
-      "j-pop",
-      "c-pop",
-      "korean",
-      "japanese",
-      // 세부 장르
-      "ballad",
-      "dance",
-      "trot",
-      "rap",
-      "hip-hop",
-      "edm",
-      "house",
-      "techno",
-      "dubstep",
-      "reggae",
-      "blues",
-      "soul",
-      "funk",
-      "punk",
-      "metal",
-      "alternative",
-      "grunge",
-      // 기타
-      "fusion",
-      "world",
-      "latin",
-      "gospel",
-      "new-age",
-      "ambient",
-      "instrumental",
-      "acoustic",
-      "live",
-      "concert",
-      "festival",
-      "other",
+      "rock/metal/indie", //락,메탈, 인디
+      "jazz/soul", //재즈, 소울
+      "rap/hiphop/edm", //랩, 힙합, 이디엠
+      "idol", //아이돌
+      "folk/trot", //포크, 트로트
+      "r&b/ballad", //r&b, 발라드
+      "korea", //내한
+      "festival", //페스티벌
+      "fan", //팬클럽, 팬미팅
+      "other", //그외 장르(디너쇼, 토크, 강연...)
     ];
 
     if (concertData.category && Array.isArray(concertData.category)) {

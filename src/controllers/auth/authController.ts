@@ -114,6 +114,7 @@ export class AuthController {
       // 지연 로딩으로 서비스 import
       const { AuthService } = await import("../../services/auth/authService");
       const { UserService } = await import("../../services/auth/userService");
+      const { UserStatus } = await import("../../models/auth/user");
 
       const authService = new AuthService();
       const userService = new UserService();
@@ -125,6 +126,24 @@ export class AuthController {
           .status(401)
           .json({ message: "이메일 또는 비밀번호가 일치하지 않습니다." });
         return;
+      }
+
+      // 사용자 상태 확인
+      if (user.status === UserStatus.INACTIVE) {
+        return res.status(403).json({
+          message:
+            "탈퇴한 계정입니다. 계정 복구를 원하시면 고객센터에 문의해주세요.",
+        });
+      }
+      if (user.status === UserStatus.SUSPENDED) {
+        return res
+          .status(403)
+          .json({ message: "이용이 정지된 계정입니다. 관리자에게 문의해주세요." });
+      }
+      if (user.status === UserStatus.PENDING_VERIFICATION) {
+        return res
+          .status(403)
+          .json({ message: "이메일 인증이 필요한 계정입니다." });
       }
 
       // 비밀번호 확인
