@@ -219,7 +219,7 @@ export const validateConcertData = (concertData: any): ValidationResult => {
       "rap/hiphop/edm", //랩, 힙합, 이디엠
       "idol", //아이돌
       "folk/trot", //포크, 트로트
-      "r&b/ballad", //r&b, 발라드
+      "RnB/ballad", //r&b, 발라드
       "tour", //내한
       "festival", //페스티벌
       "fan", //팬클럽, 팬미팅

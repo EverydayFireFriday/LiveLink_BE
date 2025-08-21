@@ -91,7 +91,7 @@ import logger from "../../utils/logger";
  *                 type: array
  *                 items:
  *                   type: string
- *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, tour, idol, festival, fan, other]
+ *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *                 description: 음악 카테고리
  *                 example: ["tour", "idol"]
  *               ticketLink:
@@ -466,7 +466,7 @@ export const getConcert = async (
  *         name: category
  *         schema:
  *           type: string
- *           enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, tour, idol, festival, fan, other]
+ *           enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *         description: 음악 카테고리 필터
  *       - in: query
  *         name: artist
@@ -705,7 +705,7 @@ export const getAllConcerts = async (
  *                 type: array
  *                 items:
  *                   type: string
- *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, tour, idol, festival, fan, other]
+ *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *                 example: ["tour", "idol"]
  *                 description: 음악 카테고리
  *               posterImage:
