@@ -91,7 +91,7 @@ import logger from "../../utils/logger";
  *                 type: array
  *                 items:
  *                   type: string
- *                   enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "hiphop", "electronic", "folk", "r&b", "country", "musical", "opera", "ballad", "dance", "trot", "rap", "hip-hop", "edm", "house", "techno", "dubstep", "reggae", "blues", "soul", "funk", "punk", "metal", "alternative", "grunge", "fusion", "world", "latin", "gospel", "new-age", "ambient", "instrumental", "acoustic", "live", "concert", "festival", "other"]
+ *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, korea, idol, festival, fan, other]
  *                 description: 음악 카테고리
  *                 example: ["pop", "k-pop"]
  *               ticketLink:
@@ -135,7 +135,7 @@ import logger from "../../utils/logger";
  *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
  *                 price: [{"tier": "VIP", "amount": 200000}, {"tier": "R석", "amount": 150000}]
  *                 description: "아이유의 특별한 콘서트"
- *                 category: ["pop", "k-pop"]
+ *                 category: ["idol", "korea"]
  *                 ticketLink: [{"platform": "인터파크", "url": "https://ticket.interpark.com/example"}]
  *                 ticketOpenDate: "2024-05-01T10:00:00+09:00"
  *                 posterImage: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
@@ -166,7 +166,7 @@ import logger from "../../utils/logger";
  *                 artist: ["아티스트"]
  *                 location: ["서울 올림픽공원", "부산 BEXCO", "대구 엑스코"]
  *                 datetime: ["2024-08-15T19:00:00+09:00", "2024-08-20T19:00:00+09:00", "2024-08-25T19:00:00+09:00"]
- *                 category: ["pop", "live"]
+ *                 category: ["korea", "idol"]
  *                 status: "upcoming"
  *     responses:
  *       201:
@@ -466,7 +466,7 @@ export const getConcert = async (
  *         name: category
  *         schema:
  *           type: string
- *           enum: [pop, rock, jazz, classical, hiphop, electronic, indie, folk, r&b, country, musical, opera, kpop, j-pop, c-pop, ballad, dance, trot, rap, hip-hop, edm, house, techno, dubstep, reggae, blues, soul, funk, punk, metal, alternative, grunge, fusion, world, latin, gospel, new-age, ambient, instrumental, acoustic, live, concert, festival, other]
+ *           enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, korea, idol, festival, fan, other]
  *         description: 음악 카테고리 필터
  *       - in: query
  *         name: artist
@@ -705,8 +705,8 @@ export const getAllConcerts = async (
  *                 type: array
  *                 items:
  *                   type: string
- *                   enum: ["pop", "rock", "jazz", "classical", "k-pop", "indie", "other"]
- *                 example: ["k-pop", "pop"]
+ *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, korea, idol, festival, fan, other]
+ *                 example: ["korea", "idol"]
  *                 description: 음악 카테고리
  *               posterImage:
  *                 type: string
@@ -752,7 +752,7 @@ export const getAllConcerts = async (
  *                 location: ["서울 올림픽공원 체조경기장", "부산 BEXCO"]
  *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
  *                 description: "아이유의 월드투어 한국 공연"
- *                 category: ["k-pop", "pop"]
+ *                 category: ["idol", "korea"]
  *     responses:
  *       200:
  *         description: 콘서트 수정 성공

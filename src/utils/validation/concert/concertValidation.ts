@@ -214,19 +214,16 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     }
 
     const validCategories = [
-      "pop",
-      "rock",
-      "jazz",
-      "classical",
-      "hiphop",
-      "electronic",
-      "indie",
-      "folk",
-      "r&b",
-      "country",
-      "musical",
-      "opera",
-      "other",
+      "rock/metal/indie", //락,메탈, 인디
+      "jazz/soul", //재즈, 소울
+      "rap/hiphop/edm", //랩, 힙합, 이디엠
+      "idol", //아이돌
+      "folk/trot", //포크, 트로트
+      "r&b/ballad", //r&b, 발라드
+      "korea", //내한
+      "festival", //페스티벌
+      "fan", //팬클럽, 팬미팅
+      "other", //그외 장르(디너쇼, 토크, 강연...)
     ];
 
     for (let i = 0; i < concertData.category.length; i++) {
@@ -595,19 +592,16 @@ export const validateConcertUpdateData = (
     }
 
     const validCategories = [
-      "pop",
-      "rock",
-      "jazz",
-      "classical",
-      "hiphop",
-      "electronic",
-      "indie",
-      "folk",
-      "r&b",
-      "country",
-      "musical",
-      "opera",
-      "other",
+      "rock/metal/indie", //락,메탈, 인디
+      "jazz/soul", //재즈, 소울
+      "rap/hiphop/edm", //랩, 힙합, 이디엠
+      "i-dole", //아이돌
+      "folk/trot", //포크, 트로트
+      "r&b/ballad", //r&b, 발라드
+      "korea", //내한
+      "festival", //페스티벌
+      "fan", //팬클럽, 팬미팅
+      "other", //그외 장르(디너쇼, 토크, 강연...)
     ];
 
     for (let i = 0; i < updateData.category.length; i++) {
