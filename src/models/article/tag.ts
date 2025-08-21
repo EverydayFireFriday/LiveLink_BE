@@ -25,6 +25,17 @@ export class TagModel {
     try {
       logger.info("🔄 Tag 인덱스 백그라운드 초기화 시작...");
 
+      // 컬렉션 존재 여부 확인
+      const collections = await this.db
+        .listCollections({ name: "tags" })
+        .toArray();
+
+      if (collections.length === 0) {
+        // 컬렉션이 없으면 생성
+        await this.db.createCollection("tags");
+        logger.info("📁 tags 컬렉션 생성 완료");
+      }
+
       // 기존 인덱스 조회로 중복 생성 방지
       const existingIndexes = await this.collection.listIndexes().toArray();
       const indexNames = existingIndexes.map((index) => index.name);
@@ -611,6 +622,7 @@ export class TagModel {
 
   // 인덱스 강제 생성 (관리용)
   async forceCreateIndexes(): Promise<void> {
+    this.indexesInitialized = false; // 플래그 리셋
     await this.initializeIndexes();
   }
 }
