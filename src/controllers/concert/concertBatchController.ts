@@ -88,9 +88,9 @@ import logger from "../../utils/logger";
  *                       type: array
  *                       items:
  *                         type: string
- *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, korea, idol, festival, fan, other]
+ *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, tour, idol, festival, fan, other]
  *                       description: 음악 카테고리
- *                       example: ["k-pop", "pop"]
+ *                       example: ["tour", "idol"]
  *                     ticketLink:
  *                       type: array
  *                       items:
@@ -307,7 +307,7 @@ export const batchUploadConcerts = async (
  *                       type: array
  *                       items:
  *                         type: string
- *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, korea, idol, festival, fan, other]
+ *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, r&b/ballad, tour, idol, festival, fan, other]
  *                       description: 수정할 음악 카테고리 (선택사항)
  *                     ticketOpenDate:
  *                       type: string
