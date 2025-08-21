@@ -20,10 +20,26 @@ export class AuthValidator {
       return { isValid: false, message: "비밀번호를 입력해주세요." };
     }
 
-    if (password.length < 7) {
+    if (password.length < 6) {
       return {
         isValid: false,
-        message: "비밀번호는 최소 7자 이상이어야 합니다.",
+        message: "비밀번호는 최소 6자 이상이어야 합니다.",
+      };
+    }
+
+    // Check for at least one number
+    if (!/[0-9]/.test(password)) {
+      return {
+        isValid: false,
+        message: "비밀번호는 최소 1개 이상의 숫자를 포함해야 합니다.",
+      };
+    }
+
+    // Check for at least one English letter (case-insensitive)
+    if (!/[a-zA-Z]/.test(password)) {
+      return {
+        isValid: false,
+        message: "비밀번호는 최소 1개 이상의 영어 알파벳을 포함해야 합니다.",
       };
     }
 

@@ -100,7 +100,7 @@ export class AdminController {
         updatedAt: user.updatedAt,
         // 추가 관리자 정보
         lastLogin: user.updatedAt, // 마지막 활동 시간으로 대체
-        status: "active", // 추후 사용자 상태 필드 추가 시 사용
+        status: user.status, // 추후 사용자 상태 필드 추가 시 사용
       }));
 
       res.status(200).json({
@@ -173,7 +173,7 @@ export class AdminController {
           updatedAt: user.updatedAt,
           // 관리자용 추가 정보
           lastLogin: user.updatedAt,
-          accountStatus: "active",
+          accountStatus: user.status,
           loginCount: 0, // 추후 구현
         },
       });
@@ -241,8 +241,7 @@ export class AdminController {
         return;
       }
 
-      // 추후 사용자 상태 필드가 추가되면 실제 업데이트 구현
-      // await this.userService.updateUser(userId, { status, statusReason: reason });
+      await this.userService.updateUser(userId, { status, statusReason: reason });
 
       logger.info(
         `👑 관리자 조치: 사용자 ${user.username} 상태를 ${status}로 변경 (사유: ${reason})`
