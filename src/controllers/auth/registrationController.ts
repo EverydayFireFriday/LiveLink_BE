@@ -6,6 +6,7 @@ import { EmailService } from "../../utils/emailService";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
 import logger from "../../utils/logger";
+import { UserStatus } from "../../models/auth/user";
 
 
 export class RegistrationController {
@@ -401,6 +402,14 @@ export class RegistrationController {
         profileImage: storedData.userData.profileImage,
       });
 
+      // 사용자 상태를 'active'로 변경
+      const updatedUser = await this.userService.updateUser(
+        newUser._id!.toString(),
+        {
+          status: UserStatus.ACTIVE,
+        }
+      );
+
       // 인증 코드 삭제
       await this.verificationService.deleteVerificationCode(redisKey);
 
@@ -408,8 +417,8 @@ export class RegistrationController {
       setImmediate(async () => {
         try {
           await this.emailService.sendWelcomeEmail({
-            username: newUser.username,
-            email: newUser.email,
+            username: (updatedUser || newUser).username,
+            email: (updatedUser || newUser).email,
           });
         } catch (emailError) {
           logger.error("환영 이메일 전송 실패:", emailError);
@@ -419,11 +428,11 @@ export class RegistrationController {
       res.status(201).json({
         message: "이메일 인증이 완료되어 회원가입이 성공했습니다!",
         user: {
-          id: newUser._id,
-          email: newUser.email,
-          username: newUser.username,
-          profileImage: newUser.profileImage,
-          createdAt: newUser.createdAt,
+          id: (updatedUser || newUser)._id,
+          email: (updatedUser || newUser).email,
+          username: (updatedUser || newUser).username,
+          profileImage: (updatedUser || newUser).profileImage,
+          createdAt: (updatedUser || newUser).createdAt,
         },
       });
     } catch (error: any) {

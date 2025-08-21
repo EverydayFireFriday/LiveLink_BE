@@ -1,12 +1,20 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import logger from "../../utils/logger";
 
+export enum UserStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  SUSPENDED = 'suspended',
+  PENDING_VERIFICATION = 'pending_verification',
+}
+
 // User 인터페이스 정의 - 이메일 필드 추가
 export interface User {
   _id?: ObjectId;
   username: string;
   email: string; // 이메일 필드 추가
   passwordHash: string;
+  status: UserStatus;
   profileImage?: string; // S3 URL 또는 파일 경로
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +47,7 @@ class Database {
       // 인덱스 생성 (username과 email 모두 유니크)
       await this.getUserCollection().createIndex({ username: 1 }, { unique: true });
       await this.getUserCollection().createIndex({ email: 1 }, { unique: true });
+      await this.getUserCollection().createIndex({ status: 1 });
     } catch (error) {
       logger.error('❌ MongoDB connection failed:', error);
       throw error;
@@ -74,10 +83,11 @@ export class UserModel {
   }
 
   // 사용자 생성
-  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'>): Promise<User> {
+  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<User> {
     const now = new Date();
     const user: Omit<User, '_id'> = {
       ...userData,
+      status: UserStatus.PENDING_VERIFICATION,
       createdAt: now,
       updatedAt: now,
     };
