@@ -420,7 +420,7 @@ export const getConcertsByLocation = async (
  *         required: true
  *         schema:
  *           type: string
- *           enum: [pop, rock, jazz, classical, hiphop, electronic, indie, folk, r&b, country, musical, opera, other]
+ *           enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *         description: 음악 카테고리
  *         example: pop
  *       - in: query
