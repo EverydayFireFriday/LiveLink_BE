@@ -13,7 +13,7 @@ const router = Router();
  *       Google OAuth 2.0 인증 프로세스를 시작합니다.
  *       이 엔드포인드를 호출하면 사용자는 Google의 로그인 및 동의 화면으로 리디렉션됩니다.
  *       성공적으로 인증하면 Google은 설정된 콜백 URL(/auth/google/callback)로 사용자를 다시 리디렉션합니다.
- *     tags: [Authentication]
+ *     tags: [Auth]
  *     responses:
  *       302:
  *         description: Google 인증 페이지로 리디렉션됩니다.
@@ -36,7 +36,7 @@ const router = Router();
  *       Google이 사용자를 인증한 후 리디렉션하는 엔드포인트입니다.
  *       **이 엔드포인트는 클라이언트가 직접 호출해서는 안 됩니다.**
  *       인증 코드를 받아 사용자의 세션을 설정하고, 최종적으로 프론트엔드 애플리케이션으로 리디렉션합니다.
- *     tags: [Authentication]
+ *     tags: [Auth]
  *     parameters:
  *       - in: query
  *         name: code
