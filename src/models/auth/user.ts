@@ -13,24 +13,24 @@ export enum UserStatus {
 export interface User {
   _id?: ObjectId;
   username: string;
-  email: string; // 이메일 필드 추가
-  passwordHash: string;
+  email: string;
+  passwordHash?: string; // 소셜 로그인을 위해 선택적으로 변경
   status: UserStatus;
-  statusReason?: string; // 상태 변경 사유 추가
-  profileImage?: string; // S3 URL 또는 파일 경로
+  statusReason?: string;
+  profileImage?: string;
   createdAt: Date;
   updatedAt: Date;
+  provider?: string; // ex: 'google', 'apple'
+  socialId?: string; // 소셜 로그인 ID
 }
 
 // MongoDB 연결 설정
 class Database {
   private static instance: Database;
-  private client!: MongoClient; // definite assignment assertion 추가
-  private db!: Db; // definite assignment assertion 추가
+  private client!: MongoClient;
+  private db!: Db;
 
-  private constructor() {
-    // constructor에서는 초기화하지 않음
-  }
+  private constructor() {}
 
   public static getInstance(): Database {
     if (!Database.instance) {
@@ -45,15 +45,25 @@ class Database {
       await this.client.connect();
       this.db = this.client.db(process.env.MONGO_DB_NAME || 'livelink');
       logger.info('✅ MongoDB Native Driver connected');
-      
-      // 인덱스 생성 (username과 email 모두 유니크)
-      await this.getUserCollection().createIndex({ username: 1 }, { unique: true });
-      await this.getUserCollection().createIndex({ email: 1 }, { unique: true });
-      await this.getUserCollection().createIndex({ status: 1 });
+
+      // 인덱스 생성
+      await this.setupIndexes();
     } catch (error) {
       logger.error('❌ MongoDB connection failed:', error);
       throw error;
     }
+  }
+
+  private async setupIndexes(): Promise<void> {
+    const userCollection = this.getUserCollection();
+    await userCollection.createIndex({ username: 1 }, { unique: true });
+    await userCollection.createIndex({ email: 1 }, { unique: true });
+    await userCollection.createIndex({ status: 1 });
+    // 소셜 로그인을 위한 인덱스. provider와 socialId 필드가 있는 문서에만 적용됩니다.
+    await userCollection.createIndex(
+      { provider: 1, socialId: 1 },
+      { unique: true, sparse: true }
+    );
   }
 
   public async disconnect(): Promise<void> {
@@ -89,7 +99,7 @@ export class UserModel {
     const now = new Date();
     const user: Omit<User, '_id'> = {
       ...userData,
-      status: UserStatus.PENDING_VERIFICATION,
+      status: UserStatus.ACTIVE, // 소셜 로그인 사용자는 바로 활성 상태로 설정
       createdAt: now,
       updatedAt: now,
     };
@@ -102,7 +112,6 @@ export class UserModel {
       };
     } catch (error: any) {
       if (error.code === 11000) {
-        // 중복 키 에러 처리 - 어떤 필드가 중복인지 확인
         if (error.keyPattern?.username) {
           throw new Error('Username already exists');
         } else if (error.keyPattern?.email) {
@@ -120,16 +129,21 @@ export class UserModel {
     return await this.userCollection.findOne({ username });
   }
 
-  // 이메일로 사용자 찾기 - 새로 추가
+  // 이메일로 사용자 찾기
   async findByEmail(email: string): Promise<User | null> {
     return await this.userCollection.findOne({ email });
   }
+  
+  // Provider와 Social ID로 사용자 찾기
+  async findByProviderAndSocialId(provider: string, socialId: string): Promise<User | null> {
+    return await this.userCollection.findOne({ provider, socialId });
+  }
 
-  // 이메일과 username 모두로 사용자 찾기 - 새로 추가
+  // 이메일과 username 모두로 사용자 찾기
   async findByEmailAndUsername(email: string, username: string): Promise<User | null> {
-    return await this.userCollection.findOne({ 
-      email, 
-      username 
+    return await this.userCollection.findOne({
+      email,
+      username,
     });
   }
 
