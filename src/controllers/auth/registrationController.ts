@@ -7,6 +7,8 @@ import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
 import logger from "../../utils/logger";
 import { UserStatus } from "../../models/auth/user";
+import { TermsService } from "../../services/auth/termsService";
+import { ObjectId } from "mongodb";
 
 
 export class RegistrationController {
@@ -14,12 +16,14 @@ export class RegistrationController {
   private userService: UserService;
   private verificationService: VerificationService;
   private emailService: EmailService;
+  private termsService: TermsService;
 
   constructor() {
     this.authService = new AuthService();
     this.userService = new UserService();
     this.verificationService = new VerificationService();
     this.emailService = new EmailService();
+    this.termsService = new TermsService();
   }
 
   /**
@@ -38,6 +42,7 @@ export class RegistrationController {
    *             required:
    *               - email
    *               - password
+   *               - termsAgreed
    *             properties:
    *               email:
    *                 type: string
@@ -59,6 +64,10 @@ export class RegistrationController {
    *                 type: string
    *                 description: 프로필 이미지 URL (선택사항)
    *                 example: "https://example.com/profile.jpg"
+   *               termsAgreed:
+   *                 type: boolean
+   *                 description: 이용약관 동의 여부
+   *                 example: true
    *     responses:
    *       200:
    *         description: 인증 코드 전송 성공
@@ -104,6 +113,8 @@ export class RegistrationController {
    *                       value: "이미 사용 중인 이메일입니다."
    *                     username_exists:
    *                       value: "이미 사용 중인 별명입니다."
+   *                     terms_not_agreed:
+   *                       value: "이용약관에 동의해야 합니다."
    *                 suggestion:
    *                   type: string
    *                   description: 사용자명 중복 시 제안 메시지
@@ -141,7 +152,13 @@ export class RegistrationController {
    *                   description: 상세 에러 정보
    */
   registerRequest = async (req: express.Request, res: express.Response) => {
-    const { email, username, password, profileImage } = req.body;
+    const { email, username, password, profileImage, termsAgreed } = req.body;
+
+    // 약관 동의 확인
+    if (!termsAgreed) {
+      res.status(400).json({ message: "이용약관에 동의해야 합니다." });
+      return;
+    }
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
@@ -157,6 +174,13 @@ export class RegistrationController {
     }
 
     try {
+      // 최신 이용약관 정보 가져오기
+      const latestTerms = await this.termsService.getLatestTerms("terms_of_service");
+      if (!latestTerms) {
+        res.status(500).json({ message: "이용약관 정보를 찾을 수 없습니다." });
+        return;
+      }
+
       // 스팸 방지 체크
       const hasRecentRequest =
         await this.verificationService.checkRecentRequest(
@@ -211,6 +235,7 @@ export class RegistrationController {
         username: finalUsername,
         passwordHash: hashedPassword,
         profileImage: profileImage || undefined,
+        termsId: latestTerms._id!.toString(),
       };
 
       const redisKey = await this.verificationService.saveVerificationCode(
@@ -401,6 +426,14 @@ export class RegistrationController {
         passwordHash: storedData.userData.passwordHash,
         profileImage: storedData.userData.profileImage,
       });
+
+      // 약관 동의 내역 저장
+      if (storedData.userData.termsId) {
+        await this.termsService.agreeToTerms(
+          newUser._id!,
+          new ObjectId(storedData.userData.termsId)
+        );
+      }
 
       // 사용자 상태를 'active'로 변경
       const updatedUser = await this.userService.updateUser(
