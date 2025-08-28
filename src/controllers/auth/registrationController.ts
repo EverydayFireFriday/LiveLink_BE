@@ -59,26 +59,6 @@ export class RegistrationController {
    *                 type: string
    *                 description: 프로필 이미지 URL (선택사항)
    *                 example: "https://example.com/profile.jpg"
-   *               agreements: # Added agreements
-   *                 type: array
-   *                 description: 약관 동의 정보
-   *                 items:
-   *                   type: object
-   *                   required:
-   *                     - type
-   *                     - version
-   *                     - agreed
-   *                   properties:
-   *                     type:
-   *                       type: string
-   *                       enum: [TERMS_OF_SERVICE, PRIVACY_POLICY, MARKETING_CONSENT]
-   *                       description: 약관 종류
-   *                     version:
-   *                       type: string
-   *                       description: 약관 버전
-   *                     agreed:
-   *                       type: boolean
-   *                       description: 동의 여부
    *     responses:
    *       200:
    *         description: 인증 코드 전송 성공
@@ -161,7 +141,7 @@ export class RegistrationController {
    *                   description: 상세 에러 정보
    */
   registerRequest = async (req: express.Request, res: express.Response) => {
-    const { email, username, password, profileImage, agreements } = req.body; // Added agreements
+    const { email, username, password, profileImage } = req.body;
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
@@ -173,13 +153,6 @@ export class RegistrationController {
     const passwordValidation = AuthValidator.validatePassword(password);
     if (!passwordValidation.isValid) {
       res.status(400).json({ message: passwordValidation.message });
-      return;
-    }
-
-    // 약관 동의 유효성 검증 추가
-    const agreementsValidation = UserValidator.validateAgreements(agreements);
-    if (!agreementsValidation.isValid) {
-      res.status(400).json({ message: agreementsValidation.message });
       return;
     }
 
@@ -238,7 +211,6 @@ export class RegistrationController {
         username: finalUsername,
         passwordHash: hashedPassword,
         profileImage: profileImage || undefined,
-        agreements: agreements, // Pass agreements to userData
       };
 
       const redisKey = await this.verificationService.saveVerificationCode(
@@ -422,13 +394,12 @@ export class RegistrationController {
         return;
       }
 
-      // 실제 사용자 생성 및 약관 동의 저장
+      // 실제 사용자 생성
       const newUser = await this.userService.createUser({
         email,
         username: storedData.userData.username,
         passwordHash: storedData.userData.passwordHash,
         profileImage: storedData.userData.profileImage,
-        agreements: storedData.userData.agreements, // Pass agreements to createUser
       });
 
       // 사용자 상태를 'active'로 변경

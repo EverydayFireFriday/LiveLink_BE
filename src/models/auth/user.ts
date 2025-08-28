@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, ObjectId, ClientSession } from 'mongodb';
+import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import logger from "../../utils/logger";
 
 export enum UserStatus {
@@ -85,7 +85,7 @@ export class UserModel {
   }
 
   // 사용자 생성
-  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>, options?: { session?: ClientSession }): Promise<User> {
+  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<User> {
     const now = new Date();
     const user: Omit<User, '_id'> = {
       ...userData,
@@ -95,7 +95,7 @@ export class UserModel {
     };
 
     try {
-      const result = await this.userCollection.insertOne(user, options); // Pass options here
+      const result = await this.userCollection.insertOne(user);
       return {
         _id: result.insertedId,
         ...user,

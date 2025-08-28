@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
 import { UserStatus } from "../../models/auth/user";
-import { IAgreementInput, TermsType } from "./termsTypes"; // Added import
 
 export interface User {
   _id?: ObjectId; // string 대신 ObjectId 사용
@@ -31,7 +30,6 @@ export interface VerificationData {
     username: string;
     passwordHash: string;
     profileImage?: string;
-    agreements?: IAgreementInput[]; // Added agreements
   };
 }
 
@@ -40,7 +38,6 @@ export interface RegisterRequest {
   username?: string;
   password: string;
   profileImage?: string;
-  agreements?: IAgreementInput[]; // Added for terms agreement
 }
 
 export interface LoginRequest {
