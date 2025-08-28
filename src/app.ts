@@ -1,6 +1,8 @@
 import { createServer } from "http";
 import express from "express";
 import session from "express-session";
+import passport from "passport";
+import { configurePassport } from "./config/passport";
 import { createClient } from "redis";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -53,6 +55,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        connectSrc: ["'self'", "https://appleid.apple.com", "https://accounts.google.com", "https://oauth2.googleapis.com"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https:"],
@@ -149,6 +152,10 @@ app.use(
     name: "app.session.id",
   })
 );
+
+// PASSPORT 초기화
+app.use(passport.initialize());
+app.use(passport.session());
 
 // 데이터베이스 연결 상태 추적
 let isUserDBConnected = false;
@@ -365,6 +372,11 @@ const startServer = async (): Promise<void> => {
 
     // 데이터베이스 초기화
     await initializeDatabases();
+
+    // Passport 설정 (DB 연결 후)
+    logger.info("🔌 Configuring Passport...");
+    configurePassport(passport);
+    logger.info("✅ Passport configured");
 
     // 동적 라우터 로드
     logger.info("🔌 Loading Article routes...");
