@@ -2,7 +2,6 @@ import Redis from "ioredis";
 import { VerificationData } from "../../types/auth/authTypes";
 import logger from "../../utils/logger";
 
-
 export class VerificationService {
   private redis: Redis;
 
@@ -46,13 +45,20 @@ export class VerificationService {
   }
 
   async checkRecentRequest(email: string, type: string): Promise<boolean> {
-    const recentKey = `recent:${type}:${email}`;
-    const exists = await this.redis.exists(recentKey);
+    const key = `req:${type}:${email}`;
+    const count = await this.redis.incr(key);
 
-    if (exists) return true;
+    if (count === 1) {
+      // 첫 요청 → 1분(60초) 타이머 설정
+      await this.redis.expire(key, 60);
+    }
 
-    await this.redis.setex(recentKey, 60, "1"); // 1분간 재요청 방지
-    return false;
+    if (count > 6) {
+      // 1분 동안 6회 초과 → 차단
+      return true;
+    }
+
+    return false; // 허용
   }
 
   async getTTL(key: string): Promise<number> {
