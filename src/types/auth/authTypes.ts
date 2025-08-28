@@ -30,6 +30,7 @@ export interface VerificationData {
     username: string;
     passwordHash: string;
     profileImage?: string;
+    isTermsAgreed: boolean; // 약관 동의 여부 추가
   };
 }
 

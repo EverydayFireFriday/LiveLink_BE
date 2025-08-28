@@ -18,6 +18,7 @@ export interface User {
   status: UserStatus;
   statusReason?: string; // 상태 변경 사유 추가
   profileImage?: string; // S3 URL 또는 파일 경로
+  isTermsAgreed: boolean; // 약관 동의 여부 추가
   createdAt: Date;
   updatedAt: Date;
 }
@@ -85,11 +86,12 @@ export class UserModel {
   }
 
   // 사용자 생성
-  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<User> {
+  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'> & { isTermsAgreed: boolean }): Promise<User> {
     const now = new Date();
     const user: Omit<User, '_id'> = {
       ...userData,
       status: UserStatus.PENDING_VERIFICATION,
+      isTermsAgreed: userData.isTermsAgreed, // 약관 동의 여부 추가
       createdAt: now,
       updatedAt: now,
     };
