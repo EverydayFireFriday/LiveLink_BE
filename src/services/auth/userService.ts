@@ -30,6 +30,7 @@ export class UserService {
     passwordHash: string;
     profileImage?: string;
     isTermsAgreed: boolean;
+    termsVersion: string;
   }): Promise<User> {
     return (await this.getUserModel().createUser(userData)) as User;
   }
