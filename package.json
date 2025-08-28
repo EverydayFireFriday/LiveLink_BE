@@ -72,6 +72,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.5",
     "@types/nodemailer": "^6.4.17",
+    "@types/passport-apple": "^2.0.3",
     "@types/supertest": "^6.0.2",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/winston": "^2.4.4",
