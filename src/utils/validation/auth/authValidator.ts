@@ -60,4 +60,11 @@ export class AuthValidator {
 
     return { isValid: true };
   }
+
+  static validateBoolean(value: any, fieldName: string): { isValid: boolean; message?: string } {
+    if (typeof value !== 'boolean') {
+      return { isValid: false, message: `${fieldName}은(는) true 또는 false여야 합니다.` };
+    }
+    return { isValid: true };
+  }
 }
