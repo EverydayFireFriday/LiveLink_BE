@@ -163,7 +163,7 @@ export class EmailService {
       data.email,
       subject,
       html,
-      "stagelives Team"
+      "stagelives"
     );
 
     if (result.success) {

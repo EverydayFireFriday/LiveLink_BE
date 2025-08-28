@@ -7,6 +7,7 @@ import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
 import logger from "../../utils/logger";
 import { UserStatus } from "../../models/auth/user";
+import { CURRENT_TERMS_VERSION } from "../../config/terms/termsAndConditions";
 
 
 export class RegistrationController {
@@ -59,6 +60,15 @@ export class RegistrationController {
    *                 type: string
    *                 description: 프로필 이미지 URL (선택사항)
    *                 example: "https://example.com/profile.jpg"
+   *               isTermsAgreed:
+   *                  type: boolean
+   *                  description: 서비스 이용약관 동의 여부
+   *                  example: true
+   *               termsVersion:
+   *                  type: string
+   *                  description: 동의한 약관 버전
+   *                  example: "20250828_v1"
+   * 
    *     responses:
    *       200:
    *         description: 인증 코드 전송 성공
@@ -141,7 +151,7 @@ export class RegistrationController {
    *                   description: 상세 에러 정보
    */
   registerRequest = async (req: express.Request, res: express.Response) => {
-    const { email, username, password, profileImage } = req.body;
+    const { email, username, password, profileImage, isTermsAgreed } = req.body;
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
@@ -153,6 +163,12 @@ export class RegistrationController {
     const passwordValidation = AuthValidator.validatePassword(password);
     if (!passwordValidation.isValid) {
       res.status(400).json({ message: passwordValidation.message });
+      return;
+    }
+
+    const termsValidation = AuthValidator.validateBoolean(isTermsAgreed, 'isTermsAgreed');
+    if (!termsValidation.isValid || !isTermsAgreed) {
+      res.status(400).json({ message: "서비스 이용약관에 동의해야 합니다." });
       return;
     }
 
@@ -211,6 +227,8 @@ export class RegistrationController {
         username: finalUsername,
         passwordHash: hashedPassword,
         profileImage: profileImage || undefined,
+        isTermsAgreed: isTermsAgreed,
+        termsVersion: CURRENT_TERMS_VERSION, // 약관 버전 추가
       };
 
       const redisKey = await this.verificationService.saveVerificationCode(
@@ -400,6 +418,8 @@ export class RegistrationController {
         username: storedData.userData.username,
         passwordHash: storedData.userData.passwordHash,
         profileImage: storedData.userData.profileImage,
+        isTermsAgreed: storedData.userData.isTermsAgreed,
+        termsVersion: storedData.userData.termsVersion, // 약관 버전 추가
       });
 
       // 사용자 상태를 'active'로 변경

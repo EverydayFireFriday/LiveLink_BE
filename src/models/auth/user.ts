@@ -16,8 +16,10 @@ export interface User {
   email: string;
   passwordHash?: string; // 소셜 로그인을 위해 선택적으로 변경
   status: UserStatus;
-  statusReason?: string;
-  profileImage?: string;
+  statusReason?: string; // 상태 변경 사유 추가
+  profileImage?: string; // S3 URL 또는 파일 경로
+  isTermsAgreed: boolean; // 약관 동의 여부 추가
+  termsVersion: string; // 약관 버전 추가
   createdAt: Date;
   updatedAt: Date;
   provider?: string; // ex: 'google', 'apple'
@@ -95,11 +97,11 @@ export class UserModel {
   }
 
   // 사용자 생성
-  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<User> {
+  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'termsVersion'> & { isTermsAgreed: boolean; termsVersion: string }): Promise<User> {
     const now = new Date();
     const user: Omit<User, '_id'> = {
       ...userData,
-      status: UserStatus.ACTIVE, // 소셜 로그인 사용자는 바로 활성 상태로 설정
+      status: UserStatus.PENDING_VERIFICATION,
       createdAt: now,
       updatedAt: now,
     };
