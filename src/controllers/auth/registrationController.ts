@@ -7,6 +7,7 @@ import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import { UserValidator } from "../../utils/validation/auth/userValidator";
 import logger from "../../utils/logger";
 import { UserStatus } from "../../models/auth/user";
+import { CURRENT_TERMS_VERSION } from "../../config/terms/termsAndConditions";
 
 
 export class RegistrationController {
@@ -63,6 +64,10 @@ export class RegistrationController {
    *                  type: boolean
    *                  description: 서비스 이용약관 동의 여부
    *                  example: true
+   *               termsVersion:
+   *                  type: string
+   *                  description: 동의한 약관 버전
+   *                  example: "20250828_v1"
    * 
    *     responses:
    *       200:
@@ -223,6 +228,7 @@ export class RegistrationController {
         passwordHash: hashedPassword,
         profileImage: profileImage || undefined,
         isTermsAgreed: isTermsAgreed,
+        termsVersion: CURRENT_TERMS_VERSION, // 약관 버전 추가
       };
 
       const redisKey = await this.verificationService.saveVerificationCode(
@@ -413,6 +419,7 @@ export class RegistrationController {
         passwordHash: storedData.userData.passwordHash,
         profileImage: storedData.userData.profileImage,
         isTermsAgreed: storedData.userData.isTermsAgreed,
+        termsVersion: storedData.userData.termsVersion, // 약관 버전 추가
       });
 
       // 사용자 상태를 'active'로 변경
