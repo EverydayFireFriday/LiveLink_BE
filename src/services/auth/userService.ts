@@ -1,8 +1,15 @@
-import { UserModel } from "../../models/auth/user";
+import { UserModel, UserStatus } from "../../models/auth/user";
 import { User } from "../../types/auth/authTypes";
+import { TermsModel, TermsType, ITerms } from "../../models/auth/terms"; // New import
+import { TermsAgreementModel } from "../../models/auth/termsAgreement"; // New import
+import { IAgreementInput } from "../../types/auth/termsTypes"; // New import
+import { getClient } from "../../utils/db"; // New import for transaction
+import { ClientSession } from "mongodb"; // New import for transaction
 
 export class UserService {
   private userModel: UserModel | null = null;
+  private termsModel: TermsModel | null = null;
+  private termsAgreementModel: TermsAgreementModel | null = null;
 
   // UserModel을 지연 초기화하는 함수
   private getUserModel(): UserModel {
@@ -10,6 +17,20 @@ export class UserService {
       this.userModel = new UserModel();
     }
     return this.userModel;
+  }
+
+  private getTermsModel(): TermsModel {
+    if (!this.termsModel) {
+      this.termsModel = new TermsModel();
+    }
+    return this.termsModel;
+  }
+
+  private getTermsAgreementModel(): TermsAgreementModel {
+    if (!this.termsAgreementModel) {
+      this.termsAgreementModel = new TermsAgreementModel();
+    }
+    return this.termsAgreementModel;
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -29,8 +50,48 @@ export class UserService {
     username: string;
     passwordHash: string;
     profileImage?: string;
+    agreements?: IAgreementInput[]; // Added agreements
   }): Promise<User> {
-    return (await this.getUserModel().createUser(userData)) as User;
+    const session = getClient().startSession();
+    session.startTransaction(); // Start transaction
+
+    try {
+      const newUser = (await this.getUserModel().createUser(userData, { session })) as User; // Pass session to createUser
+
+      if (userData.agreements && userData.agreements.length > 0) {
+        const termsModel = this.getTermsModel();
+        const termsAgreementModel = this.getTermsAgreementModel();
+
+        for (const agreementInput of userData.agreements) {
+          if (agreementInput.agreed) {
+            // Find the latest version of the terms or a specific version if provided
+            let terms: ITerms | null = null;
+            if (agreementInput.version) {
+              terms = await termsModel.findTermsByTypeAndVersion(agreementInput.type, agreementInput.version);
+            } else {
+              terms = await termsModel.findLatestTermsByType(agreementInput.type);
+            }
+
+            if (!terms) {
+              throw new Error(`Terms of type ${agreementInput.type} (version ${agreementInput.version || 'latest'}) not found.`);
+            }
+
+            await termsAgreementModel.createTermsAgreement({
+              userId: newUser._id!,
+              termsId: terms._id!,
+            }, { session }); // Pass session to createTermsAgreement
+          }
+        }
+      }
+
+      await session.commitTransaction(); // Commit transaction
+      return newUser;
+    } catch (error) {
+      await session.abortTransaction(); // Abort transaction on error
+      throw error;
+    } finally {
+      session.endSession(); // End session
+    }
   }
 
   async updateUser(
