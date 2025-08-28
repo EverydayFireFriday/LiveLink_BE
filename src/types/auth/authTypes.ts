@@ -30,7 +30,6 @@ export interface VerificationData {
     username: string;
     passwordHash: string;
     profileImage?: string;
-    termsId?: string;
   };
 }
 
