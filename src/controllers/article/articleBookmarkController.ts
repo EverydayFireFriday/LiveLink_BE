@@ -257,7 +257,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /bookmark/user/{userId}:
+   * /article/bookmark/user/{userId}:
    *   get:
    *     summary: 사용자의 북마크 목록 조회
    *     description: 특정 사용자가 북마크한 게시글 목록을 조회합니다.
@@ -451,7 +451,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /bookmark/user/{userId}/stats:
+   * /article/bookmark/user/{userId}/stats:
    *   get:
    *     summary: 사용자의 북마크 통계
    *     description: 사용자의 북마크 관련 통계 정보를 조회합니다.
@@ -518,7 +518,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /bookmark/popular:
+   * /article/bookmark/popular:
    *   get:
    *     summary: 인기 북마크 게시글 조회
    *     description: 북마크 수를 기준으로 인기 게시글을 조회합니다.
@@ -615,7 +615,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /bookmark/status/batch:
+   * /article/bookmark/status/batch:
    *   post:
    *     summary: 여러 게시글의 북마크 상태 일괄 조회
    *     description: 여러 게시글에 대한 사용자의 북마크 상태를 한 번에 조회합니다.

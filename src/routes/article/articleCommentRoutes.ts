@@ -18,20 +18,20 @@ const articleCommentController = new ArticleCommentController();
 
 // 댓글 생성 (개발환경에서는 인증 스킵)
 router.post(
-  "/article/:articleId/comment",
+  "/:articleId/comment",
   requireAuthInProductionMiddleware,
   articleCommentController.createComment
 );
 
 // 게시글의 댓글 목록 조회 (GET은 인증 없이 가능)
 router.get(
-  "/article/:articleId/comment",
+  "/:articleId/comment",
   articleCommentController.getCommentsByArticle
 );
 
 // 게시글의 댓글 수 조회 (GET은 인증 없이 가능)
 router.get(
-  "/article/:articleId/comment/count",
+  "/:articleId/comment/count",
   articleCommentController.getCommentCount
 );
 
