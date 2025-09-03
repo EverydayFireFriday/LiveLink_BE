@@ -7,8 +7,8 @@ import { createClient } from "redis";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import morgan from "morgan";
+import { generalLimiter } from "./middlewares/rateLimitMiddleware";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -65,17 +65,7 @@ app.use(
 );
 
 // 요청 제한 설정
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
-    retryAfter: 15 * 60,
-  },
-});
-app.use(limiter);
+app.use(generalLimiter);
 
 // 환경별 로그 포맷 설정
 const logFormat = isDevelopment() ? "dev" : "combined";

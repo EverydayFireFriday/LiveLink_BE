@@ -50,6 +50,7 @@
     "passport": "^0.7.0",
     "passport-apple": "^2.0.2",
     "passport-google-oauth20": "^2.0.0",
+    "rate-limit-redis": "^4.2.2",
     "redis": "^4.6.5",
     "socket.io": "^4.7.5",
     "swagger-jsdoc": "^6.2.8",
