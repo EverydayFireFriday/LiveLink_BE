@@ -22,9 +22,7 @@ export class ArticleCommentService {
     const validatedData = createCommentSchema.parse(data);
 
     // 게시글 존재 확인
-    const article = await this.articleModel.findById(
-      validatedData.article_id.toString()
-    );
+    const article = await this.articleModel.findById(validatedData.article_id);
     if (!article) {
       throw new Error("게시글을 찾을 수 없습니다.");
     }
@@ -32,17 +30,14 @@ export class ArticleCommentService {
     // 부모 댓글 존재 확인 (대댓글인 경우)
     if (validatedData.parent_id) {
       const parentComment = await this.commentModel.findById(
-        validatedData.parent_id.toString()
+        validatedData.parent_id
       );
       if (!parentComment) {
         throw new Error("부모 댓글을 찾을 수 없습니다.");
       }
 
       // 부모 댓글이 같은 게시글의 댓글인지 확인
-      if (
-        parentComment.article_id.toString() !==
-        validatedData.article_id.toString()
-      ) {
+      if (parentComment.article_id.toString() !== validatedData.article_id) {
         throw new Error("부모 댓글이 다른 게시글의 댓글입니다.");
       }
     }
@@ -62,7 +57,7 @@ export class ArticleCommentService {
 
   // 댓글 조회 (ID로)
   async getCommentById(id: string): Promise<IComment> {
-    commentIdSchema.parse({ id: parseInt(id) });
+    commentIdSchema.parse({ id });
 
     const comment = await this.commentModel.findById(id);
     if (!comment) {
@@ -89,7 +84,7 @@ export class ArticleCommentService {
   }> {
     const { withLikeStatus = false, userId, ...paginationOptions } = options;
     const validatedOptions = getCommentsSchema.parse({
-      article_id: parseInt(articleId),
+      article_id: articleId,
       ...paginationOptions,
     });
 
@@ -270,7 +265,7 @@ export class ArticleCommentService {
     data: any,
     authorId: string
   ): Promise<IComment> {
-    commentIdSchema.parse({ id: parseInt(id) });
+    commentIdSchema.parse({ id });
     const validatedData = updateCommentSchema.parse(data);
 
     // 댓글 존재 확인
@@ -297,7 +292,7 @@ export class ArticleCommentService {
 
   // 댓글 삭제
   async deleteComment(id: string, authorId: string): Promise<void> {
-    commentIdSchema.parse({ id: parseInt(id) });
+    commentIdSchema.parse({ id });
 
     // 댓글 존재 확인
     const comment = await this.commentModel.findById(id);
