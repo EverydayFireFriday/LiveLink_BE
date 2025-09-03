@@ -18,20 +18,20 @@ const articleCommentController = new ArticleCommentController();
 
 // 댓글 생성 (개발환경에서는 인증 스킵)
 router.post(
-  "/:articleId/comment",
+  "/comment/:articleId",
   requireAuthInProductionMiddleware,
   articleCommentController.createComment
 );
 
 // 게시글의 댓글 목록 조회 (GET은 인증 없이 가능)
 router.get(
-  "/:articleId/comment",
+  "/comment/:articleId",
   articleCommentController.getCommentsByArticle
 );
 
 // 게시글의 댓글 수 조회 (GET은 인증 없이 가능)
 router.get(
-  "/:articleId/comment/count",
+  "/comment/count/:articleId",
   articleCommentController.getCommentCount
 );
 
@@ -54,13 +54,13 @@ router.delete(
 
 // 댓글의 대댓글 목록 조회 (GET은 인증 없이 가능)
 router.get(
-  "/comment/:commentId/replies",
+  "/comment/replies/:commentId",
   articleCommentController.getRepliesByComment
 );
 
 // 댓글 좋아요 토글 (개발환경에서는 인증 스킵)
 router.post(
-  "/comment/:commentId/like/toggle",
+  "/comment/like/toggle/:commentId",
   requireAuthInProductionMiddleware,
   articleCommentController.toggleCommentLike
 );

@@ -22,7 +22,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /article/{articleId}/comment:
+   * /article/comment/{articleId}:
    *   post:
    *     summary: 댓글 생성
    *     description: 게시글에 새로운 댓글을 작성합니다.
@@ -113,7 +113,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /article/{articleId}/comment:
+   * /article/comment/{articleId}:
    *   get:
    *     summary: 게시글의 댓글 목록 조회
    *     description: 게시글의 댓글과 대댓글을 계층형으로 조회합니다.
@@ -428,7 +428,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}/like/toggle:
+   * /comment/like/toggle/{commentId}:
    *   post:
    *     summary: 댓글 좋아요 토글
    *     description: 댓글 좋아요 상태를 토글합니다. (있으면 취소, 없으면 추가)
@@ -502,7 +502,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}/replies:
+   * /comment/replies/{commentId}:
    *   get:
    *     summary: 댓글의 대댓글 목록 조회
    *     description: 특정 댓글의 대댓글 목록을 조회합니다.
@@ -674,7 +674,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /article/{articleId}/comment/count:
+   * /article/comment/count/{articleId}:
    *   get:
    *     summary: 게시글의 댓글 수 조회
    *     description: 특정 게시글의 총 댓글 수를 조회합니다.

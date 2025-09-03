@@ -22,7 +22,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /article/{articleId}/bookmark:
+   * /article/bookmark/{articleId}:
    *   post:
    *     summary: 게시글 북마크 추가
    *     description: 게시글을 북마크에 추가합니다.
@@ -104,7 +104,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /article/{articleId}/bookmark:
+   * /article/bookmark/{articleId}:
    *   delete:
    *     summary: 게시글 북마크 삭제
    *     description: 게시글을 북마크에서 제거합니다.
@@ -187,7 +187,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /article/{articleId}/bookmark/toggle:
+   * /article/bookmark/toggle/{articleId}:
    *   post:
    *     summary: 게시글 북마크 토글
    *     description: 북마크 상태를 토글합니다. (있으면 삭제, 없으면 추가)
@@ -310,7 +310,7 @@ export class ArticleBookmarkController {
    */
   /**
    * @swagger
-   * /article/{articleId}/bookmark/status:
+   * /article/bookmark/status/{articleId}:
    *   get:
    *     summary: 게시글 북마크 상태 확인
    *     description: 특정 사용자의 게시글 북마크 상태를 확인합니다.
@@ -374,7 +374,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /article/{articleId}/bookmark/count:
+   * /article/bookmark/count/{articleId}:
    *   get:
    *     summary: 게시글의 북마크 수 조회
    *     description: 특정 게시글의 총 북마크 수를 조회합니다.
@@ -451,7 +451,7 @@ export class ArticleBookmarkController {
 
   /**
    * @swagger
-   * /article/bookmark/user/{userId}/stats:
+   * /article/bookmark/user/stats/{userId}:
    *   get:
    *     summary: 사용자의 북마크 통계
    *     description: 사용자의 북마크 관련 통계 정보를 조회합니다.
