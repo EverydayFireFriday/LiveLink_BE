@@ -23,7 +23,7 @@ export class ArticleLikeController {
 
   /**
    * @swagger
-   * /article/{articleId}/like:
+   * /article/like/{articleId}:
    *   post:
    *     summary: 게시글 좋아요 추가
    *     description: 게시글에 좋아요를 추가합니다.
@@ -109,7 +109,7 @@ export class ArticleLikeController {
 
   /**
    * @swagger
-   * /article/{articleId}/like:
+   * /article/like/{articleId}:
    *   delete:
    *     summary: 게시글 좋아요 취소
    *     description: 게시글의 좋아요를 취소합니다.
@@ -190,7 +190,7 @@ export class ArticleLikeController {
 
   /**
    * @swagger
-   * /article/{articleId}/like/toggle:
+   * /article/like/toggle/{articleId}:
    *   post:
    *     summary: 게시글 좋아요 토글
    *     description: 좋아요 상태를 토글합니다. (있으면 취소, 없으면 추가)
@@ -264,7 +264,7 @@ export class ArticleLikeController {
 
   /**
    * @swagger
-   * /article/{articleId}/like/status:
+   * /article/like/status/{articleId}:
    *   get:
    *     summary: 게시글 좋아요 상태 확인
    *     description: 특정 사용자의 게시글 좋아요 상태를 확인합니다.
@@ -332,7 +332,7 @@ export class ArticleLikeController {
 
   /**
    * @swagger
-   * /article/{articleId}/like/users:
+   * /article/like/users/{articleId}:
    *   get:
    *     summary: 게시글을 좋아요한 사용자 목록
    *     description: 게시글을 좋아요한 사용자들의 목록을 조회합니다.
