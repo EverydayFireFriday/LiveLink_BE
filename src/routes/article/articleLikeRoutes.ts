@@ -18,34 +18,34 @@ const articleLikeController = new ArticleLikeController();
 
 // 게시글 좋아요 추가 (개발환경에서는 인증 스킵)
 router.post(
-  "/article/:articleId/like",
+  "/like/:articleId",
   requireAuthInProductionMiddleware,
   articleLikeController.likeArticle
 );
 
 // 게시글 좋아요 취소 (개발환경에서는 인증 스킵)
 router.delete(
-  "/article/:articleId/like",
+  "/like/:articleId",
   requireAuthInProductionMiddleware,
   articleLikeController.unlikeArticle
 );
 
 // 게시글 좋아요 토글 (개발환경에서는 인증 스킵)
 router.post(
-  "/article/:articleId/like/toggle",
+  "/like/toggle/:articleId",
   requireAuthInProductionMiddleware,
   articleLikeController.toggleLike
 );
 
 // 게시글 좋아요 상태 확인 (GET은 인증 없이 가능)
 router.get(
-  "/article/:articleId/like/status",
+  "/like/status/:articleId",
   articleLikeController.getLikeStatus
 );
 
 // 게시글을 좋아요한 사용자 목록 (GET은 인증 없이 가능)
 router.get(
-  "/article/:articleId/like/users",
+  "/like/users/:articleId",
   articleLikeController.getArticleLikers
 );
 

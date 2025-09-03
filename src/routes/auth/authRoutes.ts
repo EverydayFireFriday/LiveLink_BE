@@ -1,5 +1,8 @@
 import express from "express";
 import {
+  loginLimiter,
+} from "../../middlewares/rateLimitMiddleware";
+import {
   requireAuth,
   requireNoAuth,
 } from "../../middlewares/auth/authMiddleware";
@@ -13,7 +16,7 @@ const getAuthController = () => {
 };
 
 // 로그인/로그아웃
-router.post("/login", requireNoAuth, async (req, res) => {
+router.post("/login", loginLimiter, requireNoAuth, async (req, res) => {
   const authController = getAuthController();
   await authController.login(req, res);
 });

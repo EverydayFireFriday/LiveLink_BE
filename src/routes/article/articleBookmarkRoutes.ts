@@ -18,34 +18,34 @@ const articleBookmarkController = new ArticleBookmarkController();
 
 // 게시글 북마크 추가 (개발환경에서는 인증 스킵)
 router.post(
-  "/article/:articleId/bookmark",
+  "/bookmark/:articleId",
   requireAuthInProductionMiddleware,
   articleBookmarkController.bookmarkArticle
 );
 
 // 게시글 북마크 삭제 (개발환경에서는 인증 스킵)
 router.delete(
-  "/article/:articleId/bookmark",
+  "/bookmark/:articleId",
   requireAuthInProductionMiddleware,
   articleBookmarkController.unbookmarkArticle
 );
 
 // 게시글 북마크 토글 (개발환경에서는 인증 스킵)
 router.post(
-  "/article/:articleId/bookmark/toggle",
+  "/bookmark/toggle/:articleId",
   requireAuthInProductionMiddleware,
   articleBookmarkController.toggleBookmark
 );
 
 // 게시글 북마크 상태 확인 (GET은 인증 없이 가능)
 router.get(
-  "/article/:articleId/bookmark/status",
+  "/bookmark/status/:articleId",
   articleBookmarkController.getBookmarkStatus
 );
 
 // 게시글의 북마크 수 조회 (GET은 인증 없이 가능)
 router.get(
-  "/article/:articleId/bookmark/count",
+  "/bookmark/count/:articleId",
   articleBookmarkController.getBookmarkCount
 );
 
@@ -58,7 +58,7 @@ router.get(
 
 // 사용자의 북마크 통계 (개발환경에서는 인증 스킵)
 router.get(
-  "/bookmark/user/:userId/stats",
+  "/bookmark/user/stats/:userId",
   requireAuthInProductionMiddleware,
   articleBookmarkController.getUserBookmarkStats
 );

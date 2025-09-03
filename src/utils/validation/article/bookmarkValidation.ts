@@ -2,32 +2,17 @@
 import { z } from "zod";
 
 export const createBookmarkSchema = z.object({
-  article_id: z
-    .number()
-    .int("게시글 ID는 정수여야 합니다")
-    .positive("게시글 ID는 양수여야 합니다"),
-  user_id: z
-    .number()
-    .int("사용자 ID는 정수여야 합니다")
-    .positive("사용자 ID는 양수여야 합니다"),
+  article_id: z.string().nonempty("게시글 ID는 필수입니다."),
+  user_id: z.string().nonempty("사용자 ID는 필수입니다."),
 });
 
 export const deleteBookmarkSchema = z.object({
-  article_id: z
-    .number()
-    .int("게시글 ID는 정수여야 합니다")
-    .positive("게시글 ID는 양수여야 합니다"),
-  user_id: z
-    .number()
-    .int("사용자 ID는 정수여야 합니다")
-    .positive("사용자 ID는 양수여야 합니다"),
+  article_id: z.string().nonempty("게시글 ID는 필수입니다."),
+  user_id: z.string().nonempty("사용자 ID는 필수입니다."),
 });
 
 export const getUserBookmarksSchema = z.object({
-  user_id: z
-    .number()
-    .int("사용자 ID는 정수여야 합니다")
-    .positive("사용자 ID는 양수여야 합니다"),
+  user_id: z.string().nonempty("사용자 ID는 필수입니다."),
   page: z
     .number()
     .int("페이지는 정수여야 합니다")

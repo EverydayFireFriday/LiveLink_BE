@@ -18,17 +18,15 @@ export class ArticleBookmarkService {
     const validatedData = createBookmarkSchema.parse(data);
 
     // 게시글 존재 확인
-    const article = await this.articleModel.findById(
-      validatedData.article_id.toString()
-    );
+    const article = await this.articleModel.findById(validatedData.article_id);
     if (!article) {
       throw new Error("게시글을 찾을 수 없습니다.");
     }
 
     // 북마크 추가
     const bookmark = await this.articleBookmarkModel.create(
-      validatedData.article_id.toString(),
-      validatedData.user_id.toString()
+      validatedData.article_id,
+      validatedData.user_id
     );
 
     return bookmark;
@@ -40,8 +38,8 @@ export class ArticleBookmarkService {
 
     // 북마크 삭제
     const deletedBookmark = await this.articleBookmarkModel.delete(
-      validatedData.article_id.toString(),
-      validatedData.user_id.toString()
+      validatedData.article_id,
+      validatedData.user_id
     );
 
     if (!deletedBookmark) {
@@ -99,15 +97,15 @@ export class ArticleBookmarkService {
     if (isCurrentlyBookmarked) {
       // 북마크 삭제
       await this.unbookmarkArticle({
-        article_id: parseInt(articleId),
-        user_id: parseInt(userId),
+        article_id: articleId,
+        user_id: userId,
       });
       return { isBookmarked: false };
     } else {
       // 북마크 추가
       await this.bookmarkArticle({
-        article_id: parseInt(articleId),
-        user_id: parseInt(userId),
+        article_id: articleId,
+        user_id: userId,
       });
       return { isBookmarked: true };
     }
@@ -127,7 +125,7 @@ export class ArticleBookmarkService {
     totalPages: number;
   }> {
     const validatedOptions = getUserBookmarksSchema.parse({
-      user_id: parseInt(userId),
+      user_id: userId,
       ...options,
     });
 

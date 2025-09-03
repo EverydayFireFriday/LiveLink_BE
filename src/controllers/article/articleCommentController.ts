@@ -22,7 +22,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /article/{articleId}/comment:
+   * /article/comment/{articleId}:
    *   post:
    *     summary: 댓글 생성
    *     description: 게시글에 새로운 댓글을 작성합니다.
@@ -113,7 +113,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /article/{articleId}/comment:
+   * /article/comment/{articleId}:
    *   get:
    *     summary: 게시글의 댓글 목록 조회
    *     description: 게시글의 댓글과 대댓글을 계층형으로 조회합니다.
@@ -209,7 +209,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}:
+   * /article/comment/{commentId}:
    *   get:
    *     summary: 댓글 상세 조회
    *     description: 특정 댓글의 상세 정보를 조회합니다.
@@ -262,7 +262,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}:
+   * /article/comment/{commentId}:
    *   put:
    *     summary: 댓글 수정
    *     description: 기존 댓글의 내용을 수정합니다. 작성자만 수정할 수 있습니다.
@@ -353,7 +353,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}:
+   * /article/comment/{commentId}:
    *   delete:
    *     summary: 댓글 삭제
    *     description: 댓글을 삭제합니다. 작성자만 삭제할 수 있으며, 대댓글도 함께 삭제됩니다.
@@ -428,7 +428,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}/like/toggle:
+   * /article/comment/like/toggle/{commentId}:
    *   post:
    *     summary: 댓글 좋아요 토글
    *     description: 댓글 좋아요 상태를 토글합니다. (있으면 취소, 없으면 추가)
@@ -502,7 +502,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/{commentId}/replies:
+   * /article/comment/replies/{commentId}:
    *   get:
    *     summary: 댓글의 대댓글 목록 조회
    *     description: 특정 댓글의 대댓글 목록을 조회합니다.
@@ -588,7 +588,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /comment/author/{authorId}:
+   * /article/comment/author/{authorId}:
    *   get:
    *     summary: 작성자별 댓글 목록 조회
    *     description: 특정 작성자가 작성한 댓글 목록을 조회합니다.
@@ -674,7 +674,7 @@ export class ArticleCommentController {
 
   /**
    * @swagger
-   * /article/{articleId}/comment/count:
+   * /article/comment/count/{articleId}:
    *   get:
    *     summary: 게시글의 댓글 수 조회
    *     description: 특정 게시글의 총 댓글 수를 조회합니다.

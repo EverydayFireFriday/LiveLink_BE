@@ -19,28 +19,23 @@ export class ArticleLikeService {
     const validatedData = createArticleLikeSchema.parse(data);
 
     // 게시글 존재 확인
-    const article = await this.articleModel.findById(
-      validatedData.article_id.toString()
-    );
+    const article = await this.articleModel.findById(validatedData.article_id);
     if (!article) {
       throw new Error("게시글을 찾을 수 없습니다.");
     }
 
     // 좋아요 추가
     const like = await this.articleLikeModel.create(
-      validatedData.article_id.toString(),
-      validatedData.user_id.toString()
+      validatedData.article_id,
+      validatedData.user_id
     );
 
     // 게시글의 좋아요 수 업데이트
-    await this.articleModel.updateLikesCount(
-      validatedData.article_id.toString(),
-      1
-    );
+    await this.articleModel.updateLikesCount(validatedData.article_id, 1);
 
     // 새로운 좋아요 수 조회
     const newLikesCount = await this.articleLikeModel.countByArticle(
-      validatedData.article_id.toString()
+      validatedData.article_id
     );
 
     return { like, newLikesCount };
@@ -54,8 +49,8 @@ export class ArticleLikeService {
 
     // 좋아요 삭제
     const deletedLike = await this.articleLikeModel.delete(
-      validatedData.article_id.toString(),
-      validatedData.user_id.toString()
+      validatedData.article_id,
+      validatedData.user_id
     );
 
     if (!deletedLike) {
@@ -63,14 +58,11 @@ export class ArticleLikeService {
     }
 
     // 게시글의 좋아요 수 업데이트
-    await this.articleModel.updateLikesCount(
-      validatedData.article_id.toString(),
-      -1
-    );
+    await this.articleModel.updateLikesCount(validatedData.article_id, -1);
 
     // 새로운 좋아요 수 조회
     const newLikesCount = await this.articleLikeModel.countByArticle(
-      validatedData.article_id.toString()
+      validatedData.article_id
     );
 
     return { success: true, newLikesCount };
@@ -185,15 +177,15 @@ export class ArticleLikeService {
     if (isCurrentlyLiked) {
       // 좋아요 취소
       const result = await this.unlikeArticle({
-        article_id: parseInt(articleId),
-        user_id: parseInt(userId),
+        article_id: articleId,
+        user_id: userId,
       });
       return { isLiked: false, newLikesCount: result.newLikesCount };
     } else {
       // 좋아요 추가
       const result = await this.likeArticle({
-        article_id: parseInt(articleId),
-        user_id: parseInt(userId),
+        article_id: articleId,
+        user_id: userId,
       });
       return { isLiked: true, newLikesCount: result.newLikesCount };
     }
