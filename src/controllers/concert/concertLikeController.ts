@@ -5,7 +5,7 @@ import logger from "../../utils/logger";
 
 /**
  * @swagger
- * /concert/{id}/like/status:
+ * /concert/like/status/{id}:
  *   get:
  *     summary: 콘서트 좋아요 상태 확인
  *     description: 로그인된 사용자의 특정 콘서트에 대한 좋아요 상태를 확인합니다.
@@ -62,7 +62,7 @@ export const getLikeStatus = async (
 
 /**
  * @swagger
- * /concert/{id}/like:
+ * /concert/like/{id}:
  *   post:
  *     summary: 콘서트 좋아요 추가
  *     description: 로그인된 사용자가 특정 콘서트에 좋아요를 추가합니다.
@@ -118,7 +118,7 @@ export const addLike = async (req: express.Request, res: express.Response) => {
 
 /**
  * @swagger
- * /concert/{id}/like:
+ * /concert/like/{id}:
  *   delete:
  *     summary: 콘서트 좋아요 삭제
  *     description: 로그인된 사용자가 특정 콘서트의 좋아요를 삭제합니다.

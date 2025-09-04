@@ -17,24 +17,24 @@ const router = express.Router();
 router.get("/liked", requireAuth, getLikedConcerts);
 
 /**
- * @route GET /concert/:id/like/status
+ * @route GET /concert/like/status/:id
  * @desc 콘서트 좋아요 상태 확인
  * @access Private (인증 필요)
  */
-router.get("/:id/like/status", requireAuth, getLikeStatus);
+router.get("/like/status/:id", requireAuth, getLikeStatus);
 
 /**
- * @route POST /concert/:id/like
+ * @route POST /concert/like/:id
  * @desc 콘서트 좋아요 추가
  * @access Private (인증 필요)
  */
-router.post("/:id/like", requireAuth, addLike);
+router.post("/like/:id", requireAuth, addLike);
 
 /**
- * @route DELETE /concert/:id/like
+ * @route DELETE /concert/like/:id
  * @desc 콘서트 좋아요 삭제
  * @access Private (인증 필요)
  */
-router.delete("/:id/like", requireAuth, removeLike);
+router.delete("/like/:id", requireAuth, removeLike);
 
 export default router;

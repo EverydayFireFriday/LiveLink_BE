@@ -166,7 +166,7 @@ router.get('/rooms/search', chatController.searchChatRooms);
 router.get('/rooms/:roomId', requireAuth, chatController.getChatRoom);
 /**
  * @swagger
- * /chat/rooms/{roomId}/join:
+ * /chat/rooms/join/{roomId}:
  *   post:
  *     summary: 채팅방 참여
  *     tags: [Chat]
@@ -197,10 +197,10 @@ router.get('/rooms/:roomId', requireAuth, chatController.getChatRoom);
  *       401:
  *         description: 인증 필요
  */
-router.post('/rooms/:roomId/join', requireAuth, chatController.joinChatRoom);
+router.post('/rooms/join/:roomId', requireAuth, chatController.joinChatRoom);
 /**
  * @swagger
- * /chat/rooms/{roomId}/leave:
+ * /chat/rooms/leave/{roomId}:
  *   post:
  *     summary: 채팅방 떠나기
  *     tags: [Chat]
@@ -231,7 +231,7 @@ router.post('/rooms/:roomId/join', requireAuth, chatController.joinChatRoom);
  *       500:
  *         description: 서버 오류
  */
-router.post('/rooms/:roomId/leave', requireAuth, chatController.leaveChatRoom);
+router.post('/rooms/leave/:roomId', requireAuth, chatController.leaveChatRoom);
 /**
  * @swagger
  * /chat/rooms/{roomId}:
@@ -269,7 +269,7 @@ router.post('/rooms/:roomId/leave', requireAuth, chatController.leaveChatRoom);
  */
 /**
  * @swagger
- * /chat/rooms/{roomId}/messages:
+ * /chat/rooms/messages/{roomId}:
  *   get:
  *     summary: 채팅방 메시지 목록
  *     tags: [Chat]
@@ -314,7 +314,7 @@ router.post('/rooms/:roomId/leave', requireAuth, chatController.leaveChatRoom);
  *       403:
  *         description: 접근 권한 없음
  */
-router.get('/rooms/:roomId/messages', requireAuth, chatController.getChatRoomMessages);
+router.get('/rooms/messages/:roomId', requireAuth, chatController.getChatRoomMessages);
 /**
  * @swagger
  * /chat/rooms/{roomId}:
@@ -352,7 +352,7 @@ router.get('/rooms/:roomId/messages', requireAuth, chatController.getChatRoomMes
  */
 /**
  * @swagger
- * /chat/rooms/{roomId}/messages/search:
+ * /chat/rooms/messages/search/{roomId}:
  *   get:
  *     summary: 채팅방 메시지 검색
  *     tags: [Chat]
@@ -399,7 +399,7 @@ router.get('/rooms/:roomId/messages', requireAuth, chatController.getChatRoomMes
  *       403:
  *         description: 접근 권한 없음
  */
-router.get('/rooms/:roomId/messages/search', requireAuth, chatController.searchMessages);
+router.get('/rooms/messages/search/:roomId', requireAuth, chatController.searchMessages);
 /**
  * @swagger
  * /chat/messages/{messageId}:
