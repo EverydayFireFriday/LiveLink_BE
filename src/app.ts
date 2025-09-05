@@ -64,8 +64,7 @@ app.use(
   })
 );
 
-// 요청 제한 설정
-app.use(generalLimiter);
+
 
 // 환경별 로그 포맷 설정
 const logFormat = isDevelopment() ? "dev" : "combined";
