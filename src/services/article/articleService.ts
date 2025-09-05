@@ -14,6 +14,7 @@ import {
   incrementViewSchema,
 } from "../../utils/validation/article";
 import { ObjectId } from "mongodb";
+import { cacheManager } from "../../utils/cacheManager";
 
 export class ArticleService {
   private articleModel = getArticleModel();
@@ -64,6 +65,7 @@ export class ArticleService {
       );
     }
 
+    await cacheManager.delByPattern("articles:*");
     return article;
   }
 
@@ -149,6 +151,14 @@ export class ArticleService {
       userId,
     } = options;
 
+    const cacheKey = `articles:page=${page}:limit=${limit}:category=${
+      category_id || ""
+    }:tag=${tag_id || ""}:search=${search || ""}:userId=${userId || ""}`;
+    const cachedData = await cacheManager.get<any>(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     let articles: any[];
     let total: number;
 
@@ -221,12 +231,16 @@ export class ArticleService {
       return result;
     });
 
-    return {
+    const result = {
       articles: articlesWithData,
       total,
       page,
       totalPages: Math.ceil(total / limit),
     };
+
+    await cacheManager.set(cacheKey, result, 300); // 5분 캐시
+
+    return result;
   }
 
   // 게시글 업데이트 (태그 자동 생성 최적화)
@@ -278,6 +292,7 @@ export class ArticleService {
       throw new Error("게시글 업데이트에 실패했습니다.");
     }
 
+    await cacheManager.delByPattern("articles:*");
     return updatedArticle;
   }
 
@@ -299,6 +314,7 @@ export class ArticleService {
 
     // 게시글 삭제
     await this.articleModel.deleteById(id);
+    await cacheManager.delByPattern("articles:*");
   }
 
   // 조회수 증가

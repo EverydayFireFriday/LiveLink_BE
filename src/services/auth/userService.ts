@@ -1,5 +1,6 @@
 import { UserModel } from "../../models/auth/user";
 import { User } from "../../types/auth/authTypes";
+import { cacheManager } from "../../utils/cacheManager";
 
 export class UserService {
   private userModel: UserModel | null = null;
@@ -21,7 +22,17 @@ export class UserService {
   }
 
   async findById(id: string): Promise<User | null> {
-    return (await this.getUserModel().findById(id)) as User | null;
+    const cacheKey = `user:${id}`;
+    const cachedUser = await cacheManager.get<User>(cacheKey);
+    if (cachedUser) {
+      return cachedUser;
+    }
+
+    const user = (await this.getUserModel().findById(id)) as User | null;
+    if (user) {
+      await cacheManager.set(cacheKey, user, 3600); // 1시간 캐시
+    }
+    return user;
   }
 
   async createUser(userData: {
@@ -39,10 +50,17 @@ export class UserService {
     id: string,
     updateData: Partial<User>
   ): Promise<User | null> {
-    return (await this.getUserModel().updateUser(
+    const user = (await this.getUserModel().updateUser(
       id,
       updateData
     )) as User | null;
+
+    if (user) {
+      const cacheKey = `user:${id}`;
+      await cacheManager.del(cacheKey);
+    }
+
+    return user;
   }
 
   async generateUsername(
