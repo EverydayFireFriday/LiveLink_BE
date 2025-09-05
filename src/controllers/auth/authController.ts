@@ -2,7 +2,6 @@ import express from "express";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import logger from "../../utils/logger";
 
-
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
   /**
@@ -156,9 +155,9 @@ export class AuthController {
         });
       }
       if (user.status === UserStatus.SUSPENDED) {
-        return res
-          .status(403)
-          .json({ message: "이용이 정지된 계정입니다. 관리자에게 문의해주세요." });
+        return res.status(403).json({
+          message: "이용이 정지된 계정입니다. 관리자에게 문의해주세요.",
+        });
       }
       if (user.status === UserStatus.PENDING_VERIFICATION) {
         return res

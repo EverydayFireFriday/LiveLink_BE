@@ -72,7 +72,8 @@ app.use(
         ],
         frameAncestors: ["'self'"], // 클릭재킹 방지
         objectSrc: ["'none'"], // 플러그인 로드 차단
-        upgradeInsecureRequests: isProduction() ? [] : [], // HTTP -> HTTPS 자동 전환
+        // Only upgrade in production; omit in dev to prevent local HTTP breakage
+        ...(isProduction() ? { upgradeInsecureRequests: [] } : {}),
       },
     },
     strictTransportSecurity: isProduction()
@@ -82,13 +83,10 @@ app.use(
           preload: true,
         }
       : false,
-    frameguard: {
-      action: "deny", // X-Frame-Options 헤더 설정
-    },
+    // Prefer CSP's frame-ancestors. If you need XFO, keep it consistent with CSP:
+    frameguard: { action: "sameorigin" },
   })
 );
-
-
 
 // 환경별 로그 포맷 설정
 const logFormat = isDevelopment() ? "dev" : "combined";
@@ -144,20 +142,19 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // 보안 미들웨어 적용
 app.use(mongoSanitize());
-app.use(mongoSanitize());
 
 // XSS 방어 미들웨어 (sanitize-html 사용)
 const sanitizeInput = (input: any): any => {
-  if (typeof input === 'string') {
+  if (typeof input === "string") {
     return sanitizeHtml(input, {
       allowedTags: [], // 모든 HTML 태그 제거
       allowedAttributes: {}, // 모든 HTML 속성 제거
     });
   }
   if (Array.isArray(input)) {
-    return input.map(item => sanitizeInput(item));
+    return input.map((item) => sanitizeInput(item));
   }
-  if (typeof input === 'object' && input !== null) {
+  if (typeof input === "object" && input !== null) {
     const sanitizedObject: { [key: string]: any } = {};
     for (const key in input) {
       if (Object.prototype.hasOwnProperty.call(input, key)) {
@@ -179,7 +176,7 @@ app.use((req, res, next) => {
 app.use(hpp());
 
 // 정적 파일 서빙
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 // 세션 미들웨어 설정
 app.use(

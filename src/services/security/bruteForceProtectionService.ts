@@ -1,6 +1,5 @@
 
 import { RedisClientType } from "redis";
-import { env } from "../../config/env";
 import logger from "../../utils/logger";
 
 const MAX_ATTEMPTS = 10;
