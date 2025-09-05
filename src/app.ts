@@ -8,9 +8,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { generalLimiter } from "./middlewares/rateLimitMiddleware";
-
-import { forceHttpsMiddleware } from "./middlewares/securityMiddleware";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -50,9 +47,6 @@ let chatSocketServer: ChatSocketServer | null = null;
 if (isProduction()) {
   app.set("trust proxy", 1);
 }
-
-// 프로덕션에서 HTTPS 강제
-app.use(forceHttpsMiddleware);
 
 // 보안 헤더 설정
 app.use(
