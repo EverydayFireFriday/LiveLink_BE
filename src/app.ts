@@ -8,7 +8,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { generalLimiter } from "./middlewares/rateLimitMiddleware";
+import mongoSanitize from "express-mongo-sanitize";
+import sanitizeHtml from "sanitize-html";
+import hpp from "hpp";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -55,17 +57,36 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "https://appleid.apple.com", "https://accounts.google.com", "https://oauth2.googleapis.com"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: [
+          "'self'",
+          //'nonce-RANDOM_NONCE', // 필요 시 nonce 또는 hash 사용
+          // 인라인 스크립트가 필요 없는 경우 위와 같이 설정
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'"], // UI 라이브러리 호환성을 위해 임시 허용
         imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: [
+          "'self'",
+          "https://appleid.apple.com",
+          "https://accounts.google.com",
+          "https://oauth2.googleapis.com",
+        ],
+        frameAncestors: ["'self'"], // 클릭재킹 방지
+        objectSrc: ["'none'"], // 플러그인 로드 차단
+        // Only upgrade in production; omit in dev to prevent local HTTP breakage
+        ...(isProduction() ? { upgradeInsecureRequests: [] } : {}),
       },
     },
+    strictTransportSecurity: isProduction()
+      ? {
+          maxAge: 31536000, // 1년
+          includeSubDomains: true,
+          preload: true,
+        }
+      : false,
+    // Prefer CSP's frame-ancestors. If you need XFO, keep it consistent with CSP:
+    frameguard: { action: "sameorigin" },
   })
 );
-
-// 요청 제한 설정
-app.use(generalLimiter);
 
 // 환경별 로그 포맷 설정
 const logFormat = isDevelopment() ? "dev" : "combined";
@@ -119,8 +140,43 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// 보안 미들웨어 적용
+app.use(mongoSanitize());
+
+// XSS 방어 미들웨어 (sanitize-html 사용)
+const sanitizeInput = (input: any): any => {
+  if (typeof input === "string") {
+    return sanitizeHtml(input, {
+      allowedTags: [], // 모든 HTML 태그 제거
+      allowedAttributes: {}, // 모든 HTML 속성 제거
+    });
+  }
+  if (Array.isArray(input)) {
+    return input.map((item) => sanitizeInput(item));
+  }
+  if (typeof input === "object" && input !== null) {
+    const sanitizedObject: { [key: string]: any } = {};
+    for (const key in input) {
+      if (Object.prototype.hasOwnProperty.call(input, key)) {
+        sanitizedObject[key] = sanitizeInput(input[key]);
+      }
+    }
+    return sanitizedObject;
+  }
+  return input;
+};
+
+app.use((req, res, next) => {
+  if (req.body) {
+    req.body = sanitizeInput(req.body);
+  }
+  // req.query, req.params 등도 필요에 따라 sanitizeInput 적용 가능
+  next();
+});
+app.use(hpp());
+
 // 정적 파일 서빙
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 // 세션 미들웨어 설정
 app.use(

@@ -2,7 +2,6 @@ import express from "express";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
 import logger from "../../utils/logger";
 
-
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
   /**
@@ -97,20 +96,37 @@ export class AuthController {
    */
   login = async (req: express.Request, res: express.Response) => {
     const { email, password } = req.body;
+    const ip = req.ip;
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      res.status(400).json({ message: emailValidation.message });
-      return;
+      return res.status(400).json({ message: emailValidation.message });
     }
 
     if (!password) {
-      res.status(400).json({ message: "비밀번호를 입력해주세요." });
-      return;
+      return res.status(400).json({ message: "비밀번호를 입력해주세요." });
     }
 
+    const { redisClient } = await import("../../app");
+    const { BruteForceProtectionService } = await import(
+      "../../services/security"
+    );
+    const bruteForceService = new BruteForceProtectionService(redisClient);
+
+    const loginKey = email;
+
     try {
+      if (await bruteForceService.isBlocked(loginKey)) {
+        const blockTime = await bruteForceService.getBlockTime(loginKey);
+        logger.warn(`[Auth] Blocked login attempt for account: ${loginKey}`);
+        return res.status(429).json({
+          message: `너무 많은 로그인 시도를 하셨습니다. ${Math.ceil(
+            blockTime / 60
+          )}분 후에 다시 시도해주세요.`,
+        });
+      }
+
       // 지연 로딩으로 서비스 import
       const { AuthService } = await import("../../services/auth/authService");
       const { UserService } = await import("../../services/auth/userService");
@@ -122,10 +138,13 @@ export class AuthController {
       // 사용자 확인
       const user = await userService.findByEmail(email);
       if (!user) {
-        res
+        const attempts = await bruteForceService.increment(loginKey);
+        logger.warn(
+          `[Auth] Failed login attempt #${attempts} for account: ${email} from IP: ${ip} (user not found)`
+        );
+        return res
           .status(401)
           .json({ message: "이메일 또는 비밀번호가 일치하지 않습니다." });
-        return;
       }
 
       // 사용자 상태 확인
@@ -136,9 +155,9 @@ export class AuthController {
         });
       }
       if (user.status === UserStatus.SUSPENDED) {
-        return res
-          .status(403)
-          .json({ message: "이용이 정지된 계정입니다. 관리자에게 문의해주세요." });
+        return res.status(403).json({
+          message: "이용이 정지된 계정입니다. 관리자에게 문의해주세요.",
+        });
       }
       if (user.status === UserStatus.PENDING_VERIFICATION) {
         return res
@@ -152,29 +171,45 @@ export class AuthController {
         user.passwordHash
       );
       if (!isPasswordValid) {
-        res
+        const attempts = await bruteForceService.increment(loginKey);
+        logger.warn(
+          `[Auth] Failed login attempt #${attempts} for account: ${user.email} from IP: ${ip} (incorrect password)`
+        );
+        return res
           .status(401)
           .json({ message: "이메일 또는 비밀번호가 일치하지 않습니다." });
-        return;
       }
+
+      // 로그인 성공 시, 실패 카운터 리셋
+      await bruteForceService.reset(loginKey);
 
       // 마지막 로그인 시간 업데이트
       await userService.updateUser(user._id!.toString(), {
         updatedAt: new Date(),
       });
 
-      // 세션 저장
-      req.session.user = authService.createSessionData(user);
+      // 세션 고정 공격 방지를 위해 세션 재생성
+      const sessionData = authService.createSessionData(user);
 
-      res.status(200).json({
-        message: "로그인 성공",
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          profileImage: user.profileImage,
-        },
-        sessionId: req.sessionID,
+      req.session.regenerate((err) => {
+        if (err) {
+          logger.error("세션 재생성 에러:", err);
+          return res.status(500).json({ message: "로그인 실패 (세션 오류)" });
+        }
+
+        // 재생성된 세션에 사용자 정보 저장
+        req.session.user = sessionData;
+
+        res.status(200).json({
+          message: "로그인 성공",
+          user: {
+            id: user._id,
+            email: user.email,
+            username: user.username,
+            profileImage: user.profileImage,
+          },
+          sessionId: req.sessionID,
+        });
       });
     } catch (error) {
       logger.error("로그인 에러:", error);

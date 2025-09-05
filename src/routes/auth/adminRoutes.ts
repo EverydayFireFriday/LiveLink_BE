@@ -15,7 +15,7 @@ router.get("/check", checkAdminStatus);
 router.get("/users", requireAdmin, adminController.getAllUsers);
 router.get("/users/:userId", requireAdmin, adminController.getUserById);
 router.patch(
-  "/users/:userId/status",
+  "/users/status/:userId",
   requireAdmin,
   adminController.updateUserStatus
 );

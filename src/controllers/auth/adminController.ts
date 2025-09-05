@@ -185,7 +185,7 @@ export class AdminController {
 
   /**
    * @swagger
-   * /auth/admin/users/{userId}/status:
+   * /auth/admin/users/status/{userId}:
    *   patch:
    *     summary: 사용자 상태 변경 (관리자 전용)
    *     description: 사용자 계정을 활성화/비활성화합니다.
