@@ -8,6 +8,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import mongoSanitize from "express-mongo-sanitize";
+import sanitizeHtml from "sanitize-html";
+import hpp from "hpp";
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -138,6 +141,42 @@ app.use(
   })
 );
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// 보안 미들웨어 적용
+app.use(mongoSanitize());
+app.use(mongoSanitize());
+
+// XSS 방어 미들웨어 (sanitize-html 사용)
+const sanitizeInput = (input: any): any => {
+  if (typeof input === 'string') {
+    return sanitizeHtml(input, {
+      allowedTags: [], // 모든 HTML 태그 제거
+      allowedAttributes: {}, // 모든 HTML 속성 제거
+    });
+  }
+  if (Array.isArray(input)) {
+    return input.map(item => sanitizeInput(item));
+  }
+  if (typeof input === 'object' && input !== null) {
+    const sanitizedObject: { [key: string]: any } = {};
+    for (const key in input) {
+      if (Object.prototype.hasOwnProperty.call(input, key)) {
+        sanitizedObject[key] = sanitizeInput(input[key]);
+      }
+    }
+    return sanitizedObject;
+  }
+  return input;
+};
+
+app.use((req, res, next) => {
+  if (req.body) {
+    req.body = sanitizeInput(req.body);
+  }
+  // req.query, req.params 등도 필요에 따라 sanitizeInput 적용 가능
+  next();
+});
+app.use(hpp());
 
 // 정적 파일 서빙
 app.use(express.static('public'));
