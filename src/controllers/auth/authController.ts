@@ -189,18 +189,28 @@ export class AuthController {
         updatedAt: new Date(),
       });
 
-      // 세션 저장
-      req.session.user = authService.createSessionData(user);
+      // 세션 고정 공격 방지를 위해 세션 재생성
+      const sessionData = authService.createSessionData(user);
 
-      res.status(200).json({
-        message: "로그인 성공",
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          profileImage: user.profileImage,
-        },
-        sessionId: req.sessionID,
+      req.session.regenerate((err) => {
+        if (err) {
+          logger.error("세션 재생성 에러:", err);
+          return res.status(500).json({ message: "로그인 실패 (세션 오류)" });
+        }
+
+        // 재생성된 세션에 사용자 정보 저장
+        req.session.user = sessionData;
+
+        res.status(200).json({
+          message: "로그인 성공",
+          user: {
+            id: user._id,
+            email: user.email,
+            username: user.username,
+            profileImage: user.profileImage,
+          },
+          sessionId: req.sessionID,
+        });
       });
     } catch (error) {
       logger.error("로그인 에러:", error);

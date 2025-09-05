@@ -10,6 +10,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { generalLimiter } from "./middlewares/rateLimitMiddleware";
 
+import { forceHttpsMiddleware } from "./middlewares/securityMiddleware";
+
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
 
@@ -49,17 +51,42 @@ if (isProduction()) {
   app.set("trust proxy", 1);
 }
 
+// 프로덕션에서 HTTPS 강제
+app.use(forceHttpsMiddleware);
+
 // 보안 헤더 설정
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "https://appleid.apple.com", "https://accounts.google.com", "https://oauth2.googleapis.com"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: [
+          "'self'",
+          //'nonce-RANDOM_NONCE', // 필요 시 nonce 또는 hash 사용
+          // 인라인 스크립트가 필요 없는 경우 위와 같이 설정
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'"], // UI 라이브러리 호환성을 위해 임시 허용
         imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: [
+          "'self'",
+          "https://appleid.apple.com",
+          "https://accounts.google.com",
+          "https://oauth2.googleapis.com",
+        ],
+        frameAncestors: ["'self'"], // 클릭재킹 방지
+        objectSrc: ["'none'"], // 플러그인 로드 차단
+        upgradeInsecureRequests: isProduction() ? [] : [], // HTTP -> HTTPS 자동 전환
       },
+    },
+    strictTransportSecurity: isProduction()
+      ? {
+          maxAge: 31536000, // 1년
+          includeSubDomains: true,
+          preload: true,
+        }
+      : false,
+    frameguard: {
+      action: "deny", // X-Frame-Options 헤더 설정
     },
   })
 );
