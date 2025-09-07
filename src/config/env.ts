@@ -26,6 +26,8 @@ const envSchema = z.object({
     .regex(/^\d+$/, "숫자만 입력 가능합니다")
     .optional()
     .default("1800"),
+  COOKIE_DOMAIN: z.string().optional(),
+  COOKIE_SAMESITE: z.enum(["lax", "strict", "none"]).optional().default("lax"),
 
   // 🌐 서버 환경
   NODE_ENV: z
@@ -91,6 +93,8 @@ const validateEnv = () => {
     );
     logger.info(`🛡️ 브루트포스 보호 - 최대 시도 횟수: ${parsed.BRUTE_FORCE_MAX_ATTEMPTS}`);
     logger.info(`🛡️ 브루트포스 보호 - 차단 기간: ${Math.floor(parseInt(parsed.BRUTE_FORCE_BLOCK_DURATION) / 60)}분`);
+    logger.info(`🍪 쿠키 도메인: ${parsed.COOKIE_DOMAIN || '설정되지 않음'}`);
+    logger.info(`🍪 SameSite 정책: ${parsed.COOKIE_SAMESITE}`);
 
     // 🔧 조건부 인증 설정 로그
     logger.info("\n🔧 조건부 인증 미들웨어 설정:");

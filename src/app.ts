@@ -194,7 +194,8 @@ app.use(
       secure: isProduction(), // HTTPS에서만 쿠키 전송
       httpOnly: true,
       maxAge: parseInt(env.SESSION_MAX_AGE),
-      sameSite: isProduction() ? "none" : "lax",
+      sameSite: env.COOKIE_SAMESITE === "none" ? "none" : env.COOKIE_SAMESITE, // SameSite 정책 (lax, strict, none)
+      domain: env.COOKIE_DOMAIN || undefined, // 쿠키 도메인 (설정 시 해당 도메인으로 제한)
     },
     name: "app.session.id",
   })
