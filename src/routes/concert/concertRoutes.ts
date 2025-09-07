@@ -37,13 +37,17 @@ if (process.env.NODE_ENV === "development") {
  *
  *       - location: 문자열 배열로 간소화됨
  *       - infoImages: 이미지 URL 배열 (기존 info에서 변경)
- * 
+ *
  *       **state 상태값**:
  *       - upcoming - 예정
  *       - ongoing - 진행 중
  *       - completed - 완료
  *       - cancelled - 취소
- * 
+ *
+ *       **필드 분류**:
+ *       - **필수 필드 (9개)**: uid, title, artist, location, datetime, status, _id, createdAt, updatedAt
+ *       - **옵셔널 필드 (10개)**: price, description, category, ticketLink, ticketOpenDate, posterImage, infoImages, likes, likesCount
+ *
  *     tags: [Concerts - Basic]
  *     security:
  *       - sessionAuth: []
@@ -54,32 +58,36 @@ if (process.env.NODE_ENV === "development") {
  *         application/json:
  *           schema:
  *             type: object
+ *             # === 필수 필드 ===
  *             required:
  *               - uid
  *               - title
+ *               - artist
  *               - location
  *               - datetime
+ *               - status
  *             properties:
+ *               # === 필수 필드 (Required Fields) ===
  *               uid:
  *                 type: string
- *                 description: 고유 콘서트 ID (timestamp 포함)
+ *                 description: "[필수] 고유 콘서트 ID (timestamp 포함)"
  *                 example: "concert_1703123456789_iu2024"
  *               title:
  *                 type: string
- *                 description: 콘서트 제목
+ *                 description: "[필수] 콘서트 제목"
  *                 example: "아이유 콘서트 2024"
  *                 maxLength: 200
  *               artist:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: 아티스트 목록 (빈 배열 허용)
+ *                 description: "[필수] 아티스트 목록 (빈 배열 허용)"
  *                 example: ["아이유", "특별 게스트"]
  *               location:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: 공연 장소 목록 (문자열 배열로 간소화)
+ *                 description: "[필수] 공연 장소 목록 (문자열 배열로 간소화)"
  *                 example: ["올림픽공원 체조경기장", "부산 BEXCO"]
  *                 minItems: 1
  *               datetime:
@@ -87,9 +95,16 @@ if (process.env.NODE_ENV === "development") {
  *                 items:
  *                   type: string
  *                   format: date-time
- *                 description: 공연 일시 목록
+ *                 description: "[필수] 공연 일시 목록"
  *                 example: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
  *                 minItems: 1
+ *               status:
+ *                 type: string
+ *                 enum: ["upcoming", "ongoing", "completed", "cancelled"]
+ *                 default: "upcoming"
+ *                 description: "[필수] 콘서트 상태"
+ *
+ *               # === 옵셔널 필드 (Optional Fields) ===
  *               price:
  *                 type: array
  *                 items:
@@ -97,10 +112,10 @@ if (process.env.NODE_ENV === "development") {
  *                   properties:
  *                     tier: { type: string, example: "VIP" }
  *                     amount: { type: number, example: 200000 }
- *                 description: 가격 정보 (선택사항)
+ *                 description: "[옵셔널] 가격 정보"
  *               description:
  *                 type: string
- *                 description: 콘서트 설명
+ *                 description: "[옵셔널] 콘서트 설명"
  *                 maxLength: 2000
  *                 example: "아이유의 특별한 겨울 콘서트"
  *               category:
@@ -108,7 +123,7 @@ if (process.env.NODE_ENV === "development") {
  *                 items:
  *                   type: string
  *                   enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
- *                 description: 음악 카테고리
+ *                 description: "[옵셔널] 음악 카테고리"
  *                 example: ["tour", "idol"]
  *               ticketLink:
  *                 type: array
@@ -117,38 +132,45 @@ if (process.env.NODE_ENV === "development") {
  *                   properties:
  *                     platform: { type: string, example: "인터파크" }
  *                     url: { type: string, example: "https://ticket.interpark.com/example" }
- *                 description: 티켓 예매 링크
+ *                 description: "[옵셔널] 티켓 예매 링크"
  *               ticketOpenDate:
  *                 type: string
  *                 format: date-time
- *                 description: 티켓 오픈 일시
+ *                 description: "[옵셔널] 티켓 오픈 일시"
  *                 example: "2024-05-01T10:00:00+09:00"
  *               posterImage:
  *                 type: string
  *                 format: uri
- *                 description: 포스터 이미지 URL
+ *                 description: "[옵셔널] 포스터 이미지 URL"
  *                 example: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
  *               infoImages:
  *                 type: array
  *                 items:
  *                   type: string
  *                   format: uri
- *                 description: 추가 정보 이미지 URL 배열 (기존 info에서 변경)
+ *                 description: "[옵셔널] 추가 정보 이미지 URL 배열 (기존 info에서 변경)"
  *                 example: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg"]
- *               status:
- *                 type: string
- *                 enum: ["upcoming", "ongoing", "completed", "cancelled"]
- *                 default: "upcoming"
- *                 description: 콘서트 상태
+ *               likes:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                 description: "[옵셔널] 좋아요 배열 (시스템 자동 생성)"
+ *                 readOnly: true
+ *               likesCount:
+ *                 type: number
+ *                 description: "[옵셔널] 좋아요 개수 (시스템 자동 계산)"
+ *                 readOnly: true
+ *                 example: 0
  *           examples:
  *             fullExample:
- *               summary: 완전한 콘서트 등록 예시
+ *               summary: 완전한 콘서트 등록 예시 (모든 옵셔널 필드 포함)
  *               value:
  *                 uid: "concert_1703123456789_iu2024"
  *                 title: "아이유 콘서트 2024"
  *                 artist: ["아이유", "특별 게스트"]
  *                 location: ["올림픽공원 체조경기장", "부산 BEXCO"]
  *                 datetime: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
+ *                 status: "upcoming"
  *                 price: [{"tier": "VIP", "amount": 200000}, {"tier": "R석", "amount": 150000}]
  *                 description: "아이유의 특별한 콘서트"
  *                 category: ["idol", "tour"]
@@ -156,14 +178,15 @@ if (process.env.NODE_ENV === "development") {
  *                 ticketOpenDate: "2024-05-01T10:00:00+09:00"
  *                 posterImage: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
  *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info2.jpg"]
- *                 status: "upcoming"
  *             minimalExample:
- *               summary: 최소 필수 데이터만
+ *               summary: 최소 필수 데이터만 (필수 필드만)
  *               value:
  *                 uid: "concert_1703123456789_minimal"
  *                 title: "최소 데이터 콘서트"
+ *                 artist: ["아티스트명"]
  *                 location: ["어딘가 공연장"]
  *                 datetime: ["2024-07-01T20:00:00+09:00"]
+ *                 status: "upcoming"
  *             emptyArtistExample:
  *               summary: 빈 아티스트 배열 (허용됨)
  *               value:
@@ -172,8 +195,8 @@ if (process.env.NODE_ENV === "development") {
  *                 artist: []
  *                 location: ["미정"]
  *                 datetime: ["2024-12-31T19:00:00+09:00"]
- *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/unknown/placeholder.jpg"]
  *                 status: "upcoming"
+ *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/unknown/placeholder.jpg"]
  *             multiLocationExample:
  *               summary: 여러 장소 공연 예시
  *               value:
@@ -182,8 +205,8 @@ if (process.env.NODE_ENV === "development") {
  *                 artist: ["아티스트"]
  *                 location: ["서울 올림픽공원", "부산 BEXCO", "대구 엑스코"]
  *                 datetime: ["2024-08-15T19:00:00+09:00", "2024-08-20T19:00:00+09:00", "2024-08-25T19:00:00+09:00"]
- *                 category: ["tour", "idol"]
  *                 status: "upcoming"
+ *                 category: ["tour", "idol"]
  *     responses:
  *       201:
  *         description: 콘서트 업로드 성공
@@ -200,6 +223,12 @@ if (process.env.NODE_ENV === "development") {
  *                 metadata:
  *                   type: object
  *                   properties:
+ *                     fieldInfo:
+ *                       type: object
+ *                       properties:
+ *                         requiredFieldsProvided: { type: integer, example: 6 }
+ *                         optionalFieldsProvided: { type: integer, example: 4 }
+ *                         totalFields: { type: integer, example: 10 }
  *                     imageInfo:
  *                       type: object
  *                       properties:
@@ -213,7 +242,10 @@ if (process.env.NODE_ENV === "development") {
  *                         environment: { type: string }
  *                 timestamp: { type: string, format: date-time }
  *       400:
- *         description: 잘못된 요청 데이터
+ *         description: |
+ *           잘못된 요청 데이터
+ *           - 필수 필드 누락: uid, title, artist, location, datetime, status
+ *           - 데이터 형식 오류
  *       401:
  *         description: 인증이 필요합니다 (프로덕션 환경만)
  *       409:
