@@ -66,4 +66,33 @@ export const stream = {
   },
 };
 
+export const maskIpAddress = (ip: string): string => {
+  if (!ip) return 'N/A';
+
+  // IPv4 masking (e.g., 192.168.1.100 -> 192.168.1.xxx)
+  if (ip.includes('.')) {
+    const parts = ip.split('.');
+    if (parts.length === 4) {
+      parts[3] = 'xxx';
+      return parts.join('.');
+    }
+  }
+
+  // IPv6 masking
+  if (ip.includes(':')) {
+    // Handle compressed IPv6 addresses like '::1'
+    if (ip === '::1') {
+      return '::xxxx';
+    }
+    // For other IPv6 addresses, mask the last segment
+    const parts = ip.split(':');
+    if (parts.length > 0) {
+      parts[parts.length - 1] = 'xxxx';
+    }
+    return parts.join(':');
+  }
+
+  return ip; // Return as is if not a recognized IP format
+};
+
 export default logger;

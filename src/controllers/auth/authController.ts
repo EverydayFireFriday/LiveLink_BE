@@ -1,12 +1,12 @@
 import express from "express";
 import { AuthValidator } from "../../utils/validation/auth/authValidator";
-import logger from "../../utils/logger";
+import logger, { maskIpAddress } from "../../utils/logger";
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
   login = async (req: express.Request, res: express.Response) => {
     const { email, password } = req.body;
-    const ip = req.ip;
+    const ip = req.ip ?? '';
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
@@ -49,8 +49,9 @@ export class AuthController {
       const user = await userService.findByEmail(email);
       if (!user) {
         const attempts = await bruteForceService.increment(loginKey);
+        const maskedIp = maskIpAddress(ip);
         logger.warn(
-          `[Auth] Failed login attempt #${attempts} for account: ${email} from IP: ${ip} (user not found)`
+          `[Auth] Failed login attempt #${attempts} for account: ${email} from IP: ${maskedIp} (user not found)`
         );
         return res
           .status(401)
@@ -82,8 +83,9 @@ export class AuthController {
       );
       if (!isPasswordValid) {
         const attempts = await bruteForceService.increment(loginKey);
+                const maskedIp = maskIpAddress(ip);
         logger.warn(
-          `[Auth] Failed login attempt #${attempts} for account: ${user.email} from IP: ${ip} (incorrect password)`
+          `[Auth] Failed login attempt #${attempts} for account: ${user.email} from IP: ${maskedIp} (incorrect password)`
         );
         return res
           .status(401)
