@@ -10,11 +10,11 @@
   // Swagger UI가 로드된 후 실행될 함수
   function onSwaggerUiComplete() {
     try {
-      console.log("🚀 LiveLink Swagger UI 초기화 시작");
+      console.log("🚀 Stagelives Swagger UI 초기화 시작");
       setupDarkModeToggle();
       setupAdvancedSearch();
       setupUIEnhancements();
-      console.log("✅ LiveLink Swagger UI 초기화 완료");
+      console.log("✅ Stagelives Swagger UI 초기화 완료");
     } catch (error) {
       console.error("❌ Swagger UI 커스터마이징 중 오류 발생:", error);
     }

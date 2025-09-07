@@ -11,7 +11,7 @@ export function logSwaggerInfo(swaggerSpec: SwaggerDefinition) {
       `http://localhost:${process.env.PORT || 3000}`;
 
     logger.info(`
-🎵 LiveLink API Swagger Documentation`);
+🎵 Stagelives API Swagger Documentation`);
     logger.info(`📚 발견된 API 경로: ${pathCount}개`);
     logger.info(`🌍 서버 URL: ${serverUrl}`);
 
