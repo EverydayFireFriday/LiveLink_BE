@@ -1,9 +1,10 @@
 
 import { RedisClientType } from "redis";
 import logger from "../../utils/logger";
+import { env } from "../../config/env";
 
-const MAX_ATTEMPTS = 10;
-const BLOCK_DURATION_SECONDS = 30 * 60; // 30분
+const MAX_ATTEMPTS = parseInt(env.BRUTE_FORCE_MAX_ATTEMPTS);
+const BLOCK_DURATION_SECONDS = parseInt(env.BRUTE_FORCE_BLOCK_DURATION);
 
 export class BruteForceProtectionService {
   private redisClient: RedisClientType;

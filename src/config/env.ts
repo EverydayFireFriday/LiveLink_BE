@@ -16,6 +16,16 @@ const envSchema = z.object({
     .regex(/^\d+$/, "숫자만 입력 가능합니다")
     .optional()
     .default("86400000"),
+  BRUTE_FORCE_MAX_ATTEMPTS: z
+    .string()
+    .regex(/^\d+$/, "숫자만 입력 가능합니다")
+    .optional()
+    .default("10"),
+  BRUTE_FORCE_BLOCK_DURATION: z
+    .string()
+    .regex(/^\d+$/, "숫자만 입력 가능합니다")
+    .optional()
+    .default("1800"),
 
   // 🌐 서버 환경
   NODE_ENV: z
@@ -79,6 +89,8 @@ const validateEnv = () => {
     logger.info(
       `🔐 세션 만료시간: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE) / 1000 / 60)}분`
     );
+    logger.info(`🛡️ 브루트포스 보호 - 최대 시도 횟수: ${parsed.BRUTE_FORCE_MAX_ATTEMPTS}`);
+    logger.info(`🛡️ 브루트포스 보호 - 차단 기간: ${Math.floor(parseInt(parsed.BRUTE_FORCE_BLOCK_DURATION) / 60)}분`);
 
     // 🔧 조건부 인증 설정 로그
     logger.info("\n🔧 조건부 인증 미들웨어 설정:");
