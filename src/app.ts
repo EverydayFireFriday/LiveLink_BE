@@ -74,6 +74,7 @@ app.use(
         objectSrc: ["'none'"], // 플러그인 로드 차단
         // Only upgrade in production; omit in dev to prevent local HTTP breakage
         ...(isProduction() ? { upgradeInsecureRequests: [] } : {}),
+        reportUri: isProduction() ? ['/csp-report'] : [], // Add CSP reporting endpoint
       },
     },
     strictTransportSecurity: isProduction()
@@ -338,6 +339,16 @@ app.get("/", (req: express.Request, res: express.Response) => {
 app.use("/auth", authRouter);
 app.use("/concert", concertRouter);
 app.use("/health", healthRouter); // 상세한 헬스체크용
+
+// CSP Violation Report Endpoint
+app.post('/csp-report', express.json({ type: 'application/csp-report' }), (req, res) => {
+  if (req.body) {
+    logger.warn('CSP Violation:', req.body['csp-report']);
+  } else {
+    logger.warn('CSP Violation: No report data received.');
+  }
+  res.status(204).end(); // Respond with No Content
+});
 
 // 데이터베이스 초기화 함수
 const initializeDatabases = async (): Promise<void> => {
