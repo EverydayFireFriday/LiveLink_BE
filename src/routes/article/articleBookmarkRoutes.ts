@@ -33,17 +33,12 @@ const articleBookmarkController = new ArticleBookmarkController();
  *           type: string
  *         description: 게시글 ID
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - user_id
- *             properties:
- *               user_id:
- *                 type: string # Changed to string
- *                 example: "60d5ecf0f2c3b7001c8e4d7a"
+ *             description: 세션 기반 인증으로 사용자 식별. 본문은 필요하지 않습니다.
  *     responses:
  *       201:
  *         description: 북마크 추가 성공
@@ -190,8 +185,6 @@ router.post(
  *     summary: 게시글 북마크 상태 확인
  *     description: 특정 사용자의 게시글 북마크 상태를 확인합니다.
  *     tags: [Article Bookmark]
- *     security:
- *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: articleId

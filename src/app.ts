@@ -191,10 +191,10 @@ app.use(
     saveUninitialized: false,
     rolling: true,
     cookie: {
-      secure: isProduction(), // HTTPS에서만 쿠키 전송
+      secure: isProduction() || env.COOKIE_SAMESITE === "none", // SameSite=None requires Secure
       httpOnly: true,
       maxAge: parseInt(env.SESSION_MAX_AGE),
-      sameSite: env.COOKIE_SAMESITE === "none" ? "none" : env.COOKIE_SAMESITE, // SameSite 정책 (lax, strict, none)
+      sameSite: env.COOKIE_SAMESITE, // lax | strict | none, // SameSite 정책 (lax, strict, none)
       domain: env.COOKIE_DOMAIN || undefined, // 쿠키 도메인 (설정 시 해당 도메인으로 제한)
     },
     name: "app.session.id",
@@ -313,7 +313,7 @@ app.use(
 // 기본 라우트
 app.get("/", (req: express.Request, res: express.Response) => {
   res.json({
-    message: "LiveLink API",
+    message: "Stagelives API",
     version: "1.0.0",
     environment: env.NODE_ENV,
     endpoints: {
@@ -520,7 +520,7 @@ const startServer = async (): Promise<void> => {
     const PORT = parseInt(env.PORT);
     httpServer.listen(PORT, () => {
       logger.info("🎉 ================================");
-      logger.info(`🚀 LiveLink API Server running at http://localhost:${PORT}`);
+      logger.info(`🚀 Stagelives API Server running at http://localhost:${PORT}`);
       logger.info(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
       logger.info(
         `🩺 Health Check (Liveness): http://localhost:${PORT}/health/liveness`
