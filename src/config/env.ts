@@ -71,6 +71,14 @@ const envSchema = z.object({
     .enum(["error", "warn", "info", "verbose", "debug"])
     .optional()
     .default("info"),
+
+  // 🚦 API Rate Limiting
+  API_LIMIT_DEFAULT_WINDOW_MS: z.string().regex(/^\d+$/).optional().default("60000"), // 1분
+  API_LIMIT_DEFAULT_MAX: z.string().regex(/^\d+$/).optional().default("100"),
+  API_LIMIT_STRICT_WINDOW_MS: z.string().regex(/^\d+$/).optional().default("60000"), // 1분
+  API_LIMIT_STRICT_MAX: z.string().regex(/^\d+$/).optional().default("20"),
+  API_LIMIT_RELAXED_WINDOW_MS: z.string().regex(/^\d+$/).optional().default("60000"), // 1분
+  API_LIMIT_RELAXED_MAX: z.string().regex(/^\d+$/).optional().default("200"),
 });
 
 // 🔍 환경변수 검증 및 파싱 (즉시 실행)
