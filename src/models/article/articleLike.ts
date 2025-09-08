@@ -1,6 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
-
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface IArticleLike {
   _id: ObjectId;
@@ -16,7 +15,7 @@ export class ArticleLikeModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<IArticleLike>("article_likes");
+    this.collection = db.collection<IArticleLike>('article_likes');
     // 생성자에서 인덱스 생성하지 않음
   }
 
@@ -27,9 +26,9 @@ export class ArticleLikeModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ ArticleLike indexes created successfully");
+      logger.info('✅ ArticleLike indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create ArticleLike indexes:", error);
+      logger.error('❌ Failed to create ArticleLike indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -42,7 +41,7 @@ export class ArticleLikeModel {
 
   private async createIndexes() {
     try {
-      logger.info("ArticleLike 인덱스 생성 시작...");
+      logger.info('ArticleLike 인덱스 생성 시작...');
 
       // 개별 인덱스 생성으로 타입 에러 방지
 
@@ -50,16 +49,16 @@ export class ArticleLikeModel {
       try {
         await this.collection.createIndex(
           { article_id: 1, user_id: 1 },
-          { unique: true, name: "article_like_unique" }
+          { unique: true, name: 'article_like_unique' },
         );
-        logger.info("✅ article_like_unique 인덱스 생성");
+        logger.info('✅ article_like_unique 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
-          logger.info("ℹ️ article_like_unique 인덱스가 이미 존재함 (스킵)");
+          logger.info('ℹ️ article_like_unique 인덱스가 이미 존재함 (스킵)');
         } else {
           logger.warn(
-            "⚠️ article_like_unique 인덱스 생성 실패:",
-            error.message
+            '⚠️ article_like_unique 인덱스 생성 실패:',
+            error.message,
           );
         }
       }
@@ -68,18 +67,18 @@ export class ArticleLikeModel {
       try {
         await this.collection.createIndex(
           { article_id: 1, created_at: -1 },
-          { name: "article_like_article_idx" }
+          { name: 'article_like_article_idx' },
         );
-        logger.info("✅ article_like_article_idx 인덱스 생성");
+        logger.info('✅ article_like_article_idx 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
           logger.info(
-            "ℹ️ article_like_article_idx 인덱스가 이미 존재함 (스킵)"
+            'ℹ️ article_like_article_idx 인덱스가 이미 존재함 (스킵)',
           );
         } else {
           logger.warn(
-            "⚠️ article_like_article_idx 인덱스 생성 실패:",
-            error.message
+            '⚠️ article_like_article_idx 인덱스 생성 실패:',
+            error.message,
           );
         }
       }
@@ -88,24 +87,24 @@ export class ArticleLikeModel {
       try {
         await this.collection.createIndex(
           { user_id: 1, created_at: -1 },
-          { name: "article_like_user_idx" }
+          { name: 'article_like_user_idx' },
         );
-        logger.info("✅ article_like_user_idx 인덱스 생성");
+        logger.info('✅ article_like_user_idx 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
-          logger.info("ℹ️ article_like_user_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info('ℹ️ article_like_user_idx 인덱스가 이미 존재함 (스킵)');
         } else {
           logger.warn(
-            "⚠️ article_like_user_idx 인덱스 생성 실패:",
-            error.message
+            '⚠️ article_like_user_idx 인덱스 생성 실패:',
+            error.message,
           );
         }
       }
 
-      logger.info("✅ ArticleLike 인덱스 생성 완료");
+      logger.info('✅ ArticleLike 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ ArticleLike 인덱스 생성 중 오류:", error);
-      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.error('❌ ArticleLike 인덱스 생성 중 오류:', error);
+      logger.info('⚠️ 인덱스 없이 계속 진행합니다...');
     }
   }
 
@@ -113,7 +112,7 @@ export class ArticleLikeModel {
   async create(articleId: string, userId: string): Promise<IArticleLike> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || !ObjectId.isValid(userId)) {
-        throw new Error("유효하지 않은 ID입니다.");
+        throw new Error('유효하지 않은 ID입니다.');
       }
 
       const articleObjectId = new ObjectId(articleId);
@@ -126,7 +125,7 @@ export class ArticleLikeModel {
       });
 
       if (existingLike) {
-        throw new Error("이미 좋아요한 게시글입니다.");
+        throw new Error('이미 좋아요한 게시글입니다.');
       }
 
       const like: IArticleLike = {
@@ -138,7 +137,7 @@ export class ArticleLikeModel {
 
       const result = await this.collection.insertOne(like);
       if (!result.insertedId) {
-        throw new Error("좋아요 추가에 실패했습니다.");
+        throw new Error('좋아요 추가에 실패했습니다.');
       }
 
       return like;
@@ -148,7 +147,7 @@ export class ArticleLikeModel {
   // 좋아요 삭제
   async delete(
     articleId: string,
-    userId: string
+    userId: string,
   ): Promise<IArticleLike | null> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || !ObjectId.isValid(userId)) {
@@ -195,7 +194,7 @@ export class ArticleLikeModel {
 
   // 여러 게시글의 좋아요 수를 한 번에 조회 (N+1 해결)
   async countByArticleIds(
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, number>> {
     return this.withIndexes(async () => {
       if (articleIds.length === 0) return {};
@@ -215,7 +214,7 @@ export class ArticleLikeModel {
           },
           {
             $group: {
-              _id: "$article_id",
+              _id: '$article_id',
               count: { $sum: 1 },
             },
           },
@@ -242,7 +241,7 @@ export class ArticleLikeModel {
   // 여러 게시글에 대한 특정 사용자의 좋아요 상태 확인 (배치)
   async checkLikeStatusForArticles(
     userId: string,
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, boolean>> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId) || articleIds.length === 0) return {};
@@ -297,7 +296,7 @@ export class ArticleLikeModel {
           },
           {
             $group: {
-              _id: "$user_id",
+              _id: '$user_id',
               count: { $sum: 1 },
             },
           },
@@ -327,7 +326,7 @@ export class ArticleLikeModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ articleIds: string[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId)) {
@@ -358,7 +357,7 @@ export class ArticleLikeModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ userIds: string[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId)) {
@@ -386,7 +385,7 @@ export class ArticleLikeModel {
   // 여러 게시글의 좋아요 상태 일괄 조회
   async findLikeStatusBatch(
     articleIds: string[],
-    userId: string
+    userId: string,
   ): Promise<Map<string, boolean>> {
     return this.withIndexes(async () => {
       const likeStatusMap = new Map<string, boolean>();
@@ -432,7 +431,7 @@ export class ArticleLikeModel {
       page?: number;
       limit?: number;
       days?: number;
-    } = {}
+    } = {},
   ): Promise<{
     articles: Array<{ article_id: string; likeCount: number }>;
     total: number;
@@ -453,9 +452,9 @@ export class ArticleLikeModel {
         },
         {
           $group: {
-            _id: "$article_id",
+            _id: '$article_id',
             likeCount: { $sum: 1 },
-            latestLike: { $max: "$created_at" },
+            latestLike: { $max: '$created_at' },
           },
         },
         {
@@ -467,7 +466,7 @@ export class ArticleLikeModel {
         {
           $facet: {
             data: [{ $skip: skip }, { $limit: limit }],
-            totalCount: [{ $count: "count" }],
+            totalCount: [{ $count: 'count' }],
           },
         },
       ];
@@ -558,7 +557,7 @@ export const initializeArticleLikeModel = (db: Db): ArticleLikeModel => {
 
 export const getArticleLikeModel = (): ArticleLikeModel => {
   if (!articleLikeModel) {
-    throw new Error("ArticleLike 모델이 초기화되지 않았습니다.");
+    throw new Error('ArticleLike 모델이 초기화되지 않았습니다.');
   }
   return articleLikeModel;
 };

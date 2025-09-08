@@ -1,6 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
-
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 // Article 인터페이스
 export interface IArticle {
@@ -25,7 +24,7 @@ export class ArticleModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<IArticle>("articles");
+    this.collection = db.collection<IArticle>('articles');
     // 🚀 생성자에서 인덱스 생성하지 않음
   }
 
@@ -36,9 +35,9 @@ export class ArticleModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ Article indexes created successfully");
+      logger.info('✅ Article indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create Article indexes:", error);
+      logger.error('❌ Failed to create Article indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -51,30 +50,30 @@ export class ArticleModel {
 
   private async createIndexes() {
     try {
-      logger.info("Article 인덱스 생성 시작...");
+      logger.info('Article 인덱스 생성 시작...');
 
       // 1. 기존 텍스트 인덱스 확인 및 삭제
       try {
         const existingIndexes = await this.collection.listIndexes().toArray();
         const textIndex = existingIndexes.find(
           (index) =>
-            index.key && typeof index.key === "object" && "_fts" in index.key
+            index.key && typeof index.key === 'object' && '_fts' in index.key,
         );
 
         if (textIndex) {
           logger.info(
-            `🔄 기존 텍스트 인덱스 발견: ${textIndex.name}, 삭제 중...`
+            `🔄 기존 텍스트 인덱스 발견: ${textIndex.name}, 삭제 중...`,
           );
           await this.collection.dropIndex(textIndex.name);
-          logger.info("✅ 기존 텍스트 인덱스 삭제 완료");
+          logger.info('✅ 기존 텍스트 인덱스 삭제 완료');
         }
       } catch (error) {
-        logger.info("ℹ️ 기존 텍스트 인덱스 없음 또는 삭제 불가 (정상)");
+        logger.info('ℹ️ 기존 텍스트 인덱스 없음 또는 삭제 불가 (정상)');
       }
 
       // 2. 새 텍스트 검색 인덱스 생성
-      await this.collection.createIndex({ title: "text", content_url: "text" });
-      logger.info("✅ 텍스트 검색 인덱스 생성");
+      await this.collection.createIndex({ title: 'text', content_url: 'text' });
+      logger.info('✅ 텍스트 검색 인덱스 생성');
 
       // 3. 조회 최적화 인덱스들 생성 (개별 생성으로 타입 에러 방지)
 
@@ -82,16 +81,16 @@ export class ArticleModel {
       try {
         await this.collection.createIndex(
           { is_published: 1, published_at: -1 },
-          { name: "published_status_idx" }
+          { name: 'published_status_idx' },
         );
-        logger.info("✅ published_status_idx 인덱스 생성");
+        logger.info('✅ published_status_idx 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
-          logger.info("ℹ️ published_status_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info('ℹ️ published_status_idx 인덱스가 이미 존재함 (스킵)');
         } else {
           logger.warn(
-            "⚠️ published_status_idx 인덱스 생성 실패:",
-            error.message
+            '⚠️ published_status_idx 인덱스 생성 실패:',
+            error.message,
           );
         }
       }
@@ -100,17 +99,14 @@ export class ArticleModel {
       try {
         await this.collection.createIndex(
           { author_id: 1, created_at: -1 },
-          { name: "author_created_idx" }
+          { name: 'author_created_idx' },
         );
-        logger.info("✅ author_created_idx 인덱스 생성");
+        logger.info('✅ author_created_idx 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
-          logger.info("ℹ️ author_created_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info('ℹ️ author_created_idx 인덱스가 이미 존재함 (스킵)');
         } else {
-          logger.warn(
-            "⚠️ author_created_idx 인덱스 생성 실패:",
-            error.message
-          );
+          logger.warn('⚠️ author_created_idx 인덱스 생성 실패:', error.message);
         }
       }
 
@@ -118,25 +114,25 @@ export class ArticleModel {
       try {
         await this.collection.createIndex(
           { category_id: 1, created_at: -1 },
-          { name: "category_created_idx" }
+          { name: 'category_created_idx' },
         );
-        logger.info("✅ category_created_idx 인덱스 생성");
+        logger.info('✅ category_created_idx 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
-          logger.info("ℹ️ category_created_idx 인덱스가 이미 존재함 (스킵)");
+          logger.info('ℹ️ category_created_idx 인덱스가 이미 존재함 (스킵)');
         } else {
           logger.warn(
-            "⚠️ category_created_idx 인덱스 생성 실패:",
-            error.message
+            '⚠️ category_created_idx 인덱스 생성 실패:',
+            error.message,
           );
         }
       }
 
-      logger.info("🎉 Article 인덱스 생성 완료");
+      logger.info('🎉 Article 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ 인덱스 생성 중 오류:", error);
+      logger.error('❌ 인덱스 생성 중 오류:', error);
       // 인덱스 생성 실패해도 애플리케이션은 계속 실행
-      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.info('⚠️ 인덱스 없이 계속 진행합니다...');
     }
   }
 
@@ -144,8 +140,8 @@ export class ArticleModel {
   async create(
     articleData: Omit<
       IArticle,
-      "_id" | "created_at" | "updated_at" | "views" | "likes_count"
-    >
+      '_id' | 'created_at' | 'updated_at' | 'views' | 'likes_count'
+    >,
   ): Promise<IArticle> {
     return this.withIndexes(async () => {
       const now = new Date();
@@ -160,7 +156,7 @@ export class ArticleModel {
 
       const result = await this.collection.insertOne(article);
       if (!result.insertedId) {
-        throw new Error("게시글 생성에 실패했습니다.");
+        throw new Error('게시글 생성에 실패했습니다.');
       }
 
       return article;
@@ -191,7 +187,7 @@ export class ArticleModel {
         .toArray();
 
       const articlesMap = new Map(
-        articles.map((article) => [article._id.toString(), article])
+        articles.map((article) => [article._id.toString(), article]),
       );
       return validIds
         .map((id) => articlesMap.get(id))
@@ -205,7 +201,7 @@ export class ArticleModel {
       page?: number;
       limit?: number;
       sort?: any;
-    } = {}
+    } = {},
   ): Promise<{ articles: IArticle[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, sort = { created_at: -1 } } = options;
@@ -230,7 +226,7 @@ export class ArticleModel {
       page?: number;
       limit?: number;
       category_id?: string;
-    } = {}
+    } = {},
   ): Promise<{ articles: IArticle[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, category_id } = options;
@@ -257,7 +253,7 @@ export class ArticleModel {
 
   async updateById(
     id: string,
-    updateData: Partial<IArticle>
+    updateData: Partial<IArticle>,
   ): Promise<IArticle | null> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(id)) {
@@ -273,7 +269,7 @@ export class ArticleModel {
 
       if (
         updateData.category_id &&
-        typeof updateData.category_id === "string"
+        typeof updateData.category_id === 'string'
       ) {
         updateData.category_id = new ObjectId(updateData.category_id);
       }
@@ -281,7 +277,7 @@ export class ArticleModel {
       const result = await this.collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: updateData },
-        { returnDocument: "after" }
+        { returnDocument: 'after' },
       );
 
       return result || null;
@@ -309,7 +305,7 @@ export class ArticleModel {
 
       await this.collection.updateOne(
         { _id: new ObjectId(id) },
-        { $inc: { views: 1 }, $set: { updated_at: new Date() } }
+        { $inc: { views: 1 }, $set: { updated_at: new Date() } },
       );
     });
   }
@@ -325,7 +321,7 @@ export class ArticleModel {
         {
           $inc: { likes_count: increment },
           $set: { updated_at: new Date() },
-        }
+        },
       );
     });
   }
@@ -336,7 +332,7 @@ export class ArticleModel {
       page?: number;
       limit?: number;
       includeUnpublished?: boolean;
-    } = {}
+    } = {},
   ): Promise<{ articles: IArticle[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(authorId)) {
@@ -371,7 +367,7 @@ export class ArticleModel {
       page?: number;
       limit?: number;
       publishedOnly?: boolean;
-    } = {}
+    } = {},
   ): Promise<{ articles: IArticle[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, publishedOnly = true } = options;
@@ -384,8 +380,8 @@ export class ArticleModel {
 
       const [articles, total] = await Promise.all([
         this.collection
-          .find(filter, { projection: { score: { $meta: "textScore" } } })
-          .sort({ score: { $meta: "textScore" } })
+          .find(filter, { projection: { score: { $meta: 'textScore' } } })
+          .sort({ score: { $meta: 'textScore' } })
           .skip(skip)
           .limit(limit)
           .toArray(),
@@ -401,7 +397,7 @@ export class ArticleModel {
       page?: number;
       limit?: number;
       days?: number;
-    } = {}
+    } = {},
   ): Promise<{ articles: IArticle[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, days = 7 } = options;
@@ -434,7 +430,7 @@ export class ArticleModel {
   }
 
   async updateStatsForArticles(
-    statsUpdates: { id: string; likes_count: number }[]
+    statsUpdates: { id: string; likes_count: number }[],
   ): Promise<void> {
     return this.withIndexes(async () => {
       if (statsUpdates.length === 0) return;
@@ -468,7 +464,7 @@ export const initializeArticleModel = (db: Db): ArticleModel => {
 // Article 모델 인스턴스 가져오기
 export const getArticleModel = (): ArticleModel => {
   if (!articleModel) {
-    throw new Error("Article 모델이 초기화되지 않았습니다.");
+    throw new Error('Article 모델이 초기화되지 않았습니다.');
   }
   return articleModel;
 };

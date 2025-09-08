@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import passport from 'passport';
-import { env } from '../../config/env';
+import { env } from '../../config/env/env';
 
 const router = Router();
 
@@ -72,7 +72,7 @@ const router = Router();
  */
 router.get(
   '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+  passport.authenticate('google', { scope: ['profile', 'email'] }),
 );
 
 router.get(
@@ -84,7 +84,7 @@ router.get(
   (req, res) => {
     // 인증 성공 시, 프론트엔드 홈으로 리디렉션
     res.redirect(env.FRONTEND_URL);
-  }
+  },
 );
 
 export default router;

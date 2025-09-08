@@ -1,8 +1,8 @@
 import { PassportStatic } from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
-import { UserModel, User } from '../models/auth/user';
-import logger from '../utils/logger';
+import { UserModel, User } from '../../models/auth/user';
+import logger from '../../utils/logger/logger';
 
 export const configurePassport = (passport: PassportStatic) => {
   const userModel = new UserModel();
@@ -37,7 +37,10 @@ export const configurePassport = (passport: PassportStatic) => {
             const provider = 'google';
 
             // 1. 소셜 ID로 기존 사용자 찾기
-            let user = await userModel.findByProviderAndSocialId(provider, socialId);
+            let user = await userModel.findByProviderAndSocialId(
+              provider,
+              socialId,
+            );
 
             if (user) {
               return done(null, user);
@@ -52,7 +55,10 @@ export const configurePassport = (passport: PassportStatic) => {
                 // 소셜 정보 업데이트 후 반환
                 user.provider = provider;
                 user.socialId = socialId;
-                const updatedUser = await userModel.updateUser(user._id!, { provider, socialId });
+                const updatedUser = await userModel.updateUser(user._id!, {
+                  provider,
+                  socialId,
+                });
                 if (!updatedUser) {
                   return done(new Error('Failed to link Google account.'));
                 }
@@ -70,23 +76,26 @@ export const configurePassport = (passport: PassportStatic) => {
             };
 
             // username 중복 체크
-            const existingUser = await userModel.findByUsername(newUser.username!);
+            const existingUser = await userModel.findByUsername(
+              newUser.username!,
+            );
             if (existingUser) {
               newUser.username = `${newUser.username}_${Date.now()}`;
             }
 
             const createdUser = await userModel.createUser(newUser as any);
             return done(null, createdUser);
-
           } catch (error) {
             logger.error('Error in Google OAuth strategy:', error);
             return done(error as Error);
           }
-        }
-      )
+        },
+      ),
     );
   } else {
-    logger.warn('Google OAuth is not configured. Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET.');
+    logger.warn(
+      'Google OAuth is not configured. Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET.',
+    );
   }
 
   // Apple OAuth 2.0 전략 설정
@@ -112,7 +121,10 @@ export const configurePassport = (passport: PassportStatic) => {
             const provider = 'apple';
 
             // 1. 소셜 ID로 기존 사용자 찾기
-            let user = await userModel.findByProviderAndSocialId(provider, socialId);
+            let user = await userModel.findByProviderAndSocialId(
+              provider,
+              socialId,
+            );
 
             if (user) {
               return done(null, user);
@@ -126,7 +138,10 @@ export const configurePassport = (passport: PassportStatic) => {
                 // 소셜 정보 업데이트 후 반환
                 user.provider = provider;
                 user.socialId = socialId;
-                const updatedUser = await userModel.updateUser(user._id!, { provider, socialId });
+                const updatedUser = await userModel.updateUser(user._id!, {
+                  provider,
+                  socialId,
+                });
                 if (!updatedUser) {
                   return done(new Error('Failed to link Apple account.'));
                 }
@@ -137,28 +152,33 @@ export const configurePassport = (passport: PassportStatic) => {
             // 3. 신규 사용자 생성
             const newUser: Partial<User> = {
               email: profile.email,
-              username: profile.name ? `${profile.name.firstName}${profile.name.lastName}` : `${provider}_${socialId}`,
+              username: profile.name
+                ? `${profile.name.firstName}${profile.name.lastName}`
+                : `${provider}_${socialId}`,
               provider,
               socialId,
             };
 
             // username 중복 체크
-            const existingUser = await userModel.findByUsername(newUser.username!);
+            const existingUser = await userModel.findByUsername(
+              newUser.username!,
+            );
             if (existingUser) {
               newUser.username = `${newUser.username}_${Date.now()}`;
             }
 
             const createdUser = await userModel.createUser(newUser as any);
             return done(null, createdUser);
-
           } catch (error) {
             logger.error('Error in Apple OAuth strategy:', error);
             return done(error as Error);
           }
-        }
-      )
+        },
+      ),
     );
   } else {
-    logger.warn('Apple OAuth is not configured. Missing required environment variables.');
+    logger.warn(
+      'Apple OAuth is not configured. Missing required environment variables.',
+    );
   }
 };

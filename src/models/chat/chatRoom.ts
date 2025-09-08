@@ -1,6 +1,6 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { getDatabase } from '../auth/user';
-import logger from "../../utils/logger";
+import logger from '../../utils/logger/logger';
 
 export interface ChatRoom {
   _id?: ObjectId;
@@ -34,7 +34,12 @@ export class ChatRoomModel {
     }
   }
 
-  async createChatRoom(roomData: Omit<ChatRoom, '_id' | 'createdAt' | 'updatedAt' | 'lastActivity' | 'messageCount'>): Promise<ChatRoom> {
+  async createChatRoom(
+    roomData: Omit<
+      ChatRoom,
+      '_id' | 'createdAt' | 'updatedAt' | 'lastActivity' | 'messageCount'
+    >,
+  ): Promise<ChatRoom> {
     const now = new Date();
     const chatRoom: Omit<ChatRoom, '_id'> = {
       ...roomData,
@@ -64,33 +69,43 @@ export class ChatRoomModel {
       .toArray();
   }
 
-  async addParticipant(roomId: string | ObjectId, userId: string | ObjectId): Promise<ChatRoom | null> {
-    const roomObjectId = typeof roomId === 'string' ? new ObjectId(roomId) : roomId;
-    const userObjectId = typeof userId === 'string' ? new ObjectId(userId) : userId;
+  async addParticipant(
+    roomId: string | ObjectId,
+    userId: string | ObjectId,
+  ): Promise<ChatRoom | null> {
+    const roomObjectId =
+      typeof roomId === 'string' ? new ObjectId(roomId) : roomId;
+    const userObjectId =
+      typeof userId === 'string' ? new ObjectId(userId) : userId;
 
     const result = await this.chatRoomCollection.findOneAndUpdate(
       { _id: roomObjectId },
-      { 
+      {
         $addToSet: { participants: userObjectId },
-        $set: { updatedAt: new Date() }
+        $set: { updatedAt: new Date() },
       },
-      { returnDocument: 'after' }
+      { returnDocument: 'after' },
     );
 
     return result || null;
   }
 
-  async removeParticipant(roomId: string | ObjectId, userId: string | ObjectId): Promise<ChatRoom | null> {
-    const roomObjectId = typeof roomId === 'string' ? new ObjectId(roomId) : roomId;
-    const userObjectId = typeof userId === 'string' ? new ObjectId(userId) : userId;
+  async removeParticipant(
+    roomId: string | ObjectId,
+    userId: string | ObjectId,
+  ): Promise<ChatRoom | null> {
+    const roomObjectId =
+      typeof roomId === 'string' ? new ObjectId(roomId) : roomId;
+    const userObjectId =
+      typeof userId === 'string' ? new ObjectId(userId) : userId;
 
     const result = await this.chatRoomCollection.findOneAndUpdate(
       { _id: roomObjectId },
-      { 
+      {
         $pull: { participants: userObjectId },
-        $set: { updatedAt: new Date() }
+        $set: { updatedAt: new Date() },
       },
-      { returnDocument: 'after' }
+      { returnDocument: 'after' },
     );
 
     return result || null;
@@ -100,10 +115,10 @@ export class ChatRoomModel {
     const objectId = typeof roomId === 'string' ? new ObjectId(roomId) : roomId;
     await this.chatRoomCollection.updateOne(
       { _id: objectId },
-      { 
+      {
         $set: { lastActivity: new Date() },
-        $inc: { messageCount: 1 }
-      }
+        $inc: { messageCount: 1 },
+      },
     );
   }
 
@@ -113,7 +128,10 @@ export class ChatRoomModel {
     return result.deletedCount > 0;
   }
 
-  async findPublicRooms(limit: number = 20, skip: number = 0): Promise<ChatRoom[]> {
+  async findPublicRooms(
+    limit: number = 20,
+    skip: number = 0,
+  ): Promise<ChatRoom[]> {
     return await this.chatRoomCollection
       .find({ isPrivate: false })
       .sort({ lastActivity: -1 })
@@ -122,15 +140,15 @@ export class ChatRoomModel {
       .toArray();
   }
 
-  async searchRooms(searchTerm: string, limit: number = 20): Promise<ChatRoom[]> {
+  async searchRooms(
+    searchTerm: string,
+    limit: number = 20,
+  ): Promise<ChatRoom[]> {
     const regex = new RegExp(searchTerm, 'i');
     return await this.chatRoomCollection
       .find({
         isPrivate: false,
-        $or: [
-          { name: { $regex: regex } },
-          { description: { $regex: regex } }
-        ]
+        $or: [{ name: { $regex: regex } }, { description: { $regex: regex } }],
       })
       .limit(limit)
       .sort({ lastActivity: -1 })

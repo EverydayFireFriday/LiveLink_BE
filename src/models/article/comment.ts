@@ -1,5 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface IComment {
   _id: ObjectId;
@@ -19,7 +19,7 @@ export class CommentModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<IComment>("comments");
+    this.collection = db.collection<IComment>('comments');
     // 🚀 생성자에서 인덱스 생성하지 않음
   }
 
@@ -30,9 +30,9 @@ export class CommentModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ Comment indexes created successfully");
+      logger.info('✅ Comment indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create Comment indexes:", error);
+      logger.error('❌ Failed to create Comment indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -45,16 +45,16 @@ export class CommentModel {
 
   private async createIndexes() {
     try {
-      logger.info("Comment 인덱스 생성 시작...");
+      logger.info('Comment 인덱스 생성 시작...');
 
       // 조회 최적화 인덱스
       await this.collection.createIndex({ article_id: 1, created_at: -1 });
       await this.collection.createIndex({ parent_id: 1, created_at: 1 });
       await this.collection.createIndex({ author_id: 1, created_at: -1 });
 
-      logger.info("✅ Comment 인덱스 생성 완료");
+      logger.info('✅ Comment 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ Comment 인덱스 생성 중 오류:", error);
+      logger.error('❌ Comment 인덱스 생성 중 오류:', error);
     }
   }
 
@@ -62,20 +62,20 @@ export class CommentModel {
   async create(
     commentData: Omit<
       IComment,
-      "_id" | "created_at" | "updated_at" | "likes_count"
-    >
+      '_id' | 'created_at' | 'updated_at' | 'likes_count'
+    >,
   ): Promise<IComment> {
     return this.withIndexes(async () => {
       if (
         !ObjectId.isValid(commentData.article_id) ||
         !ObjectId.isValid(commentData.author_id)
       ) {
-        throw new Error("유효하지 않은 ID입니다.");
+        throw new Error('유효하지 않은 ID입니다.');
       }
 
       // parent_id가 제공된 경우 유효성 검사
       if (commentData.parent_id && !ObjectId.isValid(commentData.parent_id)) {
-        throw new Error("유효하지 않은 부모 댓글 ID입니다.");
+        throw new Error('유효하지 않은 부모 댓글 ID입니다.');
       }
 
       const now = new Date();
@@ -94,7 +94,7 @@ export class CommentModel {
 
       const result = await this.collection.insertOne(comment);
       if (!result.insertedId) {
-        throw new Error("댓글 생성에 실패했습니다.");
+        throw new Error('댓글 생성에 실패했습니다.');
       }
 
       return comment;
@@ -117,7 +117,7 @@ export class CommentModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ comments: IComment[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId)) {
@@ -154,7 +154,7 @@ export class CommentModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ comments: IComment[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(parentId)) {
@@ -207,7 +207,7 @@ export class CommentModel {
             updated_at: new Date(),
           },
         },
-        { returnDocument: "after" }
+        { returnDocument: 'after' },
       );
 
       return result || null;
@@ -244,7 +244,7 @@ export class CommentModel {
         {
           $inc: { likes_count: increment },
           $set: { updated_at: new Date() },
-        }
+        },
       );
     });
   }
@@ -255,7 +255,7 @@ export class CommentModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ comments: IComment[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(authorId)) {
@@ -294,7 +294,7 @@ export class CommentModel {
 
   // 여러 게시글의 댓글 수를 배치로 조회 (N+1 해결)
   async countByArticleIds(
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, number>> {
     return this.withIndexes(async () => {
       if (articleIds.length === 0) return {};
@@ -313,7 +313,7 @@ export class CommentModel {
           },
           {
             $group: {
-              _id: "$article_id",
+              _id: '$article_id',
               count: { $sum: 1 },
             },
           },
@@ -373,7 +373,7 @@ export class CommentModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{
     comments: (IComment & { replies?: IComment[] })[];
     total: number;
@@ -388,7 +388,7 @@ export class CommentModel {
       // 최상위 댓글 조회
       const { comments: parentComments, total } = await this.findByArticle(
         articleId,
-        { page, limit }
+        { page, limit },
       );
 
       if (parentComments.length === 0) {
@@ -399,10 +399,10 @@ export class CommentModel {
       const commentsWithReplies = await Promise.all(
         parentComments.map(async (comment) => {
           const { comments: replies } = await this.findReplies(
-            comment._id.toString()
+            comment._id.toString(),
           );
           return { ...comment, replies };
-        })
+        }),
       );
 
       return { comments: commentsWithReplies, total };
@@ -416,7 +416,7 @@ export class CommentModel {
       page?: number;
       limit?: number;
       days?: number;
-    } = {}
+    } = {},
   ): Promise<{ comments: IComment[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId)) {
@@ -459,7 +459,7 @@ export class CommentModel {
       limit?: number;
       days?: number;
       minLikes?: number;
-    } = {}
+    } = {},
   ): Promise<{ comments: IComment[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, days = 7, minLikes = 1 } = options;
@@ -493,7 +493,7 @@ export class CommentModel {
 
   // 여러 댓글의 좋아요 수를 배치로 업데이트 (동기화용)
   async updateLikesCountForComments(
-    updates: { id: string; likes_count: number }[]
+    updates: { id: string; likes_count: number }[],
   ): Promise<void> {
     return this.withIndexes(async () => {
       if (updates.length === 0) return;
@@ -517,7 +517,7 @@ export class CommentModel {
   // 사용자의 댓글 활동 통계
   async getUserCommentActivity(
     userId: string,
-    days: number = 30
+    days: number = 30,
   ): Promise<{
     totalComments: number;
     recentComments: number;
@@ -547,10 +547,10 @@ export class CommentModel {
           $group: {
             _id: null,
             totalComments: { $sum: 1 },
-            totalLikesReceived: { $sum: "$likes_count" },
+            totalLikesReceived: { $sum: '$likes_count' },
             recentComments: {
               $sum: {
-                $cond: [{ $gte: ["$created_at", dateThreshold] }, 1, 0],
+                $cond: [{ $gte: ['$created_at', dateThreshold] }, 1, 0],
               },
             },
           },
@@ -593,7 +593,7 @@ export const initializeCommentModel = (db: Db): CommentModel => {
 
 export const getCommentModel = (): CommentModel => {
   if (!commentModel) {
-    throw new Error("Comment 모델이 초기화되지 않았습니다.");
+    throw new Error('Comment 모델이 초기화되지 않았습니다.');
   }
   return commentModel;
 };

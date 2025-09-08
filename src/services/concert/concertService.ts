@@ -1,13 +1,13 @@
-import { ObjectId } from "mongodb";
-import { getConcertModel } from "../../models/concert/concert";
-import logger from "../../utils/logger";
+import { ObjectId } from 'mongodb';
+import { getConcertModel } from '../../models/concert/concert';
+import logger from '../../utils/logger/logger';
 
 import {
   validateConcertData,
   validateConcertUpdateData,
   generateObjectIdFromUid,
   isValidImageUrl,
-} from "../../utils/validation/concert/concertValidation";
+} from '../../utils/validation/concert/concertValidation';
 
 export interface CreateConcertRequest {
   uid: string;
@@ -22,7 +22,6 @@ export interface CreateConcertRequest {
   ticketOpenDate?: string;
   posterImage?: string;
   infoImages?: string[]; // info -> infoImages로 변경
-  
 }
 
 export interface ConcertServiceResponse {
@@ -33,16 +32,14 @@ export interface ConcertServiceResponse {
 }
 
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
-import type {
-  IConcert
-} from "../../models/concert/concert";
+import type { IConcert } from '../../models/concert/concert';
 
 export class ConcertService {
   /**
    * 새 콘서트 생성
    */
   static async createConcert(
-    concertData: CreateConcertRequest
+    concertData: CreateConcertRequest,
   ): Promise<ConcertServiceResponse> {
     try {
       // 1. 데이터 유효성 검증
@@ -62,7 +59,7 @@ export class ConcertService {
       if (existingConcert) {
         return {
           success: false,
-          error: "이미 존재하는 콘서트 UID입니다.",
+          error: '이미 존재하는 콘서트 UID입니다.',
           statusCode: 409, // Conflict
         };
       }
@@ -74,7 +71,7 @@ export class ConcertService {
       ) {
         return {
           success: false,
-          error: "올바르지 않은 포스터 이미지 URL입니다.",
+          error: '올바르지 않은 포스터 이미지 URL입니다.',
           statusCode: 400,
         };
       }
@@ -85,7 +82,7 @@ export class ConcertService {
           if (!isValidImageUrl(imageUrl)) {
             return {
               success: false,
-              error: "올바르지 않은 정보 이미지 URL입니다.",
+              error: '올바르지 않은 정보 이미지 URL입니다.',
               statusCode: 400,
             };
           }
@@ -107,7 +104,7 @@ export class ConcertService {
       }
 
       // 6. 데이터 정규화 및 준비 - Model의 Concert 타입 사용
-      const processedData: Omit<IConcert, "createdAt" | "updatedAt"> = {
+      const processedData: Omit<IConcert, 'createdAt' | 'updatedAt'> = {
         _id: mongoId,
         uid: concertData.uid,
         title: concertData.title,
@@ -127,7 +124,7 @@ export class ConcertService {
           : concertData.price
             ? [concertData.price]
             : [],
-        description: concertData.description || "",
+        description: concertData.description || '',
         category: Array.isArray(concertData.category)
           ? concertData.category
           : concertData.category
@@ -141,10 +138,10 @@ export class ConcertService {
         ticketOpenDate: concertData.ticketOpenDate
           ? new Date(concertData.ticketOpenDate)
           : undefined,
-        posterImage: concertData.posterImage || "",
+        posterImage: concertData.posterImage || '',
         infoImages: concertData.infoImages || [], // info -> infoImages로 변경
-        
-        status: "upcoming",
+
+        status: 'upcoming',
         likes: [],
         likesCount: 0,
       };
@@ -167,7 +164,7 @@ export class ConcertService {
           ticketOpenDate: processedData.ticketOpenDate,
           posterImage: processedData.posterImage,
           infoImages: processedData.infoImages, // info -> infoImages로 변경
-          
+
           status: processedData.status,
           likesCount: 0,
           createdAt: newConcert.createdAt,
@@ -176,10 +173,10 @@ export class ConcertService {
         statusCode: 201,
       };
     } catch (error) {
-      logger.error("콘서트 생성 서비스 에러:", error);
+      logger.error('콘서트 생성 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "콘서트 생성 실패",
+        error: error instanceof Error ? error.message : '콘서트 생성 실패',
         statusCode: 500,
       };
     }
@@ -190,7 +187,7 @@ export class ConcertService {
    */
   static async getConcert(
     id: string,
-    userId?: string
+    userId?: string,
   ): Promise<ConcertServiceResponse> {
     try {
       const ConcertModel = getConcertModel();
@@ -199,7 +196,7 @@ export class ConcertService {
       if (!concert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -219,7 +216,7 @@ export class ConcertService {
             });
           }
         } catch (error) {
-          logger.warn("좋아요 상태 확인 에러:", error);
+          logger.warn('좋아요 상태 확인 에러:', error);
         }
       }
 
@@ -232,10 +229,10 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("콘서트 조회 서비스 에러:", error);
+      logger.error('콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "콘서트 조회 실패",
+        error: '콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -254,7 +251,7 @@ export class ConcertService {
       status?: string;
       sortBy?: string;
     },
-    userId?: string // 사용자 ID 추가
+    userId?: string, // 사용자 ID 추가
   ): Promise<ConcertServiceResponse> {
     try {
       const {
@@ -264,7 +261,7 @@ export class ConcertService {
         artist,
         location,
         status,
-        sortBy = "date",
+        sortBy = 'date',
       } = params;
 
       const ConcertModel = getConcertModel();
@@ -272,20 +269,20 @@ export class ConcertService {
       // 필터 조건 구성
       const filter: any = {};
       if (category) filter.category = { $in: [category] };
-      if (artist) filter.artist = { $in: [new RegExp(artist, "i")] };
-      if (location) filter.location = new RegExp(location, "i"); // location이 string 배열이므로 직접 검색
+      if (artist) filter.artist = { $in: [new RegExp(artist, 'i')] };
+      if (location) filter.location = new RegExp(location, 'i'); // location이 string 배열이므로 직접 검색
       if (status) filter.status = status;
 
       // 정렬 조건 구성
       let sort: any = {};
       switch (sortBy) {
-        case "likes":
+        case 'likes':
           sort = { likesCount: -1, datetime: 1 };
           break;
-        case "created":
+        case 'created':
           sort = { createdAt: -1 };
           break;
-        case "date":
+        case 'date':
         default:
           sort = { datetime: 1, createdAt: -1 };
           break;
@@ -334,10 +331,10 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("콘서트 목록 조회 서비스 에러:", error);
+      logger.error('콘서트 목록 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "콘서트 목록 조회 실패",
+        error: '콘서트 목록 조회 실패',
         statusCode: 500,
       };
     }
@@ -348,7 +345,7 @@ export class ConcertService {
    */
   static async updateConcert(
     id: string,
-    updateData: any
+    updateData: any,
   ): Promise<ConcertServiceResponse> {
     try {
       // 1. 업데이트 데이터 유효성 검증 (새로운 함수 사용)
@@ -368,7 +365,7 @@ export class ConcertService {
       if (!existingConcert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -389,7 +386,7 @@ export class ConcertService {
       ) {
         return {
           success: false,
-          error: "올바르지 않은 포스터 이미지 URL입니다.",
+          error: '올바르지 않은 포스터 이미지 URL입니다.',
           statusCode: 400,
         };
       }
@@ -403,7 +400,7 @@ export class ConcertService {
           if (!isValidImageUrl(imageUrl)) {
             return {
               success: false,
-              error: "올바르지 않은 정보 이미지 URL입니다.",
+              error: '올바르지 않은 정보 이미지 URL입니다.',
               statusCode: 400,
             };
           }
@@ -419,7 +416,7 @@ export class ConcertService {
 
       if (cleanUpdateData.ticketOpenDate) {
         cleanUpdateData.ticketOpenDate = new Date(
-          cleanUpdateData.ticketOpenDate
+          cleanUpdateData.ticketOpenDate,
         );
       }
 
@@ -429,7 +426,7 @@ export class ConcertService {
       if (!updatedConcert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -440,10 +437,10 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("콘서트 수정 서비스 에러:", error);
+      logger.error('콘서트 수정 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "콘서트 수정 실패",
+        error: error instanceof Error ? error.message : '콘서트 수정 실패',
         statusCode: 500,
       };
     }
@@ -461,7 +458,7 @@ export class ConcertService {
       if (!existingConcert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -471,7 +468,7 @@ export class ConcertService {
       if (!deletedConcert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -486,10 +483,10 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("콘서트 삭제 서비스 에러:", error);
+      logger.error('콘서트 삭제 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "콘서트 삭제 실패",
+        error: error instanceof Error ? error.message : '콘서트 삭제 실패',
         statusCode: 500,
       };
     }

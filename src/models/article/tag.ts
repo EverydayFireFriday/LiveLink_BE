@@ -1,5 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface ITag {
   _id: ObjectId;
@@ -14,7 +14,7 @@ export class TagModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<ITag>("tags");
+    this.collection = db.collection<ITag>('tags');
     // 비동기로 인덱스 생성 - 앱 시작을 블로킹하지 않음
     this.initializeIndexes();
   }
@@ -23,17 +23,17 @@ export class TagModel {
     if (this.indexesInitialized) return;
 
     try {
-      logger.info("🔄 Tag 인덱스 백그라운드 초기화 시작...");
+      logger.info('🔄 Tag 인덱스 백그라운드 초기화 시작...');
 
       // 컬렉션 존재 여부 확인
       const collections = await this.db
-        .listCollections({ name: "tags" })
+        .listCollections({ name: 'tags' })
         .toArray();
 
       if (collections.length === 0) {
         // 컬렉션이 없으면 생성
-        await this.db.createCollection("tags");
-        logger.info("📁 tags 컬렉션 생성 완료");
+        await this.db.createCollection('tags');
+        logger.info('📁 tags 컬렉션 생성 완료');
       }
 
       // 기존 인덱스 조회로 중복 생성 방지
@@ -41,24 +41,24 @@ export class TagModel {
       const indexNames = existingIndexes.map((index) => index.name);
 
       // name 유니크 인덱스가 없으면 생성
-      if (!indexNames.includes("tag_name_unique")) {
+      if (!indexNames.includes('tag_name_unique')) {
         await this.collection.createIndex(
           { name: 1 },
           {
             unique: true,
-            name: "tag_name_unique",
+            name: 'tag_name_unique',
             background: true, // 백그라운드에서 생성
-          }
+          },
         );
-        logger.info("✅ Tag name 유니크 인덱스 생성 완료");
+        logger.info('✅ Tag name 유니크 인덱스 생성 완료');
       } else {
-        logger.info("ℹ️ Tag name 유니크 인덱스 이미 존재");
+        logger.info('ℹ️ Tag name 유니크 인덱스 이미 존재');
       }
 
       this.indexesInitialized = true;
-      logger.info("🎉 Tag 인덱스 백그라운드 초기화 완료");
+      logger.info('🎉 Tag 인덱스 백그라운드 초기화 완료');
     } catch (error) {
-      logger.error("❌ Tag 인덱스 초기화 실패:", error);
+      logger.error('❌ Tag 인덱스 초기화 실패:', error);
       // 인덱스 생성 실패해도 앱은 계속 동작
     }
   }
@@ -83,20 +83,20 @@ export class TagModel {
 
       const result = await this.collection.insertOne(tag);
       if (!result.insertedId) {
-        throw new Error("태그 생성에 실패했습니다.");
+        throw new Error('태그 생성에 실패했습니다.');
       }
 
       return tag;
     } catch (error: any) {
       // 중복 키 에러 처리 (인덱스가 있는 경우)
       if (error.code === 11000) {
-        throw new Error("이미 존재하는 태그입니다.");
+        throw new Error('이미 존재하는 태그입니다.');
       }
 
       // 인덱스가 없는 경우 수동으로 중복 검사
       const existingTag = await this.collection.findOne({ name });
       if (existingTag) {
-        throw new Error("이미 존재하는 태그입니다.");
+        throw new Error('이미 존재하는 태그입니다.');
       }
 
       throw error;
@@ -148,14 +148,14 @@ export class TagModel {
       page?: number;
       limit?: number;
       search?: string;
-    } = {}
+    } = {},
   ): Promise<{ tags: ITag[]; total: number }> {
     const { page = 1, limit = 20, search } = options;
     const skip = (page - 1) * limit;
 
     const filter: any = {};
     if (search) {
-      filter.name = new RegExp(search, "i");
+      filter.name = new RegExp(search, 'i');
     }
 
     const [tags, total] = await Promise.all([
@@ -186,14 +186,14 @@ export class TagModel {
       const result = await this.collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: { name } },
-        { returnDocument: "after" }
+        { returnDocument: 'after' },
       );
 
       return result || null;
     } catch (error: any) {
       // 중복 키 에러 처리 (인덱스가 있는 경우)
       if (error.code === 11000) {
-        throw new Error("이미 존재하는 태그 이름입니다.");
+        throw new Error('이미 존재하는 태그 이름입니다.');
       }
 
       // 인덱스가 없는 경우 수동으로 중복 검사
@@ -203,7 +203,7 @@ export class TagModel {
       });
 
       if (existingTag) {
-        throw new Error("이미 존재하는 태그 이름입니다.");
+        throw new Error('이미 존재하는 태그 이름입니다.');
       }
 
       throw error;
@@ -287,15 +287,15 @@ export class TagModel {
     const pipeline: any[] = [
       {
         $lookup: {
-          from: "article_tags",
-          localField: "_id",
-          foreignField: "tag_id",
-          as: "articleTags",
+          from: 'article_tags',
+          localField: '_id',
+          foreignField: 'tag_id',
+          as: 'articleTags',
         },
       },
       {
         $addFields: {
-          articleCount: { $size: "$articleTags" },
+          articleCount: { $size: '$articleTags' },
         },
       },
       {
@@ -329,17 +329,17 @@ export class TagModel {
       limit?: number;
       publishedOnly?: boolean;
       days?: number;
-    } = {}
+    } = {},
   ): Promise<Array<{ tag: ITag; articleCount: number }>> {
     const { limit = 20, publishedOnly = true, days } = options;
 
     const pipeline: any[] = [
       {
         $lookup: {
-          from: "article_tags",
-          localField: "_id",
-          foreignField: "tag_id",
-          as: "articleTags",
+          from: 'article_tags',
+          localField: '_id',
+          foreignField: 'tag_id',
+          as: 'articleTags',
         },
       },
     ];
@@ -347,23 +347,23 @@ export class TagModel {
     if (publishedOnly || days) {
       pipeline.push({
         $lookup: {
-          from: "articles",
-          localField: "articleTags.article_id",
-          foreignField: "_id",
-          as: "articles",
+          from: 'articles',
+          localField: 'articleTags.article_id',
+          foreignField: '_id',
+          as: 'articles',
         },
       });
 
       const articleFilter: any = {};
 
       if (publishedOnly) {
-        articleFilter["articles.is_published"] = true;
+        articleFilter['articles.is_published'] = true;
       }
 
       if (days) {
         const dateThreshold = new Date();
         dateThreshold.setDate(dateThreshold.getDate() - days);
-        articleFilter["articles.created_at"] = { $gte: dateThreshold };
+        articleFilter['articles.created_at'] = { $gte: dateThreshold };
       }
 
       if (Object.keys(articleFilter).length > 0) {
@@ -371,8 +371,8 @@ export class TagModel {
           $addFields: {
             filteredArticles: {
               $filter: {
-                input: "$articles",
-                as: "article",
+                input: '$articles',
+                as: 'article',
                 cond: {
                   $and: Object.entries(articleFilter).map(([field, value]) => ({
                     $eq: [`$$${field}`, value],
@@ -385,20 +385,20 @@ export class TagModel {
 
         pipeline.push({
           $addFields: {
-            articleCount: { $size: "$filteredArticles" },
+            articleCount: { $size: '$filteredArticles' },
           },
         } as any);
       } else {
         pipeline.push({
           $addFields: {
-            articleCount: { $size: "$articles" },
+            articleCount: { $size: '$articles' },
           },
         } as any);
       }
     } else {
       pipeline.push({
         $addFields: {
-          articleCount: { $size: "$articleTags" },
+          articleCount: { $size: '$articleTags' },
         },
       } as any);
     }
@@ -422,7 +422,7 @@ export class TagModel {
       },
       {
         $limit: limit,
-      }
+      },
     );
 
     const results = await this.collection.aggregate(pipeline).toArray();
@@ -442,10 +442,10 @@ export class TagModel {
     const pipeline = [
       {
         $lookup: {
-          from: "article_tags",
-          localField: "_id",
-          foreignField: "tag_id",
-          as: "articleTags",
+          from: 'article_tags',
+          localField: '_id',
+          foreignField: 'tag_id',
+          as: 'articleTags',
         },
       },
       {
@@ -479,14 +479,14 @@ export class TagModel {
     options: {
       limit?: number;
       excludeUnused?: boolean;
-    } = {}
+    } = {},
   ): Promise<ITag[]> {
     const { limit = 10, excludeUnused = false } = options;
 
     const pipeline: any[] = [
       {
         $match: {
-          name: new RegExp(query, "i"),
+          name: new RegExp(query, 'i'),
         },
       },
     ];
@@ -495,10 +495,10 @@ export class TagModel {
       pipeline.push(
         {
           $lookup: {
-            from: "article_tags",
-            localField: "_id",
-            foreignField: "tag_id",
-            as: "articleTags",
+            from: 'article_tags',
+            localField: '_id',
+            foreignField: 'tag_id',
+            as: 'articleTags',
           },
         },
         {
@@ -512,7 +512,7 @@ export class TagModel {
             name: 1,
             created_at: 1,
           },
-        }
+        },
       );
     }
 
@@ -522,7 +522,7 @@ export class TagModel {
       },
       {
         $limit: limit,
-      }
+      },
     );
 
     const results = await this.collection.aggregate(pipeline).toArray();
@@ -538,7 +538,7 @@ export class TagModel {
     tagId: string,
     options: {
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<Array<{ tag: ITag; coOccurrenceCount: number }>> {
     if (!ObjectId.isValid(tagId)) return [];
 
@@ -555,27 +555,27 @@ export class TagModel {
       // 같은 게시글의 다른 태그들 찾기
       {
         $lookup: {
-          from: "article_tags",
-          localField: "article_id",
-          foreignField: "article_id",
-          as: "relatedTags",
+          from: 'article_tags',
+          localField: 'article_id',
+          foreignField: 'article_id',
+          as: 'relatedTags',
         },
       },
 
       // 배열 풀기
-      { $unwind: "$relatedTags" },
+      { $unwind: '$relatedTags' },
 
       // 자기 자신 제외
       {
         $match: {
-          "relatedTags.tag_id": { $ne: new ObjectId(tagId) },
+          'relatedTags.tag_id': { $ne: new ObjectId(tagId) },
         },
       },
 
       // 태그별로 그룹핑하여 동시 출현 횟수 세기
       {
         $group: {
-          _id: "$relatedTags.tag_id",
+          _id: '$relatedTags.tag_id',
           coOccurrenceCount: { $sum: 1 },
         },
       },
@@ -583,31 +583,31 @@ export class TagModel {
       // 태그 정보 조인
       {
         $lookup: {
-          from: "tags",
-          localField: "_id",
-          foreignField: "_id",
-          as: "tag",
+          from: 'tags',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'tag',
         },
       },
 
-      { $unwind: "$tag" },
+      { $unwind: '$tag' },
 
       {
         $project: {
           tag: {
-            _id: "$tag._id",
-            name: "$tag.name",
-            created_at: "$tag.created_at",
+            _id: '$tag._id',
+            name: '$tag.name',
+            created_at: '$tag.created_at',
           },
           coOccurrenceCount: 1,
         },
       },
 
-      { $sort: { coOccurrenceCount: -1, "tag.name": 1 } },
+      { $sort: { coOccurrenceCount: -1, 'tag.name': 1 } },
       { $limit: limit },
     ];
 
-    const articleTagCollection = this.db.collection("article_tags");
+    const articleTagCollection = this.db.collection('article_tags');
     const results = await articleTagCollection.aggregate(pipeline).toArray();
 
     return results.map((item: any) => ({
@@ -637,7 +637,7 @@ export const initializeTagModel = (db: Db): TagModel => {
 
 export const getTagModel = (): TagModel => {
   if (!tagModel) {
-    throw new Error("Tag 모델이 초기화되지 않았습니다.");
+    throw new Error('Tag 모델이 초기화되지 않았습니다.');
   }
   return tagModel;
 };

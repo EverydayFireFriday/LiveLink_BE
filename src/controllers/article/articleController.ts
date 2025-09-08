@@ -1,8 +1,7 @@
-import express from "express";
-import { getArticleService } from "../../services/article";
-import { safeParseInt } from "../../utils/numberUtils";
-import logger from "../../utils/logger";
-
+import express from 'express';
+import { getArticleService } from '../../services/article';
+import { safeParseInt } from '../../utils/number/numberUtils';
+import logger from '../../utils/logger/logger';
 
 export class ArticleController {
   private articleService = getArticleService();
@@ -10,11 +9,11 @@ export class ArticleController {
   // 🛡️ 세션 검증 헬퍼 메서드
   private validateSession(
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ): boolean {
     if (!req.session?.user?.userId) {
       res.status(401).json({
-        message: "로그인이 필요합니다.",
+        message: '로그인이 필요합니다.',
       });
       return false;
     }
@@ -29,18 +28,18 @@ export class ArticleController {
       const article = await this.articleService.createArticle(req.body);
 
       res.status(201).json({
-        message: "게시글이 성공적으로 생성되었습니다.",
+        message: '게시글이 성공적으로 생성되었습니다.',
         article,
       });
     } catch (error: any) {
-      logger.error("게시글 생성 에러:", error);
+      logger.error('게시글 생성 에러:', error);
 
-      if (error.message.includes("유효성 검사")) {
+      if (error.message.includes('유효성 검사')) {
         res.status(400).json({ message: error.message });
-      } else if (error.message.includes("존재하지 않는")) {
+      } else if (error.message.includes('존재하지 않는')) {
         res.status(404).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "게시글 생성에 실패했습니다." });
+        res.status(500).json({ message: '게시글 생성에 실패했습니다.' });
       }
     }
   };
@@ -48,8 +47,8 @@ export class ArticleController {
   getArticleById = async (req: express.Request, res: express.Response) => {
     try {
       const { id } = req.params;
-      const withTags = req.query.withTags !== "false";
-      const withStats = req.query.withStats !== "false";
+      const withTags = req.query.withTags !== 'false';
+      const withStats = req.query.withStats !== 'false';
 
       const article = await this.articleService.getArticleById(id, {
         withTags,
@@ -60,23 +59,23 @@ export class ArticleController {
       await this.articleService.incrementViews(id);
 
       res.status(200).json({
-        message: "게시글 조회 성공",
+        message: '게시글 조회 성공',
         article,
       });
     } catch (error: any) {
-      logger.error("게시글 조회 에러:", error);
+      logger.error('게시글 조회 에러:', error);
 
-      if (error.message.includes("찾을 수 없습니다")) {
+      if (error.message.includes('찾을 수 없습니다')) {
         res.status(404).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "게시글 조회에 실패했습니다." });
+        res.status(500).json({ message: '게시글 조회에 실패했습니다.' });
       }
     }
   };
 
   getPublishedArticles = async (
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ) => {
     try {
       const page = safeParseInt(req.query.page, 1);
@@ -94,7 +93,7 @@ export class ArticleController {
       });
 
       res.status(200).json({
-        message: "게시글 목록 조회 성공",
+        message: '게시글 목록 조회 성공',
         articles: result.articles,
         pagination: {
           page: result.page,
@@ -104,8 +103,8 @@ export class ArticleController {
         },
       });
     } catch (error) {
-      logger.error("게시글 목록 조회 에러:", error);
-      res.status(500).json({ message: "게시글 목록 조회에 실패했습니다." });
+      logger.error('게시글 목록 조회 에러:', error);
+      res.status(500).json({ message: '게시글 목록 조회에 실패했습니다.' });
     }
   };
 
@@ -118,18 +117,18 @@ export class ArticleController {
       const article = await this.articleService.updateArticle(id, req.body);
 
       res.status(200).json({
-        message: "게시글이 성공적으로 수정되었습니다.",
+        message: '게시글이 성공적으로 수정되었습니다.',
         article,
       });
     } catch (error: any) {
-      logger.error("게시글 수정 에러:", error);
+      logger.error('게시글 수정 에러:', error);
 
-      if (error.message.includes("유효성 검사")) {
+      if (error.message.includes('유효성 검사')) {
         res.status(400).json({ message: error.message });
-      } else if (error.message.includes("찾을 수 없습니다")) {
+      } else if (error.message.includes('찾을 수 없습니다')) {
         res.status(404).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "게시글 수정에 실패했습니다." });
+        res.status(500).json({ message: '게시글 수정에 실패했습니다.' });
       }
     }
   };
@@ -143,15 +142,15 @@ export class ArticleController {
       await this.articleService.deleteArticle(id);
 
       res.status(200).json({
-        message: "게시글이 성공적으로 삭제되었습니다.",
+        message: '게시글이 성공적으로 삭제되었습니다.',
       });
     } catch (error: any) {
-      logger.error("게시글 삭제 에러:", error);
+      logger.error('게시글 삭제 에러:', error);
 
-      if (error.message.includes("찾을 수 없습니다")) {
+      if (error.message.includes('찾을 수 없습니다')) {
         res.status(404).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "게시글 삭제에 실패했습니다." });
+        res.status(500).json({ message: '게시글 삭제에 실패했습니다.' });
       }
     }
   };
@@ -161,7 +160,7 @@ export class ArticleController {
       const { authorId } = req.params;
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
-      const includeUnpublished = req.query.includeUnpublished === "true";
+      const includeUnpublished = req.query.includeUnpublished === 'true';
 
       const result = await this.articleService.getArticlesByAuthor(authorId, {
         page,
@@ -170,7 +169,7 @@ export class ArticleController {
       });
 
       res.status(200).json({
-        message: "작성자별 게시글 목록 조회 성공",
+        message: '작성자별 게시글 목록 조회 성공',
         articles: result.articles,
         pagination: {
           page: result.page,
@@ -180,8 +179,8 @@ export class ArticleController {
         },
       });
     } catch (error) {
-      logger.error("작성자별 게시글 조회 에러:", error);
-      res.status(500).json({ message: "작성자별 게시글 조회에 실패했습니다." });
+      logger.error('작성자별 게시글 조회 에러:', error);
+      res.status(500).json({ message: '작성자별 게시글 조회에 실패했습니다.' });
     }
   };
 
@@ -198,7 +197,7 @@ export class ArticleController {
       });
 
       res.status(200).json({
-        message: "인기 게시글 목록 조회 성공",
+        message: '인기 게시글 목록 조회 성공',
         articles: result.articles,
         pagination: {
           page: result.page,
@@ -208,8 +207,8 @@ export class ArticleController {
         },
       });
     } catch (error) {
-      logger.error("인기 게시글 조회 에러:", error);
-      res.status(500).json({ message: "인기 게시글 조회에 실패했습니다." });
+      logger.error('인기 게시글 조회 에러:', error);
+      res.status(500).json({ message: '인기 게시글 조회에 실패했습니다.' });
     }
   };
 }

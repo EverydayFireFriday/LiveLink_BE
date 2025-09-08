@@ -2,8 +2,8 @@ import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { createClient } from 'redis';
 import { Request, Response, NextFunction } from 'express';
-import logger from '../utils/logger';
-import { env } from '../config/env'; // 💡 env import 추가
+import logger from '../../utils/logger/logger';
+import { env } from '../../config/env/env';
 
 // Rate Limiting 전용 Redis 클라이언트 생성 (모든 리미터가 공유)
 const rateLimitRedisClient = createClient({

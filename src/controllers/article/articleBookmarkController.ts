@@ -1,7 +1,7 @@
-import express from "express";
-import { getArticleBookmarkService } from "../../services/article";
-import { safeParseInt } from "../../utils/numberUtils";
-import logger from "../../utils/logger";
+import express from 'express';
+import { getArticleBookmarkService } from '../../services/article';
+import { safeParseInt } from '../../utils/number/numberUtils';
+import logger from '../../utils/logger/logger';
 
 export class ArticleBookmarkController {
   private articleBookmarkService = getArticleBookmarkService();
@@ -9,11 +9,11 @@ export class ArticleBookmarkController {
   // 🛡️ 세션 검증 헬퍼 메서드
   private validateSession(
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ): boolean {
     if (!req.session?.user?.userId) {
       res.status(401).json({
-        message: "로그인이 필요합니다.",
+        message: '로그인이 필요합니다.',
       });
       return false;
     }
@@ -34,20 +34,20 @@ export class ArticleBookmarkController {
       });
 
       res.status(201).json({
-        message: "북마크가 추가되었습니다.",
+        message: '북마크가 추가되었습니다.',
         bookmark,
       });
     } catch (error: any) {
-      logger.error("게시글 북마크 에러:", error);
+      logger.error('게시글 북마크 에러:', error);
 
-      if (error.message.includes("이미 북마크한")) {
+      if (error.message.includes('이미 북마크한')) {
         res.status(400).json({ message: error.message });
-      } else if (error.message.includes("찾을 수 없습니다")) {
+      } else if (error.message.includes('찾을 수 없습니다')) {
         res.status(404).json({ message: error.message });
-      } else if (error.message.includes("유효성 검사")) {
+      } else if (error.message.includes('유효성 검사')) {
         res.status(400).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "북마크 추가에 실패했습니다." });
+        res.status(500).json({ message: '북마크 추가에 실패했습니다.' });
       }
     }
   };
@@ -62,7 +62,7 @@ export class ArticleBookmarkController {
       const userId = req.session?.user?.userId; // 완전 안전
 
       if (!userId) {
-        res.status(401).json({ message: "유효하지 않은 세션입니다." });
+        res.status(401).json({ message: '유효하지 않은 세션입니다.' });
         return;
       }
 
@@ -72,16 +72,16 @@ export class ArticleBookmarkController {
       });
 
       res.status(200).json({
-        message: "북마크가 삭제되었습니다.",
+        message: '북마크가 삭제되었습니다.',
         success: result.success,
       });
     } catch (error: any) {
-      logger.error("게시글 북마크 삭제 에러:", error);
+      logger.error('게시글 북마크 삭제 에러:', error);
 
-      if (error.message.includes("찾을 수 없습니다")) {
+      if (error.message.includes('찾을 수 없습니다')) {
         res.status(404).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "북마크 삭제에 실패했습니다." });
+        res.status(500).json({ message: '북마크 삭제에 실패했습니다.' });
       }
     }
   };
@@ -96,16 +96,16 @@ export class ArticleBookmarkController {
 
       const result = await this.articleBookmarkService.toggleBookmark(
         articleId,
-        user_id.toString()
+        user_id.toString(),
       );
 
       res.status(200).json({
-        message: "북마크 상태가 변경되었습니다.",
+        message: '북마크 상태가 변경되었습니다.',
         isBookmarked: result.isBookmarked,
       });
     } catch (error) {
-      logger.error("북마크 토글 에러:", error);
-      res.status(500).json({ message: "북마크 토글에 실패했습니다." });
+      logger.error('북마크 토글 에러:', error);
+      res.status(500).json({ message: '북마크 토글에 실패했습니다.' });
     }
   };
 
@@ -119,16 +119,16 @@ export class ArticleBookmarkController {
 
       const result = await this.articleBookmarkService.checkBookmarkStatus(
         articleId,
-        user_id as string
+        user_id as string,
       );
 
       res.status(200).json({
-        message: "북마크 상태 조회 성공",
+        message: '북마크 상태 조회 성공',
         isBookmarked: result.isBookmarked,
       });
     } catch (error) {
-      logger.error("북마크 상태 조회 에러:", error);
-      res.status(500).json({ message: "북마크 상태 조회에 실패했습니다." });
+      logger.error('북마크 상태 조회 에러:', error);
+      res.status(500).json({ message: '북마크 상태 조회에 실패했습니다.' });
     }
   };
 
@@ -139,12 +139,12 @@ export class ArticleBookmarkController {
         await this.articleBookmarkService.getBookmarkCount(articleId);
 
       res.status(200).json({
-        message: "북마크 수 조회 성공",
+        message: '북마크 수 조회 성공',
         bookmarkCount,
       });
     } catch (error) {
-      logger.error("북마크 수 조회 에러:", error);
-      res.status(500).json({ message: "북마크 수 조회에 실패했습니다." });
+      logger.error('북마크 수 조회 에러:', error);
+      res.status(500).json({ message: '북마크 수 조회에 실패했습니다.' });
     }
   };
 
@@ -159,11 +159,11 @@ export class ArticleBookmarkController {
 
       const result = await this.articleBookmarkService.getUserBookmarks(
         userId,
-        { page, limit }
+        { page, limit },
       );
 
       res.status(200).json({
-        message: "사용자 북마크 목록 조회 성공",
+        message: '사용자 북마크 목록 조회 성공',
         bookmarks: result.bookmarks,
         pagination: {
           page: result.page,
@@ -173,14 +173,14 @@ export class ArticleBookmarkController {
         },
       });
     } catch (error) {
-      logger.error("사용자 북마크 조회 에러:", error);
-      res.status(500).json({ message: "사용자 북마크 조회에 실패했습니다." });
+      logger.error('사용자 북마크 조회 에러:', error);
+      res.status(500).json({ message: '사용자 북마크 조회에 실패했습니다.' });
     }
   };
 
   getUserBookmarkStats = async (
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ) => {
     try {
       // 🛡️ 세션 검증
@@ -191,20 +191,20 @@ export class ArticleBookmarkController {
         await this.articleBookmarkService.getUserBookmarkStats(userId);
 
       res.status(200).json({
-        message: "사용자 북마크 통계 조회 성공",
+        message: '사용자 북마크 통계 조회 성공',
         stats,
       });
     } catch (error) {
-      logger.error("사용자 북마크 통계 조회 에러:", error);
+      logger.error('사용자 북마크 통계 조회 에러:', error);
       res
         .status(500)
-        .json({ message: "사용자 북마크 통계 조회에 실패했습니다." });
+        .json({ message: '사용자 북마크 통계 조회에 실패했습니다.' });
     }
   };
 
   getPopularBookmarkedArticles = async (
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ) => {
     try {
       const page = safeParseInt(req.query.page, 1);
@@ -219,7 +219,7 @@ export class ArticleBookmarkController {
         });
 
       res.status(200).json({
-        message: "인기 북마크 게시글 조회 성공",
+        message: '인기 북마크 게시글 조회 성공',
         articles: result.articles,
         pagination: {
           page: result.page,
@@ -229,16 +229,16 @@ export class ArticleBookmarkController {
         },
       });
     } catch (error) {
-      logger.error("인기 북마크 게시글 조회 에러:", error);
+      logger.error('인기 북마크 게시글 조회 에러:', error);
       res
         .status(500)
-        .json({ message: "인기 북마크 게시글 조회에 실패했습니다." });
+        .json({ message: '인기 북마크 게시글 조회에 실패했습니다.' });
     }
   };
 
   getBatchBookmarkStatus = async (
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ) => {
     try {
       // 🛡️ 세션 검증
@@ -247,14 +247,14 @@ export class ArticleBookmarkController {
       const { article_ids, user_id } = req.body;
 
       if (!Array.isArray(article_ids) || !user_id) {
-        res.status(400).json({ message: "올바르지 않은 요청 데이터입니다." });
+        res.status(400).json({ message: '올바르지 않은 요청 데이터입니다.' });
         return;
       }
 
       const result =
         await this.articleBookmarkService.checkMultipleBookmarkStatus(
           article_ids,
-          user_id
+          user_id,
         );
 
       // Map을 Object로 변환
@@ -264,14 +264,14 @@ export class ArticleBookmarkController {
       });
 
       res.status(200).json({
-        message: "일괄 북마크 상태 조회 성공",
+        message: '일괄 북마크 상태 조회 성공',
         bookmarkStatus,
       });
     } catch (error) {
-      logger.error("일괄 북마크 상태 조회 에러:", error);
+      logger.error('일괄 북마크 상태 조회 에러:', error);
       res
         .status(500)
-        .json({ message: "일괄 북마크 상태 조회에 실패했습니다." });
+        .json({ message: '일괄 북마크 상태 조회에 실패했습니다.' });
     }
   };
 }

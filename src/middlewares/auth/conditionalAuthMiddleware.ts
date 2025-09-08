@@ -1,9 +1,9 @@
-import express from "express";
-import { requireAuth } from "./authMiddleware";
-import logger from "../../utils/logger";
+import express from 'express';
+import { requireAuth } from './authMiddleware';
+import logger from '../../utils/logger/logger';
 
 // SessionData 인터페이스 참조
-declare module "express-session" {
+declare module 'express-session' {
   interface SessionData {
     user?: {
       email: string; // 아이디로 사용되는 이메일
@@ -22,11 +22,11 @@ declare module "express-session" {
 export const requireAuthInProductionMiddleware = (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   // Only skip authentication if SKIP_AUTH is explicitly true
-  if (process.env.SKIP_AUTH === "true") {
-    logger.info("⚠️ SKIP_AUTH 환경변수로 인증 스킵됨");
+  if (process.env.SKIP_AUTH === 'true') {
+    logger.info('⚠️ SKIP_AUTH 환경변수로 인증 스킵됨');
 
     // 개발환경에서 세션이 없으면 임시 세션 생성
     if (!req.session?.user) {
@@ -44,11 +44,11 @@ export const requireAuthInProductionMiddleware = (
 export const requireAuthWithSkipOptionMiddleware = (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   // 개발환경에서 스킵
-  if (process.env.NODE_ENV === "development") {
-    logger.info("🚀 개발 환경: 인증 스킵");
+  if (process.env.NODE_ENV === 'development') {
+    logger.info('🚀 개발 환경: 인증 스킵');
 
     if (!req.session?.user) {
       createDevSessionIfNeeded(req);
@@ -58,8 +58,8 @@ export const requireAuthWithSkipOptionMiddleware = (
   }
 
   // SKIP_AUTH 환경변수로 스킵
-  if (process.env.SKIP_AUTH === "true") {
-    logger.info("⚠️ SKIP_AUTH 환경변수로 인증 스킵됨");
+  if (process.env.SKIP_AUTH === 'true') {
+    logger.info('⚠️ SKIP_AUTH 환경변수로 인증 스킵됨');
 
     if (!req.session?.user) {
       createDevSessionIfNeeded(req);
@@ -77,16 +77,16 @@ export const requireAuthWithSkipOptionMiddleware = (
 export const requireAuthForWriteOnlyMiddleware = (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   // GET 요청은 항상 허용 (세션 생성하지 않음)
-  if (req.method === "GET") {
-    logger.info("📖 GET 요청: 인증 없이 허용");
+  if (req.method === 'GET') {
+    logger.info('📖 GET 요청: 인증 없이 허용');
     return next();
   }
 
   // 나머지 요청은 개발환경에서만 스킵
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     logger.info(`🚀 개발 환경: ${req.method} 요청 인증 스킵`);
 
     if (!req.session?.user) {
@@ -110,9 +110,9 @@ export const createDevSessionIfNeeded = (
     userId?: string;
     username?: string;
     profileImage?: string;
-  } = {}
+  } = {},
 ) => {
-  if (process.env.NODE_ENV === "development" && !req.session?.user) {
+  if (process.env.NODE_ENV === 'development' && !req.session?.user) {
     const timestamp = new Date().toISOString();
     const randomId = Math.random().toString(36).substring(2, 8);
 
@@ -146,7 +146,7 @@ export const createDevSessionIfNeeded = (
 export const logSessionInfoMiddleware = (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   if (req.session?.user) {
     logger.info(`👤 현재 세션 정보:`);
@@ -191,7 +191,7 @@ export const updateSessionUser = (
     email: string;
     username: string;
     profileImage: string;
-  }>
+  }>,
 ) => {
   if (req.session?.user) {
     if (updates.email) req.session.user.email = updates.email;
@@ -200,7 +200,7 @@ export const updateSessionUser = (
       req.session.user.profileImage = updates.profileImage;
 
     logger.info(
-      `🔄 세션 정보 업데이트: ${req.session.user.username} (${req.session.user.email})`
+      `🔄 세션 정보 업데이트: ${req.session.user.username} (${req.session.user.email})`,
     );
     return true;
   }
@@ -208,12 +208,12 @@ export const updateSessionUser = (
 };
 
 // 개발환경 설정 정보 출력
-if (process.env.NODE_ENV === "development") {
-  logger.info("\n🔧 조건부 인증 미들웨어 설정:");
+if (process.env.NODE_ENV === 'development') {
+  logger.info('\n🔧 조건부 인증 미들웨어 설정:');
   logger.info(`  - NODE_ENV: ${process.env.NODE_ENV}`);
-  logger.info(`  - SKIP_AUTH: ${process.env.SKIP_AUTH || "false"}`);
+  logger.info(`  - SKIP_AUTH: ${process.env.SKIP_AUTH || 'false'}`);
   logger.info(`  - 개발환경 인증 스킵: ✅ 활성화됨`);
   logger.info(
-    `  - 세션 구조: email, userId, username, profileImage?, loginTime`
+    `  - 세션 구조: email, userId, username, profileImage?, loginTime`,
   );
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import passport from 'passport';
-import { env } from '../../config/env';
+import { env } from '../../config/env/env';
 
 const router = Router();
 
@@ -69,7 +69,7 @@ router.post(
   (req, res) => {
     // 인증 성공 시, 프론트엔드 홈으로 리디렉션
     res.redirect(env.FRONTEND_URL);
-  }
+  },
 );
 
 export default router;

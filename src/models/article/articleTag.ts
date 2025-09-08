@@ -1,6 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
-
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface IArticleTag {
   _id: ObjectId;
@@ -16,7 +15,7 @@ export class ArticleTagModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<IArticleTag>("article_tags");
+    this.collection = db.collection<IArticleTag>('article_tags');
     // 🚀 생성자에서 인덱스 생성하지 않음
   }
 
@@ -27,9 +26,9 @@ export class ArticleTagModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ ArticleTag indexes created successfully");
+      logger.info('✅ ArticleTag indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create ArticleTag indexes:", error);
+      logger.error('❌ Failed to create ArticleTag indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -42,21 +41,21 @@ export class ArticleTagModel {
 
   private async createIndexes() {
     try {
-      logger.info("ArticleTag 인덱스 생성 시작...");
+      logger.info('ArticleTag 인덱스 생성 시작...');
 
       // 중복 연결 방지를 위한 복합 유니크 인덱스
       await this.collection.createIndex(
         { article_id: 1, tag_id: 1 },
-        { unique: true }
+        { unique: true },
       );
 
       // 조회 최적화 인덱스
       await this.collection.createIndex({ article_id: 1 });
       await this.collection.createIndex({ tag_id: 1 });
 
-      logger.info("✅ ArticleTag 인덱스 생성 완료");
+      logger.info('✅ ArticleTag 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ ArticleTag 인덱스 생성 중 오류:", error);
+      logger.error('❌ ArticleTag 인덱스 생성 중 오류:', error);
     }
   }
 
@@ -64,7 +63,7 @@ export class ArticleTagModel {
   async create(articleId: string, tagId: string): Promise<IArticleTag> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || !ObjectId.isValid(tagId)) {
-        throw new Error("유효하지 않은 ID입니다.");
+        throw new Error('유효하지 않은 ID입니다.');
       }
 
       const articleObjectId = new ObjectId(articleId);
@@ -77,7 +76,7 @@ export class ArticleTagModel {
       });
 
       if (existingConnection) {
-        throw new Error("이미 연결된 게시글-태그입니다.");
+        throw new Error('이미 연결된 게시글-태그입니다.');
       }
 
       const articleTag: IArticleTag = {
@@ -89,7 +88,7 @@ export class ArticleTagModel {
 
       const result = await this.collection.insertOne(articleTag);
       if (!result.insertedId) {
-        throw new Error("게시글-태그 연결에 실패했습니다.");
+        throw new Error('게시글-태그 연결에 실패했습니다.');
       }
 
       return articleTag;
@@ -99,16 +98,16 @@ export class ArticleTagModel {
   // 여러 태그를 게시글에 연결
   async createMany(
     articleId: string,
-    tagIds: string[]
+    tagIds: string[],
   ): Promise<IArticleTag[]> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || tagIds.length === 0) {
-        throw new Error("유효하지 않은 데이터입니다.");
+        throw new Error('유효하지 않은 데이터입니다.');
       }
 
       const validTagIds = tagIds.filter((id) => ObjectId.isValid(id));
       if (validTagIds.length === 0) {
-        throw new Error("유효한 태그 ID가 없습니다.");
+        throw new Error('유효한 태그 ID가 없습니다.');
       }
 
       const articleObjectId = new ObjectId(articleId);
@@ -123,10 +122,10 @@ export class ArticleTagModel {
         .toArray();
 
       const existingTagIds = existingConnections.map((conn) =>
-        conn.tag_id.toString()
+        conn.tag_id.toString(),
       );
       const newTagIds = validTagIds.filter(
-        (id) => !existingTagIds.includes(id)
+        (id) => !existingTagIds.includes(id),
       );
 
       if (newTagIds.length === 0) {
@@ -143,7 +142,7 @@ export class ArticleTagModel {
 
       const result = await this.collection.insertMany(articleTags);
       if (!result.insertedCount) {
-        throw new Error("게시글-태그 연결에 실패했습니다.");
+        throw new Error('게시글-태그 연결에 실패했습니다.');
       }
 
       return articleTags;
@@ -207,20 +206,20 @@ export class ArticleTagModel {
         { $match: { article_id: new ObjectId(articleId) } },
         {
           $lookup: {
-            from: "tags",
-            localField: "tag_id",
-            foreignField: "_id",
-            as: "tag",
+            from: 'tags',
+            localField: 'tag_id',
+            foreignField: '_id',
+            as: 'tag',
           },
         },
         {
-          $unwind: "$tag",
+          $unwind: '$tag',
         },
         {
           $project: {
-            _id: "$tag._id",
-            name: "$tag.name",
-            created_at: "$tag.created_at",
+            _id: '$tag._id',
+            name: '$tag.name',
+            created_at: '$tag.created_at',
           },
         },
         { $sort: { name: 1 } },
@@ -232,7 +231,7 @@ export class ArticleTagModel {
 
   // 여러 게시글의 태그들을 한 번에 조회하여 매핑된 형태로 반환 (N+1 해결)
   async findTagsByArticleIds(
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, any[]>> {
     return this.withIndexes(async () => {
       if (articleIds.length === 0) return {};
@@ -253,23 +252,23 @@ export class ArticleTagModel {
           },
           {
             $lookup: {
-              from: "tags",
-              localField: "tag_id",
-              foreignField: "_id",
-              as: "tag",
+              from: 'tags',
+              localField: 'tag_id',
+              foreignField: '_id',
+              as: 'tag',
             },
           },
           {
-            $unwind: "$tag",
+            $unwind: '$tag',
           },
           {
             $group: {
-              _id: "$article_id",
+              _id: '$article_id',
               tags: {
                 $push: {
-                  _id: "$tag._id",
-                  name: "$tag.name",
-                  created_at: "$tag.created_at",
+                  _id: '$tag._id',
+                  name: '$tag.name',
+                  created_at: '$tag.created_at',
                 },
               },
             },
@@ -302,7 +301,7 @@ export class ArticleTagModel {
       page?: number;
       limit?: number;
       publishedOnly?: boolean;
-    } = {}
+    } = {},
   ): Promise<{ articles: any[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(tagId)) {
@@ -318,33 +317,33 @@ export class ArticleTagModel {
         { $match: matchStage },
         {
           $lookup: {
-            from: "articles",
-            localField: "article_id",
-            foreignField: "_id",
-            as: "article",
+            from: 'articles',
+            localField: 'article_id',
+            foreignField: '_id',
+            as: 'article',
           },
         },
         {
-          $unwind: "$article",
+          $unwind: '$article',
         },
       ];
 
       // 발행된 게시글만 조회하는 경우
       if (publishedOnly) {
         pipeline.push({
-          $match: { "article.is_published": true },
+          $match: { 'article.is_published': true },
         });
       }
 
       pipeline.push(
-        { $sort: { "article.created_at": -1 } },
+        { $sort: { 'article.created_at': -1 } },
         { $skip: skip },
         { $limit: limit },
         {
           $project: {
             article: 1,
           },
-        }
+        },
       );
 
       // 총 개수를 위한 별도 파이프라인
@@ -352,24 +351,24 @@ export class ArticleTagModel {
         { $match: matchStage },
         {
           $lookup: {
-            from: "articles",
-            localField: "article_id",
-            foreignField: "_id",
-            as: "article",
+            from: 'articles',
+            localField: 'article_id',
+            foreignField: '_id',
+            as: 'article',
           },
         },
         {
-          $unwind: "$article",
+          $unwind: '$article',
         },
       ];
 
       if (publishedOnly) {
         countPipeline.push({
-          $match: { "article.is_published": true },
+          $match: { 'article.is_published': true },
         });
       }
 
-      countPipeline.push({ $count: "total" });
+      countPipeline.push({ $count: 'total' });
 
       const [articles, countResult] = await Promise.all([
         this.collection.aggregate(pipeline).toArray(),
@@ -388,11 +387,11 @@ export class ArticleTagModel {
   // 게시글의 태그 업데이트 (기존 태그 삭제 후 새 태그 추가)
   async updateArticleTags(
     articleId: string,
-    tagIds: string[]
+    tagIds: string[],
   ): Promise<IArticleTag[]> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId)) {
-        throw new Error("유효하지 않은 게시글 ID입니다.");
+        throw new Error('유효하지 않은 게시글 ID입니다.');
       }
 
       // 기존 태그 연결 삭제
@@ -409,7 +408,7 @@ export class ArticleTagModel {
 
   // 여러 게시글의 태그 관계를 배치로 생성 (성능 최적화)
   async createManyForArticles(
-    articleTagRelations: { articleId: string; tagIds: string[] }[]
+    articleTagRelations: { articleId: string; tagIds: string[] }[],
   ): Promise<void> {
     return this.withIndexes(async () => {
       if (articleTagRelations.length === 0) return;
@@ -471,7 +470,7 @@ export class ArticleTagModel {
 
   // 여러 태그가 사용된 게시글 수를 배치 조회
   async countArticlesByTagIds(
-    tagIds: string[]
+    tagIds: string[],
   ): Promise<Record<string, number>> {
     return this.withIndexes(async () => {
       if (tagIds.length === 0) return {};
@@ -490,7 +489,7 @@ export class ArticleTagModel {
           },
           {
             $group: {
-              _id: "$tag_id",
+              _id: '$tag_id',
               count: { $sum: 1 },
             },
           },
@@ -519,7 +518,7 @@ export class ArticleTagModel {
     options: {
       limit?: number;
       publishedOnly?: boolean;
-    } = {}
+    } = {},
   ): Promise<any[]> {
     return this.withIndexes(async () => {
       const { limit = 10, publishedOnly = true } = options;
@@ -530,45 +529,45 @@ export class ArticleTagModel {
       if (publishedOnly) {
         pipeline.push({
           $lookup: {
-            from: "articles",
-            localField: "article_id",
-            foreignField: "_id",
-            as: "article",
+            from: 'articles',
+            localField: 'article_id',
+            foreignField: '_id',
+            as: 'article',
           },
         });
         pipeline.push({
-          $match: { "article.is_published": true },
+          $match: { 'article.is_published': true },
         });
       }
 
       pipeline.push(
         {
           $group: {
-            _id: "$tag_id",
+            _id: '$tag_id',
             articleCount: { $sum: 1 },
           },
         },
         {
           $lookup: {
-            from: "tags",
-            localField: "_id",
-            foreignField: "_id",
-            as: "tag",
+            from: 'tags',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'tag',
           },
         },
         {
-          $unwind: "$tag",
+          $unwind: '$tag',
         },
         {
           $project: {
-            _id: "$tag._id",
-            name: "$tag.name",
-            created_at: "$tag.created_at",
+            _id: '$tag._id',
+            name: '$tag.name',
+            created_at: '$tag.created_at',
             articleCount: 1,
           },
         },
         { $sort: { articleCount: -1, name: 1 } },
-        { $limit: limit }
+        { $limit: limit },
       );
 
       return await this.collection.aggregate(pipeline).toArray();
@@ -580,7 +579,7 @@ export class ArticleTagModel {
     tagId: string,
     options: {
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<any[]> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(tagId)) {
@@ -596,23 +595,23 @@ export class ArticleTagModel {
         // 같은 게시글의 다른 태그들 찾기
         {
           $lookup: {
-            from: "article_tags",
-            localField: "article_id",
-            foreignField: "article_id",
-            as: "relatedTags",
+            from: 'article_tags',
+            localField: 'article_id',
+            foreignField: 'article_id',
+            as: 'relatedTags',
           },
         },
 
         // 배열 풀기
-        { $unwind: "$relatedTags" },
+        { $unwind: '$relatedTags' },
 
         // 자기 자신 제외
-        { $match: { "relatedTags.tag_id": { $ne: new ObjectId(tagId) } } },
+        { $match: { 'relatedTags.tag_id': { $ne: new ObjectId(tagId) } } },
 
         // 태그별로 그룹핑하여 횟수 세기
         {
           $group: {
-            _id: "$relatedTags.tag_id",
+            _id: '$relatedTags.tag_id',
             count: { $sum: 1 },
           },
         },
@@ -620,21 +619,21 @@ export class ArticleTagModel {
         // 태그 정보 조인
         {
           $lookup: {
-            from: "tags",
-            localField: "_id",
-            foreignField: "_id",
-            as: "tag",
+            from: 'tags',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'tag',
           },
         },
 
-        { $unwind: "$tag" },
+        { $unwind: '$tag' },
 
         {
           $project: {
-            _id: "$tag._id",
-            name: "$tag.name",
-            created_at: "$tag.created_at",
-            relatedCount: "$count",
+            _id: '$tag._id',
+            name: '$tag.name',
+            created_at: '$tag.created_at',
+            relatedCount: '$count',
           },
         },
 
@@ -657,7 +656,7 @@ export const initializeArticleTagModel = (db: Db): ArticleTagModel => {
 
 export const getArticleTagModel = (): ArticleTagModel => {
   if (!articleTagModel) {
-    throw new Error("ArticleTag 모델이 초기화되지 않았습니다.");
+    throw new Error('ArticleTag 모델이 초기화되지 않았습니다.');
   }
   return articleTagModel;
 };

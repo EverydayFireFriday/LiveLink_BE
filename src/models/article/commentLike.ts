@@ -1,6 +1,6 @@
 // models/article/commentLike.ts
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface ICommentLike {
   _id: ObjectId;
@@ -16,7 +16,7 @@ export class CommentLikeModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<ICommentLike>("comment_likes");
+    this.collection = db.collection<ICommentLike>('comment_likes');
     // 🚀 생성자에서 인덱스 생성하지 않음
   }
 
@@ -27,9 +27,9 @@ export class CommentLikeModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ CommentLike indexes created successfully");
+      logger.info('✅ CommentLike indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create CommentLike indexes:", error);
+      logger.error('❌ Failed to create CommentLike indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -42,21 +42,21 @@ export class CommentLikeModel {
 
   private async createIndexes() {
     try {
-      logger.info("CommentLike 인덱스 생성 시작...");
+      logger.info('CommentLike 인덱스 생성 시작...');
 
       // 중복 좋아요 방지를 위한 복합 유니크 인덱스
       await this.collection.createIndex(
         { comment_id: 1, user_id: 1 },
-        { unique: true }
+        { unique: true },
       );
 
       // 조회 최적화 인덱스
       await this.collection.createIndex({ comment_id: 1, created_at: -1 });
       await this.collection.createIndex({ user_id: 1, created_at: -1 });
 
-      logger.info("✅ CommentLike 인덱스 생성 완료");
+      logger.info('✅ CommentLike 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ CommentLike 인덱스 생성 중 오류:", error);
+      logger.error('❌ CommentLike 인덱스 생성 중 오류:', error);
     }
   }
 
@@ -64,7 +64,7 @@ export class CommentLikeModel {
   async create(commentId: string, userId: string): Promise<ICommentLike> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(commentId) || !ObjectId.isValid(userId)) {
-        throw new Error("유효하지 않은 ID입니다.");
+        throw new Error('유효하지 않은 ID입니다.');
       }
 
       const commentObjectId = new ObjectId(commentId);
@@ -77,7 +77,7 @@ export class CommentLikeModel {
       });
 
       if (existingLike) {
-        throw new Error("이미 좋아요한 댓글입니다.");
+        throw new Error('이미 좋아요한 댓글입니다.');
       }
 
       const like: ICommentLike = {
@@ -89,7 +89,7 @@ export class CommentLikeModel {
 
       const result = await this.collection.insertOne(like);
       if (!result.insertedId) {
-        throw new Error("댓글 좋아요 추가에 실패했습니다.");
+        throw new Error('댓글 좋아요 추가에 실패했습니다.');
       }
 
       return like;
@@ -99,7 +99,7 @@ export class CommentLikeModel {
   // 댓글 좋아요 삭제
   async delete(
     commentId: string,
-    userId: string
+    userId: string,
   ): Promise<ICommentLike | null> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(commentId) || !ObjectId.isValid(userId)) {
@@ -146,7 +146,7 @@ export class CommentLikeModel {
 
   // 여러 댓글의 좋아요 수를 한 번에 조회 (N+1 해결)
   async countByCommentIds(
-    commentIds: string[]
+    commentIds: string[],
   ): Promise<Record<string, number>> {
     return this.withIndexes(async () => {
       if (commentIds.length === 0) return {};
@@ -165,7 +165,7 @@ export class CommentLikeModel {
           },
           {
             $group: {
-              _id: "$comment_id",
+              _id: '$comment_id',
               count: { $sum: 1 },
             },
           },
@@ -192,7 +192,7 @@ export class CommentLikeModel {
   // 여러 댓글에 대한 특정 사용자의 좋아요 상태 확인 (배치)
   async checkLikeStatusForComments(
     userId: string,
-    commentIds: string[]
+    commentIds: string[],
   ): Promise<Record<string, boolean>> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId) || commentIds.length === 0) return {};
@@ -234,7 +234,7 @@ export class CommentLikeModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ commentIds: string[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId)) {
@@ -265,7 +265,7 @@ export class CommentLikeModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ userIds: string[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(commentId)) {
@@ -293,7 +293,7 @@ export class CommentLikeModel {
   // 여러 댓글의 좋아요 상태 일괄 조회
   async findLikeStatusBatch(
     commentIds: string[],
-    userId: string
+    userId: string,
   ): Promise<Map<string, boolean>> {
     return this.withIndexes(async () => {
       const likeStatusMap = new Map<string, boolean>();
@@ -390,11 +390,11 @@ export class CommentLikeModel {
       }
 
       // 먼저 해당 게시글의 모든 댓글 ID를 찾음
-      const commentCollection = this.db.collection("comments");
+      const commentCollection = this.db.collection('comments');
       const comments = await commentCollection
         .find(
           { article_id: new ObjectId(articleId) },
-          { projection: { _id: 1 } }
+          { projection: { _id: 1 } },
         )
         .toArray();
 
@@ -418,7 +418,7 @@ export class CommentLikeModel {
     options: {
       days?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<
     Array<{ comment_id: string; likeCount: number; latestLike: Date }>
   > {
@@ -436,9 +436,9 @@ export class CommentLikeModel {
         },
         {
           $group: {
-            _id: "$comment_id",
+            _id: '$comment_id',
             likeCount: { $sum: 1 },
-            latestLike: { $max: "$created_at" },
+            latestLike: { $max: '$created_at' },
           },
         },
         {
@@ -465,7 +465,7 @@ export class CommentLikeModel {
   // 사용자별 댓글 좋아요 활동 통계
   async getUserCommentLikeActivity(
     userId: string,
-    days: number = 30
+    days: number = 30,
   ): Promise<{
     totalLikes: number;
     recentLikes: number;
@@ -489,7 +489,7 @@ export class CommentLikeModel {
       ]);
 
       // 사용자가 작성한 댓글 중 가장 좋아요가 많이 받은 댓글 찾기
-      const commentCollection = this.db.collection("comments");
+      const commentCollection = this.db.collection('comments');
       const userComments = await commentCollection
         .find({ author_id: new ObjectId(userId) })
         .toArray();
@@ -500,7 +500,7 @@ export class CommentLikeModel {
 
       const commentIds = userComments.map((comment) => comment._id);
       const commentLikeCounts = await this.countByCommentIds(
-        commentIds.map((id) => id.toString())
+        commentIds.map((id) => id.toString()),
       );
 
       let mostLikedComment:
@@ -534,7 +534,7 @@ export const initializeCommentLikeModel = (db: Db): CommentLikeModel => {
 
 export const getCommentLikeModel = (): CommentLikeModel => {
   if (!commentLikeModel) {
-    throw new Error("CommentLike 모델이 초기화되지 않았습니다.");
+    throw new Error('CommentLike 모델이 초기화되지 않았습니다.');
   }
   return commentLikeModel;
 };

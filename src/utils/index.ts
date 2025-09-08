@@ -1,4 +1,4 @@
-export * from './db';
-export * from './emailService';
-export * from './numberUtils';
-export { default as logger, stream } from './logger';
+export * from './database/db';
+export * from './email/emailService';
+export * from './number/numberUtils';
+export { default as logger, stream } from './logger/logger';

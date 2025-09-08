@@ -1,5 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface ICategory {
   _id: ObjectId;
@@ -14,7 +14,7 @@ export class CategoryModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<ICategory>("categories");
+    this.collection = db.collection<ICategory>('categories');
     // 🚀 생성자에서 인덱스 생성하지 않음
   }
 
@@ -25,9 +25,9 @@ export class CategoryModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ Category indexes created successfully");
+      logger.info('✅ Category indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create Category indexes:", error);
+      logger.error('❌ Failed to create Category indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -40,28 +40,28 @@ export class CategoryModel {
 
   private async createIndexes() {
     try {
-      logger.info("Category 인덱스 생성 시작...");
+      logger.info('Category 인덱스 생성 시작...');
 
       // name 필드에 유니크 인덱스 생성 (중복 처리)
       try {
         await this.collection.createIndex(
           { name: 1 },
-          { unique: true, name: "category_name_unique" }
+          { unique: true, name: 'category_name_unique' },
         );
-        logger.info("✅ Category name 유니크 인덱스 생성");
+        logger.info('✅ Category name 유니크 인덱스 생성');
       } catch (error: any) {
         if (error.code === 85) {
           // IndexOptionsConflict
-          logger.info("ℹ️ Category name 유니크 인덱스가 이미 존재함 (스킵)");
+          logger.info('ℹ️ Category name 유니크 인덱스가 이미 존재함 (스킵)');
         } else {
-          logger.warn("⚠️ Category name 인덱스 생성 실패:", error.message);
+          logger.warn('⚠️ Category name 인덱스 생성 실패:', error.message);
         }
       }
 
-      logger.info("🎉 Category 인덱스 생성 완료");
+      logger.info('🎉 Category 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ Category 인덱스 생성 중 오류:", error);
-      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.error('❌ Category 인덱스 생성 중 오류:', error);
+      logger.info('⚠️ 인덱스 없이 계속 진행합니다...');
     }
   }
 
@@ -70,7 +70,7 @@ export class CategoryModel {
     return this.withIndexes(async () => {
       const existingCategory = await this.collection.findOne({ name });
       if (existingCategory) {
-        throw new Error("이미 존재하는 카테고리입니다.");
+        throw new Error('이미 존재하는 카테고리입니다.');
       }
 
       const category: ICategory = {
@@ -81,7 +81,7 @@ export class CategoryModel {
 
       const result = await this.collection.insertOne(category);
       if (!result.insertedId) {
-        throw new Error("카테고리 생성에 실패했습니다.");
+        throw new Error('카테고리 생성에 실패했습니다.');
       }
 
       return category;
@@ -140,7 +140,7 @@ export class CategoryModel {
       page?: number;
       limit?: number;
       search?: string;
-    } = {}
+    } = {},
   ): Promise<{ categories: ICategory[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, search } = options;
@@ -148,7 +148,7 @@ export class CategoryModel {
 
       const filter: any = {};
       if (search) {
-        filter.name = new RegExp(search, "i");
+        filter.name = new RegExp(search, 'i');
       }
 
       const [categories, total] = await Promise.all([
@@ -186,13 +186,13 @@ export class CategoryModel {
       });
 
       if (existingCategory) {
-        throw new Error("이미 존재하는 카테고리 이름입니다.");
+        throw new Error('이미 존재하는 카테고리 이름입니다.');
       }
 
       const result = await this.collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: { name } },
-        { returnDocument: "after" }
+        { returnDocument: 'after' },
       );
 
       return result || null;
@@ -274,15 +274,15 @@ export class CategoryModel {
       const pipeline = [
         {
           $lookup: {
-            from: "articles",
-            localField: "_id",
-            foreignField: "category_id",
-            as: "articles",
+            from: 'articles',
+            localField: '_id',
+            foreignField: 'category_id',
+            as: 'articles',
           },
         },
         {
           $addFields: {
-            articleCount: { $size: "$articles" },
+            articleCount: { $size: '$articles' },
           },
         },
         {
@@ -316,7 +316,7 @@ export class CategoryModel {
     options: {
       limit?: number;
       publishedOnly?: boolean;
-    } = {}
+    } = {},
   ): Promise<Array<{ category: ICategory; articleCount: number }>> {
     return this.withIndexes(async () => {
       const { limit = 10, publishedOnly = true } = options;
@@ -324,10 +324,10 @@ export class CategoryModel {
       const pipeline: any[] = [
         {
           $lookup: {
-            from: "articles",
-            localField: "_id",
-            foreignField: "category_id",
-            as: "articles",
+            from: 'articles',
+            localField: '_id',
+            foreignField: 'category_id',
+            as: 'articles',
           },
         },
       ];
@@ -337,9 +337,9 @@ export class CategoryModel {
           $addFields: {
             articles: {
               $filter: {
-                input: "$articles",
-                as: "article",
-                cond: { $eq: ["$$article.is_published", true] },
+                input: '$articles',
+                as: 'article',
+                cond: { $eq: ['$$article.is_published', true] },
               },
             },
           },
@@ -349,7 +349,7 @@ export class CategoryModel {
       pipeline.push(
         {
           $addFields: {
-            articleCount: { $size: "$articles" },
+            articleCount: { $size: '$articles' },
           },
         } as any,
         {
@@ -370,7 +370,7 @@ export class CategoryModel {
         },
         {
           $limit: limit,
-        }
+        },
       );
 
       const results = await this.collection.aggregate(pipeline).toArray();
@@ -392,10 +392,10 @@ export class CategoryModel {
       const pipeline = [
         {
           $lookup: {
-            from: "articles",
-            localField: "_id",
-            foreignField: "category_id",
-            as: "articles",
+            from: 'articles',
+            localField: '_id',
+            foreignField: 'category_id',
+            as: 'articles',
           },
         },
         {
@@ -435,7 +435,7 @@ export const initializeCategoryModel = (db: Db): CategoryModel => {
 
 export const getCategoryModel = (): CategoryModel => {
   if (!categoryModel) {
-    throw new Error("Category 모델이 초기화되지 않았습니다.");
+    throw new Error('Category 모델이 초기화되지 않았습니다.');
   }
   return categoryModel;
 };

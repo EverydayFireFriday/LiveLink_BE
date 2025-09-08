@@ -1,5 +1,5 @@
-import { ObjectId } from "mongodb";
-import logger from "../../logger";
+import { ObjectId } from 'mongodb';
+import logger from '../../logger/logger';
 
 /**
  * 콘서트 데이터 유효성 검증 결과 인터페이스
@@ -20,55 +20,55 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   if (!concertData.uid) {
     return {
       isValid: false,
-      message: "uid 필드가 필수입니다.",
-      field: "uid",
+      message: 'uid 필드가 필수입니다.',
+      field: 'uid',
     };
   }
 
   if (!concertData.title) {
     return {
       isValid: false,
-      message: "title 필드가 필수입니다.",
-      field: "title",
+      message: 'title 필드가 필수입니다.',
+      field: 'title',
     };
   }
 
   if (!concertData.location) {
     return {
       isValid: false,
-      message: "location 필드가 필수입니다.",
-      field: "location",
+      message: 'location 필드가 필수입니다.',
+      field: 'location',
     };
   }
 
   if (!concertData.datetime) {
     return {
       isValid: false,
-      message: "datetime 필드가 필수입니다.",
-      field: "datetime",
+      message: 'datetime 필드가 필수입니다.',
+      field: 'datetime',
     };
   }
 
   // 타입 검증
   if (
-    typeof concertData.uid !== "string" ||
+    typeof concertData.uid !== 'string' ||
     concertData.uid.trim().length === 0
   ) {
     return {
       isValid: false,
-      message: "uid는 비어있지 않은 문자열이어야 합니다.",
-      field: "uid",
+      message: 'uid는 비어있지 않은 문자열이어야 합니다.',
+      field: 'uid',
     };
   }
 
   if (
-    typeof concertData.title !== "string" ||
+    typeof concertData.title !== 'string' ||
     concertData.title.trim().length === 0
   ) {
     return {
       isValid: false,
-      message: "title은 비어있지 않은 문자열이어야 합니다.",
-      field: "title",
+      message: 'title은 비어있지 않은 문자열이어야 합니다.',
+      field: 'title',
     };
   }
 
@@ -76,51 +76,51 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   if (concertData.artist !== undefined && !Array.isArray(concertData.artist)) {
     return {
       isValid: false,
-      message: "artist는 배열이어야 합니다.",
-      field: "artist",
+      message: 'artist는 배열이어야 합니다.',
+      field: 'artist',
     };
   }
 
   if (!Array.isArray(concertData.location)) {
     return {
       isValid: false,
-      message: "location은 배열이어야 합니다.",
-      field: "location",
+      message: 'location은 배열이어야 합니다.',
+      field: 'location',
     };
   }
 
   if (concertData.location.length === 0) {
     return {
       isValid: false,
-      message: "location 배열은 비어있을 수 없습니다.",
-      field: "location",
+      message: 'location 배열은 비어있을 수 없습니다.',
+      field: 'location',
     };
   }
 
   if (!Array.isArray(concertData.datetime)) {
     return {
       isValid: false,
-      message: "datetime은 배열이어야 합니다.",
-      field: "datetime",
+      message: 'datetime은 배열이어야 합니다.',
+      field: 'datetime',
     };
   }
 
   if (concertData.datetime.length === 0) {
     return {
       isValid: false,
-      message: "datetime 배열은 비어있을 수 없습니다.",
-      field: "datetime",
+      message: 'datetime 배열은 비어있을 수 없습니다.',
+      field: 'datetime',
     };
   }
 
   // location 필드 내용 검증 - string 배열로 변경
   for (let i = 0; i < concertData.location.length; i++) {
     const loc = concertData.location[i];
-    if (typeof loc !== "string" || loc.trim().length === 0) {
+    if (typeof loc !== 'string' || loc.trim().length === 0) {
       return {
         isValid: false,
         message: `location[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-        field: "location",
+        field: 'location',
       };
     }
   }
@@ -128,11 +128,11 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   // datetime 형식 검증
   for (let i = 0; i < concertData.datetime.length; i++) {
     const dt = concertData.datetime[i];
-    if (!dt || typeof dt !== "string") {
+    if (!dt || typeof dt !== 'string') {
       return {
         isValid: false,
         message: `datetime[${i}]는 문자열이어야 합니다.`,
-        field: "datetime",
+        field: 'datetime',
       };
     }
 
@@ -140,7 +140,7 @@ export const validateConcertData = (concertData: any): ValidationResult => {
       return {
         isValid: false,
         message: `datetime[${i}]는 유효한 날짜 형식이어야 합니다.`,
-        field: "datetime",
+        field: 'datetime',
       };
     }
   }
@@ -149,11 +149,11 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   if (concertData.artist && Array.isArray(concertData.artist)) {
     for (let i = 0; i < concertData.artist.length; i++) {
       const artist = concertData.artist[i];
-      if (typeof artist !== "string" || artist.trim().length === 0) {
+      if (typeof artist !== 'string' || artist.trim().length === 0) {
         return {
           isValid: false,
           message: `artist[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "artist",
+          field: 'artist',
         };
       }
     }
@@ -164,40 +164,40 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     if (!Array.isArray(concertData.price)) {
       return {
         isValid: false,
-        message: "price는 배열이어야 합니다.",
-        field: "price",
+        message: 'price는 배열이어야 합니다.',
+        field: 'price',
       };
     }
 
     for (let i = 0; i < concertData.price.length; i++) {
       const price = concertData.price[i];
-      if (!price || typeof price !== "object") {
+      if (!price || typeof price !== 'object') {
         return {
           isValid: false,
           message: `price[${i}]는 객체여야 합니다.`,
-          field: "price",
+          field: 'price',
         };
       }
 
       if (
         price.tier &&
-        (typeof price.tier !== "string" || price.tier.trim().length === 0)
+        (typeof price.tier !== 'string' || price.tier.trim().length === 0)
       ) {
         return {
           isValid: false,
           message: `price[${i}].tier는 비어있지 않은 문자열이어야 합니다.`,
-          field: "price",
+          field: 'price',
         };
       }
 
       if (
         price.amount !== undefined &&
-        (typeof price.amount !== "number" || price.amount < 0)
+        (typeof price.amount !== 'number' || price.amount < 0)
       ) {
         return {
           isValid: false,
           message: `price[${i}].amount는 0 이상의 숫자여야 합니다.`,
-          field: "price",
+          field: 'price',
         };
       }
     }
@@ -208,34 +208,31 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     if (!Array.isArray(concertData.category)) {
       return {
         isValid: false,
-        message: "category는 배열이어야 합니다.",
-        field: "category",
+        message: 'category는 배열이어야 합니다.',
+        field: 'category',
       };
     }
 
     const validCategories = [
-      "rock/metal/indie", //락,메탈, 인디
-      "jazz/soul", //재즈, 소울
-      "rap/hiphop/edm", //랩, 힙합, 이디엠
-      "idol", //아이돌
-      "folk/trot", //포크, 트로트
-      "RnB/ballad", //r&b, 발라드
-      "tour", //내한
-      "festival", //페스티벌
-      "fan", //팬클럽, 팬미팅
-      "other", //그외 장르(디너쇼, 토크, 강연...)
+      'rock/metal/indie', //락,메탈, 인디
+      'jazz/soul', //재즈, 소울
+      'rap/hiphop/edm', //랩, 힙합, 이디엠
+      'idol', //아이돌
+      'folk/trot', //포크, 트로트
+      'RnB/ballad', //r&b, 발라드
+      'tour', //내한
+      'festival', //페스티벌
+      'fan', //팬클럽, 팬미팅
+      'other', //그외 장르(디너쇼, 토크, 강연...)
     ];
 
     for (let i = 0; i < concertData.category.length; i++) {
       const category = concertData.category[i];
-      if (
-        typeof category !== "string" ||
-        !validCategories.includes(category)
-      ) {
+      if (typeof category !== 'string' || !validCategories.includes(category)) {
         return {
           isValid: false,
-          message: `category[${i}]는 유효한 카테고리여야 합니다. 허용된 값: ${validCategories.join(", ")}`,
-          field: "category",
+          message: `category[${i}]는 유효한 카테고리여야 합니다. 허용된 값: ${validCategories.join(', ')}`,
+          field: 'category',
         };
       }
     }
@@ -244,13 +241,13 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   // ticketOpenDate 검증 (선택적 필드)
   if (concertData.ticketOpenDate !== undefined) {
     if (
-      typeof concertData.ticketOpenDate !== "string" ||
+      typeof concertData.ticketOpenDate !== 'string' ||
       !Date.parse(concertData.ticketOpenDate)
     ) {
       return {
         isValid: false,
-        message: "ticketOpenDate는 유효한 날짜 형식의 문자열이어야 합니다.",
-        field: "ticketOpenDate",
+        message: 'ticketOpenDate는 유효한 날짜 형식의 문자열이어야 합니다.',
+        field: 'ticketOpenDate',
       };
     }
   }
@@ -260,18 +257,18 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     if (!Array.isArray(concertData.infoImages)) {
       return {
         isValid: false,
-        message: "infoImages는 배열이어야 합니다.",
-        field: "infoImages",
+        message: 'infoImages는 배열이어야 합니다.',
+        field: 'infoImages',
       };
     }
 
     for (let i = 0; i < concertData.infoImages.length; i++) {
       const infoImage = concertData.infoImages[i];
-      if (typeof infoImage !== "string" || infoImage.trim().length === 0) {
+      if (typeof infoImage !== 'string' || infoImage.trim().length === 0) {
         return {
           isValid: false,
           message: `infoImages[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "infoImages",
+          field: 'infoImages',
         };
       }
 
@@ -280,7 +277,7 @@ export const validateConcertData = (concertData: any): ValidationResult => {
         return {
           isValid: false,
           message: `infoImages[${i}]는 유효한 이미지 URL이어야 합니다.`,
-          field: "infoImages",
+          field: 'infoImages',
         };
       }
     }
@@ -291,18 +288,18 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     if (!Array.isArray(concertData.tags)) {
       return {
         isValid: false,
-        message: "tags는 배열이어야 합니다.",
-        field: "tags",
+        message: 'tags는 배열이어야 합니다.',
+        field: 'tags',
       };
     }
 
     for (let i = 0; i < concertData.tags.length; i++) {
       const tag = concertData.tags[i];
-      if (typeof tag !== "string" || tag.trim().length === 0) {
+      if (typeof tag !== 'string' || tag.trim().length === 0) {
         return {
           isValid: false,
           message: `tags[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "tags",
+          field: 'tags',
         };
       }
     }
@@ -311,22 +308,22 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   // description 검증 (선택적 필드)
   if (
     concertData.description !== undefined &&
-    typeof concertData.description !== "string"
+    typeof concertData.description !== 'string'
   ) {
     return {
       isValid: false,
-      message: "description은 문자열이어야 합니다.",
-      field: "description",
+      message: 'description은 문자열이어야 합니다.',
+      field: 'description',
     };
   }
 
   // posterImage 검증 (선택적 필드)
   if (concertData.posterImage !== undefined) {
-    if (typeof concertData.posterImage !== "string") {
+    if (typeof concertData.posterImage !== 'string') {
       return {
         isValid: false,
-        message: "posterImage는 문자열이어야 합니다.",
-        field: "posterImage",
+        message: 'posterImage는 문자열이어야 합니다.',
+        field: 'posterImage',
       };
     }
 
@@ -336,15 +333,15 @@ export const validateConcertData = (concertData: any): ValidationResult => {
     ) {
       return {
         isValid: false,
-        message: "posterImage는 유효한 이미지 URL이어야 합니다.",
-        field: "posterImage",
+        message: 'posterImage는 유효한 이미지 URL이어야 합니다.',
+        field: 'posterImage',
       };
     }
   }
 
   return {
     isValid: true,
-    message: "유효성 검증 통과",
+    message: '유효성 검증 통과',
   };
 };
 
@@ -354,56 +351,56 @@ export const validateConcertData = (concertData: any): ValidationResult => {
  * @returns 유효성 검증 결과
  */
 export const validateConcertUpdateData = (
-  updateData: any
+  updateData: any,
 ): ValidationResult => {
   // 빈 객체는 허용하지 않음
-  if (!updateData || typeof updateData !== "object") {
+  if (!updateData || typeof updateData !== 'object') {
     return {
       isValid: false,
-      message: "업데이트 데이터가 올바르지 않습니다.",
+      message: '업데이트 데이터가 올바르지 않습니다.',
     };
   }
 
   // 업데이트 가능한 필드들이 최소 하나는 있어야 함
   const updateableFields = [
-    "title",
-    "description",
-    "status",
-    "price",
-    "ticketOpenDate",
-    "posterImage",
-    "infoImages", // info -> infoImages로 변경
-    "tags",
-    "datetime",
-    "artist",
-    "location",
-    "category",
-    "ticketLink",
+    'title',
+    'description',
+    'status',
+    'price',
+    'ticketOpenDate',
+    'posterImage',
+    'infoImages', // info -> infoImages로 변경
+    'tags',
+    'datetime',
+    'artist',
+    'location',
+    'category',
+    'ticketLink',
   ];
 
   const hasUpdateableField = updateableFields.some((field) =>
-    updateData.hasOwnProperty(field)
+    updateData.hasOwnProperty(field),
   );
 
   if (!hasUpdateableField) {
     return {
       isValid: false,
-      message: "수정할 수 있는 필드가 최소 하나는 필요합니다.",
+      message: '수정할 수 있는 필드가 최소 하나는 필요합니다.',
     };
   }
 
   // 수정 불가능한 필드들 체크 (경고만 출력, 검증은 통과)
-  const readOnlyFields = ["uid", "likes", "likesCount", "_id", "createdAt"];
+  const readOnlyFields = ['uid', 'likes', 'likesCount', '_id', 'createdAt'];
   const hasReadOnlyFields = readOnlyFields.some((field) =>
-    updateData.hasOwnProperty(field)
+    updateData.hasOwnProperty(field),
   );
 
   if (hasReadOnlyFields) {
     const foundFields = readOnlyFields.filter((field) =>
-      updateData.hasOwnProperty(field)
+      updateData.hasOwnProperty(field),
     );
     logger.warn(
-      `수정 불가능한 필드가 포함되어 있습니다 (무시됨): ${foundFields.join(", ")}`
+      `수정 불가능한 필드가 포함되어 있습니다 (무시됨): ${foundFields.join(', ')}`,
     );
   }
 
@@ -412,13 +409,13 @@ export const validateConcertUpdateData = (
   // title 검증
   if (updateData.title !== undefined) {
     if (
-      typeof updateData.title !== "string" ||
+      typeof updateData.title !== 'string' ||
       updateData.title.trim().length === 0
     ) {
       return {
         isValid: false,
-        message: "title은 비어있지 않은 문자열이어야 합니다.",
-        field: "title",
+        message: 'title은 비어있지 않은 문자열이어야 합니다.',
+        field: 'title',
       };
     }
   }
@@ -426,12 +423,12 @@ export const validateConcertUpdateData = (
   // description 검증
   if (
     updateData.description !== undefined &&
-    typeof updateData.description !== "string"
+    typeof updateData.description !== 'string'
   ) {
     return {
       isValid: false,
-      message: "description은 문자열이어야 합니다.",
-      field: "description",
+      message: 'description은 문자열이어야 합니다.',
+      field: 'description',
     };
   }
 
@@ -441,8 +438,8 @@ export const validateConcertUpdateData = (
       return {
         isValid: false,
         message:
-          "status는 upcoming, ongoing, completed, cancelled 중 하나여야 합니다.",
-        field: "status",
+          'status는 upcoming, ongoing, completed, cancelled 중 하나여야 합니다.',
+        field: 'status',
       };
     }
   }
@@ -452,18 +449,18 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.artist)) {
       return {
         isValid: false,
-        message: "artist는 배열이어야 합니다.",
-        field: "artist",
+        message: 'artist는 배열이어야 합니다.',
+        field: 'artist',
       };
     }
 
     for (let i = 0; i < updateData.artist.length; i++) {
       const artist = updateData.artist[i];
-      if (typeof artist !== "string" || artist.trim().length === 0) {
+      if (typeof artist !== 'string' || artist.trim().length === 0) {
         return {
           isValid: false,
           message: `artist[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "artist",
+          field: 'artist',
         };
       }
     }
@@ -474,26 +471,26 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.location)) {
       return {
         isValid: false,
-        message: "location은 배열이어야 합니다.",
-        field: "location",
+        message: 'location은 배열이어야 합니다.',
+        field: 'location',
       };
     }
 
     if (updateData.location.length === 0) {
       return {
         isValid: false,
-        message: "location 배열은 비어있을 수 없습니다.",
-        field: "location",
+        message: 'location 배열은 비어있을 수 없습니다.',
+        field: 'location',
       };
     }
 
     for (let i = 0; i < updateData.location.length; i++) {
       const loc = updateData.location[i];
-      if (typeof loc !== "string" || loc.trim().length === 0) {
+      if (typeof loc !== 'string' || loc.trim().length === 0) {
         return {
           isValid: false,
           message: `location[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "location",
+          field: 'location',
         };
       }
     }
@@ -504,26 +501,26 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.datetime)) {
       return {
         isValid: false,
-        message: "datetime은 배열이어야 합니다.",
-        field: "datetime",
+        message: 'datetime은 배열이어야 합니다.',
+        field: 'datetime',
       };
     }
 
     if (updateData.datetime.length === 0) {
       return {
         isValid: false,
-        message: "datetime 배열은 비어있을 수 없습니다.",
-        field: "datetime",
+        message: 'datetime 배열은 비어있을 수 없습니다.',
+        field: 'datetime',
       };
     }
 
     for (let i = 0; i < updateData.datetime.length; i++) {
       const dt = updateData.datetime[i];
-      if (!dt || typeof dt !== "string") {
+      if (!dt || typeof dt !== 'string') {
         return {
           isValid: false,
           message: `datetime[${i}]는 문자열이어야 합니다.`,
-          field: "datetime",
+          field: 'datetime',
         };
       }
 
@@ -531,7 +528,7 @@ export const validateConcertUpdateData = (
         return {
           isValid: false,
           message: `datetime[${i}]는 유효한 날짜 형식이어야 합니다.`,
-          field: "datetime",
+          field: 'datetime',
         };
       }
     }
@@ -542,40 +539,40 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.price)) {
       return {
         isValid: false,
-        message: "price는 배열이어야 합니다.",
-        field: "price",
+        message: 'price는 배열이어야 합니다.',
+        field: 'price',
       };
     }
 
     for (let i = 0; i < updateData.price.length; i++) {
       const price = updateData.price[i];
-      if (!price || typeof price !== "object") {
+      if (!price || typeof price !== 'object') {
         return {
           isValid: false,
           message: `price[${i}]는 객체여야 합니다.`,
-          field: "price",
+          field: 'price',
         };
       }
 
       if (
         price.tier &&
-        (typeof price.tier !== "string" || price.tier.trim().length === 0)
+        (typeof price.tier !== 'string' || price.tier.trim().length === 0)
       ) {
         return {
           isValid: false,
           message: `price[${i}].tier는 비어있지 않은 문자열이어야 합니다.`,
-          field: "price",
+          field: 'price',
         };
       }
 
       if (
         price.amount !== undefined &&
-        (typeof price.amount !== "number" || price.amount < 0)
+        (typeof price.amount !== 'number' || price.amount < 0)
       ) {
         return {
           isValid: false,
           message: `price[${i}].amount는 0 이상의 숫자여야 합니다.`,
-          field: "price",
+          field: 'price',
         };
       }
     }
@@ -586,34 +583,31 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.category)) {
       return {
         isValid: false,
-        message: "category는 배열이어야 합니다.",
-        field: "category",
+        message: 'category는 배열이어야 합니다.',
+        field: 'category',
       };
     }
 
     const validCategories = [
-      "rock/metal/indie", //락,메탈, 인디
-      "jazz/soul", //재즈, 소울
-      "rap/hiphop/edm", //랩, 힙합, 이디엠
-      "idol", //아이돌
-      "folk/trot", //포크, 트로트
-      "RnB/ballad", //r&b, 발라드
-      "tour", //내한
-      "festival", //페스티벌
-      "fan", //팬클럽, 팬미팅
-      "other", //그외 장르(디너쇼, 토크, 강연...)
+      'rock/metal/indie', //락,메탈, 인디
+      'jazz/soul', //재즈, 소울
+      'rap/hiphop/edm', //랩, 힙합, 이디엠
+      'idol', //아이돌
+      'folk/trot', //포크, 트로트
+      'RnB/ballad', //r&b, 발라드
+      'tour', //내한
+      'festival', //페스티벌
+      'fan', //팬클럽, 팬미팅
+      'other', //그외 장르(디너쇼, 토크, 강연...)
     ];
 
     for (let i = 0; i < updateData.category.length; i++) {
       const category = updateData.category[i];
-      if (
-        typeof category !== "string" ||
-        !validCategories.includes(category)
-      ) {
+      if (typeof category !== 'string' || !validCategories.includes(category)) {
         return {
           isValid: false,
-          message: `category[${i}]는 유효한 카테고리여야 합니다. 허용된 값: ${validCategories.join(", ")}`,
-          field: "category",
+          message: `category[${i}]는 유효한 카테고리여야 합니다. 허용된 값: ${validCategories.join(', ')}`,
+          field: 'category',
         };
       }
     }
@@ -624,40 +618,40 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.ticketLink)) {
       return {
         isValid: false,
-        message: "ticketLink는 배열이어야 합니다.",
-        field: "ticketLink",
+        message: 'ticketLink는 배열이어야 합니다.',
+        field: 'ticketLink',
       };
     }
 
     for (let i = 0; i < updateData.ticketLink.length; i++) {
       const link = updateData.ticketLink[i];
-      if (!link || typeof link !== "object") {
+      if (!link || typeof link !== 'object') {
         return {
           isValid: false,
           message: `ticketLink[${i}]는 객체여야 합니다.`,
-          field: "ticketLink",
+          field: 'ticketLink',
         };
       }
 
       if (
         link.platform &&
-        (typeof link.platform !== "string" || link.platform.trim().length === 0)
+        (typeof link.platform !== 'string' || link.platform.trim().length === 0)
       ) {
         return {
           isValid: false,
           message: `ticketLink[${i}].platform은 비어있지 않은 문자열이어야 합니다.`,
-          field: "ticketLink",
+          field: 'ticketLink',
         };
       }
 
       if (
         link.url &&
-        (typeof link.url !== "string" || link.url.trim().length === 0)
+        (typeof link.url !== 'string' || link.url.trim().length === 0)
       ) {
         return {
           isValid: false,
           message: `ticketLink[${i}].url은 비어있지 않은 문자열이어야 합니다.`,
-          field: "ticketLink",
+          field: 'ticketLink',
         };
       }
     }
@@ -666,24 +660,24 @@ export const validateConcertUpdateData = (
   // ticketOpenDate 검증
   if (updateData.ticketOpenDate !== undefined) {
     if (
-      typeof updateData.ticketOpenDate !== "string" ||
+      typeof updateData.ticketOpenDate !== 'string' ||
       !Date.parse(updateData.ticketOpenDate)
     ) {
       return {
         isValid: false,
-        message: "ticketOpenDate는 유효한 날짜 형식의 문자열이어야 합니다.",
-        field: "ticketOpenDate",
+        message: 'ticketOpenDate는 유효한 날짜 형식의 문자열이어야 합니다.',
+        field: 'ticketOpenDate',
       };
     }
   }
 
   // posterImage 검증
   if (updateData.posterImage !== undefined) {
-    if (typeof updateData.posterImage !== "string") {
+    if (typeof updateData.posterImage !== 'string') {
       return {
         isValid: false,
-        message: "posterImage는 문자열이어야 합니다.",
-        field: "posterImage",
+        message: 'posterImage는 문자열이어야 합니다.',
+        field: 'posterImage',
       };
     }
 
@@ -693,8 +687,8 @@ export const validateConcertUpdateData = (
     ) {
       return {
         isValid: false,
-        message: "posterImage는 유효한 이미지 URL이어야 합니다.",
-        field: "posterImage",
+        message: 'posterImage는 유효한 이미지 URL이어야 합니다.',
+        field: 'posterImage',
       };
     }
   }
@@ -704,18 +698,18 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.infoImages)) {
       return {
         isValid: false,
-        message: "infoImages는 배열이어야 합니다.",
-        field: "infoImages",
+        message: 'infoImages는 배열이어야 합니다.',
+        field: 'infoImages',
       };
     }
 
     for (let i = 0; i < updateData.infoImages.length; i++) {
       const infoImage = updateData.infoImages[i];
-      if (typeof infoImage !== "string" || infoImage.trim().length === 0) {
+      if (typeof infoImage !== 'string' || infoImage.trim().length === 0) {
         return {
           isValid: false,
           message: `infoImages[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "infoImages",
+          field: 'infoImages',
         };
       }
 
@@ -724,7 +718,7 @@ export const validateConcertUpdateData = (
         return {
           isValid: false,
           message: `infoImages[${i}]는 유효한 이미지 URL이어야 합니다.`,
-          field: "infoImages",
+          field: 'infoImages',
         };
       }
     }
@@ -735,18 +729,18 @@ export const validateConcertUpdateData = (
     if (!Array.isArray(updateData.tags)) {
       return {
         isValid: false,
-        message: "tags는 배열이어야 합니다.",
-        field: "tags",
+        message: 'tags는 배열이어야 합니다.',
+        field: 'tags',
       };
     }
 
     for (let i = 0; i < updateData.tags.length; i++) {
       const tag = updateData.tags[i];
-      if (typeof tag !== "string" || tag.trim().length === 0) {
+      if (typeof tag !== 'string' || tag.trim().length === 0) {
         return {
           isValid: false,
           message: `tags[${i}]는 비어있지 않은 문자열이어야 합니다.`,
-          field: "tags",
+          field: 'tags',
         };
       }
     }
@@ -754,7 +748,7 @@ export const validateConcertUpdateData = (
 
   return {
     isValid: true,
-    message: "업데이트 데이터 유효성 검증 통과",
+    message: '업데이트 데이터 유효성 검증 통과',
   };
 };
 
@@ -776,14 +770,14 @@ export const generateObjectIdFromUid = (uid: string): ObjectId => {
     } else {
       // timestamp를 찾을 수 없으면 새로운 ObjectId 생성
       logger.warn(
-        `UID에서 timestamp를 찾을 수 없음: ${uid}, 새로운 ObjectId 생성`
+        `UID에서 timestamp를 찾을 수 없음: ${uid}, 새로운 ObjectId 생성`,
       );
       return new ObjectId();
     }
   } catch (error) {
     logger.warn(
       `UID를 ObjectId로 변환 실패: ${uid}, 새로운 ObjectId 생성`,
-      error
+      error,
     );
     return new ObjectId();
   }
@@ -795,7 +789,7 @@ export const generateObjectIdFromUid = (uid: string): ObjectId => {
  * @returns 유효한 이미지 URL인지 여부
  */
 export const isValidImageUrl = (url: string): boolean => {
-  if (!url || typeof url !== "string") {
+  if (!url || typeof url !== 'string') {
     return false;
   }
 
@@ -820,7 +814,7 @@ export const isValidImageUrl = (url: string): boolean => {
  * @returns 유효한 상태인지 여부
  */
 export const isValidConcertStatus = (status: string): boolean => {
-  const validStatuses = ["upcoming", "ongoing", "completed", "cancelled"];
+  const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
   return validStatuses.includes(status);
 };
 
@@ -831,16 +825,16 @@ export const isValidConcertStatus = (status: string): boolean => {
  */
 export const isValidMusicCategory = (category: string): boolean => {
   const validCategories = [
-    "rock/metal/indie", //락,메탈, 인디
-    "jazz/soul", //재즈, 소울
-    "rap/hiphop/edm", //랩, 힙합, 이디엠
-    "idol", //아이돌
-    "folk/trot", //포크, 트로트
-    "RnB/ballad", //r&b, 발라드
-    "tour", //내한
-    "festival", //페스티벌
-    "fan", //팬클럽, 팬미팅
-    "other", //그외 장르(디너쇼, 토크, 강연...)
+    'rock/metal/indie', //락,메탈, 인디
+    'jazz/soul', //재즈, 소울
+    'rap/hiphop/edm', //랩, 힙합, 이디엠
+    'idol', //아이돌
+    'folk/trot', //포크, 트로트
+    'RnB/ballad', //r&b, 발라드
+    'tour', //내한
+    'festival', //페스티벌
+    'fan', //팬클럽, 팬미팅
+    'other', //그외 장르(디너쇼, 토크, 강연...)
   ];
   return validCategories.includes(category);
 };
@@ -853,7 +847,7 @@ export const isValidMusicCategory = (category: string): boolean => {
  */
 export const validateAndNormalizePagination = (
   page: any,
-  limit: any
+  limit: any,
 ): { page: number; limit: number; skip: number } => {
   // 기본값 설정
   let normalizedPage = 1;
@@ -890,12 +884,12 @@ export const validateAndNormalizePagination = (
  * @returns 유효한 날짜 문자열인지 여부
  */
 export const isValidDateString = (dateString: string): boolean => {
-  if (!dateString || typeof dateString !== "string") {
+  if (!dateString || typeof dateString !== 'string') {
     return false;
   }
 
   const date = new Date(dateString);
-  return !isNaN(date.getTime()) && date.toISOString() !== "Invalid Date";
+  return !isNaN(date.getTime()) && date.toISOString() !== 'Invalid Date';
 };
 
 /**
@@ -904,7 +898,7 @@ export const isValidDateString = (dateString: string): boolean => {
  * @returns 유효한 정렬 기준인지 여부
  */
 export const isValidSortBy = (sortBy: string): boolean => {
-  const validSortOptions = ["date", "likes", "created", "title", "artist"];
+  const validSortOptions = ['date', 'likes', 'created', 'title', 'artist'];
   return validSortOptions.includes(sortBy);
 };
 
@@ -918,7 +912,7 @@ export const isValidSortBy = (sortBy: string): boolean => {
 export const validateAndNormalizeBatchSize = (
   batchSize: any,
   defaultSize: number = 100,
-  maxSize: number = 1000
+  maxSize: number = 1000,
 ): number => {
   if (batchSize === undefined) {
     return defaultSize;
@@ -957,7 +951,7 @@ export const normalizeConcertData = (rawData: any): any => {
       : rawData.price
         ? [rawData.price]
         : [],
-    description: rawData.description?.trim() || "",
+    description: rawData.description?.trim() || '',
     category: Array.isArray(rawData.category)
       ? rawData.category.filter((c: string) => c && isValidMusicCategory(c))
       : rawData.category && isValidMusicCategory(rawData.category)
@@ -971,14 +965,14 @@ export const normalizeConcertData = (rawData: any): any => {
     ticketOpenDate: rawData.ticketOpenDate
       ? new Date(rawData.ticketOpenDate)
       : undefined,
-    posterImage: rawData.posterImage?.trim() || "",
+    posterImage: rawData.posterImage?.trim() || '',
     infoImages: Array.isArray(rawData.infoImages) // info -> infoImages로 변경
       ? rawData.infoImages.filter((i: string) => i && i.trim().length > 0)
       : [],
     tags: Array.isArray(rawData.tags)
       ? rawData.tags.filter((t: string) => t && t.trim().length > 0)
       : [],
-    status: isValidConcertStatus(rawData.status) ? rawData.status : "upcoming",
+    status: isValidConcertStatus(rawData.status) ? rawData.status : 'upcoming',
     likes: [],
     likesCount: 0,
     createdAt: new Date(),
@@ -994,8 +988,8 @@ export const normalizeConcertData = (rawData: any): any => {
  * @returns 정규화된 검색어
  */
 export const normalizeSearchQuery = (query: string): string => {
-  if (!query || typeof query !== "string") {
-    return "";
+  if (!query || typeof query !== 'string') {
+    return '';
   }
 
   return query.trim();
@@ -1008,10 +1002,10 @@ export const normalizeSearchQuery = (query: string): string => {
  */
 export const formatValidationError = (result: ValidationResult): string => {
   if (result.isValid) {
-    return "";
+    return '';
   }
 
   return result.field
     ? `[${result.field}] ${result.message}`
-    : result.message || "유효성 검증 실패";
+    : result.message || '유효성 검증 실패';
 };
