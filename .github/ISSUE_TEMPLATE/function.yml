@@ -1,37 +1,37 @@
 name: "function"
-description: "🚀 새로운 기능을 제안하거나 추가 계획을 공유해주세요"
-labels: ["🚀 feature", "enhancement"]
+description: "새로운 기능을 제안하거나 추가 계획을 공유해주세요"
+labels: ["feature", "enhancement"]
 assignees: []
 body:
   - type: markdown
     attributes:
       value: |
-        ## 🚀 새로운 기능 제안
+        ## 새로운 기능 제안
         새로운 기능에 대한 아이디어를 구체적으로 설명해주세요!
 
   - type: dropdown
     id: feature_type
     attributes:
-      label: "📋 기능 유형"
+      label: "기능 유형"
       description: "어떤 종류의 기능인가요?"
       options:
-        - "👤 사용자 기능"
-        - "🔧 관리자 기능"
-        - "📊 분석/통계 기능"
-        - "🔒 보안 기능"
-        - "📱 모바일 최적화"
-        - "🌐 API 기능"
-        - "🎨 UI/UX 기능"
-        - "⚡ 성능 최적화"
-        - "🔗 외부 연동"
-        - "📝 기타"
+        - "사용자 기능"
+        - "관리자 기능"
+        - "분석/통계 기능"
+        - "보안 기능"
+        - "모바일 최적화"
+        - "API 기능"
+        - "UI/UX 기능"
+        - "성능 최적화"
+        - "외부 연동"
+        - "기타"
     validations:
       required: true
 
   - type: dropdown
     id: priority
     attributes:
-      label: "⭐ 우선순위"
+      label: "우선순위"
       description: "이 기능의 우선순위는 어느 정도인가요?"
       options:
         - "🔴 Critical (필수 기능)"
@@ -44,7 +44,7 @@ body:
   - type: textarea
     id: problem_statement
     attributes:
-      label: "❓ 해결하고자 하는 문제"
+      label: "해결하고자 하는 문제"
       description: |
         이 기능이 해결하고자 하는 문제나 니즈는 무엇인가요?
       placeholder: |
@@ -56,7 +56,7 @@ body:
   - type: textarea
     id: target_users
     attributes:
-      label: "🎯 대상 사용자"
+      label: "대상 사용자"
       description: |
         이 기능을 주로 사용할 사용자는 누구인가요?
       placeholder: |
@@ -70,7 +70,7 @@ body:
   - type: textarea
     id: feature_description
     attributes:
-      label: "📝 기능 상세 설명"
+      label: "기능 상세 설명"
       description: |
         구현하고자 하는 기능을 구체적으로 설명해주세요.
       placeholder: |
@@ -85,7 +85,7 @@ body:
   - type: textarea
     id: user_stories
     attributes:
-      label: "📖 사용자 스토리"
+      label: "사용자 스토리"
       description: |
         사용자가 이 기능을 어떻게 사용할지 시나리오를 작성해주세요.
       placeholder: |
@@ -101,7 +101,7 @@ body:
   - type: textarea
     id: acceptance_criteria
     attributes:
-      label: "✅ 완료 조건"
+      label: "완료 조건"
       description: |
         이 기능이 완성되었다고 볼 수 있는 조건들을 나열해주세요.
       placeholder: |
@@ -129,7 +129,7 @@ body:
   - type: textarea
     id: mockups
     attributes:
-      label: "🎨 목업/와이어프레임"
+      label: "목업/와이어프레임"
       description: |
         기능의 UI/UX를 설명할 수 있는 목업이나 와이어프레임을 첨부해주세요.
       placeholder: |
@@ -138,7 +138,7 @@ body:
   - type: textarea
     id: references
     attributes:
-      label: "📚 참고 자료"
+      label: "참고 자료"
       description: |
         비슷한 기능을 구현한 다른 서비스나 참고할 만한 자료가 있다면 공유해주세요.
       placeholder: |
@@ -150,14 +150,14 @@ body:
   - type: input
     id: estimated_effort
     attributes:
-      label: "⏱️ 예상 개발 시간"
+      label: "예상 개발 시간"
       description: "이 기능 개발에 필요한 예상 시간을 입력해주세요"
       placeholder: "예시: 2-3주, 1개월, 단기간 등"
 
   - type: textarea
     id: additional_notes
     attributes:
-      label: "📝 추가 사항"
+      label: "추가 사항"
       description: |
         위에서 다루지 못한 추가적인 정보나 고려사항이 있다면 작성해주세요.
       placeholder: |
@@ -168,7 +168,7 @@ body:
   - type: checkboxes
     id: terms
     attributes:
-      label: "✅ 체크리스트"
+      label: "체크리스트"
       description: "제출하기 전에 아래 항목들을 확인해주세요"
       options:
         - label: "비슷한 기능 요청이 이미 존재하지 않는지 확인했습니다"

@@ -1,12 +1,12 @@
 name: "feedback"
-description: "💡 개선 아이디어나 피드백을 공유해주세요"
-labels: ["💡 feedback", "개선"]
+description: "개선 아이디어나 피드백을 공유해주세요"
+labels: ["feedback", "개선"]
 assignees: []
 body:
   - type: markdown
     attributes:
       value: |
-        ## 💡 피드백 및 개선 제안
+        ## 피드백 및 개선 제안
         더 나은 서비스를 위한 여러분의 소중한 의견을 기다립니다!
 
 
@@ -16,21 +16,21 @@ body:
       label: "📋 피드백 유형"
       description: "어떤 종류의 피드백인가요?"
       options:
-        - "🎨 UI/UX 개선"
-        - "⚡ 성능 개선"
-        - "🔧 코드 구조 개선"
-        - "📝 문서 개선"
-        - "🚀 새로운 기능 제안"
-        - "🔒 보안 개선"
-        - "♿ 접근성 개선"
-        - "🌐 기타"
+        - "UI/UX 개선"
+        - "성능 개선"
+        - "코드 구조 개선"
+        - "문서 개선"
+        - "새로운 기능 제안"
+        - "보안 개선"
+        - "접근성 개선"
+        - "기타"
     validations:
       required: true
 
   - type: dropdown
     id: priority
     attributes:
-      label: "⭐ 중요도"
+      label: "중요도"
       description: "이 개선사항의 중요도는 어느 정도인가요?"
       options:
         - "🔴 Very High (매우 중요)"
@@ -43,7 +43,7 @@ body:
   - type: textarea
     id: current_situation
     attributes:
-      label: "📋 현재 상황"
+      label: "현재 상황"
       description: |
         현재 어떤 부분에서 개선이 필요하다고 생각하시나요?
       placeholder: |
@@ -54,7 +54,7 @@ body:
   - type: textarea
     id: suggestion
     attributes:
-      label: "💡 개선 제안"
+      label: "개선 제안"
       description: |
         어떻게 개선하면 좋을지 구체적으로 제안해주세요.
       placeholder: |
@@ -68,7 +68,7 @@ body:
   - type: textarea
     id: expected_benefits
     attributes:
-      label: "🎯 기대 효과"
+      label: "기대 효과"
       description: |
         이 개선사항이 적용되면 어떤 효과를 기대할 수 있나요?
       placeholder: |
@@ -82,7 +82,7 @@ body:
   - type: textarea
     id: implementation_ideas
     attributes:
-      label: "🔧 구현 아이디어"
+      label: "구현 아이디어"
       description: |
         구체적인 구현 방법이나 기술적 아이디어가 있다면 공유해주세요.
       placeholder: |
@@ -94,7 +94,7 @@ body:
   - type: textarea
     id: references
     attributes:
-      label: "📚 참고 자료"
+      label: "참고 자료"
       description: |
         관련 문서, 기사, 예시 등이 있다면 링크를 공유해주세요.
       placeholder: |
@@ -105,7 +105,7 @@ body:
   - type: textarea
     id: mockups
     attributes:
-      label: "🎨 목업/스크린샷"
+      label: "목업/스크린샷"
       description: |
         UI/UX 개선과 관련된 피드백이라면 목업이나 참고 이미지를 첨부해주세요.
       placeholder: |
@@ -114,7 +114,7 @@ body:
   - type: textarea
     id: additional_notes
     attributes:
-      label: "📝 추가 사항"
+      label: "추가 사항"
       description: |
         위에서 다루지 못한 추가적인 의견이나 제안사항이 있다면 자유롭게 작성해주세요.
       placeholder: |
@@ -123,7 +123,7 @@ body:
   - type: checkboxes
     id: terms
     attributes:
-      label: "✅ 체크리스트"
+      label: "체크리스트"
       description: "제출하기 전에 아래 항목들을 확인해주세요"
       options:
         - label: "비슷한 피드백이 이미 제출되지 않았는지 확인했습니다"
