@@ -38,6 +38,7 @@ import { initializeAllArticleModels } from "./models/article";
 import authRouter from "./routes/auth/index";
 import concertRouter from "./routes/concert/index";
 import healthRouter from "./routes/health/healthRoutes";
+import { defaultLimiter } from "./middlewares/rateLimitMiddleware";
 
 // connect-redis v6.1.3 방식
 const RedisStore = require("connect-redis")(session);
@@ -340,6 +341,9 @@ app.get("/", (req: express.Request, res: express.Response) => {
 app.use("/auth", authRouter);
 app.use("/concert", concertRouter);
 app.use("/health", healthRouter); // 상세한 헬스체크용
+
+// 🚦 기본 Rate Limiter 적용 (헬스체크 이후)
+app.use(defaultLimiter);
 
 // CSP Violation Report Endpoint
 app.post('/csp-report', express.json({ type: 'application/csp-report' }), (req, res) => {
