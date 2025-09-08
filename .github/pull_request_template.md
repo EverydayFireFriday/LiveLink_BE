@@ -1,9 +1,6 @@
----
-name: "Pull Request"
-title: "[FEAT] "
-labels: ""
-assignees: ""
----
+## 제목
+
+> 작업하신 내용을 제목을 작성해주세요.
 
 ## 작업 내용
 
