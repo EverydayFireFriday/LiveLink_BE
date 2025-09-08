@@ -1,7 +1,7 @@
-import express from "express";
-import { signupLimiter } from "../../middlewares/rateLimitMiddleware";
-import { RegistrationController } from "../../controllers/auth/registrationController";
-import { requireNoAuth } from "../../middlewares/auth/authMiddleware";
+import express from 'express';
+import { signupLimiter } from '../../middlewares/security/rateLimitMiddleware';
+import { RegistrationController } from '../../controllers/auth/registrationController';
+import { requireNoAuth } from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 const registrationController = new RegistrationController();
@@ -51,7 +51,7 @@ const registrationController = new RegistrationController();
  *                  type: string
  *                  description: 동의한 약관 버전
  *                  example: "20250828_v1"
- * 
+ *
  *     responses:
  *       200:
  *         description: 인증 코드 전송 성공
@@ -135,10 +135,10 @@ const registrationController = new RegistrationController();
  */
 // 회원가입 관련
 router.post(
-  "/register-request",
+  '/register-request',
   signupLimiter,
   requireNoAuth,
-  registrationController.registerRequest
+  registrationController.registerRequest,
 );
 /**
  * @swagger
@@ -201,7 +201,7 @@ router.post(
  *         content:
  *           application/json:
  *             schema:
-   *               type: object
+ *               type: object
  *               properties:
  *                 message:
  *                   type: string
@@ -244,10 +244,10 @@ router.post(
  *                   example: "서버 에러로 회원가입 실패"
  */
 router.post(
-  "/verify-register",
+  '/verify-register',
   signupLimiter,
   requireNoAuth,
-  registrationController.verifyRegister
+  registrationController.verifyRegister,
 );
 
 // 사용자명 관련
@@ -325,7 +325,7 @@ router.post(
  *                   type: string
  *                   example: "사용자명 생성 실패"
  */
-router.get("/generate-username", registrationController.generateUsername);
+router.get('/generate-username', registrationController.generateUsername);
 /**
  * @swagger
  * /auth/check-username:
@@ -375,7 +375,7 @@ router.get("/generate-username", registrationController.generateUsername);
  *                     invalid_format:
  *                       value: "사용자명은 2-20자의 한글, 영문, 숫자만 가능합니다."
  *                     already_taken:
-   *                       value: "이미 사용 중인 별명입니다."
+ *                       value: "이미 사용 중인 별명입니다."
  *                 available:
  *                   type: boolean
  *                   example: false
@@ -390,6 +390,6 @@ router.get("/generate-username", registrationController.generateUsername);
  *                   type: string
  *                   example: "별명 중복 확인 실패"
  */
-router.post("/check-username", registrationController.checkUsername);
+router.post('/check-username', registrationController.checkUsername);
 
 export default router;

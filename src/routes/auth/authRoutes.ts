@@ -1,17 +1,15 @@
-import express from "express";
-import {
-  loginLimiter,
-} from "../../middlewares/rateLimitMiddleware";
+import express from 'express';
+import { loginLimiter } from '../../middlewares/security/rateLimitMiddleware';
 import {
   requireAuth,
   requireNoAuth,
-} from "../../middlewares/auth/authMiddleware";
+} from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 
 // 지연 로딩으로 컨트롤러 생성
 const getAuthController = () => {
-  const { AuthController } = require("../../controllers/auth/authController");
+  const { AuthController } = require('../../controllers/auth/authController');
   return new AuthController();
 };
 
@@ -106,7 +104,7 @@ const getAuthController = () => {
  *                   type: string
  *                   example: "서버 에러로 로그인 실패"
  */
-router.post("/login", loginLimiter, requireNoAuth, async (req, res) => {
+router.post('/login', loginLimiter, requireNoAuth, async (req, res) => {
   const authController = getAuthController();
   await authController.login(req, res);
 });
@@ -145,7 +143,7 @@ router.post("/login", loginLimiter, requireNoAuth, async (req, res) => {
  *                   type: string
  *                   example: "로그아웃 실패"
  */
-router.post("/logout", requireAuth, (req, res) => {
+router.post('/logout', requireAuth, (req, res) => {
   const authController = getAuthController();
   authController.logout(req, res);
 });
@@ -199,7 +197,7 @@ router.post("/logout", requireAuth, (req, res) => {
  *                       type: string
  *                       description: 세션 ID
  */
-router.get("/session", (req, res) => {
+router.get('/session', (req, res) => {
   const authController = getAuthController();
   authController.checkSession(req, res);
 });

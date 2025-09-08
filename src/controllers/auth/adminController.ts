@@ -1,8 +1,7 @@
-import express from "express";
-import { UserService } from "../../services/auth/userService";
-import { safeParseInt } from "../../utils/numberUtils";
-import logger from "../../utils/logger";
-
+import express from 'express';
+import { UserService } from '../../services/auth/userService';
+import { safeParseInt } from '../../utils/number/numberUtils';
+import logger from '../../utils/logger/logger';
 
 export class AdminController {
   private userService: UserService;
@@ -26,7 +25,7 @@ export class AdminController {
         filteredUsers = users.filter(
           (user) =>
             user.username.toLowerCase().includes(search.toLowerCase()) ||
-            user.email.toLowerCase().includes(search.toLowerCase())
+            user.email.toLowerCase().includes(search.toLowerCase()),
         );
       }
 
@@ -43,7 +42,7 @@ export class AdminController {
       }));
 
       res.status(200).json({
-        message: "사용자 목록 조회 성공",
+        message: '사용자 목록 조회 성공',
         totalUsers,
         currentPage: Math.floor(skip / limit) + 1,
         totalPages: Math.ceil(totalUsers / limit),
@@ -51,8 +50,8 @@ export class AdminController {
         searchQuery: search || null,
       });
     } catch (error) {
-      logger.error("관리자 사용자 목록 조회 에러:", error);
-      res.status(500).json({ message: "사용자 목록 조회 실패" });
+      logger.error('관리자 사용자 목록 조회 에러:', error);
+      res.status(500).json({ message: '사용자 목록 조회 실패' });
     }
   };
 
@@ -62,12 +61,12 @@ export class AdminController {
       const user = await this.userService.findById(userId);
 
       if (!user) {
-        res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+        res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         return;
       }
 
       res.status(200).json({
-        message: "사용자 상세 조회 성공",
+        message: '사용자 상세 조회 성공',
         user: {
           id: user._id,
           email: user.email,
@@ -82,8 +81,8 @@ export class AdminController {
         },
       });
     } catch (error) {
-      logger.error("관리자 사용자 상세 조회 에러:", error);
-      res.status(500).json({ message: "사용자 상세 조회 실패" });
+      logger.error('관리자 사용자 상세 조회 에러:', error);
+      res.status(500).json({ message: '사용자 상세 조회 실패' });
     }
   };
 
@@ -92,25 +91,28 @@ export class AdminController {
       const { userId } = req.params;
       const { status, reason } = req.body;
 
-      if (!["active", "suspended", "deleted"].includes(status)) {
-        res.status(400).json({ message: "올바르지 않은 상태값입니다." });
+      if (!['active', 'suspended', 'deleted'].includes(status)) {
+        res.status(400).json({ message: '올바르지 않은 상태값입니다.' });
         return;
       }
 
       const user = await this.userService.findById(userId);
       if (!user) {
-        res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+        res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         return;
       }
 
-      await this.userService.updateUser(userId, { status, statusReason: reason });
+      await this.userService.updateUser(userId, {
+        status,
+        statusReason: reason,
+      });
 
       logger.info(
-        `👑 관리자 조치: 사용자 ${user.username} 상태를 ${status}로 변경 (사유: ${reason})`
+        `👑 관리자 조치: 사용자 ${user.username} 상태를 ${status}로 변경 (사유: ${reason})`,
       );
 
       res.status(200).json({
-        message: "사용자 상태가 변경되었습니다.",
+        message: '사용자 상태가 변경되었습니다.',
         user: {
           id: user._id,
           username: user.username,
@@ -121,8 +123,8 @@ export class AdminController {
         },
       });
     } catch (error) {
-      logger.error("사용자 상태 변경 에러:", error);
-      res.status(500).json({ message: "사용자 상태 변경 실패" });
+      logger.error('사용자 상태 변경 에러:', error);
+      res.status(500).json({ message: '사용자 상태 변경 실패' });
     }
   };
 
@@ -151,13 +153,13 @@ export class AdminController {
       };
 
       res.status(200).json({
-        message: "관리자 통계 조회 성공",
+        message: '관리자 통계 조회 성공',
         stats,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      logger.error("관리자 통계 조회 에러:", error);
-      res.status(500).json({ message: "통계 조회 실패" });
+      logger.error('관리자 통계 조회 에러:', error);
+      res.status(500).json({ message: '통계 조회 실패' });
     }
   };
 }

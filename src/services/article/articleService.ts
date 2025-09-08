@@ -6,15 +6,15 @@ import {
   getArticleLikeModel,
   getArticleBookmarkModel,
   IArticle,
-} from "../../models/article";
+} from '../../models/article';
 import {
   createArticleSchema,
   updateArticleSchema,
   articleIdSchema,
   incrementViewSchema,
-} from "../../utils/validation/article";
-import { ObjectId } from "mongodb";
-import { cacheManager } from "../../utils/cacheManager";
+} from '../../utils/validation/article';
+import { ObjectId } from 'mongodb';
+import { cacheManager } from '../../utils/cache/cacheManager';
 
 export class ArticleService {
   private articleModel = getArticleModel();
@@ -33,7 +33,7 @@ export class ArticleService {
     if (validatedData.category_name) {
       // 카테고리 찾거나 생성 (선택사항)
       const category = await this.categoryModel.findOrCreate(
-        validatedData.category_name
+        validatedData.category_name,
       );
       categoryObjectId = category._id;
     }
@@ -42,7 +42,7 @@ export class ArticleService {
     if (validatedData.tag_names && validatedData.tag_names.length > 0) {
       // 태그들을 찾거나 생성 (배치 최적화)
       const tags = await this.tagModel.findOrCreateMany(
-        validatedData.tag_names
+        validatedData.tag_names,
       );
       tagObjectIds = tags.map((tag) => tag._id);
     }
@@ -61,24 +61,24 @@ export class ArticleService {
     if (tagObjectIds.length > 0) {
       await this.articleTagModel.createMany(
         article._id.toString(),
-        tagObjectIds.map((id) => id.toString())
+        tagObjectIds.map((id) => id.toString()),
       );
     }
 
-    await cacheManager.delByPattern("articles:*");
+    await cacheManager.delByPattern('articles:*');
     return article;
   }
 
   // 게시글 조회 (ID로)
   async getArticleById(
     id: string,
-    options: { withTags?: boolean; withStats?: boolean; userId?: string } = {}
+    options: { withTags?: boolean; withStats?: boolean; userId?: string } = {},
   ): Promise<any> {
     articleIdSchema.parse({ id });
 
     const article = await this.articleModel.findById(id);
     if (!article) {
-      throw new Error("게시글을 찾을 수 없습니다.");
+      throw new Error('게시글을 찾을 수 없습니다.');
     }
 
     let result: any = { ...article };
@@ -88,7 +88,7 @@ export class ArticleService {
 
     if (options.withTags) {
       promises.push(
-        this.articleTagModel.findTagsByArticle(id).then((tags) => ({ tags }))
+        this.articleTagModel.findTagsByArticle(id).then((tags) => ({ tags })),
       );
     }
 
@@ -99,7 +99,7 @@ export class ArticleService {
           this.articleBookmarkModel.countByArticle(id),
         ]).then(([likesCount, bookmarksCount]) => ({
           stats: { likesCount, bookmarksCount },
-        }))
+        })),
       );
     }
 
@@ -111,7 +111,7 @@ export class ArticleService {
           this.articleBookmarkModel.exists(id, options.userId),
         ]).then(([isLiked, isBookmarked]) => ({
           userStatus: { isLiked, isBookmarked },
-        }))
+        })),
       );
     }
 
@@ -135,7 +135,7 @@ export class ArticleService {
       tag_id?: string;
       search?: string;
       userId?: string; // 사용자별 좋아요/북마크 상태 확인용
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -152,8 +152,8 @@ export class ArticleService {
     } = options;
 
     const cacheKey = `articles:page=${page}:limit=${limit}:category=${
-      category_id || ""
-    }:tag=${tag_id || ""}:search=${search || ""}:userId=${userId || ""}`;
+      category_id || ''
+    }:tag=${tag_id || ''}:search=${search || ''}:userId=${userId || ''}`;
     const cachedData = await cacheManager.get<any>(cacheKey);
     if (cachedData) {
       return cachedData;
@@ -204,8 +204,8 @@ export class ArticleService {
         this.articleLikeModel.checkLikeStatusForArticles(userId, articleIds),
         this.articleBookmarkModel.checkBookmarkStatusForArticles(
           userId,
-          articleIds
-        )
+          articleIds,
+        ),
       );
     }
 
@@ -251,7 +251,7 @@ export class ArticleService {
     // 게시글 존재 확인
     const existingArticle = await this.articleModel.findById(id);
     if (!existingArticle) {
-      throw new Error("게시글을 찾을 수 없습니다.");
+      throw new Error('게시글을 찾을 수 없습니다.');
     }
 
     const updateData: any = { ...validatedData };
@@ -263,7 +263,7 @@ export class ArticleService {
       } else {
         // 카테고리 찾거나 생성
         const category = await this.categoryModel.findOrCreate(
-          validatedData.category_name
+          validatedData.category_name,
         );
         updateData.category_id = category._id;
       }
@@ -275,11 +275,11 @@ export class ArticleService {
       if (validatedData.tag_names.length > 0) {
         // 태그들을 찾거나 생성 (배치 최적화)
         const tags = await this.tagModel.findOrCreateMany(
-          validatedData.tag_names
+          validatedData.tag_names,
         );
         await this.articleTagModel.updateArticleTags(
           id,
-          tags.map((tag) => tag._id.toString())
+          tags.map((tag) => tag._id.toString()),
         );
       } else {
         await this.articleTagModel.deleteByArticle(id); // 모든 태그 제거
@@ -289,10 +289,10 @@ export class ArticleService {
 
     const updatedArticle = await this.articleModel.updateById(id, updateData);
     if (!updatedArticle) {
-      throw new Error("게시글 업데이트에 실패했습니다.");
+      throw new Error('게시글 업데이트에 실패했습니다.');
     }
 
-    await cacheManager.delByPattern("articles:*");
+    await cacheManager.delByPattern('articles:*');
     return updatedArticle;
   }
 
@@ -302,7 +302,7 @@ export class ArticleService {
 
     const article = await this.articleModel.findById(id);
     if (!article) {
-      throw new Error("게시글을 찾을 수 없습니다.");
+      throw new Error('게시글을 찾을 수 없습니다.');
     }
 
     // 관련 데이터 삭제 (병렬 처리)
@@ -314,7 +314,7 @@ export class ArticleService {
 
     // 게시글 삭제
     await this.articleModel.deleteById(id);
-    await cacheManager.delByPattern("articles:*");
+    await cacheManager.delByPattern('articles:*');
   }
 
   // 조회수 증가
@@ -331,7 +331,7 @@ export class ArticleService {
       limit?: number;
       includeUnpublished?: boolean;
       userId?: string;
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -354,8 +354,8 @@ export class ArticleService {
         this.articleLikeModel.checkLikeStatusForArticles(userId, articleIds),
         this.articleBookmarkModel.checkBookmarkStatusForArticles(
           userId,
-          articleIds
-        )
+          articleIds,
+        ),
       );
     }
 
@@ -394,7 +394,7 @@ export class ArticleService {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -437,7 +437,7 @@ export class ArticleService {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -456,7 +456,7 @@ export class ArticleService {
     // 유효한 게시글들만 필터링하고 ID 추출
     const validBookmarks = bookmarks.filter((bookmark) => bookmark.article);
     const articleIds = validBookmarks.map((bookmark) =>
-      bookmark.article._id.toString()
+      bookmark.article._id.toString(),
     );
 
     if (articleIds.length === 0) {
@@ -488,7 +488,7 @@ export class ArticleService {
       limit?: number;
       days?: number;
       userId?: string;
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -523,8 +523,8 @@ export class ArticleService {
         this.articleLikeModel.checkLikeStatusForArticles(userId, articleIds),
         this.articleBookmarkModel.checkBookmarkStatusForArticles(
           userId,
-          articleIds
-        )
+          articleIds,
+        ),
       );
     }
 
@@ -568,7 +568,7 @@ export class ArticleService {
       search?: string;
       withStats?: boolean;
       userId?: string;
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -624,7 +624,7 @@ export class ArticleService {
 
   // 다중 게시글 통계 정보 조회 (헬퍼 메서드)
   private async getArticlesStatsBatch(
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, { likesCount: number; bookmarksCount: number }>> {
     if (articleIds.length === 0) return {};
 
@@ -659,9 +659,9 @@ export class ArticleService {
       dateTo?: Date;
       page?: number;
       limit?: number;
-      sortBy?: "relevance" | "date" | "popularity";
+      sortBy?: 'relevance' | 'date' | 'popularity';
       userId?: string;
-    } = {}
+    } = {},
   ): Promise<{
     articles: any[];
     total: number;
@@ -677,7 +677,7 @@ export class ArticleService {
       dateTo,
       page = 1,
       limit = 20,
-      sortBy = "relevance",
+      sortBy = 'relevance',
       userId,
     } = options;
 
@@ -717,8 +717,8 @@ export class ArticleService {
         this.articleLikeModel.checkLikeStatusForArticles(userId, articleIds),
         this.articleBookmarkModel.checkBookmarkStatusForArticles(
           userId,
-          articleIds
-        )
+          articleIds,
+        ),
       );
     }
 

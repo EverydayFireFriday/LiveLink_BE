@@ -1,6 +1,6 @@
-import express from "express";
-import { AuthValidator } from "../../utils/validation/auth/authValidator";
-import logger, { maskIpAddress } from "../../utils/logger";
+import express from 'express';
+import { AuthValidator } from '../../utils/validation/auth/authValidator';
+import logger, { maskIpAddress } from '../../utils/logger/logger';
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
@@ -15,12 +15,12 @@ export class AuthController {
     }
 
     if (!password) {
-      return res.status(400).json({ message: "비밀번호를 입력해주세요." });
+      return res.status(400).json({ message: '비밀번호를 입력해주세요.' });
     }
 
-    const { redisClient } = await import("../../app");
+    const { redisClient } = await import('../../app');
     const { BruteForceProtectionService } = await import(
-      "../../services/security"
+      '../../services/security'
     );
     const bruteForceService = new BruteForceProtectionService(redisClient);
 
@@ -32,15 +32,15 @@ export class AuthController {
         logger.warn(`[Auth] Blocked login attempt for account: ${loginKey}`);
         return res.status(429).json({
           message: `너무 많은 로그인 시도를 하셨습니다. ${Math.ceil(
-            blockTime / 60
+            blockTime / 60,
           )}분 후에 다시 시도해주세요.`,
         });
       }
 
       // 지연 로딩으로 서비스 import
-      const { AuthService } = await import("../../services/auth/authService");
-      const { UserService } = await import("../../services/auth/userService");
-      const { UserStatus } = await import("../../models/auth/user");
+      const { AuthService } = await import('../../services/auth/authService');
+      const { UserService } = await import('../../services/auth/userService');
+      const { UserStatus } = await import('../../models/auth/user');
 
       const authService = new AuthService();
       const userService = new UserService();
@@ -51,45 +51,45 @@ export class AuthController {
         const attempts = await bruteForceService.increment(loginKey);
         const maskedIp = maskIpAddress(ip);
         logger.warn(
-          `[Auth] Failed login attempt #${attempts} for account: ${email} from IP: ${maskedIp} (user not found)`
+          `[Auth] Failed login attempt #${attempts} for account: ${email} from IP: ${maskedIp} (user not found)`,
         );
         return res
           .status(401)
-          .json({ message: "이메일 또는 비밀번호가 일치하지 않습니다." });
+          .json({ message: '이메일 또는 비밀번호가 일치하지 않습니다.' });
       }
 
       // 사용자 상태 확인
       if (user.status === UserStatus.INACTIVE) {
         return res.status(403).json({
           message:
-            "탈퇴한 계정입니다. 계정 복구를 원하시면 고객센터에 문의해주세요.",
+            '탈퇴한 계정입니다. 계정 복구를 원하시면 고객센터에 문의해주세요.',
         });
       }
       if (user.status === UserStatus.SUSPENDED) {
         return res.status(403).json({
-          message: "이용이 정지된 계정입니다. 관리자에게 문의해주세요.",
+          message: '이용이 정지된 계정입니다. 관리자에게 문의해주세요.',
         });
       }
       if (user.status === UserStatus.PENDING_VERIFICATION) {
         return res
           .status(403)
-          .json({ message: "이메일 인증이 필요한 계정입니다." });
+          .json({ message: '이메일 인증이 필요한 계정입니다.' });
       }
 
       // 비밀번호 확인
       const isPasswordValid = await authService.verifyPassword(
         password,
-        user.passwordHash
+        user.passwordHash,
       );
       if (!isPasswordValid) {
         const attempts = await bruteForceService.increment(loginKey);
-                const maskedIp = maskIpAddress(ip);
+        const maskedIp = maskIpAddress(ip);
         logger.warn(
-          `[Auth] Failed login attempt #${attempts} for account: ${user.email} from IP: ${maskedIp} (incorrect password)`
+          `[Auth] Failed login attempt #${attempts} for account: ${user.email} from IP: ${maskedIp} (incorrect password)`,
         );
         return res
           .status(401)
-          .json({ message: "이메일 또는 비밀번호가 일치하지 않습니다." });
+          .json({ message: '이메일 또는 비밀번호가 일치하지 않습니다.' });
       }
 
       // 로그인 성공 시, 실패 카운터 리셋
@@ -105,15 +105,15 @@ export class AuthController {
 
       req.session.regenerate((err) => {
         if (err) {
-          logger.error("세션 재생성 에러:", err);
-          return res.status(500).json({ message: "로그인 실패 (세션 오류)" });
+          logger.error('세션 재생성 에러:', err);
+          return res.status(500).json({ message: '로그인 실패 (세션 오류)' });
         }
 
         // 재생성된 세션에 사용자 정보 저장
         req.session.user = sessionData;
 
         res.status(200).json({
-          message: "로그인 성공",
+          message: '로그인 성공',
           user: {
             id: user._id,
             email: user.email,
@@ -124,8 +124,8 @@ export class AuthController {
         });
       });
     } catch (error) {
-      logger.error("로그인 에러:", error);
-      res.status(500).json({ message: "서버 에러로 로그인 실패" });
+      logger.error('로그인 에러:', error);
+      res.status(500).json({ message: '서버 에러로 로그인 실패' });
     }
   };
 
@@ -134,14 +134,14 @@ export class AuthController {
 
     req.session.destroy((err) => {
       if (err) {
-        logger.error("로그아웃 에러:", err);
-        res.status(500).json({ message: "로그아웃 실패" });
+        logger.error('로그아웃 에러:', err);
+        res.status(500).json({ message: '로그아웃 실패' });
         return;
       }
 
-      res.clearCookie("connect.sid");
+      res.clearCookie('connect.sid');
       res.status(200).json({
-        message: "로그아웃 성공",
+        message: '로그아웃 성공',
         deletedSessionId: sessionId,
       });
     });

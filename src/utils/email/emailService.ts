@@ -1,11 +1,11 @@
-import nodemailer from "nodemailer";
-import { logger } from "./index";
+import nodemailer from 'nodemailer';
+import { logger } from '../index';
 import {
   EmailTemplates,
   EmailTemplateData,
   SecurityAlertData,
   WelcomeEmailData,
-} from "../templates/emailTemplates";
+} from '../../templates/emailTemplates';
 
 interface EmailConfig {
   service: string;
@@ -42,13 +42,13 @@ export class EmailService {
 
     if (!emailUser || !emailPass) {
       throw new Error(
-        "EMAIL_USER 및 EMAIL_PASS 환경변수가 설정되지 않았습니다."
+        'EMAIL_USER 및 EMAIL_PASS 환경변수가 설정되지 않았습니다.',
       );
     }
 
     return {
-      service: "gmail",
-      host: "smtp.gmail.com",
+      service: 'gmail',
+      host: 'smtp.gmail.com',
       port: 587,
       secure: false,
       auth: {
@@ -68,8 +68,8 @@ export class EmailService {
         debug: true, // Add this line
       });
     } catch (error) {
-      logger.error("이메일 transporter 생성 실패:", { error });
-      throw new Error("이메일 서비스 초기화 실패");
+      logger.error('이메일 transporter 생성 실패:', { error });
+      throw new Error('이메일 서비스 초기화 실패');
     }
   }
 
@@ -77,7 +77,7 @@ export class EmailService {
     to: string,
     subject: string,
     html: string,
-    fromName: string = "stagelives"
+    fromName: string = 'stagelives',
   ): Promise<EmailSendResult> {
     try {
       const mailOptions = {
@@ -88,10 +88,10 @@ export class EmailService {
         to,
         subject,
         html,
-        priority: "normal" as "normal" | "high" | "low",
+        priority: 'normal' as 'normal' | 'high' | 'low',
         headers: {
-          "X-Mailer": "stagelives Email Service",
-          "X-Priority": "3",
+          'X-Mailer': 'stagelives Email Service',
+          'X-Priority': '3',
         },
       };
 
@@ -108,13 +108,13 @@ export class EmailService {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : "알 수 없는 오류",
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
       };
     }
   }
 
   async sendRegistrationVerification(
-    data: EmailTemplateData
+    data: EmailTemplateData,
   ): Promise<EmailSendResult> {
     const subject = `[stagelives] 회원가입 이메일 인증`;
     const html = EmailTemplates.getRegistrationVerificationEmail(data);
@@ -123,12 +123,12 @@ export class EmailService {
       data.email,
       subject,
       html,
-      "stagelives"
+      'stagelives',
     );
 
     if (result.success) {
       logger.info(
-        `📧 회원가입 인증 이메일 전송: ${data.username || "Unknown"} (${data.email})`
+        `📧 회원가입 인증 이메일 전송: ${data.username || 'Unknown'} (${data.email})`,
       );
     }
 
@@ -143,12 +143,12 @@ export class EmailService {
       data.email,
       subject,
       html,
-      "stagelives Security"
+      'stagelives Security',
     );
 
     if (result.success) {
       logger.info(
-        `🔒 비밀번호 재설정 이메일 전송: ${data.username || "Unknown"} (${data.email})`
+        `🔒 비밀번호 재설정 이메일 전송: ${data.username || 'Unknown'} (${data.email})`,
       );
     }
 
@@ -163,7 +163,7 @@ export class EmailService {
       data.email,
       subject,
       html,
-      "stagelives"
+      'stagelives',
     );
 
     if (result.success) {
@@ -181,12 +181,12 @@ export class EmailService {
       data.email,
       subject,
       html,
-      "stagelives Security"
+      'stagelives Security',
     );
 
     if (result.success) {
       logger.info(
-        `🚨 보안 알림 이메일 전송: ${data.username} (${data.email}) - ${data.action}`
+        `🚨 보안 알림 이메일 전송: ${data.username} (${data.email}) - ${data.action}`,
       );
     }
 
@@ -196,10 +196,10 @@ export class EmailService {
   async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();
-      logger.info("✅ 이메일 서비스 연결 확인 성공");
+      logger.info('✅ 이메일 서비스 연결 확인 성공');
       return true;
     } catch (error) {
-      logger.error("❌ 이메일 서비스 연결 실패:", { error });
+      logger.error('❌ 이메일 서비스 연결 실패:', { error });
       return false;
     }
   }
@@ -225,12 +225,12 @@ export class EmailService {
         user: this.config.auth.user,
       },
       features: [
-        "회원가입 인증",
-        "비밀번호 재설정",
-        "환영 메시지",
-        "보안 알림",
-        "반응형 템플릿",
-        "HTML/CSS 스타일링",
+        '회원가입 인증',
+        '비밀번호 재설정',
+        '환영 메시지',
+        '보안 알림',
+        '반응형 템플릿',
+        'HTML/CSS 스타일링',
       ],
     };
   }
@@ -239,7 +239,7 @@ export class EmailService {
     recipients: string[],
     subject: string,
     html: string,
-    batchSize: number = 10
+    batchSize: number = 10,
   ): Promise<{
     totalSent: number;
     totalFailed: number;
@@ -253,7 +253,7 @@ export class EmailService {
       const batch = recipients.slice(i, i + batchSize);
 
       const batchPromises = batch.map((email) =>
-        this.sendEmail(email, subject, html)
+        this.sendEmail(email, subject, html),
       );
 
       const batchResults = await Promise.all(batchPromises);
@@ -273,7 +273,7 @@ export class EmailService {
     }
 
     logger.info(
-      `📊 대량 이메일 전송 완료: 성공 ${totalSent}건, 실패 ${totalFailed}건`
+      `📊 대량 이메일 전송 완료: 성공 ${totalSent}건, 실패 ${totalFailed}건`,
     );
 
     return {
@@ -284,58 +284,58 @@ export class EmailService {
   }
 
   generatePreview(
-    type: "registration" | "password_reset" | "welcome" | "security_alert"
+    type: 'registration' | 'password_reset' | 'welcome' | 'security_alert',
   ): string {
     const sampleData = {
       registration: {
-        email: "user@example.com",
-        username: "testuser",
-        verificationCode: "123456",
-        createdAt: new Date().toLocaleString("ko-KR"),
+        email: 'user@example.com',
+        username: 'testuser',
+        verificationCode: '123456',
+        createdAt: new Date().toLocaleString('ko-KR'),
       },
       password_reset: {
-        email: "user@example.com",
-        username: "testuser",
-        verificationCode: "654321",
-        createdAt: new Date().toLocaleString("ko-KR"),
+        email: 'user@example.com',
+        username: 'testuser',
+        verificationCode: '654321',
+        createdAt: new Date().toLocaleString('ko-KR'),
       },
       welcome: {
-        email: "user@example.com",
-        username: "testuser",
+        email: 'user@example.com',
+        username: 'testuser',
       },
       security_alert: {
-        email: "user@example.com",
-        username: "testuser",
-        action: "로그인 시도",
-        timestamp: new Date().toLocaleString("ko-KR"),
-        ipAddress: "192.168.1.1",
+        email: 'user@example.com',
+        username: 'testuser',
+        action: '로그인 시도',
+        timestamp: new Date().toLocaleString('ko-KR'),
+        ipAddress: '192.168.1.1',
         userAgent:
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
     };
 
     switch (type) {
-      case "registration":
+      case 'registration':
         return EmailTemplates.getRegistrationVerificationEmail(
-          sampleData.registration
+          sampleData.registration,
         );
-      case "password_reset":
+      case 'password_reset':
         return EmailTemplates.getPasswordResetEmail(sampleData.password_reset);
-      case "welcome":
+      case 'welcome':
         return EmailTemplates.getWelcomeEmail(sampleData.welcome);
-      case "security_alert":
+      case 'security_alert':
         return EmailTemplates.getSecurityAlertEmail(sampleData.security_alert);
       default:
-        throw new Error("알 수 없는 템플릿 타입입니다.");
+        throw new Error('알 수 없는 템플릿 타입입니다.');
     }
   }
 
   async cleanup(): Promise<void> {
     try {
       this.transporter.close();
-      logger.info("✅ 이메일 서비스 리소스 정리 완료");
+      logger.info('✅ 이메일 서비스 리소스 정리 완료');
     } catch (error) {
-      logger.error("❌ 이메일 서비스 정리 실패:", { error });
+      logger.error('❌ 이메일 서비스 정리 실패:', { error });
     }
   }
 }

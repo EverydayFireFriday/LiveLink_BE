@@ -1,6 +1,6 @@
-import { UserModel } from "../../models/auth/user";
-import { User } from "../../types/auth/authTypes";
-import { cacheManager } from "../../utils/cacheManager";
+import { UserModel } from '../../models/auth/user';
+import { User } from '../../types/auth/authTypes';
+import { cacheManager } from '../../utils/cache/cacheManager';
 
 export class UserService {
   private userModel: UserModel | null = null;
@@ -48,11 +48,11 @@ export class UserService {
 
   async updateUser(
     id: string,
-    updateData: Partial<User>
+    updateData: Partial<User>,
   ): Promise<User | null> {
     const user = (await this.getUserModel().updateUser(
       id,
-      updateData
+      updateData,
     )) as User | null;
 
     if (user) {
@@ -65,12 +65,12 @@ export class UserService {
 
   async generateUsername(
     email: string,
-    baseUsername?: string
+    baseUsername?: string,
   ): Promise<string> {
-    let username = baseUsername || email.split("@")[0];
-    username = username.replace(/[^a-zA-Z0-9가-힣]/g, "").toLowerCase();
+    let username = baseUsername || email.split('@')[0];
+    username = username.replace(/[^a-zA-Z0-9가-힣]/g, '').toLowerCase();
 
-    if (username.length < 2) username = "user";
+    if (username.length < 2) username = 'user';
     if (username.length > 15) username = username.substring(0, 15);
 
     let finalUsername = username;

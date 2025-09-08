@@ -1,25 +1,25 @@
-import Redis from "ioredis";
-import { VerificationData } from "../../types/auth/authTypes";
-import logger from "../../utils/logger";
+import Redis from 'ioredis';
+import { VerificationData } from '../../types/auth/authTypes';
+import logger from '../../utils/logger/logger';
 
 export class VerificationService {
   private redis: Redis;
 
   constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
   }
 
   async saveVerificationCode(
     type: string,
     email: string,
     code: string,
-    userData?: any
+    userData?: any,
   ): Promise<string> {
     const key = `verification:${type}:${email}`;
     const data: VerificationData = {
       code,
       email,
-      type: type as "password_reset" | "email_verification",
+      type: type as 'password_reset' | 'email_verification',
       createdAt: new Date().toISOString(),
       userData,
     };
@@ -35,7 +35,7 @@ export class VerificationService {
 
       return JSON.parse(data) as VerificationData;
     } catch (error) {
-      logger.error("Redis 데이터 파싱 에러:", error);
+      logger.error('Redis 데이터 파싱 에러:', error);
       return null;
     }
   }

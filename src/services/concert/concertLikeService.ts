@@ -1,5 +1,5 @@
-import { getConcertModel } from "../../models/concert/concert";
-import logger from "../../utils/logger";
+import { getConcertModel } from '../../models/concert/concert';
+import logger from '../../utils/logger/logger';
 
 export interface ConcertServiceResponse {
   success: boolean;
@@ -14,13 +14,13 @@ export class ConcertLikeService {
    */
   static async getLikeStatus(
     concertId: string,
-    userId: string
+    userId: string,
   ): Promise<ConcertServiceResponse> {
     try {
       if (!userId) {
         return {
           success: false,
-          error: "로그인이 필요합니다.",
+          error: '로그인이 필요합니다.',
           statusCode: 401,
         };
       }
@@ -31,14 +31,14 @@ export class ConcertLikeService {
       if (!concert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
 
       const isLiked =
         concert.likes?.some(
-          (like: any) => like.userId?.toString() === userId.toString()
+          (like: any) => like.userId?.toString() === userId.toString(),
         ) || false;
 
       return {
@@ -55,10 +55,10 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("좋아요 상태 조회 서비스 에러:", error);
+      logger.error('좋아요 상태 조회 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "좋아요 상태 조회 실패",
+        error: error instanceof Error ? error.message : '좋아요 상태 조회 실패',
         statusCode: 500,
       };
     }
@@ -69,13 +69,13 @@ export class ConcertLikeService {
    */
   static async addLike(
     concertId: string,
-    userId: string
+    userId: string,
   ): Promise<ConcertServiceResponse> {
     try {
       if (!userId) {
         return {
           success: false,
-          error: "로그인이 필요합니다.",
+          error: '로그인이 필요합니다.',
           statusCode: 401,
         };
       }
@@ -86,7 +86,7 @@ export class ConcertLikeService {
       if (!concert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -100,20 +100,20 @@ export class ConcertLikeService {
             try {
               return like.userId.toString() === userId.toString();
             } catch (error) {
-              logger.warn("좋아요 중복 검사 비교 중 에러:", error);
+              logger.warn('좋아요 중복 검사 비교 중 에러:', error);
               return false;
             }
           });
         }
       } catch (error) {
-        logger.warn("좋아요 중복 검사 전체 에러:", error);
+        logger.warn('좋아요 중복 검사 전체 에러:', error);
         isAlreadyLiked = false;
       }
 
       if (isAlreadyLiked) {
         return {
           success: false,
-          error: "이미 좋아요한 콘서트입니다.",
+          error: '이미 좋아요한 콘서트입니다.',
           statusCode: 400,
         };
       }
@@ -132,10 +132,10 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("좋아요 추가 서비스 에러:", error);
+      logger.error('좋아요 추가 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "좋아요 추가 실패",
+        error: error instanceof Error ? error.message : '좋아요 추가 실패',
         statusCode: 500,
       };
     }
@@ -146,13 +146,13 @@ export class ConcertLikeService {
    */
   static async removeLike(
     concertId: string,
-    userId: string
+    userId: string,
   ): Promise<ConcertServiceResponse> {
     try {
       if (!userId) {
         return {
           success: false,
-          error: "로그인이 필요합니다.",
+          error: '로그인이 필요합니다.',
           statusCode: 401,
         };
       }
@@ -163,7 +163,7 @@ export class ConcertLikeService {
       if (!concert) {
         return {
           success: false,
-          error: "콘서트를 찾을 수 없습니다.",
+          error: '콘서트를 찾을 수 없습니다.',
           statusCode: 404,
         };
       }
@@ -182,10 +182,10 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("좋아요 삭제 서비스 에러:", error);
+      logger.error('좋아요 삭제 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "좋아요 삭제 실패",
+        error: error instanceof Error ? error.message : '좋아요 삭제 실패',
         statusCode: 500,
       };
     }
@@ -199,13 +199,13 @@ export class ConcertLikeService {
     params: {
       page?: number;
       limit?: number;
-    }
+    },
   ): Promise<ConcertServiceResponse> {
     try {
       if (!userId) {
         return {
           success: false,
-          error: "로그인이 필요합니다.",
+          error: '로그인이 필요합니다.',
           statusCode: 401,
         };
       }
@@ -237,13 +237,13 @@ export class ConcertLikeService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("좋아요한 콘서트 목록 조회 서비스 에러:", error);
+      logger.error('좋아요한 콘서트 목록 조회 서비스 에러:', error);
       return {
         success: false,
         error:
           error instanceof Error
             ? error.message
-            : "좋아요한 콘서트 목록 조회 실패",
+            : '좋아요한 콘서트 목록 조회 실패',
         statusCode: 500,
       };
     }

@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
-import { configurePassport } from './config/passport';
+import { configurePassport } from './config/oauth/passport';
 import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -16,9 +16,14 @@ import hpp from 'hpp';
 dotenv.config();
 
 // ✅ 환경변수 검증 실행 (즉시 검증 및 프로세스 종료)
-import { env, isDevelopment, isProduction, shouldSkipAuth } from './config/env';
+import {
+  env,
+  isDevelopment,
+  isProduction,
+  shouldSkipAuth,
+} from './config/env/env';
 
-import logger, { stream } from './utils/logger';
+import logger, { stream } from './utils/logger/logger';
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from './config/swagger';
 import { ChatSocketServer } from './socket';
 import { initializeChatModels } from './models/chat';
@@ -31,14 +36,14 @@ import {
 import {
   connectDB as connectConcertDB,
   initializeConcertModel,
-} from './utils/db';
+} from './utils/database/db';
 import { initializeAllArticleModels } from './models/article';
 
 // 라우터 import
 import authRouter from './routes/auth/index';
 import concertRouter from './routes/concert/index';
 import healthRouter from './routes/health/healthRoutes';
-import { defaultLimiter } from './middlewares/rateLimitMiddleware';
+import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
 
 // connect-redis v6.1.3 방식
 import connectRedis from 'connect-redis';

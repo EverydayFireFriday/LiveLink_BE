@@ -1,5 +1,5 @@
-import express from "express";
-import logger from "../../utils/logger";
+import express from 'express';
+import logger from '../../utils/logger/logger';
 
 // 관리자 이메일 목록 확인
 const getAdminEmails = (): string[] => {
@@ -8,23 +8,25 @@ const getAdminEmails = (): string[] => {
     logger.warn('⚠️ ADMIN_EMAILS 환경변수가 설정되지 않았습니다.');
     return [];
   }
-  
-  return adminEmailsString.split(',').map(email => email.trim().toLowerCase());
+
+  return adminEmailsString
+    .split(',')
+    .map((email) => email.trim().toLowerCase());
 };
 
 /**
  * 관리자 권한 확인 미들웨어
  */
 export const requireAdmin = (
-  req: express.Request, 
-  res: express.Response, 
-  next: express.NextFunction
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
 ) => {
   // 로그인 확인
   if (!req.session.user) {
-    res.status(401).json({ 
-      message: "로그인이 필요합니다.",
-      redirectTo: "/auth/login"
+    res.status(401).json({
+      message: '로그인이 필요합니다.',
+      redirectTo: '/auth/login',
     });
     return;
   }
@@ -32,20 +34,22 @@ export const requireAdmin = (
   // 관리자 권한 확인
   const adminEmails = getAdminEmails();
   const userEmail = req.session.user.email.toLowerCase();
-  
+
   if (!adminEmails.includes(userEmail)) {
-    logger.info(`🚫 관리자 권한 없음: ${userEmail} (허용된 관리자: ${adminEmails.join(', ')})`);
-    res.status(403).json({ 
-      message: "관리자 권한이 필요합니다.",
+    logger.info(
+      `🚫 관리자 권한 없음: ${userEmail} (허용된 관리자: ${adminEmails.join(', ')})`,
+    );
+    res.status(403).json({
+      message: '관리자 권한이 필요합니다.',
       currentUser: req.session.user.email,
-      requiredRole: "admin"
+      requiredRole: 'admin',
     });
     return;
   }
 
   // 관리자 접근 로그
   logger.info(`👑 관리자 접근: ${userEmail} → ${req.method} ${req.path}`);
-  
+
   next();
 };
 
@@ -53,14 +57,14 @@ export const requireAdmin = (
  * 관리자 권한 확인 (응답 반환)
  */
 export const checkAdminStatus = (
-  req: express.Request, 
-  res: express.Response, 
-  next: express.NextFunction
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
 ) => {
   if (!req.session.user) {
-    res.status(401).json({ 
+    res.status(401).json({
       isAdmin: false,
-      message: "로그인이 필요합니다."
+      message: '로그인이 필요합니다.',
     });
     return;
   }

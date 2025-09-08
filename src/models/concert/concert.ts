@@ -1,5 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 // Location 인터페이스 제거 - 이제 string 배열 사용
 
@@ -36,7 +36,7 @@ export interface IConcert {
   ticketOpenDate?: Date; // 티켓 오픈 날짜/시간 추가
   posterImage?: string; // S3 URL
   infoImages?: string[]; // info에서 infoImages로 이름 변경
-  status: "upcoming" | "ongoing" | "completed" | "cancelled";
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
 
   likes?: ILike[]; // 좋아요 배열
   likesCount?: number; // 좋아요 개수
@@ -51,48 +51,48 @@ export class ConcertModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<IConcert>("concerts");
+    this.collection = db.collection<IConcert>('concerts');
     this.createMinimalIndexes();
   }
 
   // 최소한의 필수 인덱스만 생성
   private async createMinimalIndexes() {
     try {
-      logger.info("Concert 최소 인덱스 생성 시작...");
+      logger.info('Concert 최소 인덱스 생성 시작...');
 
       // 1. uid 유니크 인덱스 (필수 - 중복 방지)
       await this.collection.createIndex({ uid: 1 }, { unique: true });
-      logger.info("✅ uid 인덱스 생성");
+      logger.info('✅ uid 인덱스 생성');
 
       // 2. 텍스트 검색 인덱스 (검색 기능용) - location이 이제 string 배열
       await this.collection.createIndex({
-        title: "text",
-        artist: "text",
-        location: "text", // location 필드가 string 배열이므로 직접 참조
-        description: "text",
+        title: 'text',
+        artist: 'text',
+        location: 'text', // location 필드가 string 배열이므로 직접 참조
+        description: 'text',
       });
-      logger.info("✅ 텍스트 검색 인덱스 생성");
+      logger.info('✅ 텍스트 검색 인덱스 생성');
 
       // 3. 좋아요 사용자 인덱스 (좋아요 기능용)
-      await this.collection.createIndex({ "likes.userId": 1 });
-      logger.info("✅ likes.userId 인덱스 생성");
+      await this.collection.createIndex({ 'likes.userId': 1 });
+      logger.info('✅ likes.userId 인덱스 생성');
 
       // 4. 배치 처리를 위한 추가 인덱스
       await this.collection.createIndex({ _id: 1 });
-      logger.info("✅ _id 인덱스 생성");
+      logger.info('✅ _id 인덱스 생성');
 
-      logger.info("🎉 Concert 최소 인덱스 생성 완료 (총 4개)");
+      logger.info('🎉 Concert 최소 인덱스 생성 완료 (총 4개)');
     } catch (error) {
-      logger.error("❌ 인덱스 생성 중 오류:", error);
+      logger.error('❌ 인덱스 생성 중 오류:', error);
       // 인덱스 생성 실패해도 계속 진행
-      logger.info("⚠️ 인덱스 없이 계속 진행합니다...");
+      logger.info('⚠️ 인덱스 없이 계속 진행합니다...');
     }
   }
 
   // 데이터 유효성 검사 - 업데이트됨 (create와 update 분리)
   private validateConcertData(
     concertData: Partial<IConcert>,
-    isUpdate: boolean = false
+    isUpdate: boolean = false,
   ): {
     isValid: boolean;
     errors: string[];
@@ -101,14 +101,14 @@ export class ConcertModel {
 
     // 필수 필드 검사 (생성시에만)
     if (!isUpdate) {
-      if (!concertData.uid) errors.push("uid는 필수입니다.");
+      if (!concertData.uid) errors.push('uid는 필수입니다.');
       if (!concertData.title || concertData.title.trim().length === 0) {
-        errors.push("title은 필수입니다.");
+        errors.push('title은 필수입니다.');
       }
 
       // artist 검증: 빈 배열 허용 (400 -> 200)
       if (!concertData.artist || !Array.isArray(concertData.artist)) {
-        errors.push("artist는 배열이어야 합니다.");
+        errors.push('artist는 배열이어야 합니다.');
       }
 
       if (
@@ -116,26 +116,26 @@ export class ConcertModel {
         !Array.isArray(concertData.location) ||
         concertData.location.length === 0
       ) {
-        errors.push("location은 비어있지 않은 배열이어야 합니다.");
+        errors.push('location은 비어있지 않은 배열이어야 합니다.');
       }
       if (
         !concertData.datetime ||
         !Array.isArray(concertData.datetime) ||
         concertData.datetime.length === 0
       ) {
-        errors.push("datetime은 비어있지 않은 배열이어야 합니다.");
+        errors.push('datetime은 비어있지 않은 배열이어야 합니다.');
       }
     } else {
       // 업데이트시 필드별 검사 (제공된 필드에 대해서만)
       if (concertData.title !== undefined) {
         if (!concertData.title || concertData.title.trim().length === 0) {
-          errors.push("title은 비어있을 수 없습니다.");
+          errors.push('title은 비어있을 수 없습니다.');
         }
       }
 
       if (concertData.artist !== undefined) {
         if (!Array.isArray(concertData.artist)) {
-          errors.push("artist는 배열이어야 합니다.");
+          errors.push('artist는 배열이어야 합니다.');
         }
       }
 
@@ -144,7 +144,7 @@ export class ConcertModel {
           !Array.isArray(concertData.location) ||
           concertData.location.length === 0
         ) {
-          errors.push("location은 비어있지 않은 배열이어야 합니다.");
+          errors.push('location은 비어있지 않은 배열이어야 합니다.');
         }
       }
 
@@ -153,25 +153,25 @@ export class ConcertModel {
           !Array.isArray(concertData.datetime) ||
           concertData.datetime.length === 0
         ) {
-          errors.push("datetime은 비어있지 않은 배열이어야 합니다.");
+          errors.push('datetime은 비어있지 않은 배열이어야 합니다.');
         }
       }
     }
 
     // 길이 제한 검사 (제공된 필드에 대해서만)
     if (concertData.title && concertData.title.length > 200) {
-      errors.push("title은 200자를 초과할 수 없습니다.");
+      errors.push('title은 200자를 초과할 수 없습니다.');
     }
     if (concertData.description && concertData.description.length > 2000) {
-      errors.push("description은 2000자를 초과할 수 없습니다.");
+      errors.push('description은 2000자를 초과할 수 없습니다.');
     }
 
     // location 필드 검증 - string 배열로 변경
     if (concertData.location && Array.isArray(concertData.location)) {
       concertData.location.forEach((loc, index) => {
-        if (typeof loc !== "string" || loc.trim().length === 0) {
+        if (typeof loc !== 'string' || loc.trim().length === 0) {
           errors.push(
-            `location[${index}]은 비어있지 않은 문자열이어야 합니다.`
+            `location[${index}]은 비어있지 않은 문자열이어야 합니다.`,
           );
         }
         if (loc && loc.length > 150) {
@@ -185,7 +185,7 @@ export class ConcertModel {
       concertData.datetime.forEach((dt, index) => {
         if (!(dt instanceof Date)) {
           const dateValue =
-            typeof dt === "string" || typeof dt === "number" ? dt : String(dt);
+            typeof dt === 'string' || typeof dt === 'number' ? dt : String(dt);
           if (!Date.parse(dateValue)) {
             errors.push(`datetime[${index}]는 유효한 날짜여야 합니다.`);
           }
@@ -197,28 +197,28 @@ export class ConcertModel {
     if (concertData.ticketOpenDate) {
       if (!(concertData.ticketOpenDate instanceof Date)) {
         const dateValue =
-          typeof concertData.ticketOpenDate === "string" ||
-          typeof concertData.ticketOpenDate === "number"
+          typeof concertData.ticketOpenDate === 'string' ||
+          typeof concertData.ticketOpenDate === 'number'
             ? concertData.ticketOpenDate
             : String(concertData.ticketOpenDate);
         if (!Date.parse(dateValue)) {
-          errors.push("ticketOpenDate는 유효한 날짜여야 합니다.");
+          errors.push('ticketOpenDate는 유효한 날짜여야 합니다.');
         }
       }
     }
 
     // category 검증 - 확장된 카테고리 목록 (제공된 경우에만)
     const validCategories = [
-      "rock/metal/indie", //락,메탈, 인디
-      "jazz/soul", //재즈, 소울
-      "rap/hiphop/edm", //랩, 힙합, 이디엠
-      "idol", //아이돌
-      "folk/trot", //포크, 트로트
-      "RnB/ballad", //r&b, 발라드
-      "tour", //내한
-      "festival", //페스티벌
-      "fan", //팬클럽, 팬미팅
-      "other", //그외 장르(디너쇼, 토크, 강연...)
+      'rock/metal/indie', //락,메탈, 인디
+      'jazz/soul', //재즈, 소울
+      'rap/hiphop/edm', //랩, 힙합, 이디엠
+      'idol', //아이돌
+      'folk/trot', //포크, 트로트
+      'RnB/ballad', //r&b, 발라드
+      'tour', //내한
+      'festival', //페스티벌
+      'fan', //팬클럽, 팬미팅
+      'other', //그외 장르(디너쇼, 토크, 강연...)
     ];
 
     if (concertData.category && Array.isArray(concertData.category)) {
@@ -226,15 +226,15 @@ export class ConcertModel {
         // 대소문자 무시하고 검사
         const normalizedCat = cat.toLowerCase().trim();
         const isValid = validCategories.some(
-          (validCat) => validCat.toLowerCase() === normalizedCat
+          (validCat) => validCat.toLowerCase() === normalizedCat,
         );
 
         if (!isValid) {
           errors.push(
-            `category[${index}] '${cat}'는 유효한 카테고리가 아닙니다.`
+            `category[${index}] '${cat}'는 유효한 카테고리가 아닙니다.`,
           );
           logger.info(
-            `💡 허용된 카테고리: ${validCategories.slice(0, 10).join(", ")}... (총 ${validCategories.length}개)`
+            `💡 허용된 카테고리: ${validCategories.slice(0, 10).join(', ')}... (총 ${validCategories.length}개)`,
           );
         }
       });
@@ -248,15 +248,15 @@ export class ConcertModel {
       concertData.posterImage &&
       !imageUrlPattern.test(concertData.posterImage)
     ) {
-      errors.push("posterImage는 유효한 이미지 URL이어야 합니다.");
+      errors.push('posterImage는 유효한 이미지 URL이어야 합니다.');
     }
 
     // infoImages 필드 검증 (info에서 infoImages로 변경됨) (제공된 경우에만)
     if (concertData.infoImages && Array.isArray(concertData.infoImages)) {
       concertData.infoImages.forEach((infoImage, index) => {
-        if (typeof infoImage !== "string" || infoImage.trim().length === 0) {
+        if (typeof infoImage !== 'string' || infoImage.trim().length === 0) {
           errors.push(
-            `infoImages[${index}]는 비어있지 않은 문자열이어야 합니다.`
+            `infoImages[${index}]는 비어있지 않은 문자열이어야 합니다.`,
           );
         }
         if (infoImage && !imageUrlPattern.test(infoImage)) {
@@ -278,17 +278,17 @@ export class ConcertModel {
 
   // 콘서트 생성 (기존 코드 - 변경 없음)
   async create(
-    concertData: Omit<IConcert, "createdAt" | "updatedAt">
+    concertData: Omit<IConcert, 'createdAt' | 'updatedAt'>,
   ): Promise<IConcert> {
     const validation = this.validateConcertData(concertData, false); // isUpdate = false
     if (!validation.isValid) {
-      throw new Error(`유효성 검사 실패: ${validation.errors.join(", ")}`);
+      throw new Error(`유효성 검사 실패: ${validation.errors.join(', ')}`);
     }
 
     const now = new Date();
     const concert: IConcert = {
       ...concertData,
-      status: concertData.status || "upcoming",
+      status: concertData.status || 'upcoming',
       likes: concertData.likes || [], // 기본값 설정
       likesCount: concertData.likesCount || 0, // 기본값 설정
       createdAt: now,
@@ -298,7 +298,7 @@ export class ConcertModel {
     // datetime 배열을 Date 객체로 변환
     if (concert.datetime) {
       concert.datetime = concert.datetime.map((dt) =>
-        dt instanceof Date ? dt : new Date(dt)
+        dt instanceof Date ? dt : new Date(dt),
       );
     }
 
@@ -309,7 +309,7 @@ export class ConcertModel {
 
     const result = await this.collection.insertOne(concert);
     if (!result.insertedId) {
-      throw new Error("콘서트 생성에 실패했습니다.");
+      throw new Error('콘서트 생성에 실패했습니다.');
     }
 
     return concert;
@@ -340,7 +340,7 @@ export class ConcertModel {
       page?: number;
       limit?: number;
       sort?: any;
-    } = {}
+    } = {},
   ): Promise<{ concerts: IConcert[]; total: number }> {
     const {
       page = 1,
@@ -360,7 +360,7 @@ export class ConcertModel {
   // 콘서트 업데이트 (수정됨 - isUpdate = true로 유효성 검사)
   async updateById(
     id: string,
-    updateData: Partial<IConcert>
+    updateData: Partial<IConcert>,
   ): Promise<IConcert | null> {
     // 수정 불가능한 필드 제거
     if (updateData.uid) delete updateData.uid;
@@ -369,7 +369,7 @@ export class ConcertModel {
 
     const validation = this.validateConcertData(updateData, true); // isUpdate = true
     if (!validation.isValid) {
-      throw new Error(`유효성 검사 실패: ${validation.errors.join(", ")}`);
+      throw new Error(`유효성 검사 실패: ${validation.errors.join(', ')}`);
     }
 
     updateData.updatedAt = new Date();
@@ -397,7 +397,7 @@ export class ConcertModel {
     const result = await this.collection.findOneAndUpdate(
       query,
       { $set: updateData },
-      { returnDocument: "after" }
+      { returnDocument: 'after' },
     );
 
     return result ? result : null;
@@ -421,7 +421,7 @@ export class ConcertModel {
   // 좋아요 추가
   async addLike(concertId: string, userId: string): Promise<IConcert> {
     if (!userId) {
-      throw new Error("사용자 ID는 필수입니다.");
+      throw new Error('사용자 ID는 필수입니다.');
     }
 
     let query: any;
@@ -437,7 +437,7 @@ export class ConcertModel {
     // 먼저 콘서트가 존재하는지 확인
     const existingConcert = await this.collection.findOne(query);
     if (!existingConcert) {
-      throw new Error("콘서트를 찾을 수 없습니다.");
+      throw new Error('콘서트를 찾을 수 없습니다.');
     }
 
     // 이미 좋아요했는지 확인
@@ -451,14 +451,14 @@ export class ConcertModel {
                 like.userId.toString() === userId.toString()
               );
             } catch (error) {
-              logger.warn("좋아요 중복 검사 중 에러:", error);
+              logger.warn('좋아요 중복 검사 중 에러:', error);
               return false;
             }
           })
         : false;
 
     if (isAlreadyLiked) {
-      throw new Error("이미 좋아요한 콘서트입니다.");
+      throw new Error('이미 좋아요한 콘서트입니다.');
     }
 
     const result = await this.collection.findOneAndUpdate(
@@ -473,11 +473,11 @@ export class ConcertModel {
         $inc: { likesCount: 1 },
         $set: { updatedAt: now },
       },
-      { returnDocument: "after" }
+      { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new Error("좋아요 추가에 실패했습니다.");
+      throw new Error('좋아요 추가에 실패했습니다.');
     }
 
     return result;
@@ -486,7 +486,7 @@ export class ConcertModel {
   // 좋아요 삭제
   async removeLike(concertId: string, userId: string): Promise<IConcert> {
     if (!userId) {
-      throw new Error("사용자 ID는 필수입니다.");
+      throw new Error('사용자 ID는 필수입니다.');
     }
 
     let query: any;
@@ -502,7 +502,7 @@ export class ConcertModel {
     // 먼저 콘서트가 존재하는지 확인
     const existingConcert = await this.collection.findOne(query);
     if (!existingConcert) {
-      throw new Error("콘서트를 찾을 수 없습니다.");
+      throw new Error('콘서트를 찾을 수 없습니다.');
     }
 
     const result = await this.collection.findOneAndUpdate(
@@ -514,11 +514,11 @@ export class ConcertModel {
         $inc: { likesCount: -1 },
         $set: { updatedAt: now },
       },
-      { returnDocument: "after" }
+      { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new Error("좋아요 삭제에 실패했습니다.");
+      throw new Error('좋아요 삭제에 실패했습니다.');
     }
 
     // likesCount가 음수가 되지 않도록 보정
@@ -536,10 +536,10 @@ export class ConcertModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ concerts: IConcert[]; total: number }> {
     if (!userId) {
-      logger.info("❌ findLikedByUser: 사용자 ID가 없음");
+      logger.info('❌ findLikedByUser: 사용자 ID가 없음');
       return { concerts: [], total: 0 };
     }
 
@@ -550,11 +550,11 @@ export class ConcertModel {
     try {
       userObjectId = new ObjectId(userId);
     } catch (error) {
-      logger.error("❌ findLikedByUser: 잘못된 사용자 ID 형식:", userId);
+      logger.error('❌ findLikedByUser: 잘못된 사용자 ID 형식:', userId);
       return { concerts: [], total: 0 };
     }
 
-    logger.log("🔍 findLikedByUser 검색 조건:", {
+    logger.log('🔍 findLikedByUser 검색 조건:', {
       userId,
       userObjectId: userObjectId.toString(),
       page,
@@ -565,25 +565,25 @@ export class ConcertModel {
       const [concerts, total] = await Promise.all([
         this.collection
           .find({
-            "likes.userId": userObjectId,
+            'likes.userId': userObjectId,
           })
-          .sort({ "likes.likedAt": -1 }) // 좋아요한 시간 기준 내림차순
+          .sort({ 'likes.likedAt': -1 }) // 좋아요한 시간 기준 내림차순
           .skip(skip)
           .limit(limit)
           .toArray(),
         this.collection.countDocuments({
-          "likes.userId": userObjectId,
+          'likes.userId': userObjectId,
         }),
       ]);
 
-      logger.log("✅ findLikedByUser 결과:", {
+      logger.log('✅ findLikedByUser 결과:', {
         찾은콘서트수: concerts.length,
         전체개수: total,
       });
 
       return { concerts, total };
     } catch (error) {
-      logger.error("❌ findLikedByUser 쿼리 실행 에러:", error);
+      logger.error('❌ findLikedByUser 쿼리 실행 에러:', error);
       return { concerts: [], total: 0 };
     }
   }
@@ -600,7 +600,7 @@ export class ConcertModel {
       }
       return await this.collection.find({ uid: { $in: uids } }).toArray();
     } catch (error) {
-      logger.error("findByUids 에러:", error);
+      logger.error('findByUids 에러:', error);
       return [];
     }
   }
@@ -630,7 +630,7 @@ export class ConcertModel {
 
       return await this.collection.find({ _id: { $in: objectIds } }).toArray();
     } catch (error) {
-      logger.error("findByIds 에러:", error);
+      logger.error('findByIds 에러:', error);
       return [];
     }
   }
@@ -651,7 +651,7 @@ export class ConcertModel {
         // datetime 배열을 Date 객체로 변환
         if (concert.datetime && Array.isArray(concert.datetime)) {
           concert.datetime = concert.datetime.map((dt: any) =>
-            dt instanceof Date ? dt : new Date(dt)
+            dt instanceof Date ? dt : new Date(dt),
           );
         }
 
@@ -666,7 +666,7 @@ export class ConcertModel {
         // 기본값 설정
         return {
           ...concert,
-          status: concert.status || "upcoming",
+          status: concert.status || 'upcoming',
           likes: concert.likes || [],
           likesCount: concert.likesCount || 0,
           createdAt: concert.createdAt || now,
@@ -681,7 +681,7 @@ export class ConcertModel {
 
       const result = await this.collection.insertMany(
         processedConcerts,
-        options
+        options,
       );
 
       // 삽입된 문서들 반환
@@ -690,7 +690,7 @@ export class ConcertModel {
         .find({ _id: { $in: insertedIds } })
         .toArray();
     } catch (error) {
-      logger.error("insertMany 에러:", error);
+      logger.error('insertMany 에러:', error);
       throw error;
     }
   }
@@ -723,7 +723,7 @@ export class ConcertModel {
       });
       return result.deletedCount || 0;
     } catch (error) {
-      logger.error("deleteByIds 에러:", error);
+      logger.error('deleteByIds 에러:', error);
       return 0;
     }
   }
@@ -733,7 +733,7 @@ export class ConcertModel {
    */
   async findLikeStatusBatch(
     concertIds: string[],
-    userId: string
+    userId: string,
   ): Promise<Map<string, boolean>> {
     try {
       if (!Array.isArray(concertIds) || concertIds.length === 0 || !userId) {
@@ -761,14 +761,14 @@ export class ConcertModel {
       concerts.forEach((concert) => {
         const isLiked =
           concert.likes?.some(
-            (like: any) => like.userId?.toString() === userId.toString()
+            (like: any) => like.userId?.toString() === userId.toString(),
           ) || false;
         likeStatusMap.set(concert._id.toString(), isLiked);
       });
 
       return likeStatusMap;
     } catch (error) {
-      logger.error("findLikeStatusBatch 에러:", error);
+      logger.error('findLikeStatusBatch 에러:', error);
       return new Map();
     }
   }
@@ -788,7 +788,7 @@ export class ConcertModel {
 
       return await this.collection.bulkWrite(operations, options);
     } catch (error) {
-      logger.error("bulkWrite 에러:", error);
+      logger.error('bulkWrite 에러:', error);
       throw error;
     }
   }
@@ -800,8 +800,8 @@ export class ConcertModel {
     operations: Array<{
       concertId: string;
       userId: string;
-      action: "add" | "remove";
-    }>
+      action: 'add' | 'remove';
+    }>,
   ): Promise<{ success: number; failed: number; errors: any[] }> {
     try {
       if (!Array.isArray(operations) || operations.length === 0) {
@@ -817,12 +817,12 @@ export class ConcertModel {
         try {
           const { concertId, userId, action } = op;
 
-          if (!concertId || !userId || !["add", "remove"].includes(action)) {
+          if (!concertId || !userId || !['add', 'remove'].includes(action)) {
             errors.push({
               concertId,
               userId,
               action,
-              error: "잘못된 매개변수",
+              error: '잘못된 매개변수',
             });
             failedCount++;
             continue;
@@ -838,12 +838,12 @@ export class ConcertModel {
           const userObjectId = new ObjectId(userId);
           const now = new Date();
 
-          if (action === "add") {
+          if (action === 'add') {
             bulkOps.push({
               updateOne: {
                 filter: {
                   ...query,
-                  "likes.userId": { $ne: userObjectId }, // 중복 방지
+                  'likes.userId': { $ne: userObjectId }, // 중복 방지
                 },
                 update: {
                   $push: { likes: { userId: userObjectId, likedAt: now } },
@@ -871,7 +871,7 @@ export class ConcertModel {
             concertId: op.concertId,
             userId: op.userId,
             action: op.action,
-            error: error instanceof Error ? error.message : "알 수 없는 에러",
+            error: error instanceof Error ? error.message : '알 수 없는 에러',
           });
           failedCount++;
         }
@@ -883,7 +883,7 @@ export class ConcertModel {
 
       return { success: successCount, failed: failedCount, errors };
     } catch (error) {
-      logger.error("batchLikeOperations 에러:", error);
+      logger.error('batchLikeOperations 에러:', error);
       throw error;
     }
   }
@@ -895,7 +895,7 @@ export class ConcertModel {
     return await this.collection
       .find({
         datetime: { $elemMatch: { $gte: new Date() } },
-        status: { $ne: "cancelled" },
+        status: { $ne: 'cancelled' },
       })
       .sort({ datetime: 1 })
       .toArray();
@@ -905,7 +905,7 @@ export class ConcertModel {
   async findByArtist(artist: string): Promise<IConcert[]> {
     return await this.collection
       .find({
-        artist: { $in: [new RegExp(artist, "i")] },
+        artist: { $in: [new RegExp(artist, 'i')] },
       })
       .sort({ datetime: 1 })
       .toArray();
@@ -915,7 +915,7 @@ export class ConcertModel {
   async findByLocation(location: string): Promise<IConcert[]> {
     return await this.collection
       .find({
-        location: new RegExp(location, "i"),
+        location: new RegExp(location, 'i'),
       })
       .sort({ datetime: 1 })
       .toArray();
@@ -926,14 +926,14 @@ export class ConcertModel {
     return await this.collection
       .find(
         { $text: { $search: query } },
-        { projection: { score: { $meta: "textScore" } } }
+        { projection: { score: { $meta: 'textScore' } } },
       )
-      .sort({ score: { $meta: "textScore" } })
+      .sort({ score: { $meta: 'textScore' } })
       .toArray();
   }
 
   // 상태별 콘서트 조회
-  async findByStatus(status: IConcert["status"]): Promise<IConcert[]> {
+  async findByStatus(status: IConcert['status']): Promise<IConcert[]> {
     return await this.collection
       .find({ status })
       .sort({ datetime: 1 })
@@ -956,7 +956,7 @@ export class ConcertModel {
     return await this.collection
       .find({
         ticketOpenDate: { $gte: now },
-        status: "upcoming",
+        status: 'upcoming',
       })
       .sort({ ticketOpenDate: 1 })
       .toArray();
@@ -968,14 +968,14 @@ export class ConcertModel {
     const result = await this.collection.updateMany(
       {
         datetime: { $elemMatch: { $lt: now } },
-        status: { $in: ["upcoming", "ongoing"] },
+        status: { $in: ['upcoming', 'ongoing'] },
       },
       {
         $set: {
-          status: "completed",
+          status: 'completed',
           updatedAt: now,
         },
-      }
+      },
     );
 
     return result.modifiedCount;
@@ -997,7 +997,7 @@ export class ConcertModel {
         .aggregate([
           {
             $group: {
-              _id: "$status",
+              _id: '$status',
               count: { $sum: 1 },
             },
           },
@@ -1010,7 +1010,7 @@ export class ConcertModel {
           {
             $group: {
               _id: null,
-              totalLikes: { $sum: "$likesCount" },
+              totalLikes: { $sum: '$likesCount' },
               totalConcerts: { $sum: 1 },
             },
           },
@@ -1031,7 +1031,7 @@ export class ConcertModel {
     // 상태별 통계 처리
     statusStats.forEach((stat) => {
       result[
-        stat._id as keyof Omit<typeof result, "totalLikes" | "averageLikes">
+        stat._id as keyof Omit<typeof result, 'totalLikes' | 'averageLikes'>
       ] = stat.count;
       result.total += stat.count;
     });
@@ -1062,7 +1062,7 @@ export const initializeConcertModel = (db: Db): ConcertModel => {
 export const getConcertModel = (): ConcertModel => {
   if (!concertModel) {
     throw new Error(
-      "Concert 모델이 초기화되지 않았습니다. initializeConcertModel()을 먼저 호출하세요."
+      'Concert 모델이 초기화되지 않았습니다. initializeConcertModel()을 먼저 호출하세요.',
     );
   }
   return concertModel;

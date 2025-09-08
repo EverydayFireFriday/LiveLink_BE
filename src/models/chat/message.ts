@@ -1,6 +1,6 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { getDatabase } from '../auth/user';
-import logger from "../../utils/logger";
+import logger from '../../utils/logger/logger';
 
 export interface Message {
   _id?: ObjectId;
@@ -28,7 +28,10 @@ export class MessageModel {
 
   private async createIndexes() {
     try {
-      await this.messageCollection.createIndex({ chatRoomId: 1, createdAt: -1 });
+      await this.messageCollection.createIndex({
+        chatRoomId: 1,
+        createdAt: -1,
+      });
       await this.messageCollection.createIndex({ senderId: 1 });
       await this.messageCollection.createIndex({ replyToMessageId: 1 });
     } catch (error) {
@@ -36,7 +39,12 @@ export class MessageModel {
     }
   }
 
-  async createMessage(messageData: Omit<Message, '_id' | 'createdAt' | 'updatedAt' | 'isEdited' | 'isDeleted'>): Promise<Message> {
+  async createMessage(
+    messageData: Omit<
+      Message,
+      '_id' | 'createdAt' | 'updatedAt' | 'isEdited' | 'isDeleted'
+    >,
+  ): Promise<Message> {
     const now = new Date();
     const message: Omit<Message, '_id'> = {
       ...messageData,
@@ -55,15 +63,19 @@ export class MessageModel {
 
   async findById(id: string | ObjectId): Promise<Message | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
-    return await this.messageCollection.findOne({ _id: objectId, isDeleted: false });
+    return await this.messageCollection.findOne({
+      _id: objectId,
+      isDeleted: false,
+    });
   }
 
   async findByChatRoom(
-    chatRoomId: string | ObjectId, 
-    limit: number = 50, 
-    skip: number = 0
+    chatRoomId: string | ObjectId,
+    limit: number = 50,
+    skip: number = 0,
   ): Promise<Message[]> {
-    const objectId = typeof chatRoomId === 'string' ? new ObjectId(chatRoomId) : chatRoomId;
+    const objectId =
+      typeof chatRoomId === 'string' ? new ObjectId(chatRoomId) : chatRoomId;
     return await this.messageCollection
       .find({ chatRoomId: objectId, isDeleted: false })
       .sort({ createdAt: -1 })
@@ -72,21 +84,24 @@ export class MessageModel {
       .toArray();
   }
 
-  async updateMessage(id: string | ObjectId, content: string): Promise<Message | null> {
+  async updateMessage(
+    id: string | ObjectId,
+    content: string,
+  ): Promise<Message | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
     const now = new Date();
 
     const result = await this.messageCollection.findOneAndUpdate(
       { _id: objectId, isDeleted: false },
-      { 
-        $set: { 
+      {
+        $set: {
           content,
           isEdited: true,
           editedAt: now,
-          updatedAt: now
-        } 
+          updatedAt: now,
+        },
       },
-      { returnDocument: 'after' }
+      { returnDocument: 'after' },
     );
 
     return result || null;
@@ -98,31 +113,32 @@ export class MessageModel {
 
     const result = await this.messageCollection.updateOne(
       { _id: objectId },
-      { 
-        $set: { 
+      {
+        $set: {
           isDeleted: true,
           deletedAt: now,
-          updatedAt: now
-        } 
-      }
+          updatedAt: now,
+        },
+      },
     );
 
     return result.modifiedCount > 0;
   }
 
   async searchMessages(
-    chatRoomId: string | ObjectId, 
-    searchTerm: string, 
-    limit: number = 20
+    chatRoomId: string | ObjectId,
+    searchTerm: string,
+    limit: number = 20,
   ): Promise<Message[]> {
-    const objectId = typeof chatRoomId === 'string' ? new ObjectId(chatRoomId) : chatRoomId;
+    const objectId =
+      typeof chatRoomId === 'string' ? new ObjectId(chatRoomId) : chatRoomId;
     const regex = new RegExp(searchTerm, 'i');
-    
+
     return await this.messageCollection
       .find({
         chatRoomId: objectId,
         content: { $regex: regex },
-        isDeleted: false
+        isDeleted: false,
       })
       .limit(limit)
       .sort({ createdAt: -1 })

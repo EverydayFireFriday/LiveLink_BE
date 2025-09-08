@@ -1,7 +1,6 @@
-
-import { RedisClientType } from "redis";
-import logger from "../../utils/logger";
-import { env } from "../../config/env";
+import { RedisClientType } from 'redis';
+import logger from '../../utils/logger/logger';
+import { env } from '../../config/env/env';
 
 const MAX_ATTEMPTS = parseInt(env.BRUTE_FORCE_MAX_ATTEMPTS);
 const BLOCK_DURATION_SECONDS = parseInt(env.BRUTE_FORCE_BLOCK_DURATION);
@@ -19,10 +18,13 @@ export class BruteForceProtectionService {
     try {
       await this.redisClient.ping();
       this.isRedisAvailable = true;
-      logger.info("[BruteForce] Redis connection confirmed.");
+      logger.info('[BruteForce] Redis connection confirmed.');
     } catch (error) {
       this.isRedisAvailable = false;
-      logger.error("[BruteForce] Redis connection failed. Brute-force protection will operate in degraded mode.", error);
+      logger.error(
+        '[BruteForce] Redis connection failed. Brute-force protection will operate in degraded mode.',
+        error,
+      );
     }
   }
 
@@ -36,7 +38,9 @@ export class BruteForceProtectionService {
 
   async increment(key: string): Promise<number> {
     if (!this.isRedisAvailable) {
-      logger.warn(`[BruteForce] Redis is unavailable. Skipping increment for ${key}.`);
+      logger.warn(
+        `[BruteForce] Redis is unavailable. Skipping increment for ${key}.`,
+      );
       return 1; // Allow login to proceed, simulate first attempt
     }
     try {
@@ -49,7 +53,7 @@ export class BruteForceProtectionService {
 
       if (attempts >= MAX_ATTEMPTS) {
         const blockKey = this.getBlockKey(key);
-        await this.redisClient.set(blockKey, "blocked", {
+        await this.redisClient.set(blockKey, 'blocked', {
           EX: BLOCK_DURATION_SECONDS,
         });
         logger.warn(`[BruteForce] Key ${key} has been blocked for 30 minutes.`);
@@ -57,7 +61,10 @@ export class BruteForceProtectionService {
 
       return attempts;
     } catch (error) {
-      logger.error(`[BruteForce] Failed to increment attempts for ${key} in Redis.`, error);
+      logger.error(
+        `[BruteForce] Failed to increment attempts for ${key} in Redis.`,
+        error,
+      );
       this.isRedisAvailable = false; // Mark Redis as unavailable
       return 1; // Allow login to proceed
     }
@@ -65,15 +72,20 @@ export class BruteForceProtectionService {
 
   async isBlocked(key: string): Promise<boolean> {
     if (!this.isRedisAvailable) {
-      logger.warn(`[BruteForce] Redis is unavailable. Skipping block check for ${key}.`);
+      logger.warn(
+        `[BruteForce] Redis is unavailable. Skipping block check for ${key}.`,
+      );
       return false; // Not blocked if Redis is down
     }
     try {
       const blockKey = this.getBlockKey(key);
       const result = await this.redisClient.get(blockKey);
-      return result === "blocked";
+      return result === 'blocked';
     } catch (error) {
-      logger.error(`[BruteForce] Failed to check block status for ${key} in Redis.`, error);
+      logger.error(
+        `[BruteForce] Failed to check block status for ${key} in Redis.`,
+        error,
+      );
       this.isRedisAvailable = false; // Mark Redis as unavailable
       return false; // Not blocked if Redis is down
     }
@@ -81,14 +93,19 @@ export class BruteForceProtectionService {
 
   async getBlockTime(key: string): Promise<number> {
     if (!this.isRedisAvailable) {
-      logger.warn(`[BruteForce] Redis is unavailable. Skipping getBlockTime for ${key}.`);
+      logger.warn(
+        `[BruteForce] Redis is unavailable. Skipping getBlockTime for ${key}.`,
+      );
       return 0; // No block time if Redis is down
     }
     try {
       const blockKey = this.getBlockKey(key);
       return this.redisClient.ttl(blockKey);
     } catch (error) {
-      logger.error(`[BruteForce] Failed to get block time for ${key} in Redis.`, error);
+      logger.error(
+        `[BruteForce] Failed to get block time for ${key} in Redis.`,
+        error,
+      );
       this.isRedisAvailable = false; // Mark Redis as unavailable
       return 0; // No block time if Redis is down
     }
@@ -96,7 +113,9 @@ export class BruteForceProtectionService {
 
   async reset(key: string): Promise<void> {
     if (!this.isRedisAvailable) {
-      logger.warn(`[BruteForce] Redis is unavailable. Skipping reset for ${key}.`);
+      logger.warn(
+        `[BruteForce] Redis is unavailable. Skipping reset for ${key}.`,
+      );
       return; // Do nothing if Redis is down
     }
     try {
@@ -105,7 +124,10 @@ export class BruteForceProtectionService {
       await this.redisClient.del(attemptsKey);
       await this.redisClient.del(blockKey);
     } catch (error) {
-      logger.error(`[BruteForce] Failed to reset attempts for ${key} in Redis.`, error);
+      logger.error(
+        `[BruteForce] Failed to reset attempts for ${key} in Redis.`,
+        error,
+      );
       this.isRedisAvailable = false; // Mark Redis as unavailable
     }
   }

@@ -1,8 +1,7 @@
-import express from "express";
-import { PasswordService } from "../../services/auth/passwordService";
-import { AuthValidator } from "../../utils/validation/auth/authValidator";
-import logger from "../../utils/logger";
-
+import express from 'express';
+import { PasswordService } from '../../services/auth/passwordService';
+import { AuthValidator } from '../../utils/validation/auth/authValidator';
+import logger from '../../utils/logger/logger';
 
 export class PasswordController {
   private passwordService: PasswordService;
@@ -13,7 +12,7 @@ export class PasswordController {
 
   resetPasswordRequest = async (
     req: express.Request,
-    res: express.Response
+    res: express.Response,
   ) => {
     const { email } = req.body;
 
@@ -32,16 +31,16 @@ export class PasswordController {
           ...result.data,
         });
       } else {
-        const statusCode = result.message.includes("빈번한")
+        const statusCode = result.message.includes('빈번한')
           ? 429
-          : result.message.includes("찾을 수 없습니다")
+          : result.message.includes('찾을 수 없습니다')
             ? 404
             : 400;
         res.status(statusCode).json({ message: result.message });
       }
     } catch (error) {
-      logger.error("비밀번호 재설정 요청 에러:", error);
-      res.status(500).json({ message: "서버 에러가 발생했습니다." });
+      logger.error('비밀번호 재설정 요청 에러:', error);
+      res.status(500).json({ message: '서버 에러가 발생했습니다.' });
     }
   };
 
@@ -49,7 +48,7 @@ export class PasswordController {
     const { email, verificationCode, newPassword } = req.body;
 
     if (!email || !verificationCode || !newPassword) {
-      res.status(400).json({ message: "모든 필드를 입력해주세요." });
+      res.status(400).json({ message: '모든 필드를 입력해주세요.' });
       return;
     }
 
@@ -76,22 +75,22 @@ export class PasswordController {
       const result = await this.passwordService.verifyAndResetPassword(
         email,
         verificationCode,
-        newPassword
+        newPassword,
       );
 
       if (result.success) {
         res.status(200).json({ message: result.message });
       } else {
-        const statusCode = result.message.includes("만료")
+        const statusCode = result.message.includes('만료')
           ? 410
-          : result.message.includes("일치하지")
+          : result.message.includes('일치하지')
             ? 401
             : 400;
         res.status(statusCode).json({ message: result.message });
       }
     } catch (error) {
-      logger.error("비밀번호 재설정 에러:", error);
-      res.status(500).json({ message: "서버 에러가 발생했습니다." });
+      logger.error('비밀번호 재설정 에러:', error);
+      res.status(500).json({ message: '서버 에러가 발생했습니다.' });
     }
   };
 
@@ -101,7 +100,7 @@ export class PasswordController {
     if (!currentPassword || !newPassword) {
       res
         .status(400)
-        .json({ message: "현재 비밀번호와 새 비밀번호를 모두 입력해주세요." });
+        .json({ message: '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.' });
       return;
     }
 
@@ -114,7 +113,7 @@ export class PasswordController {
     if (currentPassword === newPassword) {
       res
         .status(400)
-        .json({ message: "새 비밀번호는 현재 비밀번호와 달라야 합니다." });
+        .json({ message: '새 비밀번호는 현재 비밀번호와 달라야 합니다.' });
       return;
     }
 
@@ -123,18 +122,18 @@ export class PasswordController {
       const result = await this.passwordService.changePassword(
         userId,
         currentPassword,
-        newPassword
+        newPassword,
       );
 
       if (result.success) {
         res.status(200).json({ message: result.message });
       } else {
-        const statusCode = result.message.includes("일치하지") ? 401 : 400;
+        const statusCode = result.message.includes('일치하지') ? 401 : 400;
         res.status(statusCode).json({ message: result.message });
       }
     } catch (error) {
-      logger.error("비밀번호 변경 에러:", error);
-      res.status(500).json({ message: "서버 에러가 발생했습니다." });
+      logger.error('비밀번호 변경 에러:', error);
+      res.status(500).json({ message: '서버 에러가 발생했습니다.' });
     }
   };
 }

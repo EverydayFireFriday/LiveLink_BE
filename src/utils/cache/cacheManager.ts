@@ -1,5 +1,5 @@
-import { redisClient } from '../middlewares/sessionMiddleware';
-import { logger } from './index';
+import { redisClient } from '../../middlewares/session/sessionMiddleware';
+import { logger } from '../index';
 
 class CacheManager {
   private client: typeof redisClient;
@@ -28,9 +28,9 @@ class CacheManager {
 
   async set(key: string, value: any, ttlInSeconds: number): Promise<void> {
     try {
-        if (!this.client.isOpen) {
-            await this.client.connect().catch(logger.error);
-        }
+      if (!this.client.isOpen) {
+        await this.client.connect().catch(logger.error);
+      }
       const data = JSON.stringify(value);
       await this.client.v4.set(key, data, { EX: ttlInSeconds });
       logger.info(`✅ Cache SET for key: ${key} with TTL: ${ttlInSeconds}s`);
@@ -41,9 +41,9 @@ class CacheManager {
 
   async del(key: string): Promise<void> {
     try {
-        if (!this.client.isOpen) {
-            await this.client.connect().catch(logger.error);
-        }
+      if (!this.client.isOpen) {
+        await this.client.connect().catch(logger.error);
+      }
       await this.client.v4.del(key);
       logger.info(`✅ Cache DELETED for key: ${key}`);
     } catch (error) {
@@ -59,10 +59,14 @@ class CacheManager {
       const keys = await this.client.v4.keys(pattern);
       if (keys.length > 0) {
         await this.client.v4.del(keys);
-        logger.info(`✅ Cache DELETED for pattern: ${pattern}, keys: ${keys.join(', ')}`);
+        logger.info(
+          `✅ Cache DELETED for pattern: ${pattern}, keys: ${keys.join(', ')}`,
+        );
       }
     } catch (error) {
-      logger.error(`❌ Error deleting cache for pattern ${pattern}:`, { error });
+      logger.error(`❌ Error deleting cache for pattern ${pattern}:`, {
+        error,
+      });
     }
   }
 }

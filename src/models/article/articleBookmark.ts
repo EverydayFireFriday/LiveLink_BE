@@ -1,6 +1,5 @@
-import { ObjectId, Collection, Db } from "mongodb";
-import logger from "../../utils/logger";
-
+import { ObjectId, Collection, Db } from 'mongodb';
+import logger from '../../utils/logger/logger';
 
 export interface IArticleBookmark {
   _id: ObjectId;
@@ -16,7 +15,7 @@ export class ArticleBookmarkModel {
 
   constructor(db: Db) {
     this.db = db;
-    this.collection = db.collection<IArticleBookmark>("article_bookmarks");
+    this.collection = db.collection<IArticleBookmark>('article_bookmarks');
     // 🚀 생성자에서 인덱스 생성하지 않음
   }
 
@@ -27,9 +26,9 @@ export class ArticleBookmarkModel {
     try {
       await this.createIndexes();
       this.indexesCreated = true;
-      logger.info("✅ ArticleBookmark indexes created successfully");
+      logger.info('✅ ArticleBookmark indexes created successfully');
     } catch (error) {
-      logger.error("❌ Failed to create ArticleBookmark indexes:", error);
+      logger.error('❌ Failed to create ArticleBookmark indexes:', error);
       // 인덱스 생성 실패해도 앱은 계속 실행
     }
   }
@@ -42,21 +41,21 @@ export class ArticleBookmarkModel {
 
   private async createIndexes() {
     try {
-      logger.info("ArticleBookmark 인덱스 생성 시작...");
+      logger.info('ArticleBookmark 인덱스 생성 시작...');
 
       // 중복 북마크 방지를 위한 복합 유니크 인덱스
       await this.collection.createIndex(
         { article_id: 1, user_id: 1 },
-        { unique: true }
+        { unique: true },
       );
 
       // 조회 최적화 인덱스
       await this.collection.createIndex({ article_id: 1, created_at: -1 });
       await this.collection.createIndex({ user_id: 1, created_at: -1 });
 
-      logger.info("✅ ArticleBookmark 인덱스 생성 완료");
+      logger.info('✅ ArticleBookmark 인덱스 생성 완료');
     } catch (error) {
-      logger.error("❌ ArticleBookmark 인덱스 생성 중 오류:", error);
+      logger.error('❌ ArticleBookmark 인덱스 생성 중 오류:', error);
     }
   }
 
@@ -64,7 +63,7 @@ export class ArticleBookmarkModel {
   async create(articleId: string, userId: string): Promise<IArticleBookmark> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || !ObjectId.isValid(userId)) {
-        throw new Error("유효하지 않은 ID입니다.");
+        throw new Error('유효하지 않은 ID입니다.');
       }
 
       const articleObjectId = new ObjectId(articleId);
@@ -77,7 +76,7 @@ export class ArticleBookmarkModel {
       });
 
       if (existingBookmark) {
-        throw new Error("이미 북마크한 게시글입니다.");
+        throw new Error('이미 북마크한 게시글입니다.');
       }
 
       const bookmark: IArticleBookmark = {
@@ -89,7 +88,7 @@ export class ArticleBookmarkModel {
 
       const result = await this.collection.insertOne(bookmark);
       if (!result.insertedId) {
-        throw new Error("북마크 추가에 실패했습니다.");
+        throw new Error('북마크 추가에 실패했습니다.');
       }
 
       return bookmark;
@@ -98,7 +97,7 @@ export class ArticleBookmarkModel {
 
   async delete(
     articleId: string,
-    userId: string
+    userId: string,
   ): Promise<IArticleBookmark | null> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || !ObjectId.isValid(userId)) {
@@ -142,7 +141,7 @@ export class ArticleBookmarkModel {
   }
 
   async countByArticleIds(
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, number>> {
     return this.withIndexes(async () => {
       if (articleIds.length === 0) return {};
@@ -161,7 +160,7 @@ export class ArticleBookmarkModel {
           },
           {
             $group: {
-              _id: "$article_id",
+              _id: '$article_id',
               count: { $sum: 1 },
             },
           },
@@ -186,7 +185,7 @@ export class ArticleBookmarkModel {
 
   async checkBookmarkStatusForArticles(
     userId: string,
-    articleIds: string[]
+    articleIds: string[],
   ): Promise<Record<string, boolean>> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId) || articleIds.length === 0) return {};
@@ -238,7 +237,7 @@ export class ArticleBookmarkModel {
           },
           {
             $group: {
-              _id: "$user_id",
+              _id: '$user_id',
               count: { $sum: 1 },
             },
           },
@@ -266,7 +265,7 @@ export class ArticleBookmarkModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ articleIds: string[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId)) {
@@ -287,7 +286,7 @@ export class ArticleBookmarkModel {
       ]);
 
       const articleIds = bookmarks.map((bookmark) =>
-        bookmark.article_id.toString()
+        bookmark.article_id.toString(),
       );
       return { articleIds, total };
     });
@@ -298,7 +297,7 @@ export class ArticleBookmarkModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ bookmarks: any[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId)) {
@@ -315,15 +314,15 @@ export class ArticleBookmarkModel {
         { $limit: limit },
         {
           $lookup: {
-            from: "articles",
-            localField: "article_id",
-            foreignField: "_id",
-            as: "article",
+            from: 'articles',
+            localField: 'article_id',
+            foreignField: '_id',
+            as: 'article',
           },
         },
         {
           $unwind: {
-            path: "$article",
+            path: '$article',
             preserveNullAndEmptyArrays: true,
           },
         },
@@ -343,7 +342,7 @@ export class ArticleBookmarkModel {
     options: {
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<{ userIds: string[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId)) {
@@ -370,7 +369,7 @@ export class ArticleBookmarkModel {
 
   async findBookmarkStatusBatch(
     articleIds: string[],
-    userId: string
+    userId: string,
   ): Promise<Map<string, boolean>> {
     return this.withIndexes(async () => {
       const bookmarkStatusMap = new Map<string, boolean>();
@@ -495,7 +494,7 @@ export class ArticleBookmarkModel {
       page?: number;
       limit?: number;
       days?: number;
-    } = {}
+    } = {},
   ): Promise<{ articles: any[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, days = 30 } = options;
@@ -508,9 +507,9 @@ export class ArticleBookmarkModel {
         { $match: { created_at: { $gte: dateFilter } } },
         {
           $group: {
-            _id: "$article_id",
+            _id: '$article_id',
             bookmarkCount: { $sum: 1 },
-            latestBookmark: { $max: "$created_at" },
+            latestBookmark: { $max: '$created_at' },
           },
         },
         { $sort: { bookmarkCount: -1, latestBookmark: -1 } },
@@ -518,15 +517,15 @@ export class ArticleBookmarkModel {
         { $limit: limit },
         {
           $lookup: {
-            from: "articles",
-            localField: "_id",
-            foreignField: "_id",
-            as: "article",
+            from: 'articles',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'article',
           },
         },
         {
           $unwind: {
-            path: "$article",
+            path: '$article',
             preserveNullAndEmptyArrays: true,
           },
         },
@@ -543,8 +542,8 @@ export class ArticleBookmarkModel {
 
       const totalPipeline = [
         { $match: { created_at: { $gte: dateFilter } } },
-        { $group: { _id: "$article_id" } },
-        { $count: "total" },
+        { $group: { _id: '$article_id' } },
+        { $count: 'total' },
       ];
 
       const totalResult = await this.collection
@@ -562,7 +561,7 @@ export class ArticleBookmarkModel {
       page?: number;
       limit?: number;
       folderId?: string;
-    } = {}
+    } = {},
   ): Promise<{
     bookmarks: Array<{ article: any; created_at: Date; folder?: string }>;
     total: number;
@@ -587,18 +586,18 @@ export class ArticleBookmarkModel {
         { $match: matchStage },
         {
           $lookup: {
-            from: "articles",
-            localField: "article_id",
-            foreignField: "_id",
-            as: "article",
+            from: 'articles',
+            localField: 'article_id',
+            foreignField: '_id',
+            as: 'article',
           },
         },
         {
-          $unwind: "$article",
+          $unwind: '$article',
         },
         {
           $match: {
-            "article.is_published": true,
+            'article.is_published': true,
           },
         },
         {
@@ -607,7 +606,7 @@ export class ArticleBookmarkModel {
         {
           $facet: {
             data: [{ $skip: skip }, { $limit: limit }],
-            totalCount: [{ $count: "count" }],
+            totalCount: [{ $count: 'count' }],
           },
         },
       ];
@@ -631,7 +630,7 @@ export class ArticleBookmarkModel {
 let articleBookmarkModel: ArticleBookmarkModel;
 
 export const initializeArticleBookmarkModel = (
-  db: Db
+  db: Db,
 ): ArticleBookmarkModel => {
   articleBookmarkModel = new ArticleBookmarkModel(db);
   return articleBookmarkModel;
@@ -639,7 +638,7 @@ export const initializeArticleBookmarkModel = (
 
 export const getArticleBookmarkModel = (): ArticleBookmarkModel => {
   if (!articleBookmarkModel) {
-    throw new Error("ArticleBookmark 모델이 초기화되지 않았습니다.");
+    throw new Error('ArticleBookmark 모델이 초기화되지 않았습니다.');
   }
   return articleBookmarkModel;
 };

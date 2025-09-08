@@ -1,5 +1,5 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
-import logger from "../../utils/logger";
+import logger from '../../utils/logger/logger';
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -64,7 +64,7 @@ class Database {
     // 소셜 로그인을 위한 인덱스. provider와 socialId 필드가 있는 문서에만 적용됩니다.
     await userCollection.createIndex(
       { provider: 1, socialId: 1 },
-      { unique: true, sparse: true }
+      { unique: true, sparse: true },
     );
   }
 
@@ -97,7 +97,12 @@ export class UserModel {
   }
 
   // 사용자 생성
-  async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'termsVersion'> & { isTermsAgreed: boolean; termsVersion: string }): Promise<User> {
+  async createUser(
+    userData: Omit<
+      User,
+      '_id' | 'createdAt' | 'updatedAt' | 'status' | 'termsVersion'
+    > & { isTermsAgreed: boolean; termsVersion: string },
+  ): Promise<User> {
     const now = new Date();
     const user: Omit<User, '_id'> = {
       ...userData,
@@ -135,14 +140,20 @@ export class UserModel {
   async findByEmail(email: string): Promise<User | null> {
     return await this.userCollection.findOne({ email });
   }
-  
+
   // Provider와 Social ID로 사용자 찾기
-  async findByProviderAndSocialId(provider: string, socialId: string): Promise<User | null> {
+  async findByProviderAndSocialId(
+    provider: string,
+    socialId: string,
+  ): Promise<User | null> {
     return await this.userCollection.findOne({ provider, socialId });
   }
 
   // 이메일과 username 모두로 사용자 찾기
-  async findByEmailAndUsername(email: string, username: string): Promise<User | null> {
+  async findByEmailAndUsername(
+    email: string,
+    username: string,
+  ): Promise<User | null> {
     return await this.userCollection.findOne({
       email,
       username,
@@ -156,31 +167,40 @@ export class UserModel {
   }
 
   // 사용자 정보 업데이트
-  async updateUser(id: string | ObjectId, updateData: Partial<Omit<User, '_id' | 'createdAt'>>): Promise<User | null> {
+  async updateUser(
+    id: string | ObjectId,
+    updateData: Partial<Omit<User, '_id' | 'createdAt'>>,
+  ): Promise<User | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
     const now = new Date();
 
     const result = await this.userCollection.findOneAndUpdate(
       { _id: objectId },
-      { 
-        $set: { 
-          ...updateData, 
-          updatedAt: now 
-        } 
+      {
+        $set: {
+          ...updateData,
+          updatedAt: now,
+        },
       },
-      { returnDocument: 'after' }
+      { returnDocument: 'after' },
     );
 
     return result || null; // result.value 대신 result 사용
   }
 
   // 프로필 이미지 업데이트
-  async updateProfileImage(id: string | ObjectId, profileImageUrl: string): Promise<User | null> {
+  async updateProfileImage(
+    id: string | ObjectId,
+    profileImageUrl: string,
+  ): Promise<User | null> {
     return await this.updateUser(id, { profileImage: profileImageUrl });
   }
 
   // 비밀번호 업데이트 - 새로 추가
-  async updatePassword(id: string | ObjectId, passwordHash: string): Promise<User | null> {
+  async updatePassword(
+    id: string | ObjectId,
+    passwordHash: string,
+  ): Promise<User | null> {
     return await this.updateUser(id, { passwordHash });
   }
 
@@ -221,10 +241,7 @@ export class UserModel {
   // 이메일 또는 username으로 사용자 찾기 - 새로 추가 (로그인 시 유용)
   async findByEmailOrUsername(emailOrUsername: string): Promise<User | null> {
     return await this.userCollection.findOne({
-      $or: [
-        { email: emailOrUsername },
-        { username: emailOrUsername }
-      ]
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
     });
   }
 
@@ -233,10 +250,7 @@ export class UserModel {
     const regex = new RegExp(searchTerm, 'i'); // 대소문자 구분 없이
     return await this.userCollection
       .find({
-        $or: [
-          { username: { $regex: regex } },
-          { email: { $regex: regex } }
-        ]
+        $or: [{ username: { $regex: regex } }, { email: { $regex: regex } }],
       })
       .limit(limit)
       .sort({ createdAt: -1 })
@@ -249,8 +263,8 @@ export class UserModel {
       .find({
         createdAt: {
           $gte: startDate,
-          $lte: endDate
-        }
+          $lte: endDate,
+        },
       })
       .sort({ createdAt: -1 })
       .toArray();

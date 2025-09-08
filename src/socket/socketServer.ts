@@ -2,29 +2,32 @@ import { Server as SocketServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { ChatRoomService } from '../services/chat/chatRoomService';
 import { MessageService } from '../services/chat/messageService';
-import { 
-  ServerToClientEvents, 
-  ClientToServerEvents, 
-  InterServerEvents, 
+import {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
   SocketData,
-  SocketUser 
+  SocketUser,
 } from '../types/chat';
-import logger from "../utils/logger";
-
-
+import logger from '../utils/logger/logger';
 
 export class ChatSocketServer {
-  private io: SocketServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+  private io: SocketServer<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  >;
   private chatRoomService: ChatRoomService;
   private messageService: MessageService;
 
   constructor(httpServer: HttpServer) {
     this.io = new SocketServer(httpServer, {
       cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
         credentials: true,
-        methods: ["GET", "POST"]
-      }
+        methods: ['GET', 'POST'],
+      },
     });
 
     this.chatRoomService = new ChatRoomService();
@@ -48,7 +51,10 @@ export class ChatSocketServer {
           const user = socket.data.user;
           if (!user) return;
 
-          const chatRoom = await this.chatRoomService.getChatRoom(roomId, user.userId);
+          const chatRoom = await this.chatRoomService.getChatRoom(
+            roomId,
+            user.userId,
+          );
           if (!chatRoom) {
             socket.emit('error', '채팅방을 찾을 수 없습니다.');
             return;
@@ -56,7 +62,7 @@ export class ChatSocketServer {
 
           await socket.join(roomId);
           socket.to(roomId).emit('userJoined', user, roomId);
-          
+
           logger.info(`👤 User ${user.username} joined room ${roomId}`);
         } catch (error: any) {
           socket.emit('error', error.message);
@@ -70,7 +76,7 @@ export class ChatSocketServer {
 
           await socket.leave(roomId);
           socket.to(roomId).emit('userLeft', user, roomId);
-          
+
           logger.info(`👤 User ${user.username} left room ${roomId}`);
         } catch (error: any) {
           socket.emit('error', error.message);
@@ -83,13 +89,13 @@ export class ChatSocketServer {
           if (!user) return;
 
           const message = await this.messageService.createMessage(
-            roomId, 
-            user.userId, 
-            messageData
+            roomId,
+            user.userId,
+            messageData,
           );
 
           this.io.to(roomId).emit('message', message);
-          
+
           logger.info(`💬 Message sent in room ${roomId} by ${user.username}`);
         } catch (error: any) {
           socket.emit('error', error.message);
@@ -119,7 +125,7 @@ export class ChatSocketServer {
       socket.data.user = {
         userId: sessionData.user.userId,
         username: sessionData.user.username,
-        email: sessionData.user.email
+        email: sessionData.user.email,
       } as SocketUser;
       return true;
     }

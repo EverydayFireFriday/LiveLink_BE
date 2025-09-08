@@ -1,9 +1,9 @@
-import { getConcertModel } from "../../models/concert/concert";
+import { getConcertModel } from '../../models/concert/concert';
 import {
   normalizeSearchQuery,
   validateAndNormalizePagination,
-} from "../../utils/validation/concert/concertValidation";
-import logger from "../../utils/logger";
+} from '../../utils/validation/concert/concertValidation';
+import logger from '../../utils/logger/logger';
 
 export interface ConcertServiceResponse {
   success: boolean;
@@ -24,10 +24,10 @@ export class ConcertSearchService {
     try {
       const { query, page = 1, limit = 20 } = params;
 
-      if (!query || typeof query !== "string") {
+      if (!query || typeof query !== 'string') {
         return {
           success: false,
-          error: "검색어가 필요합니다.",
+          error: '검색어가 필요합니다.',
           statusCode: 400,
         };
       }
@@ -61,10 +61,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("콘서트 검색 서비스 에러:", error);
+      logger.error('콘서트 검색 서비스 에러:', error);
       return {
         success: false,
-        error: "콘서트 검색 실패",
+        error: '콘서트 검색 실패',
         statusCode: 500,
       };
     }
@@ -106,10 +106,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("다가오는 콘서트 조회 서비스 에러:", error);
+      logger.error('다가오는 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "다가오는 콘서트 조회 실패",
+        error: '다가오는 콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -156,10 +156,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("인기 콘서트 목록 조회 서비스 에러:", error);
+      logger.error('인기 콘서트 목록 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "인기 콘서트 목록 조회 실패",
+        error: '인기 콘서트 목록 조회 실패',
         statusCode: 500,
       };
     }
@@ -185,7 +185,7 @@ export class ConcertSearchService {
 
       const concerts = allTicketOpenConcerts.slice(
         skip,
-        skip + normalizedLimit
+        skip + normalizedLimit,
       );
       const total = allTicketOpenConcerts.length;
       const totalPages = Math.ceil(total / normalizedLimit);
@@ -204,10 +204,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("티켓 오픈 예정 콘서트 조회 서비스 에러:", error);
+      logger.error('티켓 오픈 예정 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "티켓 오픈 예정 콘서트 조회 실패",
+        error: '티켓 오픈 예정 콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -251,10 +251,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("아티스트별 콘서트 조회 서비스 에러:", error);
+      logger.error('아티스트별 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "아티스트별 콘서트 조회 실패",
+        error: '아티스트별 콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -298,10 +298,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("지역별 콘서트 조회 서비스 에러:", error);
+      logger.error('지역별 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "지역별 콘서트 조회 실패",
+        error: '지역별 콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -345,10 +345,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("카테고리별 콘서트 조회 서비스 에러:", error);
+      logger.error('카테고리별 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "카테고리별 콘서트 조회 실패",
+        error: '카테고리별 콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -365,11 +365,11 @@ export class ConcertSearchService {
     try {
       const { status, page = 1, limit = 20 } = params;
 
-      const validStatuses = ["upcoming", "ongoing", "completed", "cancelled"];
+      const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
       if (!validStatuses.includes(status)) {
         return {
           success: false,
-          error: "유효하지 않은 상태입니다.",
+          error: '유효하지 않은 상태입니다.',
           statusCode: 400,
         };
       }
@@ -401,10 +401,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("상태별 콘서트 조회 서비스 에러:", error);
+      logger.error('상태별 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "상태별 콘서트 조회 실패",
+        error: '상태별 콘서트 조회 실패',
         statusCode: 500,
       };
     }
@@ -424,10 +424,10 @@ export class ConcertSearchService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("콘서트 통계 조회 서비스 에러:", error);
+      logger.error('콘서트 통계 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "콘서트 통계 조회 실패",
+        error: '콘서트 통계 조회 실패',
         statusCode: 500,
       };
     }
