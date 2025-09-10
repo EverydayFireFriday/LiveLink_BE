@@ -2,7 +2,6 @@ import express from 'express';
 import { loadavg } from 'os';
 import { redisClient } from '../../app';
 import { getConcertModel } from '../../models/concert/concert';
-import { swaggerSpec } from '../../config/swagger';
 import logger from '../../utils/logger/logger';
 
 interface HealthData {
@@ -57,11 +56,6 @@ interface DatabaseHealthData {
   };
   responseTime?: string;
 }
-
-export const getSwaggerJson = (req: express.Request, res: express.Response) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-};
 
 export const basicHealthCheck = (
   req: express.Request,
