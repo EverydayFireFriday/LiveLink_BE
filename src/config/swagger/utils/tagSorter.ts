@@ -24,6 +24,9 @@ export const swaggerTags = [
   { name: 'Article Comment', description: '게시글 댓글 관리' },
   { name: 'Article Like', description: '게시글 좋아요 관리' },
 
+  // Chat 관련
+  { name: 'Chat', description: '실시간 채팅 관리' },
+
   // Admin 관련
   { name: 'Admin', description: '관리자 전용 기능' },
 ];
