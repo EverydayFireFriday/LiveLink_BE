@@ -1,4 +1,4 @@
-import { Server as SocketServer } from 'socket.io';
+import { Server as SocketServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { ChatRoomService } from '../services/chat/chatRoomService';
 import { MessageService } from '../services/chat/messageService';
@@ -64,8 +64,8 @@ export class ChatSocketServer {
           socket.to(roomId).emit('userJoined', user, roomId);
 
           logger.info(`👤 User ${user.username} joined room ${roomId}`);
-        } catch (error: any) {
-          socket.emit('error', error.message);
+        } catch (error: unknown) {
+          socket.emit('error', (error as Error).message);
         }
       });
 
@@ -78,8 +78,8 @@ export class ChatSocketServer {
           socket.to(roomId).emit('userLeft', user, roomId);
 
           logger.info(`👤 User ${user.username} left room ${roomId}`);
-        } catch (error: any) {
-          socket.emit('error', error.message);
+        } catch (error: unknown) {
+          socket.emit('error', (error as Error).message);
         }
       });
 
@@ -97,8 +97,8 @@ export class ChatSocketServer {
           this.io.to(roomId).emit('message', message);
 
           logger.info(`💬 Message sent in room ${roomId} by ${user.username}`);
-        } catch (error: any) {
-          socket.emit('error', error.message);
+        } catch (error: unknown) {
+          socket.emit('error', (error as Error).message);
         }
       });
 
@@ -120,7 +120,10 @@ export class ChatSocketServer {
     });
   }
 
-  public authenticateSocket(socket: any, sessionData: any) {
+  public authenticateSocket(
+    socket: Socket,
+    sessionData: { user?: Partial<SocketUser> },
+  ) {
     if (sessionData && sessionData.user) {
       socket.data.user = {
         userId: sessionData.user.userId,

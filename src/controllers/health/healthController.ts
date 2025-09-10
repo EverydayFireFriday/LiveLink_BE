@@ -1,7 +1,67 @@
 import express from 'express';
+import { loadavg } from 'os';
 import { redisClient } from '../../app';
 import { getConcertModel } from '../../models/concert/concert';
+import { swaggerSpec } from '../../config/swagger';
 import logger from '../../utils/logger/logger';
+
+interface HealthData {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  services: {
+    server?: {
+      status: string;
+      uptime: string;
+      memory: {
+        used: string;
+        total: string;
+        external: string;
+      };
+      cpu: {
+        loadAverage: number[] | string;
+      };
+      nodejs: string;
+    };
+    redis?: {
+      status: string;
+      connected: boolean;
+      responseTime?: string;
+      error?: string;
+    };
+    databases?: {
+      [key: string]: {
+        status: string;
+        responseTime?: string;
+        totalConcerts?: number;
+        collections?: string | string[];
+        error?: string;
+      };
+    };
+  };
+  responseTime: string;
+}
+
+interface DatabaseHealthData {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  databases: {
+    [key: string]: {
+      status: string;
+      responseTime?: string;
+      totalConcerts?: number;
+      upcomingConcerts?: number;
+      collections?: string[];
+      lastChecked: string;
+      error?: string;
+    };
+  };
+  responseTime?: string;
+}
+
+export const getSwaggerJson = (req: express.Request, res: express.Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+};
 
 export const basicHealthCheck = (
   req: express.Request,
@@ -27,11 +87,11 @@ export const detailedHealthCheck = async (
   res: express.Response,
 ) => {
   const startTime = Date.now();
-  const healthData: any = {
+  const healthData: HealthData = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     services: {},
-    responseTime: 0,
+    responseTime: '0ms',
   };
 
   let overallHealthy = true;
@@ -50,10 +110,7 @@ export const detailedHealthCheck = async (
         external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`,
       },
       cpu: {
-        loadAverage:
-          process.platform !== 'win32'
-            ? require('os').loadavg()
-            : 'N/A (Windows)',
+        loadAverage: process.platform !== 'win32' ? loadavg() : 'N/A (Windows)',
       },
       nodejs: process.version,
     };
@@ -169,7 +226,7 @@ export const databaseHealthCheck = async (
   res: express.Response,
 ) => {
   const startTime = Date.now();
-  const healthData: any = {
+  const healthData: DatabaseHealthData = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     databases: {},
