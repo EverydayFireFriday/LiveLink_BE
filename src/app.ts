@@ -43,6 +43,7 @@ import { initializeAllArticleModels } from './models/article';
 import authRouter from './routes/auth/index';
 import concertRouter from './routes/concert/index';
 import healthRouter from './routes/health/healthRoutes';
+import swaggerRouter from './routes/swagger/swaggerRoutes';
 import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
 
 // connect-redis v6.1.3 방식
@@ -350,6 +351,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
 
 // 정적 라우터 연결
 app.use('/health', healthRouter);
+app.use('/swagger', swaggerRouter);
 // 기본 Rate Limiter 적용
 app.use(defaultLimiter);
 app.use('/auth', authRouter);

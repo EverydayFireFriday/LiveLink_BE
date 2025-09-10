@@ -6,7 +6,6 @@ import {
   databaseHealthCheck,
   readinessCheck,
   livenessCheck,
-  getSwaggerJson,
 } from '../../controllers/health/healthController';
 import { requireAdmin } from '../../middlewares/auth/adminMiddleware';
 
@@ -198,22 +197,5 @@ router.get('/readiness', requireAdmin, readinessCheck);
  *         description: 서비스 문제 발생
  */
 router.get('/liveness', requireAdmin, livenessCheck);
-
-/**
- * @swagger
- * /health/swagger.json:
- *   get:
- *     summary: Swagger JSON 다운로드
- *     description: API 명세가 담긴 Swagger JSON 파일을 다운로드합니다.
- *     tags: [Health Check]
- *     responses:
- *       200:
- *         description: Swagger JSON 파일
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- */
-router.get('/swagger.json', getSwaggerJson);
 
 export default router;
