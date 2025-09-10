@@ -1,4 +1,4 @@
-import express from "express";
+import express from 'express';
 import {
   basicHealthCheck,
   detailedHealthCheck,
@@ -6,8 +6,9 @@ import {
   databaseHealthCheck,
   readinessCheck,
   livenessCheck,
-} from "../../controllers/health/healthController";
-import { requireAdmin } from "../../middlewares/auth/adminMiddleware";
+  getSwaggerJson,
+} from '../../controllers/health/healthController';
+import { requireAdmin } from '../../middlewares/auth/adminMiddleware';
 
 const router = express.Router();
 
@@ -42,7 +43,7 @@ const router = express.Router();
  *                   type: string
  *                   example: "1.0.0"
  */
-router.get("/", requireAdmin, basicHealthCheck);
+router.get('/', requireAdmin, basicHealthCheck);
 
 /**
  * @swagger
@@ -83,7 +84,7 @@ router.get("/", requireAdmin, basicHealthCheck);
  *       503:
  *         description: 일부 서비스 문제 발생
  */
-router.get("/detailed", requireAdmin, detailedHealthCheck);
+router.get('/detailed', requireAdmin, detailedHealthCheck);
 
 /**
  * @swagger
@@ -112,7 +113,7 @@ router.get("/detailed", requireAdmin, detailedHealthCheck);
  *       503:
  *         description: Redis 연결 실패
  */
-router.get("/redis", requireAdmin, redisHealthCheck);
+router.get('/redis', requireAdmin, redisHealthCheck);
 
 /**
  * @swagger
@@ -144,7 +145,7 @@ router.get("/redis", requireAdmin, redisHealthCheck);
  *       503:
  *         description: 데이터베이스 연결 실패
  */
-router.get("/database", requireAdmin, databaseHealthCheck);
+router.get('/database', requireAdmin, databaseHealthCheck);
 
 /**
  * @swagger
@@ -170,7 +171,7 @@ router.get("/database", requireAdmin, databaseHealthCheck);
  *       503:
  *         description: 서비스 준비 미완료
  */
-router.get("/readiness", requireAdmin, readinessCheck);
+router.get('/readiness', requireAdmin, readinessCheck);
 
 /**
  * @swagger
@@ -196,6 +197,23 @@ router.get("/readiness", requireAdmin, readinessCheck);
  *       503:
  *         description: 서비스 문제 발생
  */
-router.get("/liveness", requireAdmin, livenessCheck);
+router.get('/liveness', requireAdmin, livenessCheck);
+
+/**
+ * @swagger
+ * /health/swagger.json:
+ *   get:
+ *     summary: Swagger JSON 다운로드
+ *     description: API 명세가 담긴 Swagger JSON 파일을 다운로드합니다.
+ *     tags: [Health Check]
+ *     responses:
+ *       200:
+ *         description: Swagger JSON 파일
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+router.get('/swagger.json', getSwaggerJson);
 
 export default router;
