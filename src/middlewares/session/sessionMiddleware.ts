@@ -1,10 +1,12 @@
 import express from 'express';
 import session from 'express-session';
+import crypto from 'crypto';
 import { createClient } from 'redis';
+import connectRedis from 'connect-redis';
 import logger from '../../utils/logger/logger';
 
 // connect-redis v6.1.3 방식
-const RedisStore = require('connect-redis')(session);
+const RedisStore = connectRedis(session);
 
 // Redis 클라이언트 생성 (index.ts와 동일하게)
 const redisClient = createClient({
@@ -32,7 +34,8 @@ export const sessionMiddleware = (app: express.Application) => {
   app.use(
     session({
       store: new RedisStore({ client: redisClient }),
-      secret: process.env.SESSION_SECRET || 'yourSecretKey',
+      secret:
+        process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex'),
       resave: false,
       saveUninitialized: false,
       cookie: {

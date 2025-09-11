@@ -467,6 +467,11 @@ const startServer = async (): Promise<void> => {
     app.use('/chat', chatRouter);
     logger.info('✅ Chat routes loaded and connected');
 
+    logger.info('🔌 Loading Terms routes...');
+    const { default: termsRouter } = await import('./routes/terms');
+    app.use('/terms', termsRouter);
+    logger.info('✅ Terms routes loaded and connected');
+
     // Socket.IO 초기화
     logger.info('🔌 Initializing Socket.IO server...');
     chatSocketServer = new ChatSocketServer(httpServer);

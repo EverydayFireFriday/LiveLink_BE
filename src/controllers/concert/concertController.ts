@@ -22,7 +22,10 @@ export const uploadConcert = async (
     if (result.success) {
       // 세션 정보 가져오기 (개발환경에서는 임시 세션이 생성됨)
       const userInfo = {
-        email: req.session?.user?.email || 'unknown@localhost',
+        email:
+          req.session?.user?.email ||
+          process.env.DEFAULT_EMAIL ||
+          'system@stagelives.com',
         username: req.session?.user?.username || 'unknown-user',
         userId: req.session?.user?.userId || 'unknown-id',
       };
@@ -209,7 +212,7 @@ export const getAllConcerts = async (
     };
 
     const activeFilters = Object.entries(filters)
-      .filter(([key, value]) => value)
+      .filter(([, value]) => value) // key 대신 _ 사용하여 unused 경고 해결
       .map(([key]) => key);
     if (activeFilters.length > 0) {
       logger.info(`🔍 적용된 필터: ${activeFilters.join(', ')}`);
@@ -296,7 +299,7 @@ export const updateConcert = async (
     // 수정 불가능한 필드 확인 및 제거
     const restrictedFields = ['uid', 'likes', 'likesCount', '_id', 'createdAt'];
     const providedRestrictedFields = restrictedFields.filter((field) =>
-      req.body.hasOwnProperty(field),
+      Object.prototype.hasOwnProperty.call(req.body, field),
     );
 
     if (providedRestrictedFields.length > 0) {
@@ -326,7 +329,10 @@ export const updateConcert = async (
 
     if (result.success) {
       const userInfo = {
-        email: req.session?.user?.email || 'unknown@localhost',
+        email:
+          req.session?.user?.email ||
+          process.env.DEFAULT_EMAIL ||
+          'system@stagelives.com',
         username: req.session?.user?.username || 'unknown-user',
         userId: req.session?.user?.userId || 'unknown-id',
       };
@@ -420,7 +426,10 @@ export const deleteConcert = async (
 
     if (result.success) {
       const userInfo = {
-        email: req.session?.user?.email || 'unknown@localhost',
+        email:
+          req.session?.user?.email ||
+          process.env.DEFAULT_EMAIL ||
+          'system@stagelives.com',
         username: req.session?.user?.username || 'unknown-user',
         userId: req.session?.user?.userId || 'unknown-id',
       };

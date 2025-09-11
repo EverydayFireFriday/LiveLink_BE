@@ -2,13 +2,13 @@ import logger from '../../../utils/logger/logger';
 
 export const setupSearchFilter = function () {
   try {
-    console.log('🔧 setupSearchFilter 시작');
+    logger.info('🔧 setupSearchFilter 시작');
 
     // 기존 다크모드 토글이 있다면 제거 (중복 방지)
     const existingToggle = document.querySelector('.dark-mode-toggle');
     if (existingToggle) {
       existingToggle.remove();
-      console.log('🗑️ 기존 토글 제거');
+      logger.info('🗑️ 기존 토글 제거');
     }
 
     // 다크 모드 토글 버튼 생성
@@ -20,13 +20,12 @@ export const setupSearchFilter = function () {
     // UI 개선 적용
     setupUIEnhancements();
   } catch (error) {
-    console.error('❌ 검색 필터 초기화 중 오류:', error);
-    logger.info('검색 필터 초기화 중 오류:', error);
+    logger.error('❌ 검색 필터 초기화 중 오류:', error);
   }
 };
 
 const setupDarkModeToggle = () => {
-  console.log('🌙 다크모드 토글 설정');
+  logger.info('🌙 다크모드 토글 설정');
 
   const toggleButton = document.createElement('button');
   toggleButton.className = 'dark-mode-toggle';
@@ -62,11 +61,11 @@ const setupDarkModeToggle = () => {
     if (theme === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
       toggleButton.innerHTML = '☀️';
-      console.log('🌙 다크모드 적용');
+      logger.info('🌙 다크모드 적용');
     } else {
       document.documentElement.removeAttribute('data-theme');
       toggleButton.innerHTML = '🌙';
-      console.log('☀️ 라이트모드 적용');
+      logger.info('☀️ 라이트모드 적용');
     }
     localStorage.setItem('swagger-theme', theme);
   };
@@ -80,7 +79,7 @@ const setupDarkModeToggle = () => {
       document.documentElement.getAttribute('data-theme') === 'dark';
     const newTheme = isDark ? 'light' : 'dark';
     applyTheme(newTheme);
-    console.log(
+    logger.info(
       `🔄 테마 변경: ${isDark ? '다크' : '라이트'} → ${newTheme === 'dark' ? '다크' : '라이트'}`,
     );
   });
@@ -97,13 +96,54 @@ const setupDarkModeToggle = () => {
   });
 
   document.body.appendChild(toggleButton);
-  console.log('✅ 다크모드 토글 버튼 생성 완료');
+  logger.info('✅ 다크모드 토글 버튼 생성 완료');
 };
 
 // 나머지 함수들은 기존과 동일...
+// Swagger UI 타입 정의
+interface SwaggerUIWindow extends Window {
+  ui?: {
+    getSystem(): SwaggerUISystem;
+  };
+}
+
+interface SwaggerUISystem {
+  layoutSelectors: {
+    taggedOperations(
+      state: unknown,
+      tagFilter: string,
+    ): SwaggerTaggedOperation[];
+  };
+}
+
+interface SwaggerTaggedOperation {
+  get?(key: string): unknown;
+  tagName?: string;
+  tag?: SwaggerTag;
+  operations?: SwaggerOperation[];
+}
+
+interface SwaggerTag {
+  get?(key: string): unknown;
+  description?: string;
+}
+
+interface SwaggerOperation {
+  get?(key: string): unknown;
+  path?: string;
+  operation?: SwaggerOperationDetail;
+}
+
+interface SwaggerOperationDetail {
+  get?(key: string): unknown;
+  method?: string;
+  summary?: string;
+  description?: string;
+}
+
 const setupAdvancedSearch = () => {
   setTimeout(() => {
-    const win = window as any;
+    const win = window as SwaggerUIWindow;
 
     if (win.ui && win.ui.getSystem) {
       const system = win.ui.getSystem();
@@ -113,7 +153,7 @@ const setupAdvancedSearch = () => {
         const originalTaggedOps = layoutSelectors.taggedOperations;
 
         system.layoutSelectors.taggedOperations = function (
-          state: any,
+          state: unknown,
           tagFilter: string,
         ) {
           const taggedOps = originalTaggedOps(state, '');
@@ -124,24 +164,29 @@ const setupAdvancedSearch = () => {
 
           const lowerFilter = tagFilter.toLowerCase().trim();
 
-          return taggedOps.filter((taggedOp: any) => {
+          return taggedOps.filter((taggedOp: SwaggerTaggedOperation) => {
             try {
               // 태그명 검색
               const tagName = taggedOp.get
                 ? taggedOp.get('tagName')
                 : taggedOp.tagName;
-              if (tagName && tagName.toLowerCase().includes(lowerFilter)) {
+              if (
+                tagName &&
+                typeof tagName === 'string' &&
+                tagName.toLowerCase().includes(lowerFilter)
+              ) {
                 return true;
               }
 
               // 태그 설명 검색
               const tagObj = taggedOp.get ? taggedOp.get('tag') : taggedOp.tag;
               if (tagObj) {
-                const description = tagObj.get
-                  ? tagObj.get('description')
-                  : tagObj.description;
+                const description = (tagObj as SwaggerTag).get
+                  ? (tagObj as SwaggerTag).get?.('description')
+                  : (tagObj as SwaggerTag).description;
                 if (
                   description &&
+                  typeof description === 'string' &&
                   description.toLowerCase().includes(lowerFilter)
                 ) {
                   return true;
@@ -152,12 +197,16 @@ const setupAdvancedSearch = () => {
               const operations = taggedOp.get
                 ? taggedOp.get('operations')
                 : taggedOp.operations;
-              if (operations && operations.some) {
-                return operations.some((op: any) => {
+              if (operations && Array.isArray(operations)) {
+                return operations.some((op: SwaggerOperation) => {
                   try {
                     // API 경로 검색
                     const path = op.get ? op.get('path') : op.path;
-                    if (path && path.toLowerCase().includes(lowerFilter)) {
+                    if (
+                      path &&
+                      typeof path === 'string' &&
+                      path.toLowerCase().includes(lowerFilter)
+                    ) {
                       return true;
                     }
 
@@ -165,34 +214,39 @@ const setupAdvancedSearch = () => {
                       ? op.get('operation')
                       : op.operation;
                     if (operation) {
+                      const opDetail = operation as SwaggerOperationDetail;
+
                       // HTTP 메소드 검색
-                      const method = operation.get
-                        ? operation.get('method')
-                        : operation.method;
+                      const method = opDetail.get
+                        ? opDetail.get('method')
+                        : opDetail.method;
                       if (
                         method &&
+                        typeof method === 'string' &&
                         method.toLowerCase().includes(lowerFilter)
                       ) {
                         return true;
                       }
 
                       // API 요약 검색
-                      const summary = operation.get
-                        ? operation.get('summary')
-                        : operation.summary;
+                      const summary = opDetail.get
+                        ? opDetail.get('summary')
+                        : opDetail.summary;
                       if (
                         summary &&
+                        typeof summary === 'string' &&
                         summary.toLowerCase().includes(lowerFilter)
                       ) {
                         return true;
                       }
 
                       // API 설명 검색
-                      const description = operation.get
-                        ? operation.get('description')
-                        : operation.description;
+                      const description = opDetail.get
+                        ? opDetail.get('description')
+                        : opDetail.description;
                       if (
                         description &&
+                        typeof description === 'string' &&
                         description.toLowerCase().includes(lowerFilter)
                       ) {
                         return true;
@@ -213,8 +267,7 @@ const setupAdvancedSearch = () => {
           });
         };
 
-        console.log('✅ Swagger 검색 필터 오버라이드 완료');
-        logger.info('✅ Swagger 검색 필터가 성공적으로 오버라이드되었습니다.');
+        logger.info('✅ Swagger 검색 필터 오버라이드 완료');
       }
     }
 
@@ -296,8 +349,7 @@ const setupDOMBasedSearch = () => {
       });
     });
 
-    console.log('✅ DOM 기반 검색 설정 완료');
-    logger.info('✅ DOM 기반 검색이 추가되었습니다.');
+    logger.info('✅ DOM 기반 검색 설정 완료');
   }
 };
 
@@ -330,6 +382,6 @@ const setupUIEnhancements = () => {
       }
     }, 3000);
   } catch (error) {
-    logger.info('UI 개선 적용 중 오류:', error);
+    logger.error('UI 개선 적용 중 오류:', error);
   }
 };
