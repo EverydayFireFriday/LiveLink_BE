@@ -2,7 +2,7 @@ import { getConcertModel } from '../../models/concert/concert';
 import {
   normalizeSearchQuery,
   validateAndNormalizePagination,
-} from '../../utils/validation/concert/concertValidation';
+} from '../../models/concert/validation/ConcertSearchValidation';
 import logger from '../../utils/logger/logger';
 
 export interface ConcertServiceResponse {
