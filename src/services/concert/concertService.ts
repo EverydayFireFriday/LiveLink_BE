@@ -4,10 +4,17 @@ import logger from '../../utils/logger/logger';
 
 import {
   validateConcertData,
+} from '../../models/concert/validation/ConcertCreateValidation';
+import {
   validateConcertUpdateData,
+} from '../../models/concert/validation/ConcertUpdateValidation';
+import {
   generateObjectIdFromUid,
   isValidImageUrl,
-} from '../../utils/validation/concert/concertValidation';
+} from '../../models/concert/validation/ConcertValidationUtils';
+
+// Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
+import type { IConcert } from '../../models/concert/base/ConcertTypes';
 
 export interface CreateConcertRequest {
   uid: string;
@@ -30,9 +37,6 @@ export interface ConcertServiceResponse {
   error?: string;
   statusCode?: number;
 }
-
-// Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
-import type { IConcert } from '../../models/concert/concert';
 
 export class ConcertService {
   /**
