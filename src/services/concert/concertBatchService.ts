@@ -1,14 +1,8 @@
 import { getConcertModel } from '../../models/concert/concert';
-import type {
-  IConcert,
-  IPrice,
-  ITicketLink,
-} from '../../models/concert/concert';
-import {
-  validateConcertData,
-  generateObjectIdFromUid,
-  validateAndNormalizeBatchSize,
-} from '../../utils/validation/concert/concertValidation';
+import type { IConcert, IPrice, ITicketLink } from '../../models/concert/base/ConcertTypes';
+import { validateConcertData } from '../../models/concert/validation/ConcertCreateValidation';
+import { generateObjectIdFromUid } from '../../models/concert/validation/ConcertValidationUtils';
+import { validateAndNormalizeBatchSize } from '../../models/concert/validation/ConcertSearchValidation';
 import logger from '../../utils/logger/logger';
 
 export interface ConcertServiceResponse {

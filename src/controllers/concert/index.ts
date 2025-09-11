@@ -38,21 +38,5 @@ export {
   batchLikeConcerts,
 } from "./concertBatchController";
 
-// Concert Validation & Utility Functions
-export {
-  validateConcertData,
-  generateObjectIdFromUid,
-  isValidImageUrl,
-  isValidConcertStatus,
-  isValidMusicCategory,
-  validateAndNormalizePagination,
-  isValidDateString,
-  isValidSortBy,
-  validateAndNormalizeBatchSize,
-  normalizeConcertData,
-  normalizeSearchQuery,
-  formatValidationError,
-} from "../../utils/validation/concert/concertValidation";
 
-// Concert Validation Types
-export type { ValidationResult } from "../../utils/validation/concert/concertValidation";
+
