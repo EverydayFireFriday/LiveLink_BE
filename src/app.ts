@@ -113,8 +113,8 @@ app.use(morgan(logFormat, { stream }));
 // CORS 설정 (환경별)
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
-    credentials: true,
+    origin: isDevelopment() ? '*' : env.FRONTEND_URL,
+    credentials: isDevelopment() ? false : true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
