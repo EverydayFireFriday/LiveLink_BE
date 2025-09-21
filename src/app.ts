@@ -38,6 +38,8 @@ import {
   initializeConcertModel,
 } from './utils/database/db';
 import { initializeAllArticleModels } from './models/article';
+import { ReportService } from './report/reportService';
+import { setupApolloServer } from './report/apolloServer';
 
 // 라우터 import
 import authRouter from './routes/auth/index';
@@ -67,16 +69,23 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          //'nonce-RANDOM_NONCE', // 필요 시 nonce 또는 hash 사용
-          // 인라인 스크립트가 필요 없는 경우 위와 같이 설정
+          "'unsafe-inline'", // Apollo Playground might use inline scripts
+          'https://cdn.jsdelivr.net',
+          'https://apollo-server-landing-page.cdn.apollographql.com',
         ],
-        styleSrc: ["'self'", "'unsafe-inline'"], // UI 라이브러리 호환성을 위해 임시 허용
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // UI 라이브러리 호환성을 위해 임시 허용, Apollo Playground도 필요
+          'https://cdn.jsdelivr.net',
+          'https://apollo-server-landing-page.cdn.apollographql.com',
+        ],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: [
           "'self'",
           'https://appleid.apple.com',
           'https://accounts.google.com',
           'https://oauth2.googleapis.com',
+          'https://apollo-server-landing-page.cdn.apollographql.com',
         ],
         frameAncestors: ["'self'"], // 클릭재킹 방지
         objectSrc: ["'none'"], // 플러그인 로드 차단
@@ -223,6 +232,7 @@ let isUserDBConnected = false;
 let isConcertDBConnected = false;
 let isArticleDBConnected = false;
 let isChatDBConnected = false;
+let reportService: ReportService;
 
 // 🩺 헬스체크 엔드포인트들 (인증 없음 - K8s/로드밸런서용)
 // Liveness Probe: 단순 생존 확인
@@ -390,6 +400,10 @@ const initializeDatabases = async (): Promise<void> => {
     isArticleDBConnected = true;
     logger.info('✅ Article Database initialized and models ready');
 
+    // Initialize ReportService
+    reportService = new ReportService(concertDB);
+    logger.info('✅ Report Service initialized');
+
     logger.info('🔌 Initializing Chat Database...');
     initializeChatModels();
     isChatDBConnected = true;
@@ -467,10 +481,10 @@ const startServer = async (): Promise<void> => {
     app.use('/chat', chatRouter);
     logger.info('✅ Chat routes loaded and connected');
 
-    logger.info('🔌 Loading Terms routes...');
-    const { default: termsRouter } = await import('./routes/terms');
-    app.use('/terms', termsRouter);
-    logger.info('✅ Terms routes loaded and connected');
+    // Setup Apollo Server
+    logger.info('🔌 Setting up Apollo Server...');
+    await setupApolloServer(app, httpServer, reportService);
+    logger.info('✅ Apollo Server setup complete');
 
     // Socket.IO 초기화
     logger.info('🔌 Initializing Socket.IO server...');
