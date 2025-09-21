@@ -57,7 +57,7 @@ const httpServer = createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
 // 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // 보안 헤더 설정
 app.use(
