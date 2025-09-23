@@ -8,7 +8,25 @@ export const customStyles = `
   ${darkModeStyles}
   ${animationStyles}
 
-  /* Authorization Modal - Complete Override */
+  /* Vertically align version and OAS info next to title */
+  h2.title {
+    display: flex;
+    align-items: center; /* Vertically align items */
+    gap: 10px; /* Add some space between title and version info */
+  }
+
+  h2.title span {
+    display: flex;
+    align-items: center; /* Ensure content within span is also aligned */
+    font-size: 0.8em; /* Adjust font size if needed */
+  }
+
+  h2.title small {
+    display: inline-block; /* Keep small tags inline for horizontal arrangement */
+    margin-left: 5px; /* Space between version and OAS */
+  }
+
+  /* Custom styles for session authorization modal */
   
   /* 모달 배경 */
   html[data-theme="dark"] .swagger-ui .dialog-ux .backdrop-ux {
