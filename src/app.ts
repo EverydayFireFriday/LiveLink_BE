@@ -46,6 +46,7 @@ import authRouter from './routes/auth/index';
 import concertRouter from './routes/concert/index';
 import healthRouter from './routes/health/healthRoutes';
 import swaggerRouter from './routes/swagger/swaggerRoutes';
+import termsRouter from './routes/terms/index';
 import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
 
 // connect-redis v6.1.3 방식
@@ -360,6 +361,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
 // 정적 라우터 연결
 app.use('/health', healthRouter);
 app.use('/swagger', swaggerRouter);
+app.use('/terms', termsRouter);
 // 기본 Rate Limiter 적용
 app.use(defaultLimiter);
 app.use('/auth', authRouter);
@@ -548,6 +550,7 @@ const startServer = async (): Promise<void> => {
           concert: '/concert/*',
           article: '/article/*',
           chat: '/chat/*',
+          terms: '/terms/*',
         },
         timestamp: new Date().toISOString(),
       });
@@ -592,7 +595,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 process.on('uncaughtException', (err) => {
-  logger.error('💥 UncaughtException:', { err });
+  logger.error('💥 UncaughtException:', { error: err, stack: err?.stack });
   process.exit(1);
 });
 
@@ -601,9 +604,14 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // 🚀 서버 시작
-startServer().catch((error) => {
-  logger.error('❌ Failed to start server:', { error });
+try {
+  startServer().catch((error) => {
+    logger.error('❌ Failed to start server:', { error });
+    process.exit(1);
+  });
+} catch (error) {
+  logger.error('❌ Caught an error during server startup:', { error });
   process.exit(1);
-});
+}
 
 export { redisClient, chatSocketServer };
