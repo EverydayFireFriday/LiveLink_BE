@@ -20,14 +20,21 @@ export class ChatController {
       }
 
       const roomData: ChatRoomCreateRequest = req.body;
-      const chatRoom = await this.chatRoomService.createChatRoom(userId, roomData);
+      const chatRoom = await this.chatRoomService.createChatRoom(
+        userId,
+        roomData,
+      );
 
       res.status(201).json({
         message: '채팅방이 생성되었습니다.',
-        data: chatRoom
+        data: chatRoom,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(500).json({ message: errorMessage });
     }
   };
 
@@ -42,10 +49,14 @@ export class ChatController {
 
       res.json({
         message: '채팅방 목록을 조회했습니다.',
-        data: chatRooms
+        data: chatRooms,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(500).json({ message: errorMessage });
     }
   };
 
@@ -54,14 +65,21 @@ export class ChatController {
       const limit = parseInt(req.query.limit as string) || 20;
       const skip = parseInt(req.query.skip as string) || 0;
 
-      const chatRooms = await this.chatRoomService.getPublicChatRooms(limit, skip);
+      const chatRooms = await this.chatRoomService.getPublicChatRooms(
+        limit,
+        skip,
+      );
 
       res.json({
         message: '공개 채팅방 목록을 조회했습니다.',
-        data: chatRooms
+        data: chatRooms,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(500).json({ message: errorMessage });
     }
   };
 
@@ -81,10 +99,14 @@ export class ChatController {
 
       res.json({
         message: '채팅방 정보를 조회했습니다.',
-        data: chatRoom
+        data: chatRoom,
       });
-    } catch (error: any) {
-      res.status(403).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(403).json({ message: errorMessage });
     }
   };
 
@@ -100,10 +122,14 @@ export class ChatController {
 
       res.json({
         message: '채팅방에 참여했습니다.',
-        data: chatRoom
+        data: chatRoom,
       });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(400).json({ message: errorMessage });
     }
   };
 
@@ -122,8 +148,12 @@ export class ChatController {
       } else {
         res.status(400).json({ message: '채팅방 떠나기에 실패했습니다.' });
       }
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(500).json({ message: errorMessage });
     }
   };
 
@@ -138,14 +168,23 @@ export class ChatController {
       const limit = parseInt(req.query.limit as string) || 50;
       const skip = parseInt(req.query.skip as string) || 0;
 
-      const messages = await this.messageService.getChatRoomMessages(roomId, userId, limit, skip);
+      const messages = await this.messageService.getChatRoomMessages(
+        roomId,
+        userId,
+        limit,
+        skip,
+      );
 
       res.json({
         message: '메시지 목록을 조회했습니다.',
-        data: messages
+        data: messages,
       });
-    } catch (error: any) {
-      res.status(403).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(403).json({ message: errorMessage });
     }
   };
 
@@ -159,7 +198,11 @@ export class ChatController {
       const { messageId } = req.params;
       const { content } = req.body;
 
-      const message = await this.messageService.updateMessage(messageId, userId, content);
+      const message = await this.messageService.updateMessage(
+        messageId,
+        userId,
+        content,
+      );
 
       if (!message) {
         return res.status(404).json({ message: '메시지를 찾을 수 없습니다.' });
@@ -167,10 +210,14 @@ export class ChatController {
 
       res.json({
         message: '메시지가 수정되었습니다.',
-        data: message
+        data: message,
       });
-    } catch (error: any) {
-      res.status(403).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(403).json({ message: errorMessage });
     }
   };
 
@@ -182,15 +229,22 @@ export class ChatController {
       }
 
       const { messageId } = req.params;
-      const success = await this.messageService.deleteMessage(messageId, userId);
+      const success = await this.messageService.deleteMessage(
+        messageId,
+        userId,
+      );
 
       if (success) {
         res.json({ message: '메시지가 삭제되었습니다.' });
       } else {
         res.status(404).json({ message: '메시지를 찾을 수 없습니다.' });
       }
-    } catch (error: any) {
-      res.status(403).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(403).json({ message: errorMessage });
     }
   };
 
@@ -203,14 +257,21 @@ export class ChatController {
         return res.status(400).json({ message: '검색어가 필요합니다.' });
       }
 
-      const chatRooms = await this.chatRoomService.searchChatRooms(searchTerm, limit);
+      const chatRooms = await this.chatRoomService.searchChatRooms(
+        searchTerm,
+        limit,
+      );
 
       res.json({
         message: '채팅방 검색 결과입니다.',
-        data: chatRooms
+        data: chatRooms,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(500).json({ message: errorMessage });
     }
   };
 
@@ -229,14 +290,23 @@ export class ChatController {
         return res.status(400).json({ message: '검색어가 필요합니다.' });
       }
 
-      const messages = await this.messageService.searchMessages(roomId, userId, searchTerm, limit);
+      const messages = await this.messageService.searchMessages(
+        roomId,
+        userId,
+        searchTerm,
+        limit,
+      );
 
       res.json({
         message: '메시지 검색 결과입니다.',
-        data: messages
+        data: messages,
       });
-    } catch (error: any) {
-      res.status(403).json({ message: error.message });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      res.status(403).json({ message: errorMessage });
     }
   };
 }
