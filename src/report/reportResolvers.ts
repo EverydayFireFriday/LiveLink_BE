@@ -4,6 +4,12 @@ import { ObjectId } from 'mongodb';
 import { ReportService } from './reportService';
 import { ReportStatus, ReportEntityType, ReportType } from './reportEnums';
 
+// GraphQL AST types
+interface StringValueNode {
+  kind: 'StringValue';
+  value: string;
+}
+
 // Custom ObjectId scalar
 const ObjectIdScalar = {
   __serialize(value: ObjectId): string {
@@ -12,7 +18,7 @@ const ObjectIdScalar = {
   __parseValue(value: string): ObjectId {
     return new ObjectId(value); // Convert input string to ObjectId
   },
-  __parseLiteral(ast: any): ObjectId | undefined {
+  __parseLiteral(ast: StringValueNode): ObjectId | undefined {
     if (ast.kind === 'StringValue') {
       return new ObjectId(ast.value); // Convert AST string value to ObjectId
     }
@@ -32,14 +38,54 @@ interface UpdateReportStatusInput {
   status: ReportStatus;
 }
 
-export const reportResolvers = (reportService: ReportService): any => ({
+// GraphQL resolver parent/context types (adjust based on your GraphQL setup)
+interface GraphQLParent {
+  [key: string]: unknown;
+}
+
+// Query arguments
+interface GetReportArgs {
+  id: ObjectId;
+}
+
+interface GetReportsArgs {
+  status?: ReportStatus;
+  reportedEntityType?: ReportEntityType;
+}
+
+// Mutation arguments
+interface CreateReportArgs {
+  input: CreateReportInput;
+}
+
+interface UpdateReportStatusArgs {
+  id: ObjectId;
+  input: UpdateReportStatusInput;
+}
+
+interface DeleteReportArgs {
+  id: ObjectId;
+}
+
+// Filter type for reports query
+interface ReportFilter {
+  status?: ReportStatus;
+  reportedEntityType?: ReportEntityType;
+}
+
+export const reportResolvers = (
+  reportService: ReportService,
+): Record<string, unknown> => ({
   ObjectId: ObjectIdScalar,
   Query: {
-    getReport: async (_: any, { id }: { id: ObjectId }) => {
+    getReport: async (_parent: GraphQLParent, { id }: GetReportArgs) => {
       return reportService.getReportById(id);
     },
-    getReports: async (_: any, { status, reportedEntityType }: { status?: ReportStatus, reportedEntityType?: ReportEntityType }) => {
-      const filter: any = {};
+    getReports: async (
+      _parent: GraphQLParent,
+      { status, reportedEntityType }: GetReportsArgs,
+    ) => {
+      const filter: ReportFilter = {};
       if (status) {
         filter.status = status;
       }
@@ -50,8 +96,17 @@ export const reportResolvers = (reportService: ReportService): any => ({
     },
   },
   Mutation: {
-    createReport: async (_: any, { input }: { input: CreateReportInput }) => {
-      const { reporterId, reportedEntityType, reportedEntityId, reportType, reason } = input;
+    createReport: async (
+      _parent: GraphQLParent,
+      { input }: CreateReportArgs,
+    ) => {
+      const {
+        reporterId,
+        reportedEntityType,
+        reportedEntityId,
+        reportType,
+        reason,
+      } = input;
       return reportService.createReport({
         reporterId: new ObjectId(reporterId),
         reportedEntityType,
@@ -60,11 +115,14 @@ export const reportResolvers = (reportService: ReportService): any => ({
         reason,
       });
     },
-    updateReportStatus: async (_: any, { id, input }: { id: ObjectId, input: UpdateReportStatusInput }) => {
+    updateReportStatus: async (
+      _parent: GraphQLParent,
+      { id, input }: UpdateReportStatusArgs,
+    ) => {
       const { status } = input;
       return reportService.updateReportStatus(id, status);
     },
-    deleteReport: async (_: any, { id }: { id: ObjectId }) => {
+    deleteReport: async (_parent: GraphQLParent, { id }: DeleteReportArgs) => {
       return reportService.deleteReport(id);
     },
   },
