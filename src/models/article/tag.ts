@@ -1,10 +1,50 @@
-import { ObjectId, Collection, Db } from 'mongodb';
+import { ObjectId, Collection, Db, Document } from 'mongodb';
 import logger from '../../utils/logger/logger';
 
 export interface ITag {
   _id: ObjectId;
   name: string;
   created_at: Date;
+}
+
+// MongoDB 에러 타입
+interface MongoError extends Error {
+  code?: number;
+  writeErrors?: unknown[];
+}
+
+// 집계 파이프라인 결과 타입들
+interface TagArticleCountResult {
+  _id: ObjectId;
+  name: string;
+  created_at: Date;
+  articleCount: number;
+}
+
+interface PopularTagResult {
+  _id: ObjectId;
+  name: string;
+  created_at: Date;
+  articleCount: number;
+}
+
+interface RelatedTagResult {
+  tag: {
+    _id: ObjectId;
+    name: string;
+    created_at: Date;
+  };
+  coOccurrenceCount: number;
+}
+
+// 필터 타입
+interface SearchFilter {
+  name?: RegExp;
+}
+
+interface ArticleFilter {
+  'articles.is_published'?: boolean;
+  'articles.created_at'?: { $gte: Date };
 }
 
 export class TagModel {
@@ -16,6 +56,7 @@ export class TagModel {
     this.db = db;
     this.collection = db.collection<ITag>('tags');
     // 비동기로 인덱스 생성 - 앱 시작을 블로킹하지 않음
+
     this.initializeIndexes();
   }
 
@@ -87,9 +128,10 @@ export class TagModel {
       }
 
       return tag;
-    } catch (error: any) {
+    } catch (error) {
+      const mongoError = error as MongoError;
       // 중복 키 에러 처리 (인덱스가 있는 경우)
-      if (error.code === 11000) {
+      if (mongoError.code === 11000) {
         throw new Error('이미 존재하는 태그입니다.');
       }
 
@@ -153,7 +195,7 @@ export class TagModel {
     const { page = 1, limit = 20, search } = options;
     const skip = (page - 1) * limit;
 
-    const filter: any = {};
+    const filter: SearchFilter = {};
     if (search) {
       filter.name = new RegExp(search, 'i');
     }
@@ -190,9 +232,10 @@ export class TagModel {
       );
 
       return result || null;
-    } catch (error: any) {
+    } catch (error) {
+      const mongoError = error as MongoError;
       // 중복 키 에러 처리 (인덱스가 있는 경우)
-      if (error.code === 11000) {
+      if (mongoError.code === 11000) {
         throw new Error('이미 존재하는 태그 이름입니다.');
       }
 
@@ -260,9 +303,10 @@ export class TagModel {
     try {
       await this.collection.insertMany(newTags, { ordered: false });
       return [...existingTags, ...newTags];
-    } catch (error: any) {
+    } catch (error) {
+      const mongoError = error as MongoError;
       // 중복 에러가 발생하면 개별적으로 처리 (동시성 문제 대응)
-      if (error.code === 11000 || error.writeErrors) {
+      if (mongoError.code === 11000 || mongoError.writeErrors) {
         const tags: ITag[] = [...existingTags];
         for (const name of newNames) {
           try {
@@ -284,7 +328,7 @@ export class TagModel {
   async getTagArticleCounts(): Promise<
     Array<{ tag: ITag; articleCount: number }>
   > {
-    const pipeline: any[] = [
+    const pipeline: Document[] = [
       {
         $lookup: {
           from: 'article_tags',
@@ -311,9 +355,11 @@ export class TagModel {
       },
     ];
 
-    const results = await this.collection.aggregate(pipeline).toArray();
+    const results = await this.collection
+      .aggregate<TagArticleCountResult>(pipeline)
+      .toArray();
 
-    return results.map((item: any) => ({
+    return results.map((item) => ({
       tag: {
         _id: item._id,
         name: item.name,
@@ -333,7 +379,7 @@ export class TagModel {
   ): Promise<Array<{ tag: ITag; articleCount: number }>> {
     const { limit = 20, publishedOnly = true, days } = options;
 
-    const pipeline: any[] = [
+    const pipeline: Document[] = [
       {
         $lookup: {
           from: 'article_tags',
@@ -354,7 +400,7 @@ export class TagModel {
         },
       });
 
-      const articleFilter: any = {};
+      const articleFilter: ArticleFilter = {};
 
       if (publishedOnly) {
         articleFilter['articles.is_published'] = true;
@@ -381,26 +427,26 @@ export class TagModel {
               },
             },
           },
-        } as any);
+        });
 
         pipeline.push({
           $addFields: {
             articleCount: { $size: '$filteredArticles' },
           },
-        } as any);
+        });
       } else {
         pipeline.push({
           $addFields: {
             articleCount: { $size: '$articles' },
           },
-        } as any);
+        });
       }
     } else {
       pipeline.push({
         $addFields: {
           articleCount: { $size: '$articleTags' },
         },
-      } as any);
+      });
     }
 
     pipeline.push(
@@ -425,9 +471,11 @@ export class TagModel {
       },
     );
 
-    const results = await this.collection.aggregate(pipeline).toArray();
+    const results = await this.collection
+      .aggregate<PopularTagResult>(pipeline)
+      .toArray();
 
-    return results.map((item: any) => ({
+    return results.map((item) => ({
       tag: {
         _id: item._id,
         name: item.name,
@@ -439,7 +487,7 @@ export class TagModel {
 
   // 사용되지 않은 태그 조회
   async getUnusedTags(): Promise<ITag[]> {
-    const pipeline = [
+    const pipeline: Document[] = [
       {
         $lookup: {
           from: 'article_tags',
@@ -465,8 +513,8 @@ export class TagModel {
       },
     ];
 
-    const results = await this.collection.aggregate(pipeline).toArray();
-    return results.map((item: any) => ({
+    const results = await this.collection.aggregate<ITag>(pipeline).toArray();
+    return results.map((item) => ({
       _id: item._id,
       name: item.name,
       created_at: item.created_at,
@@ -483,7 +531,7 @@ export class TagModel {
   ): Promise<ITag[]> {
     const { limit = 10, excludeUnused = false } = options;
 
-    const pipeline: any[] = [
+    const pipeline: Document[] = [
       {
         $match: {
           name: new RegExp(query, 'i'),
@@ -525,8 +573,8 @@ export class TagModel {
       },
     );
 
-    const results = await this.collection.aggregate(pipeline).toArray();
-    return results.map((item: any) => ({
+    const results = await this.collection.aggregate<ITag>(pipeline).toArray();
+    return results.map((item) => ({
       _id: item._id,
       name: item.name,
       created_at: item.created_at,
@@ -544,7 +592,7 @@ export class TagModel {
 
     const { limit = 10 } = options;
 
-    const pipeline = [
+    const pipeline: Document[] = [
       // 해당 태그가 사용된 게시글들 찾기
       {
         $match: {
@@ -608,9 +656,11 @@ export class TagModel {
     ];
 
     const articleTagCollection = this.db.collection('article_tags');
-    const results = await articleTagCollection.aggregate(pipeline).toArray();
+    const results = await articleTagCollection
+      .aggregate<RelatedTagResult>(pipeline)
+      .toArray();
 
-    return results.map((item: any) => ({
+    return results.map((item) => ({
       tag: {
         _id: item.tag._id,
         name: item.tag.name,
