@@ -16,19 +16,57 @@ export interface IArticle {
   likes_count: number;
 }
 
+// MongoDB 에러 타입
+interface MongoError extends Error {
+  code?: number;
+}
+
+// 필터 타입들
+interface ArticleFilter {
+  is_published?: boolean;
+  category_id?: ObjectId;
+  author_id?: ObjectId;
+  published_at?: { $gte: Date };
+  $text?: { $search: string };
+}
+
+// 정렬 옵션 타입
+interface SortOption {
+  [key: string]: 1 | -1;
+}
+
+// 업데이트 데이터 타입
+interface ArticleUpdateData
+  extends Partial<
+    Omit<IArticle, '_id' | 'views' | 'likes_count' | 'created_at'>
+  > {}
+
+// 벌크 업데이트 오퍼레이션 타입
+interface BulkUpdateOperation {
+  updateOne: {
+    filter: { _id: ObjectId };
+    update: {
+      $set: {
+        likes_count: number;
+        updated_at: Date;
+      };
+    };
+  };
+}
+
 // Article 모델 클래스
 export class ArticleModel {
   private db: Db;
   private collection: Collection<IArticle>;
-  private indexesCreated = false; // ✅ 인덱스 생성 상태 추적
+  private indexesCreated = false; // 인덱스 생성 상태 추적
 
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<IArticle>('articles');
-    // 🚀 생성자에서 인덱스 생성하지 않음
+    // 생성자에서 인덱스 생성하지 않음
   }
 
-  // 🛡️ 지연된 인덱스 생성 - 실제 사용 시점에 호출
+  // 지연된 인덱스 생성 - 실제 사용 시점에 호출
   private async ensureIndexes(): Promise<void> {
     if (this.indexesCreated) return;
 
@@ -42,7 +80,7 @@ export class ArticleModel {
     }
   }
 
-  // 🔧 모든 데이터베이스 작업 전에 인덱스 확인
+  // 모든 데이터베이스 작업 전에 인덱스 확인
   private async withIndexes<T>(operation: () => Promise<T>): Promise<T> {
     await this.ensureIndexes();
     return operation();
@@ -84,13 +122,14 @@ export class ArticleModel {
           { name: 'published_status_idx' },
         );
         logger.info('✅ published_status_idx 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error) {
+        const mongoError = error as MongoError;
+        if (mongoError.code === 85) {
           logger.info('ℹ️ published_status_idx 인덱스가 이미 존재함 (스킵)');
         } else {
           logger.warn(
             '⚠️ published_status_idx 인덱스 생성 실패:',
-            error.message,
+            mongoError.message,
           );
         }
       }
@@ -102,11 +141,15 @@ export class ArticleModel {
           { name: 'author_created_idx' },
         );
         logger.info('✅ author_created_idx 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error) {
+        const mongoError = error as MongoError;
+        if (mongoError.code === 85) {
           logger.info('ℹ️ author_created_idx 인덱스가 이미 존재함 (스킵)');
         } else {
-          logger.warn('⚠️ author_created_idx 인덱스 생성 실패:', error.message);
+          logger.warn(
+            '⚠️ author_created_idx 인덱스 생성 실패:',
+            mongoError.message,
+          );
         }
       }
 
@@ -117,13 +160,14 @@ export class ArticleModel {
           { name: 'category_created_idx' },
         );
         logger.info('✅ category_created_idx 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error) {
+        const mongoError = error as MongoError;
+        if (mongoError.code === 85) {
           logger.info('ℹ️ category_created_idx 인덱스가 이미 존재함 (스킵)');
         } else {
           logger.warn(
             '⚠️ category_created_idx 인덱스 생성 실패:',
-            error.message,
+            mongoError.message,
           );
         }
       }
@@ -136,7 +180,7 @@ export class ArticleModel {
     }
   }
 
-  // ✅ 모든 메서드에 withIndexes() 적용
+  // 모든 메서드에 withIndexes() 적용
   async create(
     articleData: Omit<
       IArticle,
@@ -196,11 +240,11 @@ export class ArticleModel {
   }
 
   async findMany(
-    filter: any = {},
+    filter: ArticleFilter = {},
     options: {
       page?: number;
       limit?: number;
-      sort?: any;
+      sort?: SortOption;
     } = {},
   ): Promise<{ articles: IArticle[]; total: number }> {
     return this.withIndexes(async () => {
@@ -232,7 +276,7 @@ export class ArticleModel {
       const { page = 1, limit = 20, category_id } = options;
       const skip = (page - 1) * limit;
 
-      const filter: any = { is_published: true };
+      const filter: ArticleFilter = { is_published: true };
       if (category_id) {
         filter.category_id = new ObjectId(category_id);
       }
@@ -260,23 +304,24 @@ export class ArticleModel {
         return null;
       }
 
-      delete updateData._id;
-      delete updateData.views;
-      delete updateData.likes_count;
-      delete updateData.created_at;
+      const cleanUpdateData: ArticleUpdateData = { ...updateData };
+      delete (cleanUpdateData as Record<string, unknown>)._id;
+      delete (cleanUpdateData as Record<string, unknown>).views;
+      delete (cleanUpdateData as Record<string, unknown>).likes_count;
+      delete (cleanUpdateData as Record<string, unknown>).created_at;
 
-      updateData.updated_at = new Date();
+      cleanUpdateData.updated_at = new Date();
 
       if (
-        updateData.category_id &&
-        typeof updateData.category_id === 'string'
+        cleanUpdateData.category_id &&
+        typeof cleanUpdateData.category_id === 'string'
       ) {
-        updateData.category_id = new ObjectId(updateData.category_id);
+        cleanUpdateData.category_id = new ObjectId(cleanUpdateData.category_id);
       }
 
       const result = await this.collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
-        { $set: updateData },
+        { $set: cleanUpdateData },
         { returnDocument: 'after' },
       );
 
@@ -342,7 +387,7 @@ export class ArticleModel {
       const { page = 1, limit = 20, includeUnpublished = false } = options;
       const skip = (page - 1) * limit;
 
-      const filter: any = { author_id: new ObjectId(authorId) };
+      const filter: ArticleFilter = { author_id: new ObjectId(authorId) };
       if (!includeUnpublished) {
         filter.is_published = true;
       }
@@ -373,7 +418,7 @@ export class ArticleModel {
       const { page = 1, limit = 20, publishedOnly = true } = options;
       const skip = (page - 1) * limit;
 
-      const filter: any = { $text: { $search: query } };
+      const filter: ArticleFilter = { $text: { $search: query } };
       if (publishedOnly) {
         filter.is_published = true;
       }
@@ -406,7 +451,7 @@ export class ArticleModel {
       const dateThreshold = new Date();
       dateThreshold.setDate(dateThreshold.getDate() - days);
 
-      const filter: any = {
+      const filter: ArticleFilter = {
         is_published: true,
         published_at: { $gte: dateThreshold },
       };
@@ -435,7 +480,7 @@ export class ArticleModel {
     return this.withIndexes(async () => {
       if (statsUpdates.length === 0) return;
 
-      const bulkOps = statsUpdates.map((update) => ({
+      const bulkOps: BulkUpdateOperation[] = statsUpdates.map((update) => ({
         updateOne: {
           filter: { _id: new ObjectId(update.id) },
           update: {
