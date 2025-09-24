@@ -1,4 +1,4 @@
-import { ObjectId, Collection, Db } from 'mongodb';
+import { ObjectId, Collection, Db, Document } from 'mongodb';
 import logger from '../../utils/logger/logger';
 
 export interface IArticleTag {
@@ -8,18 +8,86 @@ export interface IArticleTag {
   created_at: Date;
 }
 
+// 태그 정보를 포함한 결과 타입
+interface TagResult {
+  _id: ObjectId;
+  name: string;
+  created_at: Date;
+}
+
+// 게시글 조회 결과 타입
+interface ArticleResult {
+  _id: ObjectId;
+  title: string;
+  content_url: string;
+  author_id: ObjectId;
+  category_id?: ObjectId;
+  is_published: boolean;
+  published_at?: Date;
+  created_at: Date;
+  updated_at: Date;
+  views: number;
+}
+
+// 집계 결과 타입들
+interface TagsByArticleResult {
+  _id: ObjectId;
+  tags: TagResult[];
+}
+
+interface ArticlesByTagResult {
+  article: ArticleResult;
+}
+
+interface CountResult {
+  total: number;
+}
+
+interface TagCountResult {
+  _id: ObjectId;
+  count: number;
+}
+
+interface PopularTagResult {
+  _id: ObjectId;
+  name: string;
+  created_at: Date;
+  articleCount: number;
+}
+
+interface RelatedTagResult {
+  _id: ObjectId;
+  name: string;
+  created_at: Date;
+  relatedCount: number;
+}
+
+// 벌크 연산 타입
+interface BulkWriteOperation {
+  insertOne: {
+    document: IArticleTag;
+  };
+}
+
+// 파이프라인 필터 타입
+interface MatchStage {
+  tag_id?: ObjectId;
+  article_id?: ObjectId | { $in: ObjectId[] };
+  'article.is_published'?: boolean;
+}
+
 export class ArticleTagModel {
   private db: Db;
   private collection: Collection<IArticleTag>;
-  private indexesCreated = false; // ✅ 인덱스 생성 상태 추적
+  private indexesCreated = false; // 인덱스 생성 상태 추적
 
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<IArticleTag>('article_tags');
-    // 🚀 생성자에서 인덱스 생성하지 않음
+    // 생성자에서 인덱스 생성하지 않음
   }
 
-  // 🛡️ 지연된 인덱스 생성 - 실제 사용 시점에 호출
+  // 지연된 인덱스 생성 - 실제 사용 시점에 호출
   private async ensureIndexes(): Promise<void> {
     if (this.indexesCreated) return;
 
@@ -33,7 +101,7 @@ export class ArticleTagModel {
     }
   }
 
-  // 🔧 모든 데이터베이스 작업 전에 인덱스 확인
+  // 모든 데이터베이스 작업 전에 인덱스 확인
   private async withIndexes<T>(operation: () => Promise<T>): Promise<T> {
     await this.ensureIndexes();
     return operation();
@@ -59,7 +127,7 @@ export class ArticleTagModel {
     }
   }
 
-  // ✅ 모든 메서드에 withIndexes() 적용
+  // 모든 메서드에 withIndexes() 적용
   async create(articleId: string, tagId: string): Promise<IArticleTag> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId) || !ObjectId.isValid(tagId)) {
@@ -196,13 +264,13 @@ export class ArticleTagModel {
   }
 
   // 게시글의 태그 목록 조회
-  async findTagsByArticle(articleId: string): Promise<any[]> {
+  async findTagsByArticle(articleId: string): Promise<TagResult[]> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(articleId)) {
         return [];
       }
 
-      const pipeline = [
+      const pipeline: Document[] = [
         { $match: { article_id: new ObjectId(articleId) } },
         {
           $lookup: {
@@ -225,14 +293,14 @@ export class ArticleTagModel {
         { $sort: { name: 1 } },
       ];
 
-      return await this.collection.aggregate(pipeline).toArray();
+      return await this.collection.aggregate<TagResult>(pipeline).toArray();
     });
   }
 
   // 여러 게시글의 태그들을 한 번에 조회하여 매핑된 형태로 반환 (N+1 해결)
   async findTagsByArticleIds(
     articleIds: string[],
-  ): Promise<Record<string, any[]>> {
+  ): Promise<Record<string, TagResult[]>> {
     return this.withIndexes(async () => {
       if (articleIds.length === 0) return {};
 
@@ -244,7 +312,7 @@ export class ArticleTagModel {
 
       // Aggregation을 사용하여 article_tags와 tags를 조인
       const articleTags = await this.collection
-        .aggregate([
+        .aggregate<TagsByArticleResult>([
           {
             $match: {
               article_id: { $in: objectIds },
@@ -276,8 +344,8 @@ export class ArticleTagModel {
         ])
         .toArray();
 
-      // 결과를 Record<string, any[]> 형태로 변환
-      const tagsMap: Record<string, any[]> = {};
+      // 결과를 Record<string, TagResult[]> 형태로 변환
+      const tagsMap: Record<string, TagResult[]> = {};
 
       articleTags.forEach((item) => {
         tagsMap[item._id.toString()] = item.tags;
@@ -302,7 +370,7 @@ export class ArticleTagModel {
       limit?: number;
       publishedOnly?: boolean;
     } = {},
-  ): Promise<{ articles: any[]; total: number }> {
+  ): Promise<{ articles: ArticleResult[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(tagId)) {
         return { articles: [], total: 0 };
@@ -311,9 +379,9 @@ export class ArticleTagModel {
       const { page = 1, limit = 20, publishedOnly = true } = options;
       const skip = (page - 1) * limit;
 
-      const matchStage: any = { tag_id: new ObjectId(tagId) };
+      const matchStage: MatchStage = { tag_id: new ObjectId(tagId) };
 
-      const pipeline: any[] = [
+      const pipeline: Document[] = [
         { $match: matchStage },
         {
           $lookup: {
@@ -347,7 +415,7 @@ export class ArticleTagModel {
       );
 
       // 총 개수를 위한 별도 파이프라인
-      const countPipeline: any[] = [
+      const countPipeline: Document[] = [
         { $match: matchStage },
         {
           $lookup: {
@@ -371,8 +439,8 @@ export class ArticleTagModel {
       countPipeline.push({ $count: 'total' });
 
       const [articles, countResult] = await Promise.all([
-        this.collection.aggregate(pipeline).toArray(),
-        this.collection.aggregate(countPipeline).toArray(),
+        this.collection.aggregate<ArticlesByTagResult>(pipeline).toArray(),
+        this.collection.aggregate<CountResult>(countPipeline).toArray(),
       ]);
 
       const total = countResult.length > 0 ? countResult[0].total : 0;
@@ -413,7 +481,7 @@ export class ArticleTagModel {
     return this.withIndexes(async () => {
       if (articleTagRelations.length === 0) return;
 
-      const bulkOps: any[] = [];
+      const bulkOps: BulkWriteOperation[] = [];
       const now = new Date();
 
       articleTagRelations.forEach(({ articleId, tagIds }) => {
@@ -481,7 +549,7 @@ export class ArticleTagModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<TagCountResult>([
           {
             $match: {
               tag_id: { $in: objectIds },
@@ -519,11 +587,11 @@ export class ArticleTagModel {
       limit?: number;
       publishedOnly?: boolean;
     } = {},
-  ): Promise<any[]> {
+  ): Promise<PopularTagResult[]> {
     return this.withIndexes(async () => {
       const { limit = 10, publishedOnly = true } = options;
 
-      const pipeline: any[] = [];
+      const pipeline: Document[] = [];
 
       // 발행된 게시글만 고려하는 경우
       if (publishedOnly) {
@@ -570,7 +638,9 @@ export class ArticleTagModel {
         { $limit: limit },
       );
 
-      return await this.collection.aggregate(pipeline).toArray();
+      return await this.collection
+        .aggregate<PopularTagResult>(pipeline)
+        .toArray();
     });
   }
 
@@ -580,7 +650,7 @@ export class ArticleTagModel {
     options: {
       limit?: number;
     } = {},
-  ): Promise<any[]> {
+  ): Promise<RelatedTagResult[]> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(tagId)) {
         return [];
@@ -588,7 +658,7 @@ export class ArticleTagModel {
 
       const { limit = 10 } = options;
 
-      const pipeline = [
+      const pipeline: Document[] = [
         // 해당 태그가 사용된 게시글들 찾기
         { $match: { tag_id: new ObjectId(tagId) } },
 
@@ -641,7 +711,9 @@ export class ArticleTagModel {
         { $limit: limit },
       ];
 
-      return await this.collection.aggregate(pipeline).toArray();
+      return await this.collection
+        .aggregate<RelatedTagResult>(pipeline)
+        .toArray();
     });
   }
 }
