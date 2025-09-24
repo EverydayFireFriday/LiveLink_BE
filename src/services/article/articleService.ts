@@ -16,6 +16,100 @@ import {
 import { ObjectId } from 'mongodb';
 import { cacheManager } from '../../utils/cache/cacheManager';
 
+// 인터페이스 정의
+interface ArticleWithTags extends IArticle {
+  tags?: unknown[];
+}
+
+interface ArticleStats {
+  likesCount: number;
+  bookmarksCount: number;
+}
+
+interface UserStatus {
+  isLiked: boolean;
+  isBookmarked: boolean;
+}
+
+interface EnrichedArticle extends ArticleWithTags {
+  stats?: ArticleStats;
+  userStatus?: UserStatus;
+  popularityScore?: number;
+  bookmarkedAt?: Date;
+}
+
+interface PaginatedResult<T> {
+  articles: T[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+interface CreateArticleData {
+  title: string;
+  content_url: string;
+  author_id: string;
+  category_name?: string;
+  tag_names?: string[];
+  is_published?: boolean;
+  published_at?: Date | null;
+}
+
+interface UpdateArticleData {
+  title?: string;
+  content_url?: string;
+  category_name?: string | null;
+  tag_names?: string[];
+  is_published?: boolean;
+  published_at?: Date | null;
+}
+
+interface GetArticleOptions {
+  withTags?: boolean;
+  withStats?: boolean;
+  userId?: string;
+}
+
+interface GetPublishedOptions {
+  page?: number;
+  limit?: number;
+  category_id?: string;
+  tag_id?: string;
+  search?: string;
+  userId?: string;
+}
+
+interface GetByAuthorOptions {
+  page?: number;
+  limit?: number;
+  includeUnpublished?: boolean;
+  userId?: string;
+}
+
+interface GetPopularOptions {
+  page?: number;
+  limit?: number;
+  days?: number;
+  userId?: string;
+}
+
+interface GetWithStatsOptions extends GetPublishedOptions {
+  withStats?: boolean;
+}
+
+interface SearchOptions {
+  query?: string;
+  category_id?: string;
+  tag_names?: string[];
+  author_id?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  page?: number;
+  limit?: number;
+  sortBy?: 'relevance' | 'date' | 'popularity';
+  userId?: string;
+}
+
 export class ArticleService {
   private articleModel = getArticleModel();
   private tagModel = getTagModel();
@@ -25,7 +119,7 @@ export class ArticleService {
   private articleBookmarkModel = getArticleBookmarkModel();
 
   // 게시글 생성 (태그 자동 생성 최적화)
-  async createArticle(data: any): Promise<IArticle> {
+  async createArticle(data: CreateArticleData): Promise<IArticle> {
     // 유효성 검사
     const validatedData = createArticleSchema.parse(data);
 
@@ -72,8 +166,8 @@ export class ArticleService {
   // 게시글 조회 (ID로)
   async getArticleById(
     id: string,
-    options: { withTags?: boolean; withStats?: boolean; userId?: string } = {},
-  ): Promise<any> {
+    options: GetArticleOptions = {},
+  ): Promise<EnrichedArticle> {
     articleIdSchema.parse({ id });
 
     const article = await this.articleModel.findById(id);
@@ -81,10 +175,10 @@ export class ArticleService {
       throw new Error('게시글을 찾을 수 없습니다.');
     }
 
-    let result: any = { ...article };
+    const result: EnrichedArticle = { ...article };
 
     // 병렬로 추가 정보 조회
-    const promises: Promise<any>[] = [];
+    const promises: Promise<Record<string, unknown>>[] = [];
 
     if (options.withTags) {
       promises.push(
@@ -128,20 +222,8 @@ export class ArticleService {
 
   // 발행된 게시글 목록 조회 (N+1 해결)
   async getPublishedArticles(
-    options: {
-      page?: number;
-      limit?: number;
-      category_id?: string;
-      tag_id?: string;
-      search?: string;
-      userId?: string; // 사용자별 좋아요/북마크 상태 확인용
-    } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+    options: GetPublishedOptions = {},
+  ): Promise<PaginatedResult<EnrichedArticle>> {
     const {
       page = 1,
       limit = 20,
@@ -154,12 +236,13 @@ export class ArticleService {
     const cacheKey = `articles:page=${page}:limit=${limit}:category=${
       category_id || ''
     }:tag=${tag_id || ''}:search=${search || ''}:userId=${userId || ''}`;
-    const cachedData = await cacheManager.get<any>(cacheKey);
+    const cachedData =
+      await cacheManager.get<PaginatedResult<EnrichedArticle>>(cacheKey);
     if (cachedData) {
       return cachedData;
     }
 
-    let articles: any[];
+    let articles: IArticle[];
     let total: number;
 
     if (tag_id) {
@@ -194,7 +277,7 @@ export class ArticleService {
     // N+1 해결: 모든 게시글 ID를 한 번에 조회하여 관련 정보 가져오기
     const articleIds = articles.map((article) => article._id.toString());
 
-    const promises: Promise<any>[] = [
+    const promises: Promise<Record<string, unknown>>[] = [
       this.articleTagModel.findTagsByArticleIds(articleIds),
     ];
 
@@ -213,25 +296,27 @@ export class ArticleService {
       await Promise.all(promises);
 
     // 각 게시글에 태그 정보와 사용자 상태 매핑
-    const articlesWithData = articles.map((article) => {
+    const articlesWithData: EnrichedArticle[] = articles.map((article) => {
       const articleId = article._id.toString();
-      const result: any = {
+      const result: EnrichedArticle = {
         ...article,
-        tags: tagsMap[articleId] || [],
+        tags: (tagsMap as Record<string, unknown[]>)[articleId] || [],
       };
 
       // 사용자 상태 정보 추가
       if (userId && likeStatusMap && bookmarkStatusMap) {
         result.userStatus = {
-          isLiked: likeStatusMap[articleId] || false,
-          isBookmarked: bookmarkStatusMap[articleId] || false,
+          isLiked:
+            (likeStatusMap as Record<string, boolean>)[articleId] || false,
+          isBookmarked:
+            (bookmarkStatusMap as Record<string, boolean>)[articleId] || false,
         };
       }
 
       return result;
     });
 
-    const result = {
+    const result: PaginatedResult<EnrichedArticle> = {
       articles: articlesWithData,
       total,
       page,
@@ -244,7 +329,7 @@ export class ArticleService {
   }
 
   // 게시글 업데이트 (태그 자동 생성 최적화)
-  async updateArticle(id: string, data: any): Promise<IArticle> {
+  async updateArticle(id: string, data: UpdateArticleData): Promise<IArticle> {
     articleIdSchema.parse({ id });
     const validatedData = updateArticleSchema.parse(data);
 
@@ -254,7 +339,7 @@ export class ArticleService {
       throw new Error('게시글을 찾을 수 없습니다.');
     }
 
-    const updateData: any = { ...validatedData };
+    const updateData: Record<string, unknown> = { ...validatedData };
 
     // 카테고리 이름으로 ID 조회
     if (validatedData.category_name !== undefined) {
@@ -326,18 +411,8 @@ export class ArticleService {
   // 작성자별 게시글 조회 (N+1 해결)
   async getArticlesByAuthor(
     authorId: string,
-    options: {
-      page?: number;
-      limit?: number;
-      includeUnpublished?: boolean;
-      userId?: string;
-    } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+    options: GetByAuthorOptions = {},
+  ): Promise<PaginatedResult<EnrichedArticle>> {
     const { page = 1, limit = 20, userId } = options;
 
     const result = await this.articleModel.findByAuthor(authorId, options);
@@ -345,7 +420,7 @@ export class ArticleService {
     // N+1 해결: 모든 게시글 ID를 한 번에 조회하여 태그 정보 가져오기
     const articleIds = result.articles.map((article) => article._id.toString());
 
-    const promises: Promise<any>[] = [
+    const promises: Promise<Record<string, unknown>>[] = [
       this.articleTagModel.findTagsByArticleIds(articleIds),
     ];
 
@@ -363,22 +438,27 @@ export class ArticleService {
       await Promise.all(promises);
 
     // 각 게시글에 태그 정보 매핑
-    const articlesWithTags = result.articles.map((article) => {
-      const articleId = article._id.toString();
-      const result: any = {
-        ...article,
-        tags: tagsMap[articleId] || [],
-      };
-
-      if (userId && likeStatusMap && bookmarkStatusMap) {
-        result.userStatus = {
-          isLiked: likeStatusMap[articleId] || false,
-          isBookmarked: bookmarkStatusMap[articleId] || false,
+    const articlesWithTags: EnrichedArticle[] = result.articles.map(
+      (article) => {
+        const articleId = article._id.toString();
+        const result: EnrichedArticle = {
+          ...article,
+          tags: (tagsMap as Record<string, unknown[]>)[articleId] || [],
         };
-      }
 
-      return result;
-    });
+        if (userId && likeStatusMap && bookmarkStatusMap) {
+          result.userStatus = {
+            isLiked:
+              (likeStatusMap as Record<string, boolean>)[articleId] || false,
+            isBookmarked:
+              (bookmarkStatusMap as Record<string, boolean>)[articleId] ||
+              false,
+          };
+        }
+
+        return result;
+      },
+    );
 
     return {
       articles: articlesWithTags,
@@ -395,12 +475,7 @@ export class ArticleService {
       page?: number;
       limit?: number;
     } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+  ): Promise<PaginatedResult<EnrichedArticle>> {
     const { page = 1, limit = 20 } = options;
 
     // 좋아요한 게시글 ID 목록 조회
@@ -418,9 +493,10 @@ export class ArticleService {
     ]);
 
     // 각 게시글에 태그 정보 매핑
-    const articlesWithTags = articles.map((article) => ({
+    const articlesWithTags: EnrichedArticle[] = articles.map((article) => ({
       ...article,
-      tags: tagsMap[article._id.toString()] || [],
+      tags:
+        (tagsMap as Record<string, unknown[]>)[article._id.toString()] || [],
     }));
 
     return {
@@ -438,12 +514,7 @@ export class ArticleService {
       page?: number;
       limit?: number;
     } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+  ): Promise<PaginatedResult<EnrichedArticle>> {
     const { page = 1, limit = 20 } = options;
 
     // 북마크한 게시글 정보 조회 (게시글 정보 포함)
@@ -454,9 +525,12 @@ export class ArticleService {
       });
 
     // 유효한 게시글들만 필터링하고 ID 추출
-    const validBookmarks = bookmarks.filter((bookmark) => bookmark.article);
-    const articleIds = validBookmarks.map((bookmark) =>
-      bookmark.article._id.toString(),
+    const validBookmarks = bookmarks.filter(
+      (bookmark: { article: unknown }) => bookmark.article,
+    );
+    const articleIds = validBookmarks.map(
+      (bookmark: { article: { _id: { toString: () => string } } }) =>
+        bookmark.article._id.toString(),
     );
 
     if (articleIds.length === 0) {
@@ -467,11 +541,19 @@ export class ArticleService {
     const tagsMap = await this.articleTagModel.findTagsByArticleIds(articleIds);
 
     // 각 게시글에 태그 정보와 북마크 시간 매핑
-    const articlesWithTags = validBookmarks.map((bookmark) => ({
-      ...bookmark.article,
-      tags: tagsMap[bookmark.article._id.toString()] || [],
-      bookmarkedAt: bookmark.created_at,
-    }));
+    const articlesWithTags: EnrichedArticle[] = validBookmarks.map(
+      (bookmark: {
+        article: IArticle & { _id: { toString: () => string } };
+        created_at: Date;
+      }) => ({
+        ...bookmark.article,
+        tags:
+          (tagsMap as Record<string, unknown[]>)[
+            bookmark.article._id.toString()
+          ] || [],
+        bookmarkedAt: bookmark.created_at,
+      }),
+    );
 
     return {
       articles: articlesWithTags,
@@ -483,18 +565,8 @@ export class ArticleService {
 
   // 인기 게시글 조회 (N+1 해결)
   async getPopularArticles(
-    options: {
-      page?: number;
-      limit?: number;
-      days?: number;
-      userId?: string;
-    } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+    options: GetPopularOptions = {},
+  ): Promise<PaginatedResult<EnrichedArticle>> {
     const { page = 1, limit = 20, days = 7, userId } = options;
 
     // 최근 북마크가 많은 게시글들 조회
@@ -506,15 +578,20 @@ export class ArticleService {
       });
 
     // 유효한 게시글들만 필터링하고 ID 추출
-    const validItems = result.articles.filter((item) => item.article);
-    const articleIds = validItems.map((item) => item.article._id.toString());
+    const validItems = result.articles.filter(
+      (item: { article: unknown }) => item.article,
+    );
+    const articleIds = validItems.map(
+      (item: { article: { _id: { toString: () => string } } }) =>
+        item.article._id.toString(),
+    );
 
     if (articleIds.length === 0) {
       return { articles: [], total: 0, page, totalPages: 0 };
     }
 
     // N+1 해결: 모든 게시글의 태그 정보를 한 번에 조회
-    const promises: Promise<any>[] = [
+    const promises: Promise<Record<string, unknown>>[] = [
       this.articleTagModel.findTagsByArticleIds(articleIds),
     ];
 
@@ -532,23 +609,31 @@ export class ArticleService {
       await Promise.all(promises);
 
     // 각 게시글에 태그 정보와 인기도 점수 매핑
-    const articlesWithTags = validItems.map((item) => {
-      const articleId = item.article._id.toString();
-      const result: any = {
-        ...item.article,
-        tags: tagsMap[articleId] || [],
-        popularityScore: item.bookmarkCount,
-      };
-
-      if (userId && likeStatusMap && bookmarkStatusMap) {
-        result.userStatus = {
-          isLiked: likeStatusMap[articleId] || false,
-          isBookmarked: bookmarkStatusMap[articleId] || false,
+    const articlesWithTags: EnrichedArticle[] = validItems.map(
+      (item: {
+        article: IArticle & { _id: { toString: () => string } };
+        bookmarkCount: number;
+      }) => {
+        const articleId = item.article._id.toString();
+        const result: EnrichedArticle = {
+          ...item.article,
+          tags: (tagsMap as Record<string, unknown[]>)[articleId] || [],
+          popularityScore: item.bookmarkCount,
         };
-      }
 
-      return result;
-    });
+        if (userId && likeStatusMap && bookmarkStatusMap) {
+          result.userStatus = {
+            isLiked:
+              (likeStatusMap as Record<string, boolean>)[articleId] || false,
+            isBookmarked:
+              (bookmarkStatusMap as Record<string, boolean>)[articleId] ||
+              false,
+          };
+        }
+
+        return result;
+      },
+    );
 
     return {
       articles: articlesWithTags,
@@ -560,21 +645,8 @@ export class ArticleService {
 
   // 통계 정보 포함된 게시글 목록 조회 (새로운 메서드)
   async getPublishedArticlesWithStats(
-    options: {
-      page?: number;
-      limit?: number;
-      category_id?: string;
-      tag_id?: string;
-      search?: string;
-      withStats?: boolean;
-      userId?: string;
-    } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+    options: GetWithStatsOptions = {},
+  ): Promise<PaginatedResult<EnrichedArticle>> {
     const { withStats = false, userId, ...restOptions } = options;
 
     // 기본 게시글 목록 조회
@@ -591,13 +663,20 @@ export class ArticleService {
       this.articleBookmarkModel.countByArticleIds(articleIds),
     ]);
 
-    const articlesWithStats = result.articles.map((article) => ({
-      ...article,
-      stats: {
-        likesCount: likesCountMap[article._id.toString()] || 0,
-        bookmarksCount: bookmarksCountMap[article._id.toString()] || 0,
-      },
-    }));
+    const articlesWithStats: EnrichedArticle[] = result.articles.map(
+      (article) => ({
+        ...article,
+        stats: {
+          likesCount:
+            (likesCountMap as Record<string, number>)[article._id.toString()] ||
+            0,
+          bookmarksCount:
+            (bookmarksCountMap as Record<string, number>)[
+              article._id.toString()
+            ] || 0,
+        },
+      }),
+    );
 
     return {
       ...result,
@@ -606,7 +685,9 @@ export class ArticleService {
   }
 
   // 배치로 게시글과 태그 정보 조회 (헬퍼 메서드)
-  private async getArticlesWithTagsBatch(articleIds: string[]): Promise<any[]> {
+  private async getArticlesWithTagsBatch(
+    articleIds: string[],
+  ): Promise<EnrichedArticle[]> {
     if (articleIds.length === 0) return [];
 
     // 게시글과 태그 정보를 병렬로 조회
@@ -616,16 +697,17 @@ export class ArticleService {
     ]);
 
     // 각 게시글에 태그 정보 매핑
-    return articles.map((article: any) => ({
+    return articles.map((article: IArticle) => ({
       ...article,
-      tags: tagsMap[article._id.toString()] || [],
+      tags:
+        (tagsMap as Record<string, unknown[]>)[article._id.toString()] || [],
     }));
   }
 
   // 다중 게시글 통계 정보 조회 (헬퍼 메서드)
   private async getArticlesStatsBatch(
     articleIds: string[],
-  ): Promise<Record<string, { likesCount: number; bookmarksCount: number }>> {
+  ): Promise<Record<string, ArticleStats>> {
     if (articleIds.length === 0) return {};
 
     const [likesMap, bookmarksMap] = await Promise.all([
@@ -633,15 +715,12 @@ export class ArticleService {
       this.articleBookmarkModel.countByArticleIds(articleIds),
     ]);
 
-    const statsMap: Record<
-      string,
-      { likesCount: number; bookmarksCount: number }
-    > = {};
+    const statsMap: Record<string, ArticleStats> = {};
 
     articleIds.forEach((id) => {
       statsMap[id] = {
-        likesCount: likesMap[id] || 0,
-        bookmarksCount: bookmarksMap[id] || 0,
+        likesCount: (likesMap as Record<string, number>)[id] || 0,
+        bookmarksCount: (bookmarksMap as Record<string, number>)[id] || 0,
       };
     });
 
@@ -650,39 +729,12 @@ export class ArticleService {
 
   // 게시글 검색 (고급 검색)
   async searchArticles(
-    options: {
-      query?: string;
-      category_id?: string;
-      tag_names?: string[];
-      author_id?: string;
-      dateFrom?: Date;
-      dateTo?: Date;
-      page?: number;
-      limit?: number;
-      sortBy?: 'relevance' | 'date' | 'popularity';
-      userId?: string;
-    } = {},
-  ): Promise<{
-    articles: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
-    const {
-      query,
-      category_id,
-      tag_names,
-      author_id,
-      dateFrom,
-      dateTo,
-      page = 1,
-      limit = 20,
-      sortBy = 'relevance',
-      userId,
-    } = options;
+    options: SearchOptions = {},
+  ): Promise<PaginatedResult<EnrichedArticle>> {
+    const { query, category_id, page = 1, limit = 20, userId } = options;
 
     // 기본 필터 구성
-    let articles: any[];
+    let articles: IArticle[];
     let total: number;
 
     if (query) {
@@ -708,7 +760,7 @@ export class ArticleService {
     // 추가 필터링 및 데이터 보강
     const articleIds = articles.map((article) => article._id.toString());
 
-    const promises: Promise<any>[] = [
+    const promises: Promise<Record<string, unknown>>[] = [
       this.articleTagModel.findTagsByArticleIds(articleIds),
     ];
 
@@ -726,17 +778,19 @@ export class ArticleService {
       await Promise.all(promises);
 
     // 결과 조합
-    const enrichedArticles = articles.map((article) => {
+    const enrichedArticles: EnrichedArticle[] = articles.map((article) => {
       const articleId = article._id.toString();
-      const result: any = {
+      const result: EnrichedArticle = {
         ...article,
-        tags: tagsMap[articleId] || [],
+        tags: (tagsMap as Record<string, unknown[]>)[articleId] || [],
       };
 
       if (userId && likeStatusMap && bookmarkStatusMap) {
         result.userStatus = {
-          isLiked: likeStatusMap[articleId] || false,
-          isBookmarked: bookmarkStatusMap[articleId] || false,
+          isLiked:
+            (likeStatusMap as Record<string, boolean>)[articleId] || false,
+          isBookmarked:
+            (bookmarkStatusMap as Record<string, boolean>)[articleId] || false,
         };
       }
 
