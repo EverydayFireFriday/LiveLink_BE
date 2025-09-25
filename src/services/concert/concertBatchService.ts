@@ -1,5 +1,5 @@
 import { getConcertModel } from '../../models/concert/concert';
-import type { IConcert, IPrice, ITicketLink } from '../../models/concert/base/ConcertTypes';
+import type { IConcert } from '../../models/concert/base/ConcertTypes';
 import { validateConcertData } from '../../models/concert/validation/ConcertCreateValidation';
 import { generateObjectIdFromUid } from '../../models/concert/validation/ConcertValidationUtils';
 import { validateAndNormalizeBatchSize } from '../../models/concert/validation/ConcertSearchValidation';
@@ -7,13 +7,13 @@ import logger from '../../utils/logger/logger';
 
 export interface ConcertServiceResponse {
   success: boolean;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
   statusCode?: number;
 }
 
 export interface BatchUploadRequest {
-  concerts: any[];
+  concerts: IConcert[];
   skipDuplicates?: boolean;
   batchSize?: number;
 }
@@ -23,8 +23,8 @@ export interface BatchUpdateRequest {
     uid: string; // Controller에서 uid로 사용
     title?: string;
     status?: 'completed' | 'upcoming' | 'ongoing' | 'cancelled'; // 타입 명시
-    price?: any[];
-    [key: string]: any; // 기타 업데이트 필드들
+    price?: unknown[];
+    [key: string]: unknown; // 기타 업데이트 필드들
   }>;
   continueOnError?: boolean;
   batchSize?: number;
@@ -47,6 +47,39 @@ export interface BatchLikeRequest {
   useBulkWrite?: boolean;
 }
 
+interface ConcertResult {
+  index: number;
+  uid: string;
+  title?: string;
+  error?: string;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: string;
+  deleteType?: string;
+  action?: string;
+  success?: boolean;
+  newLikesCount?: number;
+}
+
+interface ValidationResult {
+  index: number;
+  concertData: IConcert;
+  validationError: string | null | undefined;
+}
+
+interface BatchResults {
+  success: ConcertResult[];
+  failed: ConcertResult[];
+  duplicates?: ConcertResult[];
+  notFound?: ConcertResult[];
+}
+
+interface ConcertToInsert {
+  index: number;
+  processedData: Omit<IConcert, 'createdAt' | 'updatedAt'>;
+}
+
 export class ConcertBatchService {
   /**
    * 여러 콘서트 일괄 등록
@@ -66,10 +99,10 @@ export class ConcertBatchService {
       }
 
       const ConcertModel = getConcertModel();
-      const results = {
-        success: [] as any[],
-        failed: [] as any[],
-        duplicates: [] as any[],
+      const results: BatchResults = {
+        success: [],
+        failed: [],
+        duplicates: [],
       };
 
       logger.info(`⚡ 배치 콘서트 등록 시작: ${concerts.length}개 콘서트`);
@@ -77,7 +110,7 @@ export class ConcertBatchService {
 
       // 1. 모든 콘서트 데이터 유효성 검증
       const validationResults = await Promise.allSettled(
-        concerts.map(async (concertData, index) => {
+        concerts.map(async (concertData, index): Promise<ValidationResult> => {
           const validationResult = validateConcertData(concertData);
           return {
             index,
@@ -89,8 +122,8 @@ export class ConcertBatchService {
         }),
       );
 
-      const validConcerts: any[] = [];
-      const invalidConcerts: any[] = [];
+      const validConcerts: Array<{ index: number; concertData: IConcert }> = [];
+      const invalidConcerts: ConcertResult[] = [];
 
       validationResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
@@ -142,12 +175,12 @@ export class ConcertBatchService {
       const existingUidSet = new Set(existingConcerts.map((c) => c.uid));
 
       // 3. 중복 처리 및 데이터 준비
-      const concertsToInsert: any[] = [];
+      const concertsToInsert: ConcertToInsert[] = [];
 
       for (const { index, concertData } of validConcerts) {
         if (existingUidSet.has(concertData.uid)) {
           if (skipDuplicates) {
-            results.duplicates.push({
+            results.duplicates?.push({
               index,
               uid: concertData.uid,
               title: concertData.title,
@@ -178,8 +211,8 @@ export class ConcertBatchService {
             ? concertData.location
             : [concertData.location], // string 배열로 변경
           datetime: Array.isArray(concertData.datetime)
-            ? concertData.datetime.map((dt: any) => new Date(dt))
-            : [new Date(concertData.datetime)],
+            ? concertData.datetime.map((dt: unknown) => new Date(dt as string))
+            : [new Date(concertData.datetime as string)],
           price: Array.isArray(concertData.price)
             ? concertData.price
             : concertData.price
@@ -212,7 +245,7 @@ export class ConcertBatchService {
 
       // 4. 배치 단위로 MongoDB에 저장
       const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize);
-      const insertPromises: Promise<any>[] = [];
+      const insertPromises: Promise<void>[] = [];
       const totalBatches = Math.ceil(
         concertsToInsert.length / normalizedBatchSize,
       );
@@ -227,22 +260,22 @@ export class ConcertBatchService {
               const insertedConcert = insertedConcerts[batchIndex];
               results.success.push({
                 index,
-                id: insertedConcert._id,
+                id: insertedConcert._id?.toString(),
                 uid: insertedConcert.uid,
                 title: insertedConcert.title,
                 createdAt: insertedConcert.createdAt,
               });
             });
           })
-          .catch((error) => {
+          .catch(() => {
             // 배치 실패 시 개별 처리
-            return Promise.allSettled(
-              batch.map(async ({ index, processedData }) => {
+            const individualPromises = batch.map(
+              async ({ index, processedData }) => {
                 try {
                   const newConcert = await ConcertModel.create(processedData);
                   results.success.push({
                     index,
-                    id: newConcert._id,
+                    id: newConcert._id?.toString(),
                     uid: newConcert.uid,
                     title: newConcert.title,
                     createdAt: newConcert.createdAt,
@@ -257,8 +290,12 @@ export class ConcertBatchService {
                         : '알 수 없는 에러',
                   });
                 }
-              }),
+              },
             );
+            return Promise.allSettled(individualPromises);
+          })
+          .then(() => {
+            // Promise chain을 void로 만들기 위한 then
           });
 
         insertPromises.push(insertPromise);
@@ -278,7 +315,7 @@ export class ConcertBatchService {
             totalRequested: concerts.length,
             successCount: results.success.length,
             errorCount: results.failed.length,
-            duplicateCount: results.duplicates.length,
+            duplicateCount: results.duplicates?.length || 0,
             created: results.success,
             errors: results.failed,
             duplicates: results.duplicates,
@@ -317,10 +354,10 @@ export class ConcertBatchService {
       }
 
       const ConcertModel = getConcertModel();
-      const results = {
-        success: [] as any[],
-        failed: [] as any[],
-        notFound: [] as any[],
+      const results: BatchResults = {
+        success: [],
+        failed: [],
+        notFound: [],
       };
 
       const startTime = Date.now();
@@ -332,7 +369,7 @@ export class ConcertBatchService {
 
       // 2. 배치 단위로 병렬 처리
       const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize, 50);
-      const updatePromises: Promise<any>[] = [];
+      const updatePromises: Promise<PromiseSettledResult<void>[]>[] = [];
       const totalBatches = Math.ceil(updates.length / normalizedBatchSize);
 
       for (let i = 0; i < updates.length; i += normalizedBatchSize) {
@@ -350,7 +387,7 @@ export class ConcertBatchService {
 
               const existingConcert = existingUidMap.get(uid);
               if (!existingConcert) {
-                results.notFound.push({
+                results.notFound?.push({
                   index: globalIndex,
                   uid,
                   error: '콘서트를 찾을 수 없습니다.',
@@ -359,12 +396,14 @@ export class ConcertBatchService {
               }
 
               // 수정 불가능한 필드 제거 및 타입 안전성 확보
-              const updateData: Partial<IConcert> = { ...data };
-              delete (updateData as any).uid;
-              delete (updateData as any).likes;
-              delete (updateData as any).likesCount;
-              delete (updateData as any)._id;
-              delete (updateData as any).createdAt;
+              const updateData: Partial<IConcert> = {
+                ...data,
+              } as Partial<IConcert>;
+              delete (updateData as Record<string, unknown>).uid;
+              delete (updateData as Record<string, unknown>).likes;
+              delete (updateData as Record<string, unknown>).likesCount;
+              delete (updateData as Record<string, unknown>)._id;
+              delete (updateData as Record<string, unknown>).createdAt;
               updateData.updatedAt = new Date();
 
               // status 필드 유효성 검증
@@ -380,7 +419,7 @@ export class ConcertBatchService {
               }
 
               const updatedConcert = await ConcertModel.updateById(
-                existingConcert._id.toString(),
+                existingConcert._id?.toString() || '',
                 updateData,
               );
 
@@ -426,7 +465,7 @@ export class ConcertBatchService {
             totalRequested: updates.length,
             successCount: results.success.length,
             errorCount: results.failed.length,
-            notFoundCount: results.notFound.length,
+            notFoundCount: results.notFound?.length || 0,
             updated: results.success,
             errors: results.failed,
             notFound: results.notFound,
@@ -470,10 +509,10 @@ export class ConcertBatchService {
       }
 
       const ConcertModel = getConcertModel();
-      const results = {
-        success: [] as any[],
-        failed: [] as any[],
-        notFound: [] as any[],
+      const results: BatchResults = {
+        success: [],
+        failed: [],
+        notFound: [],
       };
 
       const startTime = Date.now();
@@ -493,7 +532,7 @@ export class ConcertBatchService {
             error: '올바르지 않은 UID 형식입니다.',
           });
         } else if (!existingConcertMap.has(uid)) {
-          results.notFound.push({
+          results.notFound?.push({
             index,
             uid,
             error: '콘서트를 찾을 수 없습니다.',
@@ -518,7 +557,7 @@ export class ConcertBatchService {
               totalRequested: uids.length,
               successCount: 0,
               errorCount: results.failed.length,
-              notFoundCount: results.notFound.length,
+              notFoundCount: results.notFound?.length || 0,
               deleted: [],
               errors: results.failed,
               notFound: results.notFound,
@@ -532,7 +571,7 @@ export class ConcertBatchService {
 
       // 4. 배치 단위로 삭제 처리
       const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize);
-      const deletePromises: Promise<any>[] = [];
+      const deletePromises: Promise<void>[] = [];
       const totalBatches = Math.ceil(validUids.length / normalizedBatchSize);
 
       for (let i = 0; i < validUids.length; i += normalizedBatchSize) {
@@ -549,13 +588,13 @@ export class ConcertBatchService {
               if (softDelete) {
                 // 소프트 삭제 (상태 변경)
                 deletedConcert = await ConcertModel.updateById(
-                  concert._id.toString(),
+                  concert._id?.toString() || '',
                   { status: 'cancelled', updatedAt: new Date() },
                 );
               } else {
                 // 하드 삭제
                 deletedConcert = await ConcertModel.deleteById(
-                  concert._id.toString(),
+                  concert._id?.toString() || '',
                 );
               }
 
@@ -602,7 +641,7 @@ export class ConcertBatchService {
             totalRequested: uids.length,
             successCount: results.success.length,
             errorCount: results.failed.length,
-            notFoundCount: results.notFound.length,
+            notFoundCount: results.notFound?.length || 0,
             deleted: results.success,
             errors: results.failed,
             notFound: results.notFound,
@@ -632,12 +671,7 @@ export class ConcertBatchService {
     userId: string,
   ): Promise<ConcertServiceResponse> {
     try {
-      const {
-        operations,
-        continueOnError = true,
-        batchSize = 50,
-        useBulkWrite = true,
-      } = request;
+      const { operations, continueOnError = true, batchSize = 50 } = request;
 
       if (!userId) {
         return {
@@ -656,11 +690,11 @@ export class ConcertBatchService {
       }
 
       const ConcertModel = getConcertModel();
-      const results = {
-        success: [] as any[],
-        failed: [] as any[],
-        duplicates: [] as any[],
-        notFound: [] as any[],
+      const results: BatchResults = {
+        success: [],
+        failed: [],
+        duplicates: [],
+        notFound: [],
       };
 
       const startTime = Date.now();
@@ -676,7 +710,7 @@ export class ConcertBatchService {
 
       // 2. 배치 단위로 병렬 처리
       const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize, 50);
-      const likePromises: Promise<any>[] = [];
+      const likePromises: Promise<PromiseSettledResult<void>[]>[] = [];
       const totalBatches = Math.ceil(operations.length / normalizedBatchSize);
 
       for (let i = 0; i < operations.length; i += normalizedBatchSize) {
@@ -693,7 +727,7 @@ export class ConcertBatchService {
 
               const concert = concertMap.get(uid);
               if (!concert) {
-                results.notFound.push({
+                results.notFound?.push({
                   index: globalIndex,
                   uid,
                   action,
@@ -706,11 +740,11 @@ export class ConcertBatchService {
               if (action === 'like') {
                 // 이미 좋아요했는지 확인
                 const isAlreadyLiked = concert.likes?.some(
-                  (like: any) => like.userId?.toString() === userId.toString(),
+                  (like) => like.userId?.toString() === userId.toString(),
                 );
 
                 if (isAlreadyLiked) {
-                  results.duplicates.push({
+                  results.duplicates?.push({
                     index: globalIndex,
                     uid,
                     action,
@@ -720,13 +754,13 @@ export class ConcertBatchService {
                 }
 
                 updatedConcert = await ConcertModel.addLike(
-                  concert._id.toString(),
+                  concert._id?.toString() || '',
                   userId,
                 );
               } else {
                 // unlike
                 updatedConcert = await ConcertModel.removeLike(
-                  concert._id.toString(),
+                  concert._id?.toString() || '',
                   userId,
                 );
               }
@@ -772,8 +806,8 @@ export class ConcertBatchService {
             totalRequested: operations.length,
             successCount: results.success.length,
             errorCount: results.failed.length,
-            duplicateCount: results.duplicates.length,
-            notFoundCount: results.notFound.length,
+            duplicateCount: results.duplicates?.length || 0,
+            notFoundCount: results.notFound?.length || 0,
             likeResults: results.success,
             errors: results.failed,
             duplicates: results.duplicates,
