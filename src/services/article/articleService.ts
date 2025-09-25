@@ -252,7 +252,10 @@ export class ArticleService {
         limit,
         publishedOnly: true,
       });
-      articles = result.articles;
+      articles = result.articles.map((article: any): IArticle => ({
+        ...article,
+        likes_count: article.likes_count ?? 0,
+      }));
       total = result.total;
     } else if (search) {
       // 검색
@@ -815,3 +818,4 @@ export const getArticleService = (): ArticleService => {
   }
   return articleService;
 };
+

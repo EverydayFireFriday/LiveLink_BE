@@ -1,5 +1,4 @@
 // src/report/apolloServer.ts
-
 import { ApolloServer } from 'apollo-server-express';
 import { Express } from 'express';
 import { Server } from 'http';
@@ -15,8 +14,9 @@ export const setupApolloServer = async (
 ) => {
   const server = new ApolloServer({
     typeDefs: reportTypeDefs,
-    resolvers: reportResolvers(reportService), // Pass reportService to resolvers
-    context: ({ req, res }) => ({ req, res, reportService }), // Make reportService available in context
+    resolvers: reportResolvers(reportService) as any,
+    context: ({ req, res }) => ({ req, res, reportService }),
+    introspection: process.env.NODE_ENV !== 'production',
   });
 
   await server.start();
