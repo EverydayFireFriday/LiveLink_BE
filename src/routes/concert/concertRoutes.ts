@@ -5,6 +5,7 @@ import {
   getAllConcerts,
   updateConcert,
   deleteConcert,
+  getRandomConcerts,
 } from "../../controllers/concert/concertController";
 import { requireAuth } from "../../middlewares/auth/authMiddleware";
 import {
@@ -360,6 +361,79 @@ router.post("/", requireAuthInProductionMiddleware, uploadConcert);
  */
 // 콘서트 목록 조회 - 인증 없이 가능
 router.get("/", getAllConcerts);
+
+/**
+ * @swagger
+ * /concert/random:
+ *   get:
+ *     summary: 랜덤 콘서트 목록 조회
+ *     description: |
+ *       `upcoming` 또는 `ongoing` 상태의 콘서트 중에서 무작위로 지정된 수만큼 조회합니다.
+ *       MongoDB의 `$sample` 파이프라인을 사용하여 효율적으로 랜덤 샘플링을 수행합니다.
+ *       로그인한 사용자의 경우 각 콘서트에 대한 좋아요 여부(`likedByUser`)가 포함됩니다.
+ *
+ *       **주요 특징**:
+ *       - **효율적인 랜덤 샘플링**: DB에서 직접 `$sample`을 사용하여 빠르고 메모리 효율적입니다.
+ *       - **상태 필터링**: `upcoming` 또는 `ongoing` 상태의 콘서트만 대상으로 합니다.
+ *       - **사용자 맞춤 정보**: 로그인 시 좋아요 여부를 함께 제공합니다.
+ *
+ *     tags: [Concerts - Search]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 30
+ *           default: 10
+ *         description: 조회할 랜덤 콘서트의 수
+ *     responses:
+ *       200:
+ *         description: 랜덤 콘서트 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "랜덤 콘서트 목록 조회 성공"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 10
+ *                     filter:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: ["upcoming", "ongoing"]
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         isAuthenticated:
+ *                           type: boolean
+ *                           example: true
+ *                         userId:
+ *                           type: string
+ *                           example: "60d21b4667d0d8992e610c85"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: '잘못된 요청 (예: limit 값 초과)'
+ *       500:
+ *         description: 서버 에러
+ */
+router.get("/random", getRandomConcerts);
 
 /**
  * @swagger

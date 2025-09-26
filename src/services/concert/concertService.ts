@@ -2,12 +2,8 @@ import { ObjectId } from 'mongodb';
 import { getConcertModel } from '../../models/concert/concert';
 import logger from '../../utils/logger/logger';
 
-import {
-  validateConcertData,
-} from '../../models/concert/validation/ConcertCreateValidation';
-import {
-  validateConcertUpdateData,
-} from '../../models/concert/validation/ConcertUpdateValidation';
+import { validateConcertData } from '../../models/concert/validation/ConcertCreateValidation';
+import { validateConcertUpdateData } from '../../models/concert/validation/ConcertUpdateValidation';
 import {
   generateObjectIdFromUid,
   isValidImageUrl,
@@ -339,6 +335,67 @@ export class ConcertService {
       return {
         success: false,
         error: '콘서트 목록 조회 실패',
+        statusCode: 500,
+      };
+    }
+  }
+
+  /**
+   * 랜덤 콘서트 목록 조회
+   */
+  static async getRandomConcerts(
+    limit: number,
+    userId?: string,
+  ): Promise<ConcertServiceResponse> {
+    try {
+      const ConcertModel = getConcertModel();
+
+      // 1. 'upcoming' 또는 'ongoing' 상태의 콘서트를 대상으로 필터링
+      const matchStage = {
+        $match: {
+          status: { $in: ['upcoming', 'ongoing'] },
+        },
+      };
+
+      // 2. $sample 파이프라인을 사용하여 랜덤 샘플링
+      const sampleStage = {
+        $sample: { size: limit },
+      };
+
+      // 3. 집계 파이프라인 실행
+      const randomConcerts = await ConcertModel.collection
+        .aggregate([matchStage, sampleStage])
+        .toArray();
+
+      // 4. 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
+      const concertsWithLikeStatus = randomConcerts.map((concert: any) => {
+        let isLiked = false;
+        if (userId && concert.likes && Array.isArray(concert.likes)) {
+          isLiked = concert.likes.some((like: any) => {
+            if (!like || !like.userId) return false;
+            try {
+              return like.userId.toString() === userId.toString();
+            } catch (error) {
+              return false;
+            }
+          });
+        }
+        return {
+          ...concert,
+          isLiked: userId ? isLiked : undefined,
+        };
+      });
+
+      return {
+        success: true,
+        data: concertsWithLikeStatus,
+        statusCode: 200,
+      };
+    } catch (error) {
+      logger.error('랜덤 콘서트 조회 서비스 에러:', error);
+      return {
+        success: false,
+        error: '랜덤 콘서트 조회 실패',
         statusCode: 500,
       };
     }
