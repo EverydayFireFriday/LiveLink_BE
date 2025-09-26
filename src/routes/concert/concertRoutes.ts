@@ -1,22 +1,24 @@
-import express from "express";
+import express from 'express';
 import {
   uploadConcert,
   getConcert,
   getAllConcerts,
   updateConcert,
   deleteConcert,
+  getRandomConcerts,
+  getLatestConcerts,
 } from "../../controllers/concert/concertController";
-import { requireAuth } from "../../middlewares/auth/authMiddleware";
+import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import {
   requireAuthInProductionMiddleware,
   logSessionInfoMiddleware,
   getCurrentUserInfo,
-} from "../../middlewares/auth/conditionalAuthMiddleware";
+} from '../../middlewares/auth/conditionalAuthMiddleware';
 
 const router = express.Router();
 
 // 개발환경에서 세션 정보 로깅 (선택사항)
-if (process.env.NODE_ENV === "development") {
+if (process.env.NODE_ENV === 'development') {
   router.use(logSessionInfoMiddleware);
 }
 
@@ -254,7 +256,7 @@ if (process.env.NODE_ENV === "development") {
  *         description: 서버 에러
  */
 // 콘서트 업로드 - 개발환경에서는 인증 스킵 (임시 세션 자동 생성)
-router.post("/", requireAuthInProductionMiddleware, uploadConcert);
+router.post('/', requireAuthInProductionMiddleware, uploadConcert);
 
 /**
  * @swagger
@@ -359,7 +361,155 @@ router.post("/", requireAuthInProductionMiddleware, uploadConcert);
  *         description: 서버 에러
  */
 // 콘서트 목록 조회 - 인증 없이 가능
-router.get("/", getAllConcerts);
+router.get('/', getAllConcerts);
+
+/**
+ * @swagger
+ * /concert/random:
+ *   get:
+ *     summary: 랜덤 콘서트 목록 조회
+ *     description: |
+ *       upcoming 또는 ongoing 상태의 콘서트 중에서 무작위로 지정된 수만큼 조회합니다.
+ *       MongoDB의 $sample 파이프라인을 사용하여 효율적으로 랜덤 샘플링을 수행합니다.
+ *       로그인한 사용자의 경우 각 콘서트에 대한 좋아요 여부(`likedByUser`)가 포함됩니다.
+ *
+ *       **주요 특징**:
+ *       - **효율적인 랜덤 샘플링**: DB에서 직접 $sample을 사용하여 빠르고 메모리 효율적입니다.
+ *       - **상태 필터링**: upcoming 또는 ongoing 상태의 콘서트만 대상으로 합니다.
+ *       - **사용자 맞춤 정보**: 로그인 시 좋아요 여부를 함께 제공합니다.
+ *
+ *     tags: [Concerts - Search]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 30
+ *           default: 10
+ *         description: 조회할 랜덤 콘서트의 수
+ *     responses:
+ *       200:
+ *         description: 랜덤 콘서트 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "랜덤 콘서트 목록 조회 성공"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 10
+ *                     filter:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: ["upcoming", "ongoing"]
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         isAuthenticated:
+ *                           type: boolean
+ *                           example: true
+ *                         userId:
+ *                           type: string
+ *                           example: "60d21b4667d0d8992e610c85"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: '잘못된 요청 (예: limit 값 초과)'
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/random', getRandomConcerts);
+
+/**
+ * @swagger
+ * /concert/latest:
+ *   get:
+ *     summary: 최신 콘서트 목록 조회
+ *     description: |
+ *       upcoming 또는 ongoin 상태인 콘서트 중에서 최신 등록된 순서대로 조회합니다.
+ *       로그인한 사용자의 경우 각 콘서트에 대한 좋아요 여부(likedByUser)가 포함됩니다.
+ *
+ *       **주요 특징**:
+ *       - **최신 등록순 정렬**: createdAt 필드를 기준으로 내림차순 정렬됩니다.
+ *       - **상태 필터링**: status가 upcoming 또는 ongoing인 공연만 조회합니다.
+ *       - **사용자 맞춤 정보**: 로그인 시 좋아요 여부를 함께 제공합니다.
+ *
+ *     tags: [Concerts - Search]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 15
+ *         description: 조회할 최신 콘서트의 수
+ *     responses:
+ *       200:
+ *         description: 최신 콘서트 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "최신 콘서트 목록 조회 성공"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 15
+ *                     filter:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: ["upcoming", "ongoing"]
+ *                     sort:
+ *                       type: string
+ *                       example: "createdAt: -1"
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         isAuthenticated:
+ *                           type: boolean
+ *                           example: true
+ *                         userId:
+ *                           type: string
+ *                           example: "60d21b4667d0d8992e610c85"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: '잘못된 요청 (예: limit 값 초과)'
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/latest', getLatestConcerts);
 
 /**
  * @swagger
@@ -419,7 +569,7 @@ router.get("/", getAllConcerts);
  *         description: 서버 에러
  */
 // 특정 콘서트 조회 - 인증 없이 가능
-router.get("/:id", getConcert);
+router.get('/:id', getConcert);
 
 /**
  * @swagger
@@ -634,7 +784,7 @@ router.get("/:id", getConcert);
  *                 timestamp: { type: string, format: date-time }
  */
 // 콘서트 수정 - 항상 인증 필요
-router.put("/:id", requireAuth, updateConcert);
+router.put('/:id', requireAuth, updateConcert);
 
 /**
  * @swagger
@@ -776,16 +926,16 @@ router.put("/:id", requireAuth, updateConcert);
  *                 timestamp: { type: string, format: date-time }
  */
 // 콘서트 삭제 - 항상 인증 필요
-router.delete("/:id", requireAuth, deleteConcert);
+router.delete('/:id', requireAuth, deleteConcert);
 
 // 개발환경용 디버깅 라우트
-if (process.env.NODE_ENV === "development") {
+if (process.env.NODE_ENV === 'development') {
   // 현재 세션 정보 확인
-  router.get("/dev/session", (req, res) => {
+  router.get('/dev/session', (req, res) => {
     const userInfo = getCurrentUserInfo(req);
 
     res.json({
-      message: "개발환경 세션 정보",
+      message: '개발환경 세션 정보',
       environment: process.env.NODE_ENV,
       sessionExists: !!req.session?.user,
       userInfo,
@@ -796,16 +946,16 @@ if (process.env.NODE_ENV === "development") {
 
   // 미들웨어 테스트 라우트
   router.get(
-    "/dev/test-auth",
+    '/dev/test-auth',
     requireAuthInProductionMiddleware,
     (req, res) => {
       res.json({
-        message: "개발환경 인증 테스트 성공",
+        message: '개발환경 인증 테스트 성공',
         userInfo: getCurrentUserInfo(req),
-        middleware: "requireAuthInProductionMiddleware",
+        middleware: 'requireAuthInProductionMiddleware',
         timestamp: new Date().toISOString(),
       });
-    }
+    },
   );
 }
 
