@@ -57,6 +57,9 @@ const app = express();
 const httpServer = createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
+// favicon.ico 요청에 대한 204 응답
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
 app.set('trust proxy', 1);
 
