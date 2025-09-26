@@ -50,7 +50,6 @@ access.log
 pm2.config.js
 ecosystem.config.js
 docker-compose.override.yml
-.dockerignore
 
 # ==============================================
 # IDE & 에디터
