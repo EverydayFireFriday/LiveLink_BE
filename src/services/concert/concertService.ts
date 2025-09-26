@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb';
+import { ObjectId, Sort } from 'mongodb';
 import { getConcertModel } from '../../models/concert/concert';
 import logger from '../../utils/logger/logger';
 
@@ -396,6 +396,62 @@ export class ConcertService {
       return {
         success: false,
         error: '랜덤 콘서트 조회 실패',
+        statusCode: 500,
+      };
+    }
+  }
+
+  /**
+   * 최신 콘서트 목록 조회
+   */
+  static async getLatestConcerts(
+    limit: number,
+    userId?: string,
+  ): Promise<ConcertServiceResponse> {
+    try {
+      const ConcertModel = getConcertModel();
+      const now = new Date();
+
+      const filter = {
+        status: { $in: ["upcoming", "ongoing"] as const },
+      };
+
+      const sort: Sort = { createdAt: -1 };
+
+      const latestConcerts = await ConcertModel.collection
+        .find(filter)
+        .sort(sort)
+        .limit(limit)
+        .toArray();
+
+      const concertsWithLikeStatus = latestConcerts.map((concert: any) => {
+        let isLiked = false;
+        if (userId && concert.likes && Array.isArray(concert.likes)) {
+          isLiked = concert.likes.some((like: any) => {
+            if (!like || !like.userId) return false;
+            try {
+              return like.userId.toString() === userId.toString();
+            } catch (error) {
+              return false;
+            }
+          });
+        }
+        return {
+          ...concert,
+          isLiked: userId ? isLiked : undefined,
+        };
+      });
+
+      return {
+        success: true,
+        data: concertsWithLikeStatus,
+        statusCode: 200,
+      };
+    } catch (error) {
+      logger.error("최신 콘서트 조회 서비스 에러:", error);
+      return {
+        success: false,
+        error: "최신 콘서트 조회 실패",
         statusCode: 500,
       };
     }

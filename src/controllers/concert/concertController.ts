@@ -327,6 +327,62 @@ export const getRandomConcerts = async (
   }
 };
 
+export const getLatestConcerts = async (
+  req: express.Request,
+  res: express.Response,
+) => {
+  try {
+    const limit = Math.min(safeParseInt(req.query.limit, 15), 50);
+    const userId = req.session?.user?.userId;
+
+    if (limit < 1) {
+      return res.status(400).json({
+        message: "limit은 1 이상이어야 합니다.",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    logger.info(
+      `🆕 최신 콘서트 조회: limit=${limit}, 사용자=${
+        userId ? "로그인됨" : "비로그인"
+      }`
+    );
+
+    const result = await ConcertService.getLatestConcerts(limit, userId);
+
+    if (result.success) {
+      res.status(result.statusCode || 200).json({
+        message: "최신 콘서트 목록 조회 성공",
+        data: result.data,
+        metadata: {
+          count: result.data.length,
+          filter: {
+            status: ["upcoming", "ongoing"],
+          },
+          sort: "createdAt: -1",
+          userInfo: {
+            isAuthenticated: !!userId,
+            userId: userId || null,
+          },
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.status(result.statusCode || 500).json({
+        message: result.error || "최신 콘서트 목록 조회 실패",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    logger.error("❌ 최신 콘서트 조회 컨트롤러 에러:", error);
+    res.status(500).json({
+      message: "최신 콘서트 조회 실패",
+      error: error instanceof Error ? error.message : "알 수 없는 에러",
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+
 export const updateConcert = async (
   req: express.Request,
   res: express.Response,

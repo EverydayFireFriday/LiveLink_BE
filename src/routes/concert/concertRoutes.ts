@@ -6,7 +6,8 @@ import {
   updateConcert,
   deleteConcert,
   getRandomConcerts,
-} from '../../controllers/concert/concertController';
+  getLatestConcerts,
+} from "../../controllers/concert/concertController";
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import {
   requireAuthInProductionMiddleware,
@@ -434,6 +435,81 @@ router.get('/', getAllConcerts);
  *         description: 서버 에러
  */
 router.get('/random', getRandomConcerts);
+
+/**
+ * @swagger
+ * /concert/latest:
+ *   get:
+ *     summary: 최신 콘서트 목록 조회
+ *     description: |
+ *       upcoming 또는 ongoin 상태인 콘서트 중에서 최신 등록된 순서대로 조회합니다.
+ *       로그인한 사용자의 경우 각 콘서트에 대한 좋아요 여부(likedByUser)가 포함됩니다.
+ *
+ *       **주요 특징**:
+ *       - **최신 등록순 정렬**: createdAt 필드를 기준으로 내림차순 정렬됩니다.
+ *       - **상태 필터링**: status가 upcoming 또는 ongoing인 공연만 조회합니다.
+ *       - **사용자 맞춤 정보**: 로그인 시 좋아요 여부를 함께 제공합니다.
+ *
+ *     tags: [Concerts - Search]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 15
+ *         description: 조회할 최신 콘서트의 수
+ *     responses:
+ *       200:
+ *         description: 최신 콘서트 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "최신 콘서트 목록 조회 성공"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Concert'
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 15
+ *                     filter:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: ["upcoming", "ongoing"]
+ *                     sort:
+ *                       type: string
+ *                       example: "createdAt: -1"
+ *                     userInfo:
+ *                       type: object
+ *                       properties:
+ *                         isAuthenticated:
+ *                           type: boolean
+ *                           example: true
+ *                         userId:
+ *                           type: string
+ *                           example: "60d21b4667d0d8992e610c85"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: '잘못된 요청 (예: limit 값 초과)'
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/latest', getLatestConcerts);
 
 /**
  * @swagger
