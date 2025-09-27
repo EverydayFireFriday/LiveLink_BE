@@ -7,6 +7,11 @@ export interface ICategory {
   created_at: Date;
 }
 
+// 집계 결과 타입을 위한 인터페이스
+interface CategoryWithArticleCount extends ICategory {
+  articleCount: number;
+}
+
 // MongoDB 에러 타입 정의
 interface MongoDBError {
   code?: number;
@@ -323,15 +328,17 @@ export class CategoryModel {
         },
       ];
 
-      const results = await this.collection.aggregate(pipeline).toArray();
+      const results = await this.collection
+        .aggregate<CategoryWithArticleCount>(pipeline)
+        .toArray();
 
       return results.map((item) => ({
         category: {
-          _id: item._id as ObjectId,
-          name: item.name as string,
-          created_at: item.created_at as Date,
+          _id: item._id,
+          name: item.name,
+          created_at: item.created_at,
         },
-        articleCount: item.articleCount as number,
+        articleCount: item.articleCount,
       }));
     });
   }
@@ -398,15 +405,17 @@ export class CategoryModel {
         },
       );
 
-      const results = await this.collection.aggregate(pipeline).toArray();
+      const results = await this.collection
+        .aggregate<CategoryWithArticleCount>(pipeline)
+        .toArray();
 
       return results.map((item) => ({
         category: {
-          _id: item._id as ObjectId,
-          name: item.name as string,
-          created_at: item.created_at as Date,
+          _id: item._id,
+          name: item.name,
+          created_at: item.created_at,
         },
-        articleCount: item.articleCount as number,
+        articleCount: item.articleCount,
       }));
     });
   }
@@ -440,11 +449,11 @@ export class CategoryModel {
         },
       ];
 
-      const results = await this.collection.aggregate(pipeline).toArray();
+      const results = await this.collection.aggregate<ICategory>(pipeline).toArray();
       return results.map((item) => ({
-        _id: item._id as ObjectId,
-        name: item.name as string,
-        created_at: item.created_at as Date,
+        _id: item._id,
+        name: item.name,
+        created_at: item.created_at,
       }));
     });
   }

@@ -15,10 +15,23 @@ interface MongoDBError {
 }
 
 // Aggregation 결과 타입 정의
-interface LikeCountAggregation {
+interface ArticleLikeCount {
   _id: ObjectId;
-  likeCount: number;
-  latestLike?: Date;
+  count: number;
+}
+
+interface UserLikeCount {
+  _id: ObjectId;
+  count: number;
+}
+
+interface MostLikedArticlesResult {
+  data: {
+    _id: ObjectId;
+    likeCount: number;
+    latestLike: Date;
+  }[];
+  totalCount: { count: number }[];
 }
 
 export class ArticleLikeModel {
@@ -246,7 +259,7 @@ export class ArticleLikeModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<ArticleLikeCount>([
           {
             $match: {
               article_id: { $in: objectIds },
@@ -328,7 +341,7 @@ export class ArticleLikeModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<UserLikeCount>([
           {
             $match: {
               user_id: { $in: objectIds },
@@ -511,14 +524,14 @@ export class ArticleLikeModel {
         },
       ];
 
-      const [result] = await this.collection.aggregate(pipeline).toArray();
+      const [result] = await this.collection
+        .aggregate<MostLikedArticlesResult>(pipeline)
+        .toArray();
 
-      const articles = ((result.data as LikeCountAggregation[]) || []).map(
-        (item) => ({
-          article_id: item._id.toString(),
-          likeCount: item.likeCount,
-        }),
-      );
+      const articles = (result.data || []).map((item) => ({
+        article_id: item._id.toString(),
+        likeCount: item.likeCount,
+      }));
 
       const total = result.totalCount[0]?.count || 0;
 
