@@ -26,7 +26,7 @@ class CacheManager {
     }
   }
 
-  async set(key: string, value: any, ttlInSeconds: number): Promise<void> {
+  async set<T>(key: string, value: T, ttlInSeconds: number): Promise<void> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect().catch(logger.error);
