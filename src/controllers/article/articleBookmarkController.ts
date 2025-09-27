@@ -37,17 +37,21 @@ export class ArticleBookmarkController {
         message: '북마크가 추가되었습니다.',
         bookmark,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 북마크 에러:', error);
 
-      if (error.message.includes('이미 북마크한')) {
-        res.status(400).json({ message: error.message });
-      } else if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('유효성 검사')) {
-        res.status(400).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('이미 북마크한')) {
+          res.status(400).json({ message: error.message });
+        } else if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else if (error.message.includes('유효성 검사')) {
+          res.status(400).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '북마크 추가에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '북마크 추가에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };
@@ -75,13 +79,17 @@ export class ArticleBookmarkController {
         message: '북마크가 삭제되었습니다.',
         success: result.success,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 북마크 삭제 에러:', error);
 
-      if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '북마크 삭제에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '북마크 삭제에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };

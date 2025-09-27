@@ -227,8 +227,9 @@ export class RegistrationController {
           createdAt: (updatedUser || newUser).createdAt,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('회원가입 인증 완료 에러:', error);
+      // Optionally, you can add more specific error handling here if needed
       res.status(500).json({ message: '서버 에러로 회원가입 실패' });
     }
   };

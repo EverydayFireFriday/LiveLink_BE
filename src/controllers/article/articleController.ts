@@ -31,15 +31,19 @@ export class ArticleController {
         message: '게시글이 성공적으로 생성되었습니다.',
         article,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 생성 에러:', error);
 
-      if (error.message.includes('유효성 검사')) {
-        res.status(400).json({ message: error.message });
-      } else if (error.message.includes('존재하지 않는')) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('유효성 검사')) {
+          res.status(400).json({ message: error.message });
+        } else if (error.message.includes('존재하지 않는')) {
+          res.status(404).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '게시글 생성에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '게시글 생성에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };
@@ -62,13 +66,17 @@ export class ArticleController {
         message: '게시글 조회 성공',
         article,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 조회 에러:', error);
 
-      if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '게시글 조회에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '게시글 조회에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };
@@ -120,15 +128,19 @@ export class ArticleController {
         message: '게시글이 성공적으로 수정되었습니다.',
         article,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 수정 에러:', error);
 
-      if (error.message.includes('유효성 검사')) {
-        res.status(400).json({ message: error.message });
-      } else if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('유효성 검사')) {
+          res.status(400).json({ message: error.message });
+        } else if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '게시글 수정에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '게시글 수정에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };
@@ -144,13 +156,17 @@ export class ArticleController {
       res.status(200).json({
         message: '게시글이 성공적으로 삭제되었습니다.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 삭제 에러:', error);
 
-      if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '게시글 삭제에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '게시글 삭제에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };

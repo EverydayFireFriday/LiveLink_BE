@@ -38,17 +38,21 @@ export class ArticleLikeController {
         like: result.like,
         newLikesCount: result.newLikesCount,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 좋아요 에러:', error);
 
-      if (error.message.includes('이미 좋아요한')) {
-        res.status(400).json({ message: error.message });
-      } else if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('유효성 검사')) {
-        res.status(400).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('이미 좋아요한')) {
+          res.status(400).json({ message: error.message });
+        } else if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else if (error.message.includes('유효성 검사')) {
+          res.status(400).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '좋아요 추가에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '좋아요 추가에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };
@@ -71,13 +75,17 @@ export class ArticleLikeController {
         success: result.success,
         newLikesCount: result.newLikesCount,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('게시글 좋아요 취소 에러:', error);
 
-      if (error.message.includes('찾을 수 없습니다')) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof Error) {
+        if (error.message.includes('찾을 수 없습니다')) {
+          res.status(404).json({ message: error.message });
+        } else {
+          res.status(500).json({ message: '좋아요 취소에 실패했습니다.' });
+        }
       } else {
-        res.status(500).json({ message: '좋아요 취소에 실패했습니다.' });
+        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };

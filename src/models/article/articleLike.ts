@@ -8,6 +8,19 @@ export interface IArticleLike {
   created_at: Date;
 }
 
+// MongoDB 에러 타입 정의
+interface MongoDBError {
+  code?: number;
+  message?: string;
+}
+
+// Aggregation 결과 타입 정의
+interface LikeCountAggregation {
+  _id: ObjectId;
+  likeCount: number;
+  latestLike?: Date;
+}
+
 export class ArticleLikeModel {
   private db: Db;
   private collection: Collection<IArticleLike>;
@@ -52,13 +65,22 @@ export class ArticleLikeModel {
           { unique: true, name: 'article_like_unique' },
         );
         logger.info('✅ article_like_unique 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error: unknown) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as MongoDBError).code === 85
+        ) {
           logger.info('ℹ️ article_like_unique 인덱스가 이미 존재함 (스킵)');
-        } else {
+        } else if (error instanceof Error) {
           logger.warn(
             '⚠️ article_like_unique 인덱스 생성 실패:',
             error.message,
+          );
+        } else {
+          logger.warn(
+            '⚠️ article_like_unique 인덱스 생성 실패: 알 수 없는 오류',
           );
         }
       }
@@ -70,15 +92,24 @@ export class ArticleLikeModel {
           { name: 'article_like_article_idx' },
         );
         logger.info('✅ article_like_article_idx 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error: unknown) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as MongoDBError).code === 85
+        ) {
           logger.info(
             'ℹ️ article_like_article_idx 인덱스가 이미 존재함 (스킵)',
           );
-        } else {
+        } else if (error instanceof Error) {
           logger.warn(
             '⚠️ article_like_article_idx 인덱스 생성 실패:',
             error.message,
+          );
+        } else {
+          logger.warn(
+            '⚠️ article_like_article_idx 인덱스 생성 실패: 알 수 없는 오류',
           );
         }
       }
@@ -90,13 +121,22 @@ export class ArticleLikeModel {
           { name: 'article_like_user_idx' },
         );
         logger.info('✅ article_like_user_idx 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error: unknown) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as MongoDBError).code === 85
+        ) {
           logger.info('ℹ️ article_like_user_idx 인덱스가 이미 존재함 (스킵)');
-        } else {
+        } else if (error instanceof Error) {
           logger.warn(
             '⚠️ article_like_user_idx 인덱스 생성 실패:',
             error.message,
+          );
+        } else {
+          logger.warn(
+            '⚠️ article_like_user_idx 인덱스 생성 실패: 알 수 없는 오류',
           );
         }
       }
@@ -473,10 +513,12 @@ export class ArticleLikeModel {
 
       const [result] = await this.collection.aggregate(pipeline).toArray();
 
-      const articles = (result.data || []).map((item: any) => ({
-        article_id: item._id.toString(),
-        likeCount: item.likeCount,
-      }));
+      const articles = ((result.data as LikeCountAggregation[]) || []).map(
+        (item) => ({
+          article_id: item._id.toString(),
+          likeCount: item.likeCount,
+        }),
+      );
 
       const total = result.totalCount[0]?.count || 0;
 
