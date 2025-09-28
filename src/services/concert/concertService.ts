@@ -364,7 +364,7 @@ export class ConcertService {
 
       // 3. 집계 파이프라인 실행
       const randomConcerts = await ConcertModel.collection
-        .aggregate([matchStage, sampleStage])
+        .aggregate<IConcert>([matchStage, sampleStage])
         .toArray();
 
       // 4. 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
@@ -413,7 +413,7 @@ export class ConcertService {
       const now = new Date();
 
       const filter = {
-        status: { $in: ["upcoming", "ongoing"] as const },
+        status: { $in: ['upcoming', 'ongoing'] as const },
       };
 
       const sort: Sort = { createdAt: -1 };
@@ -448,10 +448,10 @@ export class ConcertService {
         statusCode: 200,
       };
     } catch (error) {
-      logger.error("최신 콘서트 조회 서비스 에러:", error);
+      logger.error('최신 콘서트 조회 서비스 에러:', error);
       return {
         success: false,
-        error: "최신 콘서트 조회 실패",
+        error: '최신 콘서트 조회 실패',
         statusCode: 500,
       };
     }

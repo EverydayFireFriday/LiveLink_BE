@@ -1,10 +1,21 @@
-import { ObjectId, Collection, Db } from 'mongodb';
+import { ObjectId, Collection, Db, Filter } from 'mongodb';
 import logger from '../../utils/logger/logger';
 
 export interface ICategory {
   _id: ObjectId;
   name: string;
   created_at: Date;
+}
+
+// 집계 결과 타입을 위한 인터페이스
+interface CategoryWithArticleCount extends ICategory {
+  articleCount: number;
+}
+
+// MongoDB 에러 타입 정의
+interface MongoDBError {
+  code?: number;
+  message?: string;
 }
 
 export class CategoryModel {
@@ -49,12 +60,19 @@ export class CategoryModel {
           { unique: true, name: 'category_name_unique' },
         );
         logger.info('✅ Category name 유니크 인덱스 생성');
-      } catch (error: any) {
-        if (error.code === 85) {
+      } catch (error: unknown) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as MongoDBError).code === 85
+        ) {
           // IndexOptionsConflict
           logger.info('ℹ️ Category name 유니크 인덱스가 이미 존재함 (스킵)');
-        } else {
+        } else if (error instanceof Error) {
           logger.warn('⚠️ Category name 인덱스 생성 실패:', error.message);
+        } else {
+          logger.warn('⚠️ Category name 인덱스 생성 실패: 알 수 없는 오류');
         }
       }
 
@@ -146,7 +164,7 @@ export class CategoryModel {
       const { page = 1, limit = 20, search } = options;
       const skip = (page - 1) * limit;
 
-      const filter: any = {};
+      const filter: Filter<ICategory> = {};
       if (search) {
         filter.name = new RegExp(search, 'i');
       }
@@ -251,9 +269,14 @@ export class CategoryModel {
       try {
         await this.collection.insertMany(newCategories);
         return [...existingCategories, ...newCategories];
-      } catch (error: any) {
+      } catch (error: unknown) {
         // 중복 에러가 발생하면 개별적으로 처리
-        if (error.code === 11000) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as MongoDBError).code === 11000
+        ) {
           const categories: ICategory[] = [];
           for (const name of names) {
             const category = await this.findOrCreate(name);
@@ -261,7 +284,14 @@ export class CategoryModel {
           }
           return categories;
         }
-        throw error;
+        // Re-throw if it's not a known MongoDB duplicate key error
+        if (error instanceof Error) {
+          throw error;
+        } else {
+          throw new Error(
+            'An unknown error occurred during category creation.',
+          );
+        }
       }
     });
   }
@@ -298,9 +328,11 @@ export class CategoryModel {
         },
       ];
 
-      const results = await this.collection.aggregate(pipeline).toArray();
+      const results = await this.collection
+        .aggregate<CategoryWithArticleCount>(pipeline)
+        .toArray();
 
-      return results.map((item: any) => ({
+      return results.map((item) => ({
         category: {
           _id: item._id,
           name: item.name,
@@ -321,7 +353,7 @@ export class CategoryModel {
     return this.withIndexes(async () => {
       const { limit = 10, publishedOnly = true } = options;
 
-      const pipeline: any[] = [
+      const pipeline: object[] = [
         {
           $lookup: {
             from: 'articles',
@@ -343,7 +375,7 @@ export class CategoryModel {
               },
             },
           },
-        } as any);
+        });
       }
 
       pipeline.push(
@@ -351,7 +383,7 @@ export class CategoryModel {
           $addFields: {
             articleCount: { $size: '$articles' },
           },
-        } as any,
+        },
         {
           $match: {
             articleCount: { $gt: 0 },
@@ -373,9 +405,11 @@ export class CategoryModel {
         },
       );
 
-      const results = await this.collection.aggregate(pipeline).toArray();
+      const results = await this.collection
+        .aggregate<CategoryWithArticleCount>(pipeline)
+        .toArray();
 
-      return results.map((item: any) => ({
+      return results.map((item) => ({
         category: {
           _id: item._id,
           name: item.name,
@@ -415,8 +449,8 @@ export class CategoryModel {
         },
       ];
 
-      const results = await this.collection.aggregate(pipeline).toArray();
-      return results.map((item: any) => ({
+      const results = await this.collection.aggregate<ICategory>(pipeline).toArray();
+      return results.map((item) => ({
         _id: item._id,
         name: item.name,
         created_at: item.created_at,

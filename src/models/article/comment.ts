@@ -12,6 +12,19 @@ export interface IComment {
   likes_count: number;
 }
 
+// 집계 결과 타입을 위한 인터페이스
+interface ArticleCommentCount {
+  _id: ObjectId;
+  count: number;
+}
+
+interface UserCommentActivity {
+  _id: null;
+  totalComments: number;
+  totalLikesReceived: number;
+  recentComments: number;
+}
+
 export class CommentModel {
   private db: Db;
   private collection: Collection<IComment>;
@@ -305,7 +318,7 @@ export class CommentModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<ArticleCommentCount>([
           {
             $match: {
               article_id: { $in: objectIds },
@@ -557,7 +570,9 @@ export class CommentModel {
         },
       ];
 
-      const [result] = await this.collection.aggregate(pipeline).toArray();
+      const [result] = await this.collection
+        .aggregate<UserCommentActivity>(pipeline)
+        .toArray();
 
       if (!result) {
         return {

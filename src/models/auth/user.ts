@@ -26,6 +26,16 @@ export interface User {
   socialId?: string; // 소셜 로그인 ID
 }
 
+// MongoDB 에러 타입 정의
+interface MongoDBDuplicateError {
+  code?: number;
+  keyPattern?: {
+    username?: number;
+    email?: number;
+    [key: string]: number | undefined;
+  };
+}
+
 // MongoDB 연결 설정
 class Database {
   private static instance: Database;
@@ -117,17 +127,28 @@ export class UserModel {
         _id: result.insertedId,
         ...user,
       };
-    } catch (error: any) {
-      if (error.code === 11000) {
-        if (error.keyPattern?.username) {
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as MongoDBDuplicateError).code === 11000
+      ) {
+        const mongoError = error as MongoDBDuplicateError;
+        if (mongoError.keyPattern?.username) {
           throw new Error('Username already exists');
-        } else if (error.keyPattern?.email) {
+        } else if (mongoError.keyPattern?.email) {
           throw new Error('Email already exists');
         } else {
           throw new Error('Duplicate key error');
         }
       }
-      throw error;
+      // Re-throw if it's not a known MongoDB duplicate key error
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('An unknown error occurred during user creation.');
+      }
     }
   }
 

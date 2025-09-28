@@ -9,6 +9,18 @@ export interface ICommentLike {
   created_at: Date;
 }
 
+// 집계 결과 타입을 위한 인터페이스
+interface CommentLikeCount {
+  _id: ObjectId;
+  count: number;
+}
+
+interface MostLikedComment {
+  _id: ObjectId;
+  likeCount: number;
+  latestLike: Date;
+}
+
 export class CommentLikeModel {
   private db: Db;
   private collection: Collection<ICommentLike>;
@@ -157,7 +169,7 @@ export class CommentLikeModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<CommentLikeCount>([
           {
             $match: {
               comment_id: { $in: objectIds },
@@ -452,7 +464,9 @@ export class CommentLikeModel {
         },
       ];
 
-      const results = await this.collection.aggregate(pipeline).toArray();
+      const results = await this.collection
+        .aggregate<MostLikedComment>(pipeline)
+        .toArray();
 
       return results.map((item) => ({
         comment_id: item._id.toString(),

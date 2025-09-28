@@ -1,11 +1,40 @@
 import { ObjectId, Collection, Db } from 'mongodb';
 import logger from '../../utils/logger/logger';
+import { IArticle } from './article';
 
 export interface IArticleBookmark {
   _id: ObjectId;
   article_id: ObjectId;
   user_id: ObjectId;
   created_at: Date;
+}
+
+// 집계 결과 타입을 위한 인터페이스
+interface ArticleBookmarkCount {
+  _id: ObjectId;
+  count: number;
+}
+
+type BookmarkedArticle = IArticleBookmark & { article?: IArticle };
+
+interface PopularBookmarkedArticle {
+  article?: IArticle;
+  bookmarkCount: number;
+  latestBookmark: Date;
+  _id: ObjectId;
+}
+
+interface TotalCount {
+  total: number;
+}
+
+interface BookmarkedArticlesWithFoldersData extends IArticleBookmark {
+  article: IArticle;
+}
+
+interface BookmarkedArticlesWithFoldersResult {
+  data: BookmarkedArticlesWithFoldersData[];
+  totalCount: { count: number }[];
 }
 
 export class ArticleBookmarkModel {
@@ -152,7 +181,7 @@ export class ArticleBookmarkModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<ArticleBookmarkCount>([
           {
             $match: {
               article_id: { $in: objectIds },
@@ -229,7 +258,7 @@ export class ArticleBookmarkModel {
       const objectIds = validIds.map((id) => new ObjectId(id));
 
       const results = await this.collection
-        .aggregate([
+        .aggregate<ArticleBookmarkCount>([
           {
             $match: {
               user_id: { $in: objectIds },
@@ -329,7 +358,7 @@ export class ArticleBookmarkModel {
       ];
 
       const [bookmarks, total] = await Promise.all([
-        this.collection.aggregate(pipeline).toArray(),
+        this.collection.aggregate<BookmarkedArticle>(pipeline).toArray(),
         this.collection.countDocuments({ user_id: new ObjectId(userId) }),
       ]);
 
@@ -538,7 +567,9 @@ export class ArticleBookmarkModel {
         },
       ];
 
-      const articles = await this.collection.aggregate(pipeline).toArray();
+      const articles = await this.collection
+        .aggregate<PopularBookmarkedArticle>(pipeline)
+        .toArray();
 
       const totalPipeline = [
         { $match: { created_at: { $gte: dateFilter } } },
@@ -547,7 +578,7 @@ export class ArticleBookmarkModel {
       ];
 
       const totalResult = await this.collection
-        .aggregate(totalPipeline)
+        .aggregate<TotalCount>(totalPipeline)
         .toArray();
       const total = totalResult.length > 0 ? totalResult[0].total : 0;
 
@@ -611,7 +642,9 @@ export class ArticleBookmarkModel {
         },
       ];
 
-      const [result] = await this.collection.aggregate(pipeline).toArray();
+      const [result] = await this.collection
+        .aggregate<BookmarkedArticlesWithFoldersResult>(pipeline)
+        .toArray();
 
       const bookmarks = (result.data || []).map((item: any) => ({
         article: item.article,
