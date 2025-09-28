@@ -1,4 +1,23 @@
-import { createServer } from 'http';
+import promClient from 'prom-client';
+
+// Prometheus metrics setup
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status'],
+  registers: [register],
+});
+
+const httpRequestDurationMicroseconds = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status'],
+  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10], // buckets for response time
+  registers: [register],
+});
 import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
@@ -54,11 +73,30 @@ import connectRedis from 'connect-redis';
 const RedisStore = connectRedis(session);
 
 const app = express();
-const httpServer = createServer(app);
+import * as http from 'http';
+// ...
+const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
-// favicon.ico 요청에 대한 204 응답
-app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.use((req, res, next) => {
+  const end = httpRequestDurationMicroseconds.startTimer();
+  res.on('finish', () => {
+    const route = req.route ? req.route.path : req.path;
+    httpRequestCounter.inc({
+      method: req.method,
+      route,
+      status: res.statusCode,
+    });
+    end({ method: req.method, route, status: res.statusCode });
+  });
+  next();
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.setHeader('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
 
 // 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
 app.set('trust proxy', 1);
