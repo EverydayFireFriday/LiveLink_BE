@@ -12,11 +12,13 @@ WORKDIR /usr/src/app
 # 패키지 파일 복사
 COPY package*.json ./
 
-# Install production dependencies using npm ci for faster, more reliable builds
-# and --omit=dev to exclude development dependencies
-# npm ci를 사용하여 프로덕션 종속성을 설치하여 더 빠르고 안정적인 빌드 보장
-# --omit=dev로 개발 종속성 제외
-RUN npm ci --omit=dev
+# Install all dependencies (including devDependencies) for building
+# 빌드를 위해 모든 종속성 (개발 종속성 포함) 설치
+RUN npm ci
+
+# Prune development dependencies to keep only production dependencies for the final image
+# 최종 이미지를 위해 개발 종속성을 제거하고 프로덕션 종속성만 유지
+RUN npm prune --production
 
 # Copy the rest of the application source code
 # 나머지 애플리케ation 소스 코드 복사
@@ -56,13 +58,12 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # 빌더 단계에서 종속성과 빌드된 애플리케이션 복사
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/public ./public
 COPY package.json .
 
-# Create and set permissions for the logs directory
+# Create and set permissions for the logs directory where the application expects to write
 # The appuser needs to be able to write logs
-# 로그 디렉토리 생성 및 권한 설정
-# appuser가 로그를 작성할 수 있어야 함
-RUN mkdir -p logs && chown -R appuser:appgroup logs
+RUN mkdir -p dist/logs && chown -R appuser:appgroup dist/logs
 
 # Switch to the non-root user
 # non-root 사용자로 전환

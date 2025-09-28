@@ -43,5 +43,5 @@ export const swaggerOptions = {
       schemas: swaggerSchemas,
     },
   },
-  apis: ['./src/controllers/**/*.ts', './src/routes/**/*.ts'],
+  apis: ['./dist/controllers/**/*.js', './dist/routes/**/*.js'],
 };
