@@ -1,19 +1,22 @@
 /**
  * 페이지네이션 파라미터 유효성 검증 및 정규화 함수
  */
-export const validateAndNormalizePagination = (page: any, limit: any): { page: number; limit: number; skip: number } => {
+export const validateAndNormalizePagination = (
+  page: string | number | undefined,
+  limit: string | number | undefined,
+): { page: number; limit: number; skip: number } => {
   let normalizedPage = 1;
   let normalizedLimit = 20;
 
   if (page !== undefined) {
-    const pageNum = parseInt(page as string);
+    const pageNum = typeof page === 'number' ? page : parseInt(page);
     if (!isNaN(pageNum) && pageNum > 0) {
       normalizedPage = pageNum;
     }
   }
 
   if (limit !== undefined) {
-    const limitNum = parseInt(limit as string);
+    const limitNum = typeof limit === 'number' ? limit : parseInt(limit);
     if (!isNaN(limitNum) && limitNum > 0 && limitNum <= 100) {
       normalizedLimit = limitNum;
     }
@@ -44,11 +47,15 @@ export const normalizeSearchQuery = (query: string): string => {
 /**
  * 배치 크기 유효성 검증 및 정규화 함수
  */
-export const validateAndNormalizeBatchSize = (batchSize: any, defaultSize: number = 100, maxSize: number = 1000): number => {
+export const validateAndNormalizeBatchSize = (
+  batchSize: string | number | undefined,
+  defaultSize: number = 100,
+  maxSize: number = 1000,
+): number => {
   if (batchSize === undefined) {
     return defaultSize;
   }
-  const size = parseInt(batchSize as string);
+  const size = typeof batchSize === 'number' ? batchSize : parseInt(batchSize);
   if (isNaN(size) || size < 1) {
     return defaultSize;
   }
