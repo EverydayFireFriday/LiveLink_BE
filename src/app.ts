@@ -2,8 +2,15 @@ import promClient from 'prom-client';
 
 // Prometheus metrics setup
 const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
 
+// Collect default metrics (CPU, memory, event loop, etc.)
+promClient.collectDefaultMetrics({
+  register,
+  prefix: 'nodejs_',
+  gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
+});
+
+// HTTP Request Counter
 const httpRequestCounter = new promClient.Counter({
   name: 'http_requests_total',
   help: 'Total number of HTTP requests',
@@ -11,11 +18,42 @@ const httpRequestCounter = new promClient.Counter({
   registers: [register],
 });
 
+// HTTP Request Duration Histogram
 const httpRequestDurationMicroseconds = new promClient.Histogram({
   name: 'http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',
   labelNames: ['method', 'route', 'status'],
-  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10], // buckets for response time
+  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  registers: [register],
+});
+
+// Active Connections Gauge
+const activeConnectionsGauge = new promClient.Gauge({
+  name: 'http_active_connections',
+  help: 'Number of active HTTP connections',
+  registers: [register],
+});
+
+// Database Connection Status
+const dbConnectionGauge = new promClient.Gauge({
+  name: 'db_connection_status',
+  help: 'Database connection status (1 = connected, 0 = disconnected)',
+  labelNames: ['database'],
+  registers: [register],
+});
+
+// Redis Connection Status
+const redisConnectionGauge = new promClient.Gauge({
+  name: 'redis_connection_status',
+  help: 'Redis connection status (1 = connected, 0 = disconnected)',
+  registers: [register],
+});
+
+// HTTP Error Counter
+const httpErrorCounter = new promClient.Counter({
+  name: 'http_errors_total',
+  help: 'Total number of HTTP errors',
+  labelNames: ['method', 'route', 'status'],
   registers: [register],
 });
 import express from 'express';
@@ -79,6 +117,9 @@ const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
 app.use((req, res, next) => {
+  // Track active connections
+  activeConnectionsGauge.inc();
+
   const end = httpRequestDurationMicroseconds.startTimer();
   res.on('finish', () => {
     const route = req.route ? req.route.path : req.path;
@@ -88,7 +129,24 @@ app.use((req, res, next) => {
       status: res.statusCode,
     });
     end({ method: req.method, route, status: res.statusCode });
+
+    // Track errors
+    if (res.statusCode >= 400) {
+      httpErrorCounter.inc({
+        method: req.method,
+        route,
+        status: res.statusCode,
+      });
+    }
+
+    // Decrease active connections
+    activeConnectionsGauge.dec();
   });
+
+  res.on('close', () => {
+    activeConnectionsGauge.dec();
+  });
+
   next();
 });
 
@@ -167,7 +225,10 @@ const redisClient = createClient({
 });
 
 // Redis 이벤트 핸들링
-redisClient.on('connect', () => logger.info('✅ Redis connected'));
+redisClient.on('connect', () => {
+  logger.info('✅ Redis connected');
+  redisConnectionGauge.set(1);
+});
 redisClient.on('error', (err: Error) => {
   if (
     err.message?.includes('Disconnects client') ||
@@ -177,8 +238,12 @@ redisClient.on('error', (err: Error) => {
     return;
   }
   logger.error(`❌ Redis Error: ${err.message}`);
+  redisConnectionGauge.set(0);
 });
-redisClient.on('end', () => logger.info('ℹ️ Redis connection ended'));
+redisClient.on('end', () => {
+  logger.info('ℹ️ Redis connection ended');
+  redisConnectionGauge.set(0);
+});
 
 // JSON 파싱 미들웨어
 app.use(
@@ -428,17 +493,20 @@ const initializeDatabases = async (): Promise<void> => {
     logger.info('🔌 Connecting to User Database...');
     await connectUserDB();
     isUserDBConnected = true;
+    dbConnectionGauge.set({ database: 'user' }, 1);
     logger.info('✅ User Database connected');
 
     logger.info('🔌 Connecting to Concert Database...');
     const concertDB = await connectConcertDB();
     initializeConcertModel(concertDB);
     isConcertDBConnected = true;
+    dbConnectionGauge.set({ database: 'concert' }, 1);
     logger.info('✅ Concert Database connected and models initialized');
 
     logger.info('🔌 Initializing Article Database...');
     initializeAllArticleModels(concertDB);
     isArticleDBConnected = true;
+    dbConnectionGauge.set({ database: 'article' }, 1);
     logger.info('✅ Article Database initialized and models ready');
 
     // Initialize ReportService
@@ -448,9 +516,21 @@ const initializeDatabases = async (): Promise<void> => {
     logger.info('🔌 Initializing Chat Database...');
     initializeChatModels();
     isChatDBConnected = true;
+    dbConnectionGauge.set({ database: 'chat' }, 1);
     logger.info('✅ Chat Database initialized and models ready');
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
+    // Set all database connection gauges to 0 on failure
+    dbConnectionGauge.set({ database: 'user' }, isUserDBConnected ? 1 : 0);
+    dbConnectionGauge.set(
+      { database: 'concert' },
+      isConcertDBConnected ? 1 : 0,
+    );
+    dbConnectionGauge.set(
+      { database: 'article' },
+      isArticleDBConnected ? 1 : 0,
+    );
+    dbConnectionGauge.set({ database: 'chat' }, isChatDBConnected ? 1 : 0);
     throw error;
   }
 };
