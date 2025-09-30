@@ -17,6 +17,10 @@ export class UserService {
     return (await this.getUserModel().findByEmail(email)) as User | null;
   }
 
+  async findUserWithLikes(email: string): Promise<User | null> {
+    return (await this.getUserModel().findByEmailWithLikes(email)) as User | null;
+  }
+
   async findByUsername(username: string): Promise<User | null> {
     return (await this.getUserModel().findByUsername(username)) as User | null;
   }
@@ -50,10 +54,9 @@ export class UserService {
     id: string,
     updateData: Partial<User>,
   ): Promise<User | null> {
-    const user = (await this.getUserModel().updateUser(
-      id,
-      updateData,
-    )) as User | null;
+    const user = (await this.getUserModel().updateUser(id, {
+      $set: updateData,
+    })) as User | null;
 
     if (user) {
       const cacheKey = `user:${id}`;

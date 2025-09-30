@@ -24,6 +24,8 @@ export interface User {
   updatedAt: Date;
   provider?: string; // ex: 'google', 'apple'
   socialId?: string; // 소셜 로그인 ID
+  likedConcerts?: ObjectId[]; // 좋아요한 콘서트
+  likedArticles?: ObjectId[]; // 좋아요한 게시글
 }
 
 // MongoDB 에러 타입 정의
@@ -99,7 +101,7 @@ class Database {
 
 // User 관련 데이터베이스 operations
 export class UserModel {
-  private userCollection: Collection<User>;
+  public userCollection: Collection<User>;
 
   constructor() {
     const db = Database.getInstance();
@@ -117,6 +119,8 @@ export class UserModel {
     const user: Omit<User, '_id'> = {
       ...userData,
       status: UserStatus.PENDING_VERIFICATION,
+      likedConcerts: [],
+      likedArticles: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -162,6 +166,44 @@ export class UserModel {
     return await this.userCollection.findOne({ email });
   }
 
+  // 이메일로 사용자 찾기 (좋아요 목록 포함)
+  async findByEmailWithLikes(email: string): Promise<User | null> {
+    const results = await this.userCollection.aggregate([
+        { $match: { email: email } },
+        {
+            $lookup: {
+                from: 'concerts',
+                localField: 'likedConcerts',
+                foreignField: '_id',
+                as: 'likedConcertsInfo'
+            }
+        },
+        {
+            $lookup: {
+                from: 'articles',
+                localField: 'likedArticles',
+                foreignField: '_id',
+                as: 'likedArticlesInfo'
+            }
+        },
+        {
+            $addFields: {
+                likedConcerts: '$likedConcertsInfo',
+                likedArticles: '$likedArticlesInfo'
+            }
+        },
+        {
+            $project: {
+                likedConcertsInfo: 0,
+                likedArticlesInfo: 0
+            }
+        },
+        { $limit: 1 }
+    ]).toArray();
+
+    return (results[0] as User) || null;
+  }
+
   // Provider와 Social ID로 사용자 찾기
   async findByProviderAndSocialId(
     provider: string,
@@ -190,23 +232,24 @@ export class UserModel {
   // 사용자 정보 업데이트
   async updateUser(
     id: string | ObjectId,
-    updateData: Partial<Omit<User, '_id' | 'createdAt'>>,
+    updateOperation: object,
   ): Promise<User | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
-    const now = new Date();
+
+    // Ensure updatedAt is always updated
+    const updateQuery = { ...updateOperation } as any;
+    if (!updateQuery.$set) {
+      updateQuery.$set = {};
+    }
+    updateQuery.$set.updatedAt = new Date();
 
     const result = await this.userCollection.findOneAndUpdate(
       { _id: objectId },
-      {
-        $set: {
-          ...updateData,
-          updatedAt: now,
-        },
-      },
+      updateQuery,
       { returnDocument: 'after' },
     );
 
-    return result || null; // result.value 대신 result 사용
+    return result || null;
   }
 
   // 프로필 이미지 업데이트
@@ -214,7 +257,7 @@ export class UserModel {
     id: string | ObjectId,
     profileImageUrl: string,
   ): Promise<User | null> {
-    return await this.updateUser(id, { profileImage: profileImageUrl });
+    return await this.updateUser(id, { $set: { profileImage: profileImageUrl } });
   }
 
   // 비밀번호 업데이트 - 새로 추가
@@ -222,7 +265,7 @@ export class UserModel {
     id: string | ObjectId,
     passwordHash: string,
   ): Promise<User | null> {
-    return await this.updateUser(id, { passwordHash });
+    return await this.updateUser(id, { $set: { passwordHash } });
   }
 
   // 사용자 삭제

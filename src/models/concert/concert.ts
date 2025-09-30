@@ -4,7 +4,6 @@ import { ConcertSearch } from './features/ConcertSearch';
 import { ConcertTicketing } from './features/ConcertTicketing';
 import { ConcertLocation } from './features/ConcertLocation';
 import { ConcertPricing } from './features/ConcertPricing';
-import { ConcertLikes } from './features/ConcertLikes';
 import { ConcertBatch } from './features/ConcertBatch';
 import { ConcertStats } from './features/ConcertStats';
 import { ConcertAutomation } from './features/ConcertAutomation';
@@ -30,14 +29,13 @@ class ConcertModel extends ConcertBase {
   }
 }
 
-interface ConcertModel extends ConcertSearch, ConcertTicketing, ConcertLocation, ConcertPricing, ConcertLikes, ConcertBatch, ConcertStats, ConcertAutomation {}
+interface ConcertModel extends ConcertSearch, ConcertTicketing, ConcertLocation, ConcertPricing, ConcertBatch, ConcertStats, ConcertAutomation {}
 
 applyMixins(ConcertModel, [
   ConcertSearch,
   ConcertTicketing,
   ConcertLocation,
   ConcertPricing,
-  ConcertLikes,
   ConcertBatch,
   ConcertStats,
   ConcertAutomation,

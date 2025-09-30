@@ -35,7 +35,6 @@ export {
   batchUploadConcerts,
   batchUpdateConcerts,
   batchDeleteConcerts,
-  batchLikeConcerts,
 } from "./concertBatchController";
 
 

@@ -1,5 +1,6 @@
 import { ObjectId, Sort } from 'mongodb';
 import { getConcertModel } from '../../models/concert/concert';
+import { UserModel } from '../../models/auth/user';
 import logger from '../../utils/logger/logger';
 
 import { validateConcertData } from '../../models/concert/validation/ConcertCreateValidation';
@@ -142,7 +143,6 @@ export class ConcertService {
         infoImages: concertData.infoImages || [], // info -> infoImages로 변경
 
         status: 'upcoming',
-        likes: [],
         likesCount: 0,
       };
 
@@ -204,19 +204,10 @@ export class ConcertService {
       // 로그인한 사용자의 경우 좋아요 여부 확인
       let isLiked = false;
       if (userId) {
-        try {
-          if (concert.likes && Array.isArray(concert.likes)) {
-            isLiked = concert.likes.some((like: any) => {
-              if (!like || !like.userId) return false;
-              try {
-                return like.userId.toString() === userId.toString();
-              } catch (error) {
-                return false;
-              }
-            });
-          }
-        } catch (error) {
-          logger.warn('좋아요 상태 확인 에러:', error);
+        const userModel = new UserModel();
+        const user = await userModel.findById(userId);
+        if (user && user.likedConcerts) {
+          isLiked = user.likedConcerts.some(id => id.equals(concert._id));
         }
       }
 
@@ -295,24 +286,19 @@ export class ConcertService {
       });
 
       // 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
-      const concertsWithLikeStatus = concerts.map((concert: any) => {
-        let isLiked = false;
-        if (userId && concert.likes && Array.isArray(concert.likes)) {
-          isLiked = concert.likes.some((like: any) => {
-            if (!like || !like.userId) return false;
-            try {
-              return like.userId.toString() === userId.toString();
-            } catch (error) {
-              return false;
-            }
-          });
+      let likedConcertIds = new Set<string>();
+      if (userId) {
+        const userModel = new UserModel();
+        const user = await userModel.findById(userId);
+        if (user && user.likedConcerts) {
+          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
         }
+      }
 
-        return {
-          ...concert,
-          isLiked: userId ? isLiked : undefined,
-        };
-      });
+      const concertsWithLikeStatus = concerts.map((concert: any) => ({
+        ...concert,
+        isLiked: likedConcertIds.has(concert._id.toString()),
+      }));
 
       const totalPages = Math.ceil(total / parseInt(limit.toString()));
 
@@ -368,23 +354,19 @@ export class ConcertService {
         .toArray();
 
       // 4. 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
-      const concertsWithLikeStatus = randomConcerts.map((concert: any) => {
-        let isLiked = false;
-        if (userId && concert.likes && Array.isArray(concert.likes)) {
-          isLiked = concert.likes.some((like: any) => {
-            if (!like || !like.userId) return false;
-            try {
-              return like.userId.toString() === userId.toString();
-            } catch (error) {
-              return false;
-            }
-          });
+      let likedConcertIds = new Set<string>();
+      if (userId) {
+        const userModel = new UserModel();
+        const user = await userModel.findById(userId);
+        if (user && user.likedConcerts) {
+          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
         }
-        return {
-          ...concert,
-          isLiked: userId ? isLiked : undefined,
-        };
-      });
+      }
+
+      const concertsWithLikeStatus = randomConcerts.map((concert: any) => ({
+        ...concert,
+        isLiked: likedConcertIds.has(concert._id.toString()),
+      }));
 
       return {
         success: true,
@@ -424,23 +406,19 @@ export class ConcertService {
         .limit(limit)
         .toArray();
 
-      const concertsWithLikeStatus = latestConcerts.map((concert: any) => {
-        let isLiked = false;
-        if (userId && concert.likes && Array.isArray(concert.likes)) {
-          isLiked = concert.likes.some((like: any) => {
-            if (!like || !like.userId) return false;
-            try {
-              return like.userId.toString() === userId.toString();
-            } catch (error) {
-              return false;
-            }
-          });
+      let likedConcertIds = new Set<string>();
+      if (userId) {
+        const userModel = new UserModel();
+        const user = await userModel.findById(userId);
+        if (user && user.likedConcerts) {
+          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
         }
-        return {
-          ...concert,
-          isLiked: userId ? isLiked : undefined,
-        };
-      });
+      }
+
+      const concertsWithLikeStatus = latestConcerts.map((concert: any) => ({
+        ...concert,
+        isLiked: likedConcertIds.has(concert._id.toString()),
+      }));
 
       return {
         success: true,
@@ -490,7 +468,6 @@ export class ConcertService {
       // 3. 수정 불가능한 필드 제거
       const cleanUpdateData = { ...updateData };
       delete cleanUpdateData.uid;
-      delete cleanUpdateData.likes;
       delete cleanUpdateData.likesCount;
       delete cleanUpdateData._id;
       delete cleanUpdateData.createdAt;

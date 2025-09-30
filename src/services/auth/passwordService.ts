@@ -163,6 +163,12 @@ export class PasswordService {
       }
 
       // 현재 비밀번호 확인
+      if (!user.passwordHash) {
+        return {
+          success: false,
+          message: '소셜 로그인 사용자는 비밀번호를 변경할 수 없습니다.',
+        };
+      }
       const isCurrentPasswordValid = await authService.verifyPassword(
         currentPassword,
         user.passwordHash,

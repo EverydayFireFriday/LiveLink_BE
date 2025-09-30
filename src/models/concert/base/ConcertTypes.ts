@@ -12,11 +12,6 @@ export interface ITicketLink {
   url: string;
 }
 
-// Like 인터페이스
-export interface ILike {
-  userId: ObjectId;
-  likedAt: Date;
-}
 
 // Concert 메인 인터페이스
 export interface IConcert {
@@ -34,7 +29,6 @@ export interface IConcert {
   posterImage?: string;
   infoImages?: string[];
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
-  likes?: ILike[];
   likesCount?: number;
   createdAt: Date;
   updatedAt: Date;
