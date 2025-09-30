@@ -1,5 +1,17 @@
 
 (function() {
+  // 환경 확인 (개발 환경에서만 로그 출력)
+  const isDevelopment = window.location.hostname === 'localhost' ||
+                        window.location.hostname === '127.0.0.1' ||
+                        window.location.hostname.includes('dev');
+
+  // 조건부 로깅 함수
+  const log = {
+    info: (msg) => isDevelopment && console.log(msg),
+    error: (msg, error) => isDevelopment && console.error(msg, error),
+    warn: (msg) => isDevelopment && console.warn(msg)
+  };
+
   // 초기 테마 설정
   const savedTheme = localStorage.getItem('swagger-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -10,13 +22,13 @@
   // Swagger UI가 로드된 후 실행될 함수
   function onSwaggerUiComplete() {
     try {
-      console.log("🚀 Stagelives Swagger UI 초기화 시작");
+      log.info("🚀 Stagelives Swagger UI 초기화 시작");
       setupDarkModeToggle();
       setupAdvancedSearch();
       setupUIEnhancements();
-      console.log("✅ Stagelives Swagger UI 초기화 완료");
+      log.info("✅ Stagelives Swagger UI 초기화 완료");
     } catch (error) {
-      console.error("❌ Swagger UI 커스터마이징 중 오류 발생:", error);
+      log.error("❌ Swagger UI 커스터마이징 중 오류 발생:", error);
     }
   }
 
@@ -53,10 +65,10 @@
       applyTheme(newTheme);
       localStorage.setItem('swagger-theme', newTheme);
     });
-    
+
     document.body.appendChild(toggleButton);
     applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
-    console.log("🌙 다크 모드 토글 설정 완료");
+    log.info("🌙 다크 모드 토글 설정 완료");
   }
 
   // 고급 검색 기능 설정
@@ -87,12 +99,12 @@
               return path.includes(lowerFilter) || method.includes(lowerFilter) || summary.includes(lowerFilter) || description.includes(lowerFilter);
             });
           } catch (e) {
-            console.error("검색 필터링 중 오류:", e);
+            log.error("검색 필터링 중 오류:", e);
             return true;
           }
         });
       };
-      console.log("🔍 고급 검색 기능 활성화 완료");
+      log.info("🔍 고급 검색 기능 활성화 완료");
     }
   }
 
@@ -110,7 +122,7 @@
     if (filterInput) {
       filterInput.placeholder = "🔍 태그, 경로, 메소드, 설명으로 검색...";
     }
-    console.log("🎨 추가 UI 개선 적용 완료");
+    log.info("🎨 추가 UI 개선 적용 완료");
   }
 
   // DOM 로드가 완료되면 스크립트 실행
