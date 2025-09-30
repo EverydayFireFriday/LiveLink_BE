@@ -8,22 +8,28 @@ export const customStyles = `
   ${darkModeStyles}
   ${animationStyles}
 
-  /* Vertically align version and OAS info next to title */
+  /* Vertically align version and OAS info with title text */
   h2.title {
     display: flex;
-    align-items: center; /* Vertically align items */
+    align-items: center; /* Vertically center align all items */
     gap: 10px; /* Add some space between title and version info */
   }
 
   h2.title span {
     display: flex;
-    align-items: center; /* Ensure content within span is also aligned */
+    align-items: center; /* Ensure content within span is also vertically centered */
+    gap: 8px; /* Space between version and OAS badge */
     font-size: 0.8em; /* Adjust font size if needed */
   }
 
   h2.title small {
-    display: inline-block; /* Keep small tags inline for horizontal arrangement */
-    margin-left: 5px; /* Space between version and OAS */
+    display: inline-flex; /* Use inline-flex for better alignment */
+    align-items: center; /* Vertically center content */
+  }
+
+  h2.title small pre {
+    margin: 0; /* Remove default pre margin */
+    line-height: 1; /* Ensure consistent line height */
   }
 
   /* Custom styles for session authorization modal */
