@@ -3,7 +3,6 @@ import {
   batchUploadConcerts,
   batchUpdateConcerts,
   batchDeleteConcerts,
-  batchLikeConcerts,
 } from "../../controllers/concert/concertBatchController";
 import {
   requireAuth,
@@ -511,115 +510,5 @@ router.put("/batch", requireAdmin, batchUpdateConcerts);
  */
 router.delete("/batch", requireAdmin, batchDeleteConcerts);
 
-/**
- * @swagger
- * /concert/batch/like:
- *   post:
- *     tags:
- *       - Concerts - Batch
- *     summary: 여러 콘서트 일괄 좋아요 처리 (성능 최적화)
- *     description: |
- *       인증된 사용자가 여러 콘서트에 대해 좋아요를 일괄 처리합니다.
- *       - 좋아요 추가/제거 동시 처리 가능
- *       - 중복 처리 방지
- *       - 성능 최적화된 배치 처리
- *       - 실시간 좋아요 수 업데이트
- *     security:
- *       - sessionAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - operations
- *             properties:
- *               operations:
- *                 type: array
- *                 description: 좋아요 처리할 콘서트와 액션 목록
- *                 items:
- *                   type: object
- *                   required:
- *                     - uid
- *                     - action
- *                   properties:
- *                     uid:
- *                       type: string
- *                       description: 대상 콘서트 UID
- *                       example: "concert_1703123456789_abc123"
- *                     action:
- *                       type: string
- *                       enum: ["like", "unlike"]
- *                       description: 수행할 액션
- *                       example: "like"
- *               continueOnError:
- *                 type: boolean
- *                 description: "에러 발생 시 계속 진행 여부"
- *                 default: true
- *               batchSize:
- *                 type: integer
- *                 description: "배치 처리 크기"
- *                 default: 50
- *                 minimum: 1
- *                 maximum: 1000
- *               useBulkWrite:
- *                 type: boolean
- *                 description: "MongoDB bulkWrite 사용 여부 (고성능)"
- *                 default: true
- *     responses:
- *       200:
- *         description: 배치 좋아요 처리 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message: { type: string }
- *                 results:
- *                   type: object
- *                   properties:
- *                     totalRequested: { type: integer }
- *                     successCount: { type: integer }
- *                     errorCount: { type: integer }
- *                     duplicateCount: { type: integer }
- *                     notFoundCount: { type: integer }
- *                     likeResults:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           uid: { type: string }
- *                           action: { type: string }
- *                           success: { type: boolean }
- *                           newLikesCount: { type: integer }
- *                     errors:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           uid: { type: string }
- *                           error: { type: string }
- *                 timestamp: { type: string, format: date-time }
- *       400:
- *         description: 잘못된 요청 데이터
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       401:
- *         description: 인증 실패 (세션 없음)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       500:
- *         description: 서버 내부 오류
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.post("/batch/like", requireAuth, batchLikeConcerts);
 
 export default router;

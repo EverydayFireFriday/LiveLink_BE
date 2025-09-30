@@ -13,7 +13,9 @@ export class ProfileController {
 
   getProfile = async (req: express.Request, res: express.Response) => {
     try {
-      const user = await this.userService.findByEmail(req.session.user!.email);
+      const user = await this.userService.findUserWithLikes(
+        req.session.user!.email,
+      );
 
       if (!user) {
         res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
@@ -29,6 +31,8 @@ export class ProfileController {
           profileImage: user.profileImage,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
+          likedConcerts: user.likedConcerts || [],
+          likedArticles: user.likedArticles || [],
         },
         session: req.session.user,
       });

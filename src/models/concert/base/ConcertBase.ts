@@ -17,7 +17,7 @@ export class ConcertBase {
       logger.info('Concert 최소 인덱스 생성 시작...');
       await this.collection.createIndex({ uid: 1 }, { unique: true });
       await this.collection.createIndex({ title: 'text', artist: 'text', location: 'text', description: 'text' });
-      await this.collection.createIndex({ 'likes.userId': 1 });
+
       await this.collection.createIndex({ _id: 1 });
       logger.info('🎉 Concert 최소 인덱스 생성 완료');
     } catch (error) {
@@ -30,7 +30,7 @@ export class ConcertBase {
     const concert: IConcert = {
       ...concertData,
       status: concertData.status || 'upcoming',
-      likes: concertData.likes || [],
+
       likesCount: concertData.likesCount || 0,
       createdAt: now,
       updatedAt: now,
@@ -74,7 +74,7 @@ export class ConcertBase {
 
   async updateById(id: string, updateData: Partial<IConcert>): Promise<IConcert | null> {
     if (updateData.uid) delete updateData.uid;
-    if (updateData.likes) delete updateData.likes;
+
     if (updateData.likesCount) delete updateData.likesCount;
 
     updateData.updatedAt = new Date();

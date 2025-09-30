@@ -236,7 +236,6 @@ export class ConcertBatchService {
           infoImages: concertData.infoImages || [], // info → infoImages로 변경
 
           status: 'upcoming',
-          likes: [],
           likesCount: 0,
         };
 
@@ -400,7 +399,6 @@ export class ConcertBatchService {
                 ...data,
               } as Partial<IConcert>;
               delete (updateData as Record<string, unknown>).uid;
-              delete (updateData as Record<string, unknown>).likes;
               delete (updateData as Record<string, unknown>).likesCount;
               delete (updateData as Record<string, unknown>)._id;
               delete (updateData as Record<string, unknown>).createdAt;
@@ -663,169 +661,4 @@ export class ConcertBatchService {
     }
   }
 
-  /**
-   * 여러 콘서트 일괄 좋아요 처리
-   */
-  static async batchLikeConcerts(
-    request: BatchLikeRequest,
-    userId: string,
-  ): Promise<ConcertServiceResponse> {
-    try {
-      const { operations, continueOnError = true, batchSize = 50 } = request;
-
-      if (!userId) {
-        return {
-          success: false,
-          error: '로그인이 필요합니다.',
-          statusCode: 401,
-        };
-      }
-
-      if (!Array.isArray(operations) || operations.length === 0) {
-        return {
-          success: false,
-          error: 'operations 배열이 비어있거나 올바르지 않습니다.',
-          statusCode: 400,
-        };
-      }
-
-      const ConcertModel = getConcertModel();
-      const results: BatchResults = {
-        success: [],
-        failed: [],
-        duplicates: [],
-        notFound: [],
-      };
-
-      const startTime = Date.now();
-
-      // 1. 모든 콘서트 UID 존재 확인 및 현재 좋아요 상태 조회
-      const concertUids = operations
-        .map((operation) => operation.uid)
-        .filter(Boolean);
-      const existingConcerts = await ConcertModel.findByUids(concertUids);
-      const concertMap = new Map(
-        existingConcerts.map((concert) => [concert.uid, concert]),
-      );
-
-      // 2. 배치 단위로 병렬 처리
-      const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize, 50);
-      const likePromises: Promise<PromiseSettledResult<void>[]>[] = [];
-      const totalBatches = Math.ceil(operations.length / normalizedBatchSize);
-
-      for (let i = 0; i < operations.length; i += normalizedBatchSize) {
-        const batch = operations.slice(i, i + normalizedBatchSize);
-
-        const batchPromise = Promise.allSettled(
-          batch.map(async ({ uid, action }, batchIndex) => {
-            const globalIndex = i + batchIndex;
-
-            try {
-              if (!uid || !action || !['like', 'unlike'].includes(action)) {
-                throw new Error('uid 또는 action이 유효하지 않습니다.');
-              }
-
-              const concert = concertMap.get(uid);
-              if (!concert) {
-                results.notFound?.push({
-                  index: globalIndex,
-                  uid,
-                  action,
-                  error: '콘서트를 찾을 수 없습니다.',
-                });
-                return;
-              }
-
-              let updatedConcert;
-              if (action === 'like') {
-                // 이미 좋아요했는지 확인
-                const isAlreadyLiked = concert.likes?.some(
-                  (like) => like.userId?.toString() === userId.toString(),
-                );
-
-                if (isAlreadyLiked) {
-                  results.duplicates?.push({
-                    index: globalIndex,
-                    uid,
-                    action,
-                    error: '이미 좋아요한 콘서트입니다.',
-                  });
-                  return;
-                }
-
-                updatedConcert = await ConcertModel.addLike(
-                  concert._id?.toString() || '',
-                  userId,
-                );
-              } else {
-                // unlike
-                updatedConcert = await ConcertModel.removeLike(
-                  concert._id?.toString() || '',
-                  userId,
-                );
-              }
-
-              results.success.push({
-                index: globalIndex,
-                uid,
-                action,
-                success: true,
-                newLikesCount: updatedConcert.likesCount,
-                title: updatedConcert.title,
-              });
-            } catch (error) {
-              results.failed.push({
-                index: globalIndex,
-                uid,
-                action,
-                error:
-                  error instanceof Error ? error.message : '알 수 없는 에러',
-              });
-
-              if (!continueOnError) {
-                throw error;
-              }
-            }
-          }),
-        );
-
-        likePromises.push(batchPromise);
-      }
-
-      // 3. 모든 배치 처리 완료 대기
-      await Promise.allSettled(likePromises);
-
-      const endTime = Date.now();
-      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-
-      return {
-        success: true,
-        data: {
-          message: '좋아요 일괄 처리 완료',
-          results: {
-            totalRequested: operations.length,
-            successCount: results.success.length,
-            errorCount: results.failed.length,
-            duplicateCount: results.duplicates?.length || 0,
-            notFoundCount: results.notFound?.length || 0,
-            likeResults: results.success,
-            errors: results.failed,
-            duplicates: results.duplicates,
-            notFound: results.notFound,
-            processingTime: `${processingTime}초`,
-            batchCount: totalBatches,
-          },
-          timestamp: new Date().toISOString(),
-        },
-        statusCode: 200,
-      };
-    } catch (error) {
-      logger.error('❌ 좋아요 일괄 처리 서비스 에러:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '좋아요 일괄 처리 실패',
-        statusCode: 500,
-      };
-    }
-  }
 }

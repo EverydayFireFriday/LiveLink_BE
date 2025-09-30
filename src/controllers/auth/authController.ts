@@ -77,6 +77,11 @@ export class AuthController {
       }
 
       // 비밀번호 확인
+      if (!user.passwordHash) {
+        return res.status(401).json({
+          message: '소셜 로그인 사용자는 비밀번호로 로그인할 수 없습니다.',
+        });
+      }
       const isPasswordValid = await authService.verifyPassword(
         password,
         user.passwordHash,

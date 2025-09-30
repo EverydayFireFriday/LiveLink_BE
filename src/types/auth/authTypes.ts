@@ -2,15 +2,21 @@ import { ObjectId } from "mongodb";
 import { UserStatus } from "../../models/auth/user";
 
 export interface User {
-  _id?: ObjectId; // string 대신 ObjectId 사용
+  _id?: ObjectId;
   email: string;
   username: string;
-  passwordHash: string;
+  passwordHash?: string;
   status: UserStatus;
-  statusReason?: string; // 상태 변경 사유 추가
+  statusReason?: string;
   profileImage?: string;
+  isTermsAgreed: boolean;
+  termsVersion: string;
   createdAt: Date;
   updatedAt: Date;
+  provider?: string;
+  socialId?: string;
+  likedConcerts?: any[]; // Populated with concert objects
+  likedArticles?: any[]; // Populated with article objects
 }
 
 export interface SessionUser {
