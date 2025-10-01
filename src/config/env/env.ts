@@ -91,6 +91,13 @@ const envSchema = z.object({
     .optional()
     .default('60000'), // 1분
   API_LIMIT_RELAXED_MAX: z.string().regex(/^\d+$/).optional().default('200'),
+
+  // 🕐 스케줄러 설정
+  CONCERT_STATUS_CHECK_INTERVAL: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('1800000'), // 30분 (밀리초)
 });
 
 // 🔍 환경변수 검증 및 파싱 (즉시 실행)
