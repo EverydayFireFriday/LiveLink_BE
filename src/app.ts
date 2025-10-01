@@ -59,6 +59,7 @@ import {
 import { initializeAllArticleModels } from './models/article';
 import { ReportService } from './report/reportService';
 import { setupApolloServer } from './report/apolloServer';
+import { ConcertStatusScheduler } from './services/concert/concertStatusScheduler';
 
 // 라우터 import
 import authRouter from './routes/auth/index';
@@ -273,6 +274,7 @@ let isConcertDBConnected = false;
 let isArticleDBConnected = false;
 let isChatDBConnected = false;
 let reportService: ReportService;
+let concertStatusScheduler: ConcertStatusScheduler | null = null;
 
 // 🩺 헬스체크 엔드포인트들 (인증 없음 - K8s/로드밸런서용)
 // Liveness Probe: 단순 생존 확인
@@ -449,6 +451,12 @@ const initializeDatabases = async (): Promise<void> => {
     initializeChatModels();
     isChatDBConnected = true;
     logger.info('✅ Chat Database initialized and models ready');
+
+    // Initialize Concert Status Scheduler
+    logger.info('🔌 Initializing Concert Status Scheduler...');
+    concertStatusScheduler = new ConcertStatusScheduler(concertDB);
+    concertStatusScheduler.start();
+    logger.info('✅ Concert Status Scheduler started');
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
     throw error;
@@ -476,6 +484,14 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
       // Socket.IO 서버 종료 로직이 있다면 여기에 추가
       chatSocketServer = null;
       logger.info('✅ Socket.IO server closed');
+    }
+
+    // Concert Status Scheduler 종료
+    if (concertStatusScheduler) {
+      logger.info('🔌 Stopping Concert Status Scheduler...');
+      concertStatusScheduler.stop();
+      concertStatusScheduler = null;
+      logger.info('✅ Concert Status Scheduler stopped');
     }
 
     // Redis 연결 종료

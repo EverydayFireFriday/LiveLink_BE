@@ -1,8 +1,35 @@
 import { PassportStatic } from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import {
+  Strategy as GoogleStrategy,
+  Profile as GoogleProfile,
+  VerifyCallback,
+} from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { UserModel, User } from '../../models/auth/user';
 import logger from '../../utils/logger/logger';
+
+// OAuth 프로필 타입 정의
+interface GoogleProfileExtended extends GoogleProfile {
+  emails?: Array<{ value: string; verified: boolean }>;
+  photos?: Array<{ value: string }>;
+}
+
+// Apple Profile 타입 정의
+interface AppleProfileData {
+  id: string;
+  email?: string;
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
+// Apple Verify Callback 타입
+type AppleVerifyCallbackType = (
+  error: Error | null | undefined,
+  user?: User | false,
+  info?: unknown,
+) => void;
 
 export const configurePassport = (passport: PassportStatic) => {
   const userModel = new UserModel();
@@ -31,7 +58,12 @@ export const configurePassport = (passport: PassportStatic) => {
           callbackURL: '/api/auth/google/callback',
           scope: ['profile', 'email'],
         },
-        async (profile: any, done: any) => {
+        async (
+          accessToken: string,
+          refreshToken: string,
+          profile: GoogleProfileExtended,
+          done: VerifyCallback,
+        ) => {
           try {
             const socialId = profile.id;
             const provider = 'google';
@@ -73,6 +105,8 @@ export const configurePassport = (passport: PassportStatic) => {
               provider,
               socialId,
               profileImage: profile.photos?.[0].value,
+              isTermsAgreed: false,
+              termsVersion: '1.0',
             };
 
             // username 중복 체크
@@ -83,7 +117,9 @@ export const configurePassport = (passport: PassportStatic) => {
               newUser.username = `${newUser.username}_${Date.now()}`;
             }
 
-            const createdUser = await userModel.createUser(newUser as any);
+            const createdUser = await userModel.createUser(
+              newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
+            );
             return done(null, createdUser);
           } catch (error) {
             logger.error('Error in Google OAuth strategy:', error);
@@ -115,7 +151,13 @@ export const configurePassport = (passport: PassportStatic) => {
           callbackURL: '/api/auth/apple/callback',
           scope: ['name', 'email'],
         },
-        async (profile: any, done: any) => {
+        async (
+          accessToken: string,
+          refreshToken: string,
+          idToken: unknown,
+          profile: AppleProfileData,
+          done: AppleVerifyCallbackType,
+        ) => {
           try {
             const socialId = profile.id;
             const provider = 'apple';
@@ -157,6 +199,8 @@ export const configurePassport = (passport: PassportStatic) => {
                 : `${provider}_${socialId}`,
               provider,
               socialId,
+              isTermsAgreed: false,
+              termsVersion: '1.0',
             };
 
             // username 중복 체크
@@ -167,7 +211,9 @@ export const configurePassport = (passport: PassportStatic) => {
               newUser.username = `${newUser.username}_${Date.now()}`;
             }
 
-            const createdUser = await userModel.createUser(newUser as any);
+            const createdUser = await userModel.createUser(
+              newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
+            );
             return done(null, createdUser);
           } catch (error) {
             logger.error('Error in Apple OAuth strategy:', error);

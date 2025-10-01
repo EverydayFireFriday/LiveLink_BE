@@ -1,5 +1,7 @@
-import { ObjectId } from "mongodb";
-import { UserStatus } from "../../models/auth/user";
+import { ObjectId } from 'mongodb';
+import { UserStatus } from '../../models/auth/user';
+import { IConcert } from '../../models/concert/base/ConcertTypes';
+import { Article } from '../article/articleTypes';
 
 export interface User {
   _id?: ObjectId;
@@ -15,8 +17,8 @@ export interface User {
   updatedAt: Date;
   provider?: string;
   socialId?: string;
-  likedConcerts?: any[]; // Populated with concert objects
-  likedArticles?: any[]; // Populated with article objects
+  likedConcerts?: Array<ObjectId | IConcert>; // Can be ObjectId or populated IConcert
+  likedArticles?: Array<string | Article>; // Can be string ID or populated Article
 }
 
 export interface SessionUser {
@@ -30,7 +32,7 @@ export interface SessionUser {
 export interface VerificationData {
   code: string;
   email: string;
-  type: "password_reset" | "email_verification";
+  type: 'password_reset' | 'email_verification';
   createdAt: string;
   userData?: {
     username: string;
