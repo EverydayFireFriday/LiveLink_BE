@@ -16,17 +16,17 @@ COPY package*.json ./
 # 빌드를 위해 모든 종속성 (개발 종속성 포함) 설치
 RUN npm ci
 
-# Prune development dependencies to keep only production dependencies for the final image
-# 최종 이미지를 위해 개발 종속성을 제거하고 프로덕션 종속성만 유지
-RUN npm prune --production
-
 # Copy the rest of the application source code
-# 나머지 애플리케ation 소스 코드 복사
+# 나머지 애플리케이션 소스 코드 복사
 COPY . .
 
 # Build the TypeScript source code
 # TypeScript 소스 코드 빌드
 RUN npm run build
+
+# Prune development dependencies to keep only production dependencies for the final image
+# 최종 이미지를 위해 개발 종속성을 제거하고 프로덕션 종속성만 유지
+RUN npm prune --production
 
 #------------------- Production Stage -------------------#
 #------------------- 프로덕션 단계 -------------------#
