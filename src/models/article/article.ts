@@ -495,6 +495,20 @@ export class ArticleModel {
       await this.collection.bulkWrite(bulkOps);
     });
   }
+
+  async deleteByAuthor(authorId: string): Promise<number> {
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(authorId)) {
+        return 0;
+      }
+
+      const result = await this.collection.deleteMany({
+        author_id: new ObjectId(authorId),
+      });
+
+      return result.deletedCount || 0;
+    });
+  }
 }
 
 // 전역 Article 인스턴스

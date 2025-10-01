@@ -166,4 +166,72 @@ export class AuthController {
       });
     }
   };
+
+  deleteAccount = async (req: express.Request, res: express.Response) => {
+    const { password } = req.body;
+    const userId = req.session.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: '인증이 필요합니다.' });
+    }
+
+    try {
+      const { AuthService } = await import('../../services/auth/authService');
+      const { UserService } = await import('../../services/auth/userService');
+
+      const authService = new AuthService();
+      const userService = new UserService();
+
+      const user = await userService.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+      }
+
+      // 비밀번호가 설정된 사용자(일반 로그인)는 비밀번호 확인 필요
+      if (user.passwordHash) {
+        if (!password) {
+          return res.status(400).json({ message: '비밀번호를 입력해주세요.' });
+        }
+
+        const isPasswordValid = await authService.verifyPassword(
+          password,
+          user.passwordHash,
+        );
+        if (!isPasswordValid) {
+          logger.warn(
+            `[Auth] Failed account deletion attempt for user: ${user.email} (incorrect password)`,
+          );
+          return res
+            .status(401)
+            .json({ message: '비밀번호가 일치하지 않습니다.' });
+        }
+      }
+
+      // 회원 탈퇴 처리
+      const deleted = await userService.deleteUser(userId);
+      if (!deleted) {
+        return res
+          .status(500)
+          .json({ message: '회원 탈퇴 처리에 실패했습니다.' });
+      }
+
+      logger.info(`[Auth] User account deleted: ${user.email}`);
+
+      // 세션 종료
+      req.session.destroy((err) => {
+        if (err) {
+          logger.error('세션 삭제 에러:', err);
+        }
+        res.clearCookie('connect.sid');
+        res.status(200).json({
+          message: '회원 탈퇴가 완료되었습니다.',
+        });
+      });
+    } catch (error) {
+      logger.error('회원 탈퇴 에러:', error);
+      res
+        .status(500)
+        .json({ message: '서버 에러로 회원 탈퇴에 실패했습니다.' });
+    }
+  };
 }
