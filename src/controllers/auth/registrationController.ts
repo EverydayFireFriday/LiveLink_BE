@@ -8,6 +8,7 @@ import { UserValidator } from '../../utils/validation/auth/userValidator';
 import logger from '../../utils/logger/logger';
 import { UserStatus } from '../../models/auth/user';
 import { CURRENT_TERMS_VERSION } from '../../config/terms/termsAndConditions';
+import { ResponseBuilder } from '../../utils/response/apiResponse';
 
 export class RegistrationController {
   private authService: AuthService;
@@ -28,14 +29,18 @@ export class RegistrationController {
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      res.status(400).json({ message: emailValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        emailValidation.message || '유효성 검사 실패',
+      );
     }
 
     const passwordValidation = AuthValidator.validatePassword(password);
     if (!passwordValidation.isValid) {
-      res.status(400).json({ message: passwordValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        passwordValidation.message || '유효성 검사 실패',
+      );
     }
 
     const termsValidation = AuthValidator.validateBoolean(
@@ -43,8 +48,10 @@ export class RegistrationController {
       'isTermsAgreed',
     );
     if (!termsValidation.isValid || !isTermsAgreed) {
-      res.status(400).json({ message: '서비스 이용약관에 동의해야 합니다.' });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        '서비스 이용약관에 동의해야 합니다.',
+      );
     }
 
     try {
@@ -55,18 +62,16 @@ export class RegistrationController {
           'email_verification',
         );
       if (hasRecentRequest) {
-        res.status(429).json({
-          message: '너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.',
-          retryAfter: 60,
-        });
-        return;
+        return ResponseBuilder.tooManyRequests(
+          res,
+          '너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.',
+        );
       }
 
       // 이메일 중복 확인
       const existingEmail = await this.userService.findByEmail(email);
       if (existingEmail) {
-        res.status(400).json({ message: '이미 사용 중인 이메일입니다.' });
-        return;
+        return ResponseBuilder.conflict(res, '이미 사용 중인 이메일입니다.');
       }
 
       // 사용자명 처리
@@ -76,18 +81,19 @@ export class RegistrationController {
       } else {
         const usernameValidation = UserValidator.validateUsername(username);
         if (!usernameValidation.isValid) {
-          res.status(400).json({ message: usernameValidation.message });
-          return;
+          return ResponseBuilder.badRequest(
+            res,
+            usernameValidation.message || '별명 형식이 올바르지 않습니다.',
+          );
         }
 
         const existingUsername =
           await this.userService.findByUsername(username);
         if (existingUsername) {
-          res.status(400).json({
-            message: '이미 사용 중인 별명입니다.',
-            suggestion: '자동 생성을 원하시면 별명을 비워두세요.',
-          });
-          return;
+          return ResponseBuilder.conflict(
+            res,
+            '이미 사용 중인 별명입니다. 자동 생성을 원하시면 별명을 비워두세요.',
+          );
         }
 
         finalUsername = username;
@@ -123,24 +129,27 @@ export class RegistrationController {
 
       if (!emailResult.success) {
         await this.verificationService.deleteVerificationCode(redisKey);
-        res.status(500).json({
-          message: '이메일 전송에 실패했습니다. 다시 시도해주세요.',
-          error: emailResult.error,
-        });
-        return;
+        return ResponseBuilder.internalError(
+          res,
+          '이메일 전송에 실패했습니다. 다시 시도해주세요.',
+          String(emailResult.error),
+        );
       }
 
-      res.status(200).json({
-        message: '회원가입 인증 코드가 이메일로 전송되었습니다.',
-        email,
-        username: finalUsername,
-        usernameGenerated: !username || username.trim() === '',
-        redisKey,
-        expiresIn: '3분',
-      });
+      return ResponseBuilder.success(
+        res,
+        '회원가입 인증 코드가 이메일로 전송되었습니다.',
+        {
+          email,
+          username: finalUsername,
+          usernameGenerated: !username || username.trim() === '',
+          redisKey,
+          expiresIn: '3분',
+        },
+      );
     } catch (error) {
       logger.error('회원가입 인증 이메일 전송 에러:', error);
-      res.status(500).json({ message: '이메일 전송 실패' });
+      return ResponseBuilder.internalError(res, '이메일 전송 실패');
     }
   };
 
@@ -148,8 +157,10 @@ export class RegistrationController {
     const { email, verificationCode } = req.body;
 
     if (!email || !verificationCode) {
-      res.status(400).json({ message: '이메일과 인증 코드를 입력해주세요.' });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        '이메일과 인증 코드를 입력해주세요.',
+      );
     }
 
     try {
@@ -158,30 +169,31 @@ export class RegistrationController {
         await this.verificationService.getVerificationCode(redisKey);
 
       if (!storedData) {
-        res
-          .status(410)
-          .json({ message: '인증 코드가 만료되었거나 존재하지 않습니다.' });
-        return;
+        return ResponseBuilder.gone(
+          res,
+          '인증 코드가 만료되었거나 존재하지 않습니다.',
+        );
       }
 
       if (storedData.code !== verificationCode) {
-        res.status(401).json({ message: '인증 코드가 일치하지 않습니다.' });
-        return;
+        return ResponseBuilder.unauthorized(
+          res,
+          '인증 코드가 일치하지 않습니다.',
+        );
       }
 
       if (!storedData.userData) {
-        res.status(400).json({
-          message: '사용자 데이터가 없습니다. 다시 회원가입을 시도해주세요.',
-        });
-        return;
+        return ResponseBuilder.badRequest(
+          res,
+          '사용자 데이터가 없습니다. 다시 회원가입을 시도해주세요.',
+        );
       }
 
       // 중복 재확인
       const existingEmail = await this.userService.findByEmail(email);
       if (existingEmail) {
         await this.verificationService.deleteVerificationCode(redisKey);
-        res.status(400).json({ message: '이미 사용 중인 이메일입니다.' });
-        return;
+        return ResponseBuilder.conflict(res, '이미 사용 중인 이메일입니다.');
       }
 
       // 실제 사용자 생성
@@ -217,20 +229,23 @@ export class RegistrationController {
         }
       });
 
-      res.status(201).json({
-        message: '이메일 인증이 완료되어 회원가입이 성공했습니다!',
-        user: {
-          id: (updatedUser || newUser)._id,
-          email: (updatedUser || newUser).email,
-          username: (updatedUser || newUser).username,
-          profileImage: (updatedUser || newUser).profileImage,
-          createdAt: (updatedUser || newUser).createdAt,
+      return ResponseBuilder.created(
+        res,
+        '이메일 인증이 완료되어 회원가입이 성공했습니다!',
+        {
+          user: {
+            id: (updatedUser || newUser)._id,
+            email: (updatedUser || newUser).email,
+            username: (updatedUser || newUser).username,
+            profileImage: (updatedUser || newUser).profileImage,
+            createdAt: (updatedUser || newUser).createdAt,
+          },
         },
-      });
+      );
     } catch (error: unknown) {
       logger.error('회원가입 인증 완료 에러:', error);
       // Optionally, you can add more specific error handling here if needed
-      res.status(500).json({ message: '서버 에러로 회원가입 실패' });
+      return ResponseBuilder.internalError(res, '서버 에러로 회원가입 실패');
     }
   };
 
@@ -238,14 +253,15 @@ export class RegistrationController {
     const { email, base } = req.query;
 
     if (!email || typeof email !== 'string') {
-      res.status(400).json({ message: '이메일을 입력해주세요.' });
-      return;
+      return ResponseBuilder.badRequest(res, '이메일을 입력해주세요.');
     }
 
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      res.status(400).json({ message: emailValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        emailValidation.message || '유효성 검사 실패',
+      );
     }
 
     try {
@@ -254,15 +270,18 @@ export class RegistrationController {
         base ? String(base) : undefined,
       );
 
-      res.status(200).json({
-        message: '사용자명이 성공적으로 생성되었습니다.',
-        username: generatedUsername,
-        available: true,
-        generatedFrom: base ? `기본값: ${base}` : `이메일: ${email}`,
-      });
+      return ResponseBuilder.success(
+        res,
+        '사용자명이 성공적으로 생성되었습니다.',
+        {
+          username: generatedUsername,
+          available: true,
+          generatedFrom: base ? `기본값: ${base}` : `이메일: ${email}`,
+        },
+      );
     } catch (error) {
       logger.error('사용자명 생성 에러:', error);
-      res.status(500).json({ message: '사용자명 생성 실패' });
+      return ResponseBuilder.internalError(res, '사용자명 생성 실패');
     }
   };
 
@@ -271,30 +290,25 @@ export class RegistrationController {
 
     const usernameValidation = UserValidator.validateUsername(username);
     if (!usernameValidation.isValid) {
-      res.status(400).json({
-        message: usernameValidation.message,
-        available: false,
-      });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        usernameValidation.message || '별명 형식이 올바르지 않습니다.',
+      );
     }
 
     try {
       const existingUser = await this.userService.findByUsername(username);
 
       if (existingUser) {
-        res.status(400).json({
-          message: '이미 사용 중인 별명입니다.',
-          available: false,
-        });
+        return ResponseBuilder.conflict(res, '이미 사용 중인 별명입니다.');
       } else {
-        res.status(200).json({
-          message: '사용 가능한 별명입니다.',
+        return ResponseBuilder.success(res, '사용 가능한 별명입니다.', {
           available: true,
         });
       }
     } catch (error) {
       logger.error('별명 중복 확인 에러:', error);
-      res.status(500).json({ message: '별명 중복 확인 실패' });
+      return ResponseBuilder.internalError(res, '별명 중복 확인 실패');
     }
   };
 }

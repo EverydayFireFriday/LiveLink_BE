@@ -4,6 +4,7 @@ import { concertSchema } from './concertSchema';
 import { errorSchema } from './errorSchema';
 import { commentSchema } from './commentSchema';
 import { authSchemas } from './auth';
+import { responseSchema } from './responseSchema';
 
 export const swaggerSchemas = {
   ...articleSchema,
@@ -12,4 +13,5 @@ export const swaggerSchemas = {
   ...errorSchema,
   ...commentSchema,
   ...authSchemas,
+  ...responseSchema,
 };
