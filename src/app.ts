@@ -468,7 +468,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
 
 // 정적 라우터 연결
 app.use('/health', healthRouter);
-app.use('/swagger', swaggerRouter);
+app.use('/swagger-json', swaggerRouter);
 app.use('/terms', termsRouter);
 // 기본 Rate Limiter 적용
 app.use(defaultLimiter);

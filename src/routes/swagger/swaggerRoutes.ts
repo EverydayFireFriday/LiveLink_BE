@@ -5,7 +5,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /swagger/swagger.json:
+ * /swagger-json:
  *   get:
  *     summary: Swagger JSON 다운로드
  *     description: API 명세가 담긴 Swagger JSON 파일을 다운로드합니다.
@@ -18,6 +18,6 @@ const router = express.Router();
  *             schema:
  *               type: object
  */
-router.get('/swagger.json', getSwaggerJson);
+router.get('/', getSwaggerJson);
 
 export default router;
