@@ -2,6 +2,7 @@ import express from 'express';
 import { ChatRoomService } from '../../services/chat/chatRoomService';
 import { MessageService } from '../../services/chat/messageService';
 import { ChatRoomCreateRequest } from '../../types/chat';
+import { ResponseBuilder } from '../../utils/response/apiResponse';
 
 export class ChatController {
   private chatRoomService: ChatRoomService;
@@ -16,7 +17,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const roomData: ChatRoomCreateRequest = req.body;
@@ -25,16 +26,13 @@ export class ChatController {
         roomData,
       );
 
-      res.status(201).json({
-        message: '채팅방이 생성되었습니다.',
-        data: chatRoom,
-      });
+      return ResponseBuilder.created(res, '채팅방이 생성되었습니다.', chatRoom);
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(500).json({ message: errorMessage });
+      return ResponseBuilder.internalError(res, errorMessage);
     }
   };
 
@@ -42,21 +40,22 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const chatRooms = await this.chatRoomService.getUserChatRooms(userId);
 
-      res.json({
-        message: '채팅방 목록을 조회했습니다.',
-        data: chatRooms,
-      });
+      return ResponseBuilder.success(
+        res,
+        '채팅방 목록을 조회했습니다.',
+        chatRooms,
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(500).json({ message: errorMessage });
+      return ResponseBuilder.internalError(res, errorMessage);
     }
   };
 
@@ -70,16 +69,17 @@ export class ChatController {
         skip,
       );
 
-      res.json({
-        message: '공개 채팅방 목록을 조회했습니다.',
-        data: chatRooms,
-      });
+      return ResponseBuilder.success(
+        res,
+        '공개 채팅방 목록을 조회했습니다.',
+        chatRooms,
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(500).json({ message: errorMessage });
+      return ResponseBuilder.internalError(res, errorMessage);
     }
   };
 
@@ -87,26 +87,27 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { roomId } = req.params;
       const chatRoom = await this.chatRoomService.getChatRoom(roomId, userId);
 
       if (!chatRoom) {
-        return res.status(404).json({ message: '채팅방을 찾을 수 없습니다.' });
+        return ResponseBuilder.notFound(res, '채팅방을 찾을 수 없습니다.');
       }
 
-      res.json({
-        message: '채팅방 정보를 조회했습니다.',
-        data: chatRoom,
-      });
+      return ResponseBuilder.success(
+        res,
+        '채팅방 정보를 조회했습니다.',
+        chatRoom,
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(403).json({ message: errorMessage });
+      return ResponseBuilder.forbidden(res, errorMessage);
     }
   };
 
@@ -114,22 +115,19 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { roomId } = req.params;
       const chatRoom = await this.chatRoomService.joinChatRoom(roomId, userId);
 
-      res.json({
-        message: '채팅방에 참여했습니다.',
-        data: chatRoom,
-      });
+      return ResponseBuilder.success(res, '채팅방에 참여했습니다.', chatRoom);
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(400).json({ message: errorMessage });
+      return ResponseBuilder.badRequest(res, errorMessage);
     }
   };
 
@@ -137,23 +135,23 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { roomId } = req.params;
       const success = await this.chatRoomService.leaveChatRoom(roomId, userId);
 
       if (success) {
-        res.json({ message: '채팅방을 떠났습니다.' });
+        return ResponseBuilder.success(res, '채팅방을 떠났습니다.');
       } else {
-        res.status(400).json({ message: '채팅방 떠나기에 실패했습니다.' });
+        return ResponseBuilder.badRequest(res, '채팅방 떠나기에 실패했습니다.');
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(500).json({ message: errorMessage });
+      return ResponseBuilder.internalError(res, errorMessage);
     }
   };
 
@@ -161,7 +159,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { roomId } = req.params;
@@ -175,16 +173,17 @@ export class ChatController {
         skip,
       );
 
-      res.json({
-        message: '메시지 목록을 조회했습니다.',
-        data: messages,
-      });
+      return ResponseBuilder.success(
+        res,
+        '메시지 목록을 조회했습니다.',
+        messages,
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(403).json({ message: errorMessage });
+      return ResponseBuilder.forbidden(res, errorMessage);
     }
   };
 
@@ -192,7 +191,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { messageId } = req.params;
@@ -205,19 +204,16 @@ export class ChatController {
       );
 
       if (!message) {
-        return res.status(404).json({ message: '메시지를 찾을 수 없습니다.' });
+        return ResponseBuilder.notFound(res, '메시지를 찾을 수 없습니다.');
       }
 
-      res.json({
-        message: '메시지가 수정되었습니다.',
-        data: message,
-      });
+      return ResponseBuilder.success(res, '메시지가 수정되었습니다.', message);
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(403).json({ message: errorMessage });
+      return ResponseBuilder.forbidden(res, errorMessage);
     }
   };
 
@@ -225,7 +221,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { messageId } = req.params;
@@ -235,16 +231,16 @@ export class ChatController {
       );
 
       if (success) {
-        res.json({ message: '메시지가 삭제되었습니다.' });
+        return ResponseBuilder.success(res, '메시지가 삭제되었습니다.');
       } else {
-        res.status(404).json({ message: '메시지를 찾을 수 없습니다.' });
+        return ResponseBuilder.notFound(res, '메시지를 찾을 수 없습니다.');
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(403).json({ message: errorMessage });
+      return ResponseBuilder.forbidden(res, errorMessage);
     }
   };
 
@@ -254,7 +250,7 @@ export class ChatController {
       const limit = parseInt(req.query.limit as string) || 20;
 
       if (!searchTerm || typeof searchTerm !== 'string') {
-        return res.status(400).json({ message: '검색어가 필요합니다.' });
+        return ResponseBuilder.badRequest(res, '검색어가 필요합니다.');
       }
 
       const chatRooms = await this.chatRoomService.searchChatRooms(
@@ -262,16 +258,13 @@ export class ChatController {
         limit,
       );
 
-      res.json({
-        message: '채팅방 검색 결과입니다.',
-        data: chatRooms,
-      });
+      return ResponseBuilder.success(res, '채팅방 검색 결과입니다.', chatRooms);
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(500).json({ message: errorMessage });
+      return ResponseBuilder.internalError(res, errorMessage);
     }
   };
 
@@ -279,7 +272,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return res.status(401).json({ message: '로그인이 필요합니다.' });
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
       const { roomId } = req.params;
@@ -287,7 +280,7 @@ export class ChatController {
       const limit = parseInt(req.query.limit as string) || 20;
 
       if (!searchTerm || typeof searchTerm !== 'string') {
-        return res.status(400).json({ message: '검색어가 필요합니다.' });
+        return ResponseBuilder.badRequest(res, '검색어가 필요합니다.');
       }
 
       const messages = await this.messageService.searchMessages(
@@ -297,16 +290,13 @@ export class ChatController {
         limit,
       );
 
-      res.json({
-        message: '메시지 검색 결과입니다.',
-        data: messages,
-      });
+      return ResponseBuilder.success(res, '메시지 검색 결과입니다.', messages);
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : '알 수 없는 오류가 발생했습니다.';
-      res.status(403).json({ message: errorMessage });
+      return ResponseBuilder.forbidden(res, errorMessage);
     }
   };
 }

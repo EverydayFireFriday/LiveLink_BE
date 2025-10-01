@@ -2,6 +2,7 @@ import express from 'express';
 import { getArticleService } from '../../services/article';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
+import { ResponseBuilder } from '../../utils/response/apiResponse';
 
 export class ArticleController {
   private articleService = getArticleService();
@@ -12,9 +13,7 @@ export class ArticleController {
     res: express.Response,
   ): boolean {
     if (!req.session?.user?.userId) {
-      res.status(401).json({
-        message: '로그인이 필요합니다.',
-      });
+      ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       return false;
     }
     return true;
@@ -27,24 +26,30 @@ export class ArticleController {
 
       const article = await this.articleService.createArticle(req.body);
 
-      res.status(201).json({
-        message: '게시글이 성공적으로 생성되었습니다.',
-        article,
-      });
+      return ResponseBuilder.created(
+        res,
+        '게시글이 성공적으로 생성되었습니다.',
+        { article },
+      );
     } catch (error: unknown) {
       logger.error('게시글 생성 에러:', error);
 
       if (error instanceof Error) {
         if (error.message.includes('유효성 검사')) {
-          res.status(400).json({ message: error.message });
+          return ResponseBuilder.badRequest(res, error.message);
         } else if (error.message.includes('존재하지 않는')) {
-          res.status(404).json({ message: error.message });
-        } else {
-          res.status(500).json({ message: '게시글 생성에 실패했습니다.' });
+          return ResponseBuilder.notFound(res, error.message);
         }
-      } else {
-        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
+        return ResponseBuilder.internalError(
+          res,
+          '게시글 생성에 실패했습니다.',
+          error.message,
+        );
       }
+      return ResponseBuilder.internalError(
+        res,
+        '알 수 없는 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -62,22 +67,24 @@ export class ArticleController {
       // 조회수 증가
       await this.articleService.incrementViews(id);
 
-      res.status(200).json({
-        message: '게시글 조회 성공',
-        article,
-      });
+      return ResponseBuilder.success(res, '게시글 조회 성공', { article });
     } catch (error: unknown) {
       logger.error('게시글 조회 에러:', error);
 
       if (error instanceof Error) {
         if (error.message.includes('찾을 수 없습니다')) {
-          res.status(404).json({ message: error.message });
-        } else {
-          res.status(500).json({ message: '게시글 조회에 실패했습니다.' });
+          return ResponseBuilder.notFound(res, error.message);
         }
-      } else {
-        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
+        return ResponseBuilder.internalError(
+          res,
+          '게시글 조회에 실패했습니다.',
+          error.message,
+        );
       }
+      return ResponseBuilder.internalError(
+        res,
+        '알 수 없는 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -100,19 +107,23 @@ export class ArticleController {
         search,
       });
 
-      res.status(200).json({
-        message: '게시글 목록 조회 성공',
-        articles: result.articles,
-        pagination: {
+      return ResponseBuilder.paginated(
+        res,
+        '게시글 목록 조회 성공',
+        { articles: result.articles },
+        {
           page: result.page,
           limit,
           total: result.total,
           totalPages: result.totalPages,
         },
-      });
+      );
     } catch (error) {
       logger.error('게시글 목록 조회 에러:', error);
-      res.status(500).json({ message: '게시글 목록 조회에 실패했습니다.' });
+      return ResponseBuilder.internalError(
+        res,
+        '게시글 목록 조회에 실패했습니다.',
+      );
     }
   };
 
@@ -124,24 +135,30 @@ export class ArticleController {
       const { id } = req.params;
       const article = await this.articleService.updateArticle(id, req.body);
 
-      res.status(200).json({
-        message: '게시글이 성공적으로 수정되었습니다.',
-        article,
-      });
+      return ResponseBuilder.success(
+        res,
+        '게시글이 성공적으로 수정되었습니다.',
+        { article },
+      );
     } catch (error: unknown) {
       logger.error('게시글 수정 에러:', error);
 
       if (error instanceof Error) {
         if (error.message.includes('유효성 검사')) {
-          res.status(400).json({ message: error.message });
+          return ResponseBuilder.badRequest(res, error.message);
         } else if (error.message.includes('찾을 수 없습니다')) {
-          res.status(404).json({ message: error.message });
-        } else {
-          res.status(500).json({ message: '게시글 수정에 실패했습니다.' });
+          return ResponseBuilder.notFound(res, error.message);
         }
-      } else {
-        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
+        return ResponseBuilder.internalError(
+          res,
+          '게시글 수정에 실패했습니다.',
+          error.message,
+        );
       }
+      return ResponseBuilder.internalError(
+        res,
+        '알 수 없는 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -153,21 +170,27 @@ export class ArticleController {
       const { id } = req.params;
       await this.articleService.deleteArticle(id);
 
-      res.status(200).json({
-        message: '게시글이 성공적으로 삭제되었습니다.',
-      });
+      return ResponseBuilder.noContent(
+        res,
+        '게시글이 성공적으로 삭제되었습니다.',
+      );
     } catch (error: unknown) {
       logger.error('게시글 삭제 에러:', error);
 
       if (error instanceof Error) {
         if (error.message.includes('찾을 수 없습니다')) {
-          res.status(404).json({ message: error.message });
-        } else {
-          res.status(500).json({ message: '게시글 삭제에 실패했습니다.' });
+          return ResponseBuilder.notFound(res, error.message);
         }
-      } else {
-        res.status(500).json({ message: '알 수 없는 오류가 발생했습니다.' });
+        return ResponseBuilder.internalError(
+          res,
+          '게시글 삭제에 실패했습니다.',
+          error.message,
+        );
       }
+      return ResponseBuilder.internalError(
+        res,
+        '알 수 없는 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -184,19 +207,23 @@ export class ArticleController {
         includeUnpublished,
       });
 
-      res.status(200).json({
-        message: '작성자별 게시글 목록 조회 성공',
-        articles: result.articles,
-        pagination: {
+      return ResponseBuilder.paginated(
+        res,
+        '작성자별 게시글 목록 조회 성공',
+        { articles: result.articles },
+        {
           page: result.page,
           limit,
           total: result.total,
           totalPages: result.totalPages,
         },
-      });
+      );
     } catch (error) {
       logger.error('작성자별 게시글 조회 에러:', error);
-      res.status(500).json({ message: '작성자별 게시글 조회에 실패했습니다.' });
+      return ResponseBuilder.internalError(
+        res,
+        '작성자별 게시글 조회에 실패했습니다.',
+      );
     }
   };
 
@@ -212,19 +239,23 @@ export class ArticleController {
         days,
       });
 
-      res.status(200).json({
-        message: '인기 게시글 목록 조회 성공',
-        articles: result.articles,
-        pagination: {
+      return ResponseBuilder.paginated(
+        res,
+        '인기 게시글 목록 조회 성공',
+        { articles: result.articles },
+        {
           page: result.page,
           limit,
           total: result.total,
           totalPages: result.totalPages,
         },
-      });
+      );
     } catch (error) {
       logger.error('인기 게시글 조회 에러:', error);
-      res.status(500).json({ message: '인기 게시글 조회에 실패했습니다.' });
+      return ResponseBuilder.internalError(
+        res,
+        '인기 게시글 조회에 실패했습니다.',
+      );
     }
   };
 }
