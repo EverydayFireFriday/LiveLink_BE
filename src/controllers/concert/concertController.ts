@@ -281,7 +281,7 @@ export const getRandomConcerts = async (
 
     if (result.success) {
       return ResponseBuilder.success(res, '랜덤 콘서트 목록 조회 성공', {
-        ...result.data,
+        concerts: result.data,
         metadata: {
           count: result.data.length,
           filter: {
@@ -331,7 +331,7 @@ export const getLatestConcerts = async (
 
     if (result.success) {
       return ResponseBuilder.success(res, '최신 콘서트 목록 조회 성공', {
-        ...result.data,
+        concerts: result.data,
         metadata: {
           count: result.data.length,
           filter: {
