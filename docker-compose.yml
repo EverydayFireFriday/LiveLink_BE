@@ -1,10 +1,11 @@
-version: '3.8'
-
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # GitHub Container Registry 이미지 사용 (CI/CD로 자동 빌드됨)
+    image: ghcr.io/everydayfirefriday/livelink_be:latest
+    # 로컬 개발 시 빌드를 원하면 아래 주석 해제하고 위의 image 주석 처리
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     ports:
       - '3000:3000'
     depends_on:
