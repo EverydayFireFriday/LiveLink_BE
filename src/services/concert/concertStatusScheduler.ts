@@ -1,6 +1,7 @@
 import { Db } from 'mongodb';
 import logger from '../../utils/logger/logger';
 import { IConcert } from '../../models/concert/base/ConcertTypes';
+import { env } from '../../config/env/env';
 
 /**
  * 콘서트 상태 자동 업데이트 서비스
@@ -9,10 +10,12 @@ import { IConcert } from '../../models/concert/base/ConcertTypes';
 export class ConcertStatusScheduler {
   private db: Db;
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly CHECK_INTERVAL = 10 * 60 * 1000; // 10분마다 체크
+  private readonly CHECK_INTERVAL: number;
 
   constructor(db: Db) {
     this.db = db;
+    // 환경 변수에서 체크 간격 가져오기 (기본값: 30분)
+    this.CHECK_INTERVAL = parseInt(env.CONCERT_STATUS_CHECK_INTERVAL);
   }
 
   /**
@@ -24,8 +27,9 @@ export class ConcertStatusScheduler {
       return;
     }
 
+    const intervalMinutes = Math.floor(this.CHECK_INTERVAL / 60 / 1000);
     logger.info(
-      '🕐 Concert status scheduler started (checks every 10 minutes)',
+      `🕐 Concert status scheduler started (checks every ${intervalMinutes} minutes)`,
     );
 
     // 즉시 한 번 실행
@@ -33,7 +37,7 @@ export class ConcertStatusScheduler {
       logger.error('Error in initial concert status update:', error);
     });
 
-    // 주기적으로 실행 (10분마다)
+    // 주기적으로 실행
     this.intervalId = setInterval(() => {
       this.updateConcertStatuses().catch((error) => {
         logger.error('Error in scheduled concert status update:', error);
