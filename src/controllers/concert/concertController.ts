@@ -2,6 +2,7 @@ import express from 'express';
 import { ConcertService } from '../../services/concert/concertService';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
+import { ResponseBuilder } from '../../utils/response/apiResponse';
 
 export const uploadConcert = async (
   req: express.Request,
@@ -10,10 +11,7 @@ export const uploadConcert = async (
   try {
     // 요청 데이터 유효성 검사
     if (!req.body) {
-      return res.status(400).json({
-        message: '요청 본문이 비어있습니다.',
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, '요청 본문이 비어있습니다.');
     }
 
     // 미들웨어에서 이미 인증 처리되었으므로 여기서는 서비스 로직만
@@ -34,9 +32,8 @@ export const uploadConcert = async (
         `✅ 콘서트 정보 저장 완료: ${result.data.title} (UID: ${result.data.uid}) - 업로드 사용자: ${userInfo.username} (${userInfo.email})`,
       );
 
-      res.status(result.statusCode || 201).json({
-        message: '콘서트 정보 업로드 성공',
-        data: result.data,
+      return ResponseBuilder.created(res, '콘서트 정보 업로드 성공', {
+        ...result.data,
         metadata: {
           imageInfo: {
             posterImageProvided: !!result.data.posterImage,
@@ -57,13 +54,12 @@ export const uploadConcert = async (
             categoryCount: result.data.category?.length || 0,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      res.status(result.statusCode || 400).json({
-        message: result.error || '콘서트 업로드 실패',
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(
+        res,
+        result.error || '콘서트 업로드 실패',
+      );
     }
   } catch (error) {
     logger.error('❌ 콘서트 업로드 컨트롤러 에러:', error);
@@ -71,27 +67,23 @@ export const uploadConcert = async (
     // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
       if (error.message.includes('유효성 검사 실패')) {
-        return res.status(400).json({
-          message: '입력 데이터가 유효하지 않습니다.',
-          error: error.message,
-          timestamp: new Date().toISOString(),
-        });
+        return ResponseBuilder.badRequest(
+          res,
+          '입력 데이터가 유효하지 않습니다.',
+          error.message,
+        );
       }
 
       if (error.message.includes('중복')) {
-        return res.status(409).json({
-          message: '중복된 콘서트 UID입니다.',
-          error: error.message,
-          timestamp: new Date().toISOString(),
-        });
+        return ResponseBuilder.conflict(res, '중복된 콘서트 UID입니다.');
       }
     }
 
-    res.status(500).json({
-      message: '서버 에러로 콘서트 업로드 실패',
-      error: error instanceof Error ? error.message : '알 수 없는 에러',
-      timestamp: new Date().toISOString(),
-    });
+    return ResponseBuilder.internalError(
+      res,
+      '서버 에러로 콘서트 업로드 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };
 
@@ -104,10 +96,7 @@ export const getConcert = async (
 
     // ID 유효성 검사
     if (!id || id.trim().length === 0) {
-      return res.status(400).json({
-        message: '콘서트 ID가 필요합니다.',
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, '콘서트 ID가 필요합니다.');
     }
 
     // 세션에서 사용자 ID 가져오기 (로그인하지 않은 경우 undefined)
@@ -120,9 +109,8 @@ export const getConcert = async (
     const result = await ConcertService.getConcert(id, userId);
 
     if (result.success) {
-      res.status(result.statusCode || 200).json({
-        message: '콘서트 정보 조회 성공',
-        data: result.data,
+      return ResponseBuilder.success(res, '콘서트 정보 조회 성공', {
+        ...result.data,
         metadata: {
           userInfo: userId
             ? {
@@ -148,25 +136,26 @@ export const getConcert = async (
               ).length || 0,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      const statusCode =
-        result.statusCode || (result.error?.includes('찾을 수 없') ? 404 : 500);
-      res.status(statusCode).json({
-        message: result.error || '콘서트 조회 실패',
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      if (result.error?.includes('찾을 수 없')) {
+        return ResponseBuilder.notFound(
+          res,
+          result.error || '콘서트를 찾을 수 없습니다.',
+        );
+      }
+      return ResponseBuilder.badRequest(
+        res,
+        result.error || '콘서트 조회 실패',
+      );
     }
   } catch (error) {
     logger.info('❌ 콘서트 조회 컨트롤러 에러:', error);
-    res.status(500).json({
-      message: '콘서트 조회 실패',
-      error: error instanceof Error ? error.message : '알 수 없는 에러',
-      requestedId: req.params.id,
-      timestamp: new Date().toISOString(),
-    });
+    return ResponseBuilder.internalError(
+      res,
+      '콘서트 조회 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };
 
@@ -180,17 +169,17 @@ export const getAllConcerts = async (
     const limit = Math.min(safeParseInt(req.query.limit, 20), 100);
 
     if (page < 1) {
-      return res.status(400).json({
-        message: '페이지 번호는 1 이상이어야 합니다.',
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(
+        res,
+        '페이지 번호는 1 이상이어야 합니다.',
+      );
     }
 
     if (limit < 1) {
-      return res.status(400).json({
-        message: '페이지당 항목 수는 1 이상이어야 합니다.',
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(
+        res,
+        '페이지당 항목 수는 1 이상이어야 합니다.',
+      );
     }
 
     // 사용자 ID 가져오기 (로그인된 경우)
@@ -228,9 +217,8 @@ export const getAllConcerts = async (
     );
 
     if (result.success) {
-      res.status(result.statusCode || 200).json({
-        message: '콘서트 목록 조회 성공',
-        data: result.data, // 이미 concerts와 pagination 포함
+      return ResponseBuilder.success(res, '콘서트 목록 조회 성공', {
+        ...result.data, // 이미 concerts와 pagination 포함
         metadata: {
           userInfo: userId
             ? {
@@ -254,21 +242,20 @@ export const getAllConcerts = async (
             totalPages: result.data.pagination?.totalPages || 0,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      res.status(result.statusCode || 500).json({
-        message: result.error || '콘서트 목록 조회 실패',
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.internalError(
+        res,
+        result.error || '콘서트 목록 조회 실패',
+      );
     }
   } catch (error) {
     logger.error('❌ 콘서트 목록 조회 컨트롤러 에러:', error);
-    res.status(500).json({
-      message: '콘서트 목록 조회 실패',
-      error: error instanceof Error ? error.message : '알 수 없는 에러',
-      timestamp: new Date().toISOString(),
-    });
+    return ResponseBuilder.internalError(
+      res,
+      '콘서트 목록 조회 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };
 
@@ -281,49 +268,44 @@ export const getRandomConcerts = async (
     const userId = req.session?.user?.userId;
 
     if (limit < 1) {
-      return res.status(400).json({
-        message: "limit은 1 이상이어야 합니다.",
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, 'limit은 1 이상이어야 합니다.');
     }
 
     logger.info(
       `🔀 랜덤 콘서트 조회: limit=${limit}, 사용자=${
-        userId ? "로그인됨" : "비로그인"
-      }`
+        userId ? '로그인됨' : '비로그인'
+      }`,
     );
 
     const result = await ConcertService.getRandomConcerts(limit, userId);
 
     if (result.success) {
-      res.status(result.statusCode || 200).json({
-        message: "랜덤 콘서트 목록 조회 성공",
-        data: result.data,
+      return ResponseBuilder.success(res, '랜덤 콘서트 목록 조회 성공', {
+        concerts: result.data,
         metadata: {
           count: result.data.length,
           filter: {
-            status: ["upcoming", "ongoing"],
+            status: ['upcoming', 'ongoing'],
           },
           userInfo: {
             isAuthenticated: !!userId,
             userId: userId || null,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      res.status(result.statusCode || 500).json({
-        message: result.error || "랜덤 콘서트 목록 조회 실패",
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.internalError(
+        res,
+        result.error || '랜덤 콘서트 목록 조회 실패',
+      );
     }
   } catch (error) {
-    logger.error("❌ 랜덤 콘서트 조회 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "랜덤 콘서트 조회 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('❌ 랜덤 콘서트 조회 컨트롤러 에러:', error);
+    return ResponseBuilder.internalError(
+      res,
+      '랜덤 콘서트 조회 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };
 
@@ -336,50 +318,45 @@ export const getLatestConcerts = async (
     const userId = req.session?.user?.userId;
 
     if (limit < 1) {
-      return res.status(400).json({
-        message: "limit은 1 이상이어야 합니다.",
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, 'limit은 1 이상이어야 합니다.');
     }
 
     logger.info(
       `🆕 최신 콘서트 조회: limit=${limit}, 사용자=${
-        userId ? "로그인됨" : "비로그인"
-      }`
+        userId ? '로그인됨' : '비로그인'
+      }`,
     );
 
     const result = await ConcertService.getLatestConcerts(limit, userId);
 
     if (result.success) {
-      res.status(result.statusCode || 200).json({
-        message: "최신 콘서트 목록 조회 성공",
-        data: result.data,
+      return ResponseBuilder.success(res, '최신 콘서트 목록 조회 성공', {
+        concerts: result.data,
         metadata: {
           count: result.data.length,
           filter: {
-            status: ["upcoming", "ongoing"],
+            status: ['upcoming', 'ongoing'],
           },
-          sort: "createdAt: -1",
+          sort: 'createdAt: -1',
           userInfo: {
             isAuthenticated: !!userId,
             userId: userId || null,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      res.status(result.statusCode || 500).json({
-        message: result.error || "최신 콘서트 목록 조회 실패",
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.internalError(
+        res,
+        result.error || '최신 콘서트 목록 조회 실패',
+      );
     }
   } catch (error) {
-    logger.error("❌ 최신 콘서트 조회 컨트롤러 에러:", error);
-    res.status(500).json({
-      message: "최신 콘서트 조회 실패",
-      error: error instanceof Error ? error.message : "알 수 없는 에러",
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('❌ 최신 콘서트 조회 컨트롤러 에러:', error);
+    return ResponseBuilder.internalError(
+      res,
+      '최신 콘서트 조회 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };
 
@@ -392,20 +369,12 @@ export const updateConcert = async (
 
     // ID 유효성 검사
     if (!id || id.trim().length === 0) {
-      return res.status(400).json({
-        message: '콘서트 ID가 필요합니다.',
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, '콘서트 ID가 필요합니다.');
     }
 
     // 요청 본문 유효성 검사
     if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        message: '수정할 데이터가 없습니다.',
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, '수정할 데이터가 없습니다.');
     }
 
     // 수정 불가능한 필드 확인 및 제거
@@ -428,12 +397,7 @@ export const updateConcert = async (
     );
 
     if (modifiableFields.length === 0) {
-      return res.status(400).json({
-        message: '수정 가능한 필드가 없습니다.',
-        restrictedFieldsProvided: providedRestrictedFields,
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, '수정 가능한 필드가 없습니다.');
     }
 
     // 미들웨어에서 이미 인증 확인됨
@@ -453,9 +417,8 @@ export const updateConcert = async (
         `✅ 콘서트 정보 수정 완료: ${id} - 수정 필드: [${modifiableFields.join(', ')}] - 수정 사용자: ${userInfo.username} (${userInfo.email})`,
       );
 
-      res.status(result.statusCode || 200).json({
-        message: '콘서트 정보 수정 성공',
-        data: result.data,
+      return ResponseBuilder.success(res, '콘서트 정보 수정 성공', {
+        ...result.data,
         metadata: {
           userInfo: {
             modifiedBy: userInfo.email,
@@ -468,16 +431,18 @@ export const updateConcert = async (
             totalFieldsModified: modifiableFields.length,
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      const statusCode =
-        result.statusCode || (result.error?.includes('찾을 수 없') ? 404 : 400);
-      res.status(statusCode).json({
-        message: result.error || '콘서트 수정 실패',
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      if (result.error?.includes('찾을 수 없')) {
+        return ResponseBuilder.notFound(
+          res,
+          result.error || '콘서트를 찾을 수 없습니다.',
+        );
+      }
+      return ResponseBuilder.badRequest(
+        res,
+        result.error || '콘서트 수정 실패',
+      );
     }
   } catch (error) {
     logger.info('❌ 콘서트 수정 컨트롤러 에러:', error);
@@ -485,30 +450,23 @@ export const updateConcert = async (
     // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
       if (error.message.includes('유효성 검사 실패')) {
-        return res.status(400).json({
-          message: '수정 데이터가 유효하지 않습니다.',
-          error: error.message,
-          requestedId: req.params.id,
-          timestamp: new Date().toISOString(),
-        });
+        return ResponseBuilder.badRequest(
+          res,
+          '수정 데이터가 유효하지 않습니다.',
+          error.message,
+        );
       }
 
       if (error.message.includes('찾을 수 없')) {
-        return res.status(404).json({
-          message: '콘서트를 찾을 수 없습니다.',
-          error: error.message,
-          requestedId: req.params.id,
-          timestamp: new Date().toISOString(),
-        });
+        return ResponseBuilder.notFound(res, '콘서트를 찾을 수 없습니다.');
       }
     }
 
-    res.status(500).json({
-      message: '콘서트 수정 실패',
-      error: error instanceof Error ? error.message : '알 수 없는 에러',
-      requestedId: req.params.id,
-      timestamp: new Date().toISOString(),
-    });
+    return ResponseBuilder.internalError(
+      res,
+      '콘서트 수정 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };
 export const deleteConcert = async (
@@ -520,11 +478,7 @@ export const deleteConcert = async (
 
     // ID 유효성 검사
     if (!id || id.trim().length === 0) {
-      return res.status(400).json({
-        message: '콘서트 ID가 필요합니다.',
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      return ResponseBuilder.badRequest(res, '콘서트 ID가 필요합니다.');
     }
 
     logger.info(`🗑️ 콘서트 삭제 요청: ID=${id}`);
@@ -557,9 +511,8 @@ export const deleteConcert = async (
         );
       }
 
-      res.status(result.statusCode || 200).json({
-        message: '콘서트 삭제 성공',
-        data: result.data,
+      return ResponseBuilder.success(res, '콘서트 삭제 성공', {
+        ...result.data,
         metadata: {
           userInfo: {
             deletedBy: userInfo.email,
@@ -589,19 +542,20 @@ export const deleteConcert = async (
             deletedAt: new Date().toISOString(),
           },
         },
-        timestamp: new Date().toISOString(),
       });
     } else {
-      const statusCode =
-        result.statusCode || (result.error?.includes('찾을 수 없') ? 404 : 500);
-
       logger.info(`❌ 콘서트 삭제 실패: ${id} - ${result.error}`);
 
-      res.status(statusCode).json({
-        message: result.error || '콘서트 삭제 실패',
-        requestedId: id,
-        timestamp: new Date().toISOString(),
-      });
+      if (result.error?.includes('찾을 수 없')) {
+        return ResponseBuilder.notFound(
+          res,
+          result.error || '콘서트를 찾을 수 없습니다.',
+        );
+      }
+      return ResponseBuilder.internalError(
+        res,
+        result.error || '콘서트 삭제 실패',
+      );
     }
   } catch (error) {
     logger.error('❌ 콘서트 삭제 컨트롤러 에러:', error);
@@ -609,29 +563,18 @@ export const deleteConcert = async (
     // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
       if (error.message.includes('찾을 수 없')) {
-        return res.status(404).json({
-          message: '콘서트를 찾을 수 없습니다.',
-          error: error.message,
-          requestedId: req.params.id,
-          timestamp: new Date().toISOString(),
-        });
+        return ResponseBuilder.notFound(res, '콘서트를 찾을 수 없습니다.');
       }
 
       if (error.message.includes('권한')) {
-        return res.status(403).json({
-          message: '콘서트 삭제 권한이 없습니다.',
-          error: error.message,
-          requestedId: req.params.id,
-          timestamp: new Date().toISOString(),
-        });
+        return ResponseBuilder.forbidden(res, '콘서트 삭제 권한이 없습니다.');
       }
     }
 
-    res.status(500).json({
-      message: '콘서트 삭제 실패',
-      error: error instanceof Error ? error.message : '알 수 없는 에러',
-      requestedId: req.params.id,
-      timestamp: new Date().toISOString(),
-    });
+    return ResponseBuilder.internalError(
+      res,
+      '콘서트 삭제 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
   }
 };

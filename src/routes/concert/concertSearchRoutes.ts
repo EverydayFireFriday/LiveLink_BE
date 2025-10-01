@@ -265,7 +265,7 @@ router.get("/by-location/:location", getConcertsByLocation);
  *           type: string
  *           enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *         description: 음악 카테고리
- *         example: pop
+ *         example: rock/metal/indie
  *       - in: query
  *         name: page
  *         schema:

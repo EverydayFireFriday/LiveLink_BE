@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { Collection, ObjectId } from 'mongodb';
 import { getDatabase } from '../auth/user';
 import logger from '../../utils/logger/logger';
 
@@ -153,5 +153,13 @@ export class ChatRoomModel {
       .limit(limit)
       .sort({ lastActivity: -1 })
       .toArray();
+  }
+
+  async deleteByUser(userId: string | ObjectId): Promise<number> {
+    const objectId = typeof userId === 'string' ? new ObjectId(userId) : userId;
+    const result = await this.chatRoomCollection.deleteMany({
+      createdBy: objectId,
+    });
+    return result.deletedCount || 0;
   }
 }

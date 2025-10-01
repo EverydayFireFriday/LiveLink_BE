@@ -2,6 +2,7 @@ import express from 'express';
 import { PasswordService } from '../../services/auth/passwordService';
 import { AuthValidator } from '../../utils/validation/auth/authValidator';
 import logger from '../../utils/logger/logger';
+import { ResponseBuilder } from '../../utils/response/apiResponse';
 
 export class PasswordController {
   private passwordService: PasswordService;
@@ -18,29 +19,29 @@ export class PasswordController {
 
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      res.status(400).json({ message: emailValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        emailValidation.message || '유효성 검사 실패',
+      );
     }
 
     try {
       const result = await this.passwordService.requestPasswordReset(email);
 
       if (result.success) {
-        res.status(200).json({
-          message: result.message,
-          ...result.data,
-        });
+        return ResponseBuilder.success(res, result.message, result.data);
       } else {
-        const statusCode = result.message.includes('빈번한')
-          ? 429
-          : result.message.includes('찾을 수 없습니다')
-            ? 404
-            : 400;
-        res.status(statusCode).json({ message: result.message });
+        if (result.message.includes('빈번한')) {
+          return ResponseBuilder.tooManyRequests(res, result.message);
+        } else if (result.message.includes('찾을 수 없습니다')) {
+          return ResponseBuilder.notFound(res, result.message);
+        } else {
+          return ResponseBuilder.badRequest(res, result.message);
+        }
       }
     } catch (error) {
       logger.error('비밀번호 재설정 요청 에러:', error);
-      res.status(500).json({ message: '서버 에러가 발생했습니다.' });
+      return ResponseBuilder.internalError(res, '서버 에러가 발생했습니다.');
     }
   };
 
@@ -48,27 +49,32 @@ export class PasswordController {
     const { email, verificationCode, newPassword } = req.body;
 
     if (!email || !verificationCode || !newPassword) {
-      res.status(400).json({ message: '모든 필드를 입력해주세요.' });
-      return;
+      return ResponseBuilder.badRequest(res, '모든 필드를 입력해주세요.');
     }
 
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      res.status(400).json({ message: emailValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        emailValidation.message || '유효성 검사 실패',
+      );
     }
 
     const codeValidation =
       AuthValidator.validateVerificationCode(verificationCode);
     if (!codeValidation.isValid) {
-      res.status(400).json({ message: codeValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        codeValidation.message || '유효성 검사 실패',
+      );
     }
 
     const passwordValidation = AuthValidator.validatePassword(newPassword);
     if (!passwordValidation.isValid) {
-      res.status(400).json({ message: passwordValidation.message });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        passwordValidation.message || '유효성 검사 실패',
+      );
     }
 
     try {
@@ -79,18 +85,19 @@ export class PasswordController {
       );
 
       if (result.success) {
-        res.status(200).json({ message: result.message });
+        return ResponseBuilder.success(res, result.message);
       } else {
-        const statusCode = result.message.includes('만료')
-          ? 410
-          : result.message.includes('일치하지')
-            ? 401
-            : 400;
-        res.status(statusCode).json({ message: result.message });
+        if (result.message.includes('만료')) {
+          return ResponseBuilder.gone(res, result.message);
+        } else if (result.message.includes('일치하지')) {
+          return ResponseBuilder.unauthorized(res, result.message);
+        } else {
+          return ResponseBuilder.badRequest(res, result.message);
+        }
       }
     } catch (error) {
       logger.error('비밀번호 재설정 에러:', error);
-      res.status(500).json({ message: '서버 에러가 발생했습니다.' });
+      return ResponseBuilder.internalError(res, '서버 에러가 발생했습니다.');
     }
   };
 
@@ -98,23 +105,25 @@ export class PasswordController {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      res
-        .status(400)
-        .json({ message: '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.' });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.',
+      );
     }
 
     const passwordValidation = AuthValidator.validatePassword(newPassword);
     if (!passwordValidation.isValid) {
-      res.status(400).json({ message: `새 ${passwordValidation.message}` });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        `새 ${passwordValidation.message || '유효성 검사 실패'}`,
+      );
     }
 
     if (currentPassword === newPassword) {
-      res
-        .status(400)
-        .json({ message: '새 비밀번호는 현재 비밀번호와 달라야 합니다.' });
-      return;
+      return ResponseBuilder.badRequest(
+        res,
+        '새 비밀번호는 현재 비밀번호와 달라야 합니다.',
+      );
     }
 
     try {
@@ -126,14 +135,17 @@ export class PasswordController {
       );
 
       if (result.success) {
-        res.status(200).json({ message: result.message });
+        return ResponseBuilder.success(res, result.message);
       } else {
-        const statusCode = result.message.includes('일치하지') ? 401 : 400;
-        res.status(statusCode).json({ message: result.message });
+        if (result.message.includes('일치하지')) {
+          return ResponseBuilder.unauthorized(res, result.message);
+        } else {
+          return ResponseBuilder.badRequest(res, result.message);
+        }
       }
     } catch (error) {
       logger.error('비밀번호 변경 에러:', error);
-      res.status(500).json({ message: '서버 에러가 발생했습니다.' });
+      return ResponseBuilder.internalError(res, '서버 에러가 발생했습니다.');
     }
   };
 }

@@ -8,8 +8,10 @@ import {
 const router = express.Router();
 
 // 지연 로딩으로 컨트롤러 생성
-const getAuthController = () => {
-  const { AuthController } = require('../../controllers/auth/authController');
+const getAuthController = async () => {
+  const { AuthController } = await import(
+    '../../controllers/auth/authController'
+  );
   return new AuthController();
 };
 
@@ -105,7 +107,7 @@ const getAuthController = () => {
  *                   example: "서버 에러로 로그인 실패"
  */
 router.post('/login', loginLimiter, requireNoAuth, async (req, res) => {
-  const authController = getAuthController();
+  const authController = await getAuthController();
   await authController.login(req, res);
 });
 
@@ -143,8 +145,8 @@ router.post('/login', loginLimiter, requireNoAuth, async (req, res) => {
  *                   type: string
  *                   example: "로그아웃 실패"
  */
-router.post('/logout', requireAuth, (req, res) => {
-  const authController = getAuthController();
+router.post('/logout', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
   authController.logout(req, res);
 });
 
@@ -197,9 +199,95 @@ router.post('/logout', requireAuth, (req, res) => {
  *                       type: string
  *                       description: 세션 ID
  */
-router.get('/session', (req, res) => {
-  const authController = getAuthController();
+router.get('/session', async (req, res) => {
+  const authController = await getAuthController();
   authController.checkSession(req, res);
+});
+
+// 회원탈퇴
+/**
+ * @swagger
+ * /auth/account:
+ *   delete:
+ *     summary: 회원 탈퇴
+ *     description: 현재 로그인된 사용자의 계정을 삭제합니다. 일반 로그인 사용자는 비밀번호 확인이 필요하며, 소셜 로그인 사용자는 비밀번호 없이 탈퇴 가능합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 description: 비밀번호 (일반 로그인 사용자만 필수)
+ *                 example: "password123"
+ *     responses:
+ *       200:
+ *         description: 회원 탈퇴 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "회원 탈퇴가 완료되었습니다."
+ *       400:
+ *         description: 잘못된 요청 (비밀번호 미입력)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "비밀번호를 입력해주세요."
+ *       401:
+ *         description: 인증 실패 (로그인 필요 또는 비밀번호 불일치)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     not_authenticated:
+ *                       value: "인증이 필요합니다."
+ *                     wrong_password:
+ *                       value: "비밀번호가 일치하지 않습니다."
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "사용자를 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     deletion_failed:
+ *                       value: "회원 탈퇴 처리에 실패했습니다."
+ *                     server_error:
+ *                       value: "서버 에러로 회원 탈퇴에 실패했습니다."
+ */
+router.delete('/account', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.deleteAccount(req, res);
 });
 
 export default router;

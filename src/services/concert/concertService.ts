@@ -203,7 +203,7 @@ export class ConcertService {
 
       // 로그인한 사용자의 경우 좋아요 여부 확인
       let isLiked = false;
-      if (userId) {
+      if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
