@@ -12,6 +12,13 @@
   <img src="https://img.shields.io/badge/Database-MongoDB-green.svg" alt="MongoDB">
   <img src="https://img.shields.io/badge/Cache-Redis-red.svg" alt="Redis">
   <img src="https://img.shields.io/badge/Test-Jest-yellow.svg" alt="Jest">
+  <br/>
+  <a href="https://github.com/EverydayFireFriday/LiveLink_BE/actions/workflows/ci.yml">
+    <img src="https://github.com/EverydayFireFriday/LiveLink_BE/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+  </a>
+  <a href="https://github.com/EverydayFireFriday/LiveLink_BE/actions/workflows/cd.yml">
+    <img src="https://github.com/EverydayFireFriday/LiveLink_BE/actions/workflows/cd.yml/badge.svg" alt="CD Status">
+  </a>
 </p>
 
 ## ✨ 주요 기능
