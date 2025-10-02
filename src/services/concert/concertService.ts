@@ -18,7 +18,7 @@ export interface CreateConcertRequest {
   title: string;
   artist?: string[];
   location: string[]; // ILocation[] -> string[]로 변경
-  datetime: string[];
+  datetime?: string[]; // 선택적 필드 (날짜 미정인 경우 빈 배열 또는 생략 가능)
   price?: Array<{ tier: string; amount: number }>;
   description?: string;
   category?: string[];
@@ -118,9 +118,11 @@ export class ConcertService {
         location: Array.isArray(concertData.location)
           ? concertData.location
           : [concertData.location], // string 배열로 변경
-        datetime: Array.isArray(concertData.datetime)
-          ? concertData.datetime.map((dt) => new Date(dt)) // string을 Date로 변환
-          : [new Date(concertData.datetime)],
+        datetime: concertData.datetime
+          ? Array.isArray(concertData.datetime)
+            ? concertData.datetime.map((dt) => new Date(dt)) // string을 Date로 변환
+            : [new Date(concertData.datetime)]
+          : [], // datetime이 없으면 빈 배열
         price: Array.isArray(concertData.price)
           ? concertData.price
           : concertData.price
