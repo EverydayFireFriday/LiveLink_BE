@@ -411,7 +411,7 @@ export class ConcertService {
   }
 
   /**
-   * 최신 콘서트 목록 조회
+   * 최신 콘서트 목록 조회 (티켓 플랫폼별, 장르별로 적절히 섞어서 반환)
    */
   static async getLatestConcerts(
     limit: number,
@@ -424,14 +424,166 @@ export class ConcertService {
         status: { $in: ['upcoming', 'ongoing'] as const },
       };
 
-      const sort: Sort = { createdAt: -1 };
+      // 플랫폼별로 최신 콘서트 가져오기
+      const platformPipeline = [
+        { $match: filter },
+        { $sort: { createdAt: -1 } as Sort },
+        {
+          $addFields: {
+            primaryPlatform: {
+              $ifNull: [{ $arrayElemAt: ['$ticketLink.platform', 0] }, 'none'],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$primaryPlatform',
+            concerts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            platform: '$_id',
+            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+          },
+        },
+      ];
 
-      const latestConcerts = await ConcertModel.collection
-        .find(filter)
-        .sort(sort)
-        .limit(limit)
-        .toArray();
+      // 카테고리별로 최신 콘서트 가져오기
+      const categoryPipeline = [
+        { $match: filter },
+        { $sort: { createdAt: -1 } as Sort },
+        {
+          $addFields: {
+            primaryCategory: {
+              $ifNull: [{ $arrayElemAt: ['$category', 0] }, 'uncategorized'],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$primaryCategory',
+            concerts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            category: '$_id',
+            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+          },
+        },
+      ];
 
+      const [platformGroups, categoryGroups] = await Promise.all([
+        ConcertModel.collection
+          .aggregate<{
+            platform: string;
+            concerts: IConcert[];
+          }>(platformPipeline)
+          .toArray(),
+        ConcertModel.collection
+          .aggregate<{
+            category: string;
+            concerts: IConcert[];
+          }>(categoryPipeline)
+          .toArray(),
+      ]);
+
+      // 플랫폼별 맵 생성
+      const platformMap = new Map<string, IConcert[]>();
+      for (const group of platformGroups) {
+        platformMap.set(group.platform, group.concerts);
+      }
+
+      // 카테고리별 맵 생성
+      const categoryMap = new Map<string, IConcert[]>();
+      for (const group of categoryGroups) {
+        categoryMap.set(group.category, group.concerts);
+      }
+
+      // 라운드 로빈으로 섞기
+      const result: IConcert[] = [];
+      const seenIds = new Set<string>();
+      const platforms = Array.from(platformMap.keys());
+      const categories = Array.from(categoryMap.keys());
+
+      let platformIdx = 0;
+      let categoryIdx = 0;
+      let consecutiveFails = 0;
+      const maxFails = platforms.length + categories.length;
+
+      while (result.length < limit && consecutiveFails < maxFails) {
+        let added = false;
+
+        // 플랫폼에서 하나 선택
+        if (platforms.length > 0) {
+          const platform = platforms[platformIdx % platforms.length];
+          const concerts = platformMap.get(platform) || [];
+
+          for (const concert of concerts) {
+            const id = concert._id.toString();
+            if (!seenIds.has(id)) {
+              result.push(concert);
+              seenIds.add(id);
+              added = true;
+              consecutiveFails = 0;
+              break;
+            }
+          }
+          platformIdx++;
+        }
+
+        if (result.length >= limit) break;
+
+        // 카테고리에서 하나 선택
+        if (categories.length > 0) {
+          const category = categories[categoryIdx % categories.length];
+          const concerts = categoryMap.get(category) || [];
+
+          let categoryAdded = false;
+          for (const concert of concerts) {
+            const id = concert._id.toString();
+            if (!seenIds.has(id)) {
+              result.push(concert);
+              seenIds.add(id);
+              categoryAdded = true;
+              consecutiveFails = 0;
+              break;
+            }
+          }
+          if (!categoryAdded && !added) {
+            consecutiveFails++;
+          }
+          categoryIdx++;
+        }
+      }
+
+      // 아직 limit에 못 미치면 남은 콘서트 추가
+      if (result.length < limit) {
+        const allConcerts = new Set<IConcert>();
+        for (const concerts of platformMap.values()) {
+          concerts.forEach((c) => allConcerts.add(c));
+        }
+        for (const concerts of categoryMap.values()) {
+          concerts.forEach((c) => allConcerts.add(c));
+        }
+
+        const remaining = Array.from(allConcerts)
+          .filter((c) => !seenIds.has(c._id.toString()))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+        for (const concert of remaining) {
+          if (result.length >= limit) break;
+          result.push(concert);
+        }
+      }
+
+      // limit만큼만 반환
+      const finalConcerts = result.slice(0, limit);
+
+      // 좋아요 상태 확인
       let likedConcertIds = new Set<string>();
       if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
@@ -443,12 +595,10 @@ export class ConcertService {
         }
       }
 
-      const concertsWithLikeStatus = latestConcerts.map(
-        (concert: IConcert) => ({
-          ...concert,
-          isLiked: likedConcertIds.has(concert._id.toString()),
-        }),
-      );
+      const concertsWithLikeStatus = finalConcerts.map((concert: IConcert) => ({
+        ...concert,
+        isLiked: likedConcertIds.has(concert._id.toString()),
+      }));
 
       return {
         success: true,
