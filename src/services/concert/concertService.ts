@@ -30,7 +30,7 @@ export interface CreateConcertRequest {
 
 export interface ConcertServiceResponse {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
   statusCode?: number;
 }
@@ -207,7 +207,7 @@ export class ConcertService {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          isLiked = user.likedConcerts.some(id => id.equals(concert._id));
+          isLiked = user.likedConcerts.some((id) => id.equals(concert._id));
         }
       }
 
@@ -241,6 +241,8 @@ export class ConcertService {
       location?: string;
       status?: string;
       sortBy?: string;
+      title?: string;
+      search?: string;
     },
     userId?: string, // 사용자 ID 추가
   ): Promise<ConcertServiceResponse> {
@@ -253,19 +255,35 @@ export class ConcertService {
         location,
         status,
         sortBy = 'date',
+        title,
+        search,
       } = params;
 
       const ConcertModel = getConcertModel();
 
       // 필터 조건 구성
-      const filter: any = {};
+      const filter: Record<string, unknown> = {};
       if (category) filter.category = { $in: [category] };
       if (artist) filter.artist = { $in: [new RegExp(artist, 'i')] };
       if (location) filter.location = new RegExp(location, 'i'); // location이 string 배열이므로 직접 검색
       if (status) filter.status = status;
 
+      // 제목 검색 (부분 문자열 매칭)
+      if (title) filter.title = new RegExp(title, 'i');
+
+      // 통합 검색 (title, artist, description, location에서 검색)
+      if (search) {
+        const searchRegex = new RegExp(search, 'i');
+        filter.$or = [
+          { title: { $regex: searchRegex } },
+          { artist: { $elemMatch: { $regex: searchRegex } } },
+          { description: { $regex: searchRegex } },
+          { location: { $elemMatch: { $regex: searchRegex } } },
+        ];
+      }
+
       // 정렬 조건 구성
-      let sort: any = {};
+      let sort: Record<string, number> = {};
       switch (sortBy) {
         case 'likes':
           sort = { likesCount: -1, datetime: 1 };
@@ -291,11 +309,13 @@ export class ConcertService {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
+          likedConcertIds = new Set(
+            user.likedConcerts.map((id) => id.toString()),
+          );
         }
       }
 
-      const concertsWithLikeStatus = concerts.map((concert: any) => ({
+      const concertsWithLikeStatus = concerts.map((concert: IConcert) => ({
         ...concert,
         isLiked: likedConcertIds.has(concert._id.toString()),
       }));
@@ -359,14 +379,18 @@ export class ConcertService {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
+          likedConcertIds = new Set(
+            user.likedConcerts.map((id) => id.toString()),
+          );
         }
       }
 
-      const concertsWithLikeStatus = randomConcerts.map((concert: any) => ({
-        ...concert,
-        isLiked: likedConcertIds.has(concert._id.toString()),
-      }));
+      const concertsWithLikeStatus = randomConcerts.map(
+        (concert: IConcert) => ({
+          ...concert,
+          isLiked: likedConcertIds.has(concert._id.toString()),
+        }),
+      );
 
       return {
         success: true,
@@ -392,7 +416,6 @@ export class ConcertService {
   ): Promise<ConcertServiceResponse> {
     try {
       const ConcertModel = getConcertModel();
-      const now = new Date();
 
       const filter = {
         status: { $in: ['upcoming', 'ongoing'] as const },
@@ -411,14 +434,18 @@ export class ConcertService {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
+          likedConcertIds = new Set(
+            user.likedConcerts.map((id) => id.toString()),
+          );
         }
       }
 
-      const concertsWithLikeStatus = latestConcerts.map((concert: any) => ({
-        ...concert,
-        isLiked: likedConcertIds.has(concert._id.toString()),
-      }));
+      const concertsWithLikeStatus = latestConcerts.map(
+        (concert: IConcert) => ({
+          ...concert,
+          isLiked: likedConcertIds.has(concert._id.toString()),
+        }),
+      );
 
       return {
         success: true,
@@ -440,7 +467,7 @@ export class ConcertService {
    */
   static async updateConcert(
     id: string,
-    updateData: any,
+    updateData: Partial<ConcertData>,
   ): Promise<ConcertServiceResponse> {
     try {
       // 1. 업데이트 데이터 유효성 검증 (새로운 함수 사용)
