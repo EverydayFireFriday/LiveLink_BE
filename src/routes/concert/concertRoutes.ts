@@ -361,7 +361,7 @@ router.post('/', requireAuthInProductionMiddleware, uploadConcert);
  *         description: 서버 에러
  */
 // 콘서트 목록 조회 - 인증 없이 가능
-router.get('/', requireAuthInProductionMiddleware, getAllConcerts);
+router.get('/', getAllConcerts);
 
 /**
  * @swagger
@@ -578,8 +578,10 @@ router.get('/:id', getConcert);
  *     summary: 콘서트 정보 수정
  *     description: |
  *       ObjectId 또는 UID로 특정 콘서트의 정보를 수정합니다.
- *       인증이 필요합니다. 세션의 user.email, user.userId 정보를 사용하여 권한을 확인합니다.
  *       좋아요 관련 필드(likes, likesCount)와 UID는 수정할 수 없습니다.
+ *
+ *       **개발 환경**: 로그인 없이 사용 가능 (임시 세션 자동 생성)
+ *       **프로덕션 환경**: 로그인 필수
  *
  *       **업데이트된 스키마**:
  *       - location: 문자열 배열로 수정
@@ -587,6 +589,7 @@ router.get('/:id', getConcert);
  *     tags: [Concerts - Basic]
  *     security:
  *       - sessionAuth: []
+ *       - {} # 개발환경에서는 인증 없이도 가능
  *     parameters:
  *       - in: path
  *         name: id
@@ -783,8 +786,8 @@ router.get('/:id', getConcert);
  *                 requestedId: { type: string }
  *                 timestamp: { type: string, format: date-time }
  */
-// 콘서트 수정 - 항상 인증 필요
-router.put('/:id', requireAuth, updateConcert);
+// 콘서트 수정 - 개발환경에서는 인증 스킵
+router.put('/:id', requireAuthInProductionMiddleware, updateConcert);
 
 /**
  * @swagger
