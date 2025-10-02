@@ -306,7 +306,7 @@ export class ConcertService {
 
       // 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
       let likedConcertIds = new Set<string>();
-      if (userId) {
+      if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
@@ -376,7 +376,7 @@ export class ConcertService {
 
       // 4. 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
       let likedConcertIds = new Set<string>();
-      if (userId) {
+      if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
@@ -431,7 +431,7 @@ export class ConcertService {
         .toArray();
 
       let likedConcertIds = new Set<string>();
-      if (userId) {
+      if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
