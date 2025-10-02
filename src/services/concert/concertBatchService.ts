@@ -210,9 +210,13 @@ export class ConcertBatchService {
           location: Array.isArray(concertData.location)
             ? concertData.location
             : [concertData.location], // string 배열로 변경
-          datetime: Array.isArray(concertData.datetime)
-            ? concertData.datetime.map((dt: unknown) => new Date(dt as string))
-            : [new Date(concertData.datetime as string)],
+          datetime: concertData.datetime
+            ? Array.isArray(concertData.datetime)
+              ? concertData.datetime.map(
+                  (dt: unknown) => new Date(dt as string),
+                )
+              : [new Date(concertData.datetime as string)]
+            : [],
           price: Array.isArray(concertData.price)
             ? concertData.price
             : concertData.price
@@ -660,5 +664,4 @@ export class ConcertBatchService {
       };
     }
   }
-
 }

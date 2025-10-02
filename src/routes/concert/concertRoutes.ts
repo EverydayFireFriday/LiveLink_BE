@@ -64,9 +64,7 @@ if (process.env.NODE_ENV === 'development') {
  *             required:
  *               - uid
  *               - title
- *               - artist
  *               - location
- *               - datetime
  *               - status
  *             properties:
  *               # === 필수 필드 (Required Fields) ===
@@ -83,7 +81,7 @@ if (process.env.NODE_ENV === 'development') {
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: "[필수] 아티스트 목록 (빈 배열 허용)"
+ *                 description: "[옵셔널] 아티스트 목록 (빈 배열 허용)"
  *                 example: ["아이유", "특별 게스트"]
  *               location:
  *                 type: array
@@ -97,9 +95,8 @@ if (process.env.NODE_ENV === 'development') {
  *                 items:
  *                   type: string
  *                   format: date-time
- *                 description: "[필수] 공연 일시 목록"
+ *                 description: "[옵셔널] 공연 일시 목록 (날짜 미정인 경우 빈 배열 또는 생략 가능)"
  *                 example: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"]
- *                 minItems: 1
  *               status:
  *                 type: string
  *                 enum: ["upcoming", "ongoing", "completed", "cancelled"]
@@ -189,14 +186,23 @@ if (process.env.NODE_ENV === 'development') {
  *                 location: ["어딘가 공연장"]
  *                 datetime: ["2024-07-01T20:00:00+09:00"]
  *                 status: "upcoming"
+ *             dateNotDecidedExample:
+ *               summary: 날짜 미정 콘서트 (datetime 빈 배열 또는 생략)
+ *               value:
+ *                 uid: "concert_1703123456789_tbd"
+ *                 title: "날짜 미정 콘서트"
+ *                 artist: ["아티스트명"]
+ *                 location: ["공연장 미정"]
+ *                 datetime: []
+ *                 status: "upcoming"
+ *                 description: "날짜가 곧 공지될 예정입니다"
  *             emptyArtistExample:
  *               summary: 빈 아티스트 배열 (허용됨)
  *               value:
  *                 uid: "concert_1703123456789_unknown"
- *                 title: "미정 콘서트"
+ *                 title: "아티스트 미정 콘서트"
  *                 artist: []
  *                 location: ["미정"]
- *                 datetime: ["2024-12-31T19:00:00+09:00"]
  *                 status: "upcoming"
  *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/unknown/placeholder.jpg"]
  *             multiLocationExample:
