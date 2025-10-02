@@ -7,7 +7,7 @@ import {
   deleteConcert,
   getRandomConcerts,
   getLatestConcerts,
-} from "../../controllers/concert/concertController";
+} from '../../controllers/concert/concertController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import {
   requireAuthInProductionMiddleware,
@@ -361,7 +361,7 @@ router.post('/', requireAuthInProductionMiddleware, uploadConcert);
  *         description: 서버 에러
  */
 // 콘서트 목록 조회 - 인증 없이 가능
-router.get('/', getAllConcerts);
+router.get('/', requireAuthInProductionMiddleware, getAllConcerts);
 
 /**
  * @swagger
