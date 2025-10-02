@@ -30,7 +30,8 @@ export interface CreateConcertRequest {
 
 export interface ConcertServiceResponse {
   success: boolean;
-  data?: unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any;
   error?: string;
   statusCode?: number;
 }
@@ -283,7 +284,7 @@ export class ConcertService {
       }
 
       // 정렬 조건 구성
-      let sort: Record<string, number> = {};
+      let sort: Sort = {};
       switch (sortBy) {
         case 'likes':
           sort = { likesCount: -1, datetime: 1 };
@@ -467,7 +468,7 @@ export class ConcertService {
    */
   static async updateConcert(
     id: string,
-    updateData: Partial<ConcertData>,
+    updateData: Partial<CreateConcertRequest>,
   ): Promise<ConcertServiceResponse> {
     try {
       // 1. 업데이트 데이터 유효성 검증 (새로운 함수 사용)
@@ -493,16 +494,15 @@ export class ConcertService {
       }
 
       // 3. 수정 불가능한 필드 제거
-      const cleanUpdateData = { ...updateData };
+      const cleanUpdateData: Record<string, unknown> = { ...updateData };
       delete cleanUpdateData.uid;
-      delete cleanUpdateData.likesCount;
-      delete cleanUpdateData._id;
-      delete cleanUpdateData.createdAt;
+      // likesCount, _id, createdAt는 CreateConcertRequest에 없으므로 제거
       cleanUpdateData.updatedAt = new Date();
 
       // 4. 포스터 이미지 URL 유효성 검증 (수정하는 경우)
       if (
         cleanUpdateData.posterImage &&
+        typeof cleanUpdateData.posterImage === 'string' &&
         !isValidImageUrl(cleanUpdateData.posterImage)
       ) {
         return {
@@ -530,14 +530,15 @@ export class ConcertService {
 
       // 6. 날짜 필드 타입 변환
       if (cleanUpdateData.datetime) {
-        cleanUpdateData.datetime = Array.isArray(cleanUpdateData.datetime)
-          ? cleanUpdateData.datetime.map((dt: string) => new Date(dt))
-          : [new Date(cleanUpdateData.datetime)];
+        const datetimeValue = cleanUpdateData.datetime;
+        cleanUpdateData.datetime = Array.isArray(datetimeValue)
+          ? (datetimeValue as string[]).map((dt: string) => new Date(dt))
+          : [new Date(datetimeValue as string)];
       }
 
       if (cleanUpdateData.ticketOpenDate) {
         cleanUpdateData.ticketOpenDate = new Date(
-          cleanUpdateData.ticketOpenDate,
+          cleanUpdateData.ticketOpenDate as string,
         );
       }
 
