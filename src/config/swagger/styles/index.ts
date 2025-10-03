@@ -1,11 +1,13 @@
 import { baseStyles } from './themes';
 import { darkModeStyles } from './darkMode';
 import { animationStyles } from './animations';
+import { rainbowModeStyles } from './rainbowMode';
 
 export const customStyles = `
-  
+
   ${baseStyles}
   ${darkModeStyles}
+  ${rainbowModeStyles}
   ${animationStyles}
 
   /* Vertically align version and OAS info with title text */
