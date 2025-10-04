@@ -13,6 +13,6 @@ npm ci
 npm run build
 
 # Restart with PM2
-pm2 restart ecosystem.config.js
+pm2 restart ecosystem.config.js --env devlop
 
 echo "✅ Deployment complete!"
