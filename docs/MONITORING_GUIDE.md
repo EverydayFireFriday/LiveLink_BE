@@ -9,7 +9,7 @@
 ### 1. Prometheus (메트릭 수집)
 - **포트**: 9090
 - **엔드포인트**: http://localhost:9090
-- **역할**: Node.js 애플리케이션에서 메트릭을 수집하고 저장
+- **역할**: Node.js 애플리케이션, MongoDB, Redis에서 메트릭을 수집하고 저장
 
 ### 2. Grafana (시각화)
 - **포트**: 3001
@@ -28,6 +28,26 @@
   - Redis 연결 상태
   - 활성 HTTP 연결 수
   - HTTP 에러 수
+
+### 4. MongoDB Exporter
+- **포트**: 9216
+- **엔드포인트**: http://localhost:9216/metrics
+- **역할**: MongoDB 성능 및 상태 메트릭 수집
+- **수집 메트릭**:
+  - 연결 수 (현재/가능)
+  - 작업 카운터 (insert, query, update, delete 등)
+  - 메모리 사용량
+  - 네트워크 트래픽
+
+### 5. Redis Exporter
+- **포트**: 9121
+- **엔드포인트**: http://localhost:9121/metrics
+- **역할**: Redis 성능 및 상태 메트릭 수집
+- **수집 메트릭**:
+  - 연결된 클라이언트 수
+  - 메모리 사용량
+  - 명령어 처리 속도
+  - 키 통계
 
 ## 시작하기
 
@@ -74,6 +94,13 @@ docker-compose up -d prometheus grafana
 - **Node.js Event Loop Lag**: Event Loop 지연 시간
 - **Open File Descriptors**: 열린 파일 디스크립터 수
 
+### 🗄️ 데이터베이스 메트릭
+- **MongoDB Connections**: MongoDB 현재/가능 연결 수
+- **MongoDB Operations Rate**: MongoDB 작업 처리 속도 (insert, query, update, delete 등)
+- **Redis Connected Clients**: Redis 연결된 클라이언트 수
+- **Redis Memory Usage**: Redis 메모리 사용량 (Used/Max)
+- **Redis Command Rate**: Redis 명령어 처리 속도
+
 ## 수집되는 메트릭 상세
 
 ### HTTP 메트릭
@@ -101,6 +128,24 @@ db_connection_status - 데이터베이스 연결 상태 (user, concert, article,
 redis_connection_status - Redis 연결 상태
 ```
 
+### MongoDB 메트릭
+```
+mongodb_connections - MongoDB 연결 수 (state 라벨: current, available)
+mongodb_op_counters_total - MongoDB 작업 카운터 (type 라벨: insert, query, update, delete, getmore, command)
+mongodb_network_bytes_total - MongoDB 네트워크 트래픽
+mongodb_memory - MongoDB 메모리 사용량
+```
+
+### Redis 메트릭
+```
+redis_connected_clients - 연결된 클라이언트 수
+redis_memory_used_bytes - 사용 중인 메모리
+redis_memory_max_bytes - 최대 메모리
+redis_commands_processed_total - 처리된 명령어 총 수
+redis_keyspace_keys - 저장된 키 수
+redis_uptime_seconds - Redis 업타임
+```
+
 ## 유용한 Prometheus 쿼리 예제
 
 ### 초당 요청 수
@@ -121,6 +166,21 @@ sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m])) * 100
 ### 메모리 사용률
 ```promql
 nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes * 100
+```
+
+### MongoDB 연결 수
+```promql
+mongodb_connections{state="current"}
+```
+
+### Redis 메모리 사용률
+```promql
+redis_memory_used_bytes / redis_memory_max_bytes * 100
+```
+
+### Redis 명령어 처리 속도
+```promql
+rate(redis_commands_processed_total[5m])
 ```
 
 ## 커스텀 메트릭 추가
@@ -231,12 +291,25 @@ groups:
 - [Grafana 공식 문서](https://grafana.com/docs/)
 - [prom-client (Node.js)](https://github.com/siimon/prom-client)
 
+## 서비스 포트 정리
+
+| 서비스 | 포트 | 용도 |
+|--------|------|------|
+| Node.js App | 3000 | API 서버 |
+| Grafana | 3001 | 모니터링 대시보드 |
+| MongoDB | 27017 | 데이터베이스 |
+| Redis | 6379 | 캐시/세션 |
+| Prometheus | 9090 | 메트릭 수집 |
+| MongoDB Exporter | 9216 | MongoDB 메트릭 |
+| Redis Exporter | 9121 | Redis 메트릭 |
+
 ## 파일 구조
 
 ```
 .
-├── prometheus.yml                           # Prometheus 설정 파일
-├── docker-compose.yml                       # Docker Compose 설정
+├── config/
+│   └── prometheus.yml                       # Prometheus 설정 파일
+├── docker-compose.yml                       # Docker Compose 설정 (모든 서비스 포함)
 └── grafana/
     └── provisioning/
         ├── datasources/
@@ -244,5 +317,44 @@ groups:
         └── dashboards/
             ├── dashboard.yml               # 대시보드 프로비저닝 설정
             └── files/
-                └── nodejs-app-monitoring.json  # Node.js 모니터링 대시보드
+                └── nodejs-app-monitoring.json  # 통합 모니터링 대시보드
+```
+
+## 빠른 시작 가이드
+
+### 1. 환경 준비
+```bash
+# .env 파일에 Grafana 계정 설정 (선택사항)
+echo "GRAFANA_ADMIN_USER=admin" >> .env
+echo "GRAFANA_ADMIN_PASSWORD=your-secure-password" >> .env
+```
+
+### 2. 모든 서비스 시작
+```bash
+docker-compose up -d
+```
+
+### 3. 서비스 확인
+```bash
+# 모든 컨테이너 상태 확인
+docker-compose ps
+
+# 메트릭 엔드포인트 확인
+curl http://localhost:3000/metrics      # Node.js 메트릭
+curl http://localhost:9216/metrics      # MongoDB 메트릭
+curl http://localhost:9121/metrics      # Redis 메트릭
+```
+
+### 4. 대시보드 접속
+1. Grafana: http://localhost:3001 (admin/admin)
+2. Prometheus: http://localhost:9090
+3. "LiveLink Node.js Application Monitoring" 대시보드 확인
+
+### 5. 서비스 종료
+```bash
+# 전체 중지
+docker-compose down
+
+# 데이터 삭제 포함 중지
+docker-compose down -v
 ```

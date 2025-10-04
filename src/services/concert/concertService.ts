@@ -18,7 +18,7 @@ export interface CreateConcertRequest {
   title: string;
   artist?: string[];
   location: string[]; // ILocation[] -> string[]로 변경
-  datetime: string[];
+  datetime?: string[]; // 선택적 필드 (날짜 미정인 경우 빈 배열 또는 생략 가능)
   price?: Array<{ tier: string; amount: number }>;
   description?: string;
   category?: string[];
@@ -30,6 +30,7 @@ export interface CreateConcertRequest {
 
 export interface ConcertServiceResponse {
   success: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
   error?: string;
   statusCode?: number;
@@ -117,9 +118,11 @@ export class ConcertService {
         location: Array.isArray(concertData.location)
           ? concertData.location
           : [concertData.location], // string 배열로 변경
-        datetime: Array.isArray(concertData.datetime)
-          ? concertData.datetime.map((dt) => new Date(dt)) // string을 Date로 변환
-          : [new Date(concertData.datetime)],
+        datetime: concertData.datetime
+          ? Array.isArray(concertData.datetime)
+            ? concertData.datetime.map((dt) => new Date(dt)) // string을 Date로 변환
+            : [new Date(concertData.datetime)]
+          : [], // datetime이 없으면 빈 배열
         price: Array.isArray(concertData.price)
           ? concertData.price
           : concertData.price
@@ -207,7 +210,7 @@ export class ConcertService {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          isLiked = user.likedConcerts.some(id => id.equals(concert._id));
+          isLiked = user.likedConcerts.some((id) => id.equals(concert._id));
         }
       }
 
@@ -241,6 +244,8 @@ export class ConcertService {
       location?: string;
       status?: string;
       sortBy?: string;
+      title?: string;
+      search?: string;
     },
     userId?: string, // 사용자 ID 추가
   ): Promise<ConcertServiceResponse> {
@@ -253,19 +258,35 @@ export class ConcertService {
         location,
         status,
         sortBy = 'date',
+        title,
+        search,
       } = params;
 
       const ConcertModel = getConcertModel();
 
       // 필터 조건 구성
-      const filter: any = {};
+      const filter: Record<string, unknown> = {};
       if (category) filter.category = { $in: [category] };
       if (artist) filter.artist = { $in: [new RegExp(artist, 'i')] };
       if (location) filter.location = new RegExp(location, 'i'); // location이 string 배열이므로 직접 검색
       if (status) filter.status = status;
 
+      // 제목 검색 (부분 문자열 매칭)
+      if (title) filter.title = new RegExp(title, 'i');
+
+      // 통합 검색 (title, artist, description, location에서 검색)
+      if (search) {
+        const searchRegex = new RegExp(search, 'i');
+        filter.$or = [
+          { title: { $regex: searchRegex } },
+          { artist: { $elemMatch: { $regex: searchRegex } } },
+          { description: { $regex: searchRegex } },
+          { location: { $elemMatch: { $regex: searchRegex } } },
+        ];
+      }
+
       // 정렬 조건 구성
-      let sort: any = {};
+      let sort: Sort = {};
       switch (sortBy) {
         case 'likes':
           sort = { likesCount: -1, datetime: 1 };
@@ -287,15 +308,17 @@ export class ConcertService {
 
       // 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
       let likedConcertIds = new Set<string>();
-      if (userId) {
+      if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
+          likedConcertIds = new Set(
+            user.likedConcerts.map((id) => id.toString()),
+          );
         }
       }
 
-      const concertsWithLikeStatus = concerts.map((concert: any) => ({
+      const concertsWithLikeStatus = concerts.map((concert: IConcert) => ({
         ...concert,
         isLiked: likedConcertIds.has(concert._id.toString()),
       }));
@@ -355,18 +378,22 @@ export class ConcertService {
 
       // 4. 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인
       let likedConcertIds = new Set<string>();
-      if (userId) {
+      if (userId && ObjectId.isValid(userId)) {
         const userModel = new UserModel();
         const user = await userModel.findById(userId);
         if (user && user.likedConcerts) {
-          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
+          likedConcertIds = new Set(
+            user.likedConcerts.map((id) => id.toString()),
+          );
         }
       }
 
-      const concertsWithLikeStatus = randomConcerts.map((concert: any) => ({
-        ...concert,
-        isLiked: likedConcertIds.has(concert._id.toString()),
-      }));
+      const concertsWithLikeStatus = randomConcerts.map(
+        (concert: IConcert) => ({
+          ...concert,
+          isLiked: likedConcertIds.has(concert._id.toString()),
+        }),
+      );
 
       return {
         success: true,
@@ -384,7 +411,7 @@ export class ConcertService {
   }
 
   /**
-   * 최신 콘서트 목록 조회
+   * 최신 콘서트 목록 조회 (티켓 플랫폼별, 장르별로 적절히 섞어서 반환)
    */
   static async getLatestConcerts(
     limit: number,
@@ -392,30 +419,183 @@ export class ConcertService {
   ): Promise<ConcertServiceResponse> {
     try {
       const ConcertModel = getConcertModel();
-      const now = new Date();
 
       const filter = {
         status: { $in: ['upcoming', 'ongoing'] as const },
       };
 
-      const sort: Sort = { createdAt: -1 };
+      // 플랫폼별로 최신 콘서트 가져오기
+      const platformPipeline = [
+        { $match: filter },
+        { $sort: { createdAt: -1 } as Sort },
+        {
+          $addFields: {
+            primaryPlatform: {
+              $ifNull: [{ $arrayElemAt: ['$ticketLink.platform', 0] }, 'none'],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$primaryPlatform',
+            concerts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            platform: '$_id',
+            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+          },
+        },
+      ];
 
-      const latestConcerts = await ConcertModel.collection
-        .find(filter)
-        .sort(sort)
-        .limit(limit)
-        .toArray();
+      // 카테고리별로 최신 콘서트 가져오기
+      const categoryPipeline = [
+        { $match: filter },
+        { $sort: { createdAt: -1 } as Sort },
+        {
+          $addFields: {
+            primaryCategory: {
+              $ifNull: [{ $arrayElemAt: ['$category', 0] }, 'uncategorized'],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$primaryCategory',
+            concerts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            category: '$_id',
+            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+          },
+        },
+      ];
 
-      let likedConcertIds = new Set<string>();
-      if (userId) {
-        const userModel = new UserModel();
-        const user = await userModel.findById(userId);
-        if (user && user.likedConcerts) {
-          likedConcertIds = new Set(user.likedConcerts.map(id => id.toString()));
+      const [platformGroups, categoryGroups] = await Promise.all([
+        ConcertModel.collection
+          .aggregate<{
+            platform: string;
+            concerts: IConcert[];
+          }>(platformPipeline)
+          .toArray(),
+        ConcertModel.collection
+          .aggregate<{
+            category: string;
+            concerts: IConcert[];
+          }>(categoryPipeline)
+          .toArray(),
+      ]);
+
+      // 플랫폼별 맵 생성
+      const platformMap = new Map<string, IConcert[]>();
+      for (const group of platformGroups) {
+        platformMap.set(group.platform, group.concerts);
+      }
+
+      // 카테고리별 맵 생성
+      const categoryMap = new Map<string, IConcert[]>();
+      for (const group of categoryGroups) {
+        categoryMap.set(group.category, group.concerts);
+      }
+
+      // 라운드 로빈으로 섞기
+      const result: IConcert[] = [];
+      const seenIds = new Set<string>();
+      const platforms = Array.from(platformMap.keys());
+      const categories = Array.from(categoryMap.keys());
+
+      let platformIdx = 0;
+      let categoryIdx = 0;
+      let consecutiveFails = 0;
+      const maxFails = platforms.length + categories.length;
+
+      while (result.length < limit && consecutiveFails < maxFails) {
+        let added = false;
+
+        // 플랫폼에서 하나 선택
+        if (platforms.length > 0) {
+          const platform = platforms[platformIdx % platforms.length];
+          const concerts = platformMap.get(platform) || [];
+
+          for (const concert of concerts) {
+            const id = concert._id.toString();
+            if (!seenIds.has(id)) {
+              result.push(concert);
+              seenIds.add(id);
+              added = true;
+              consecutiveFails = 0;
+              break;
+            }
+          }
+          platformIdx++;
+        }
+
+        if (result.length >= limit) break;
+
+        // 카테고리에서 하나 선택
+        if (categories.length > 0) {
+          const category = categories[categoryIdx % categories.length];
+          const concerts = categoryMap.get(category) || [];
+
+          let categoryAdded = false;
+          for (const concert of concerts) {
+            const id = concert._id.toString();
+            if (!seenIds.has(id)) {
+              result.push(concert);
+              seenIds.add(id);
+              categoryAdded = true;
+              consecutiveFails = 0;
+              break;
+            }
+          }
+          if (!categoryAdded && !added) {
+            consecutiveFails++;
+          }
+          categoryIdx++;
         }
       }
 
-      const concertsWithLikeStatus = latestConcerts.map((concert: any) => ({
+      // 아직 limit에 못 미치면 남은 콘서트 추가
+      if (result.length < limit) {
+        const allConcerts = new Set<IConcert>();
+        for (const concerts of platformMap.values()) {
+          concerts.forEach((c) => allConcerts.add(c));
+        }
+        for (const concerts of categoryMap.values()) {
+          concerts.forEach((c) => allConcerts.add(c));
+        }
+
+        const remaining = Array.from(allConcerts)
+          .filter((c) => !seenIds.has(c._id.toString()))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+        for (const concert of remaining) {
+          if (result.length >= limit) break;
+          result.push(concert);
+        }
+      }
+
+      // limit만큼만 반환
+      const finalConcerts = result.slice(0, limit);
+
+      // 좋아요 상태 확인
+      let likedConcertIds = new Set<string>();
+      if (userId && ObjectId.isValid(userId)) {
+        const userModel = new UserModel();
+        const user = await userModel.findById(userId);
+        if (user && user.likedConcerts) {
+          likedConcertIds = new Set(
+            user.likedConcerts.map((id) => id.toString()),
+          );
+        }
+      }
+
+      const concertsWithLikeStatus = finalConcerts.map((concert: IConcert) => ({
         ...concert,
         isLiked: likedConcertIds.has(concert._id.toString()),
       }));
@@ -440,7 +620,7 @@ export class ConcertService {
    */
   static async updateConcert(
     id: string,
-    updateData: any,
+    updateData: Partial<CreateConcertRequest>,
   ): Promise<ConcertServiceResponse> {
     try {
       // 1. 업데이트 데이터 유효성 검증 (새로운 함수 사용)
@@ -466,16 +646,15 @@ export class ConcertService {
       }
 
       // 3. 수정 불가능한 필드 제거
-      const cleanUpdateData = { ...updateData };
+      const cleanUpdateData: Record<string, unknown> = { ...updateData };
       delete cleanUpdateData.uid;
-      delete cleanUpdateData.likesCount;
-      delete cleanUpdateData._id;
-      delete cleanUpdateData.createdAt;
+      // likesCount, _id, createdAt는 CreateConcertRequest에 없으므로 제거
       cleanUpdateData.updatedAt = new Date();
 
       // 4. 포스터 이미지 URL 유효성 검증 (수정하는 경우)
       if (
         cleanUpdateData.posterImage &&
+        typeof cleanUpdateData.posterImage === 'string' &&
         !isValidImageUrl(cleanUpdateData.posterImage)
       ) {
         return {
@@ -503,14 +682,15 @@ export class ConcertService {
 
       // 6. 날짜 필드 타입 변환
       if (cleanUpdateData.datetime) {
-        cleanUpdateData.datetime = Array.isArray(cleanUpdateData.datetime)
-          ? cleanUpdateData.datetime.map((dt: string) => new Date(dt))
-          : [new Date(cleanUpdateData.datetime)];
+        const datetimeValue = cleanUpdateData.datetime;
+        cleanUpdateData.datetime = Array.isArray(datetimeValue)
+          ? (datetimeValue as string[]).map((dt: string) => new Date(dt))
+          : [new Date(datetimeValue as string)];
       }
 
       if (cleanUpdateData.ticketOpenDate) {
         cleanUpdateData.ticketOpenDate = new Date(
-          cleanUpdateData.ticketOpenDate,
+          cleanUpdateData.ticketOpenDate as string,
         );
       }
 

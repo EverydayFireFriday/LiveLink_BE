@@ -23,12 +23,20 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # MongoDB Exporter (optional - if you add mongodb-exporter later)
-  # - job_name: 'mongodb'
-  #   static_configs:
-  #     - targets: ['mongodb-exporter:9216']
+  # MongoDB Exporter
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'mongodb_.*'
+        action: keep
 
-  # Redis Exporter (optional - if you add redis-exporter later)
-  # - job_name: 'redis'
-  #   static_configs:
-  #     - targets: ['redis-exporter:9121']
+  # Redis Exporter
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'redis_.*'
+        action: keep

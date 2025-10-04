@@ -109,17 +109,46 @@ Docker를 사용하면 MongoDB, Redis를 포함한 모든 서비스를 한 번�
 ## 📂 프로젝트 구조
 
 ```
-src/
-├── app.ts                # 애플리케이션 진입점
-├── config/               # 환경변수, Passport, Swagger 등 설정
-├── controllers/          # 요청/응답 처리를 위한 컨트롤러
-├── middlewares/          # 인증, 보안 등 Express 미들웨어
-├── models/               # MongoDB 데이터 모델 (스키마)
-├── routes/               # API 엔드포인트 라우팅
-├── services/             # 비즈니스 로직
-├── socket/               # Socket.IO 관련 로직
-├── types/                # 프로젝트 전역 타입 정의
-└── utils/                # 로거, 유효성 검사 등 유틸리티 함수
+LiveLink_BE/
+├── src/                  # 소스 코드
+│   ├── app.ts            # 애플리케이션 진입점
+│   ├── config/           # 환경변수, Passport, Swagger 등 설정
+│   ├── controllers/      # 요청/응답 처리를 위한 컨트롤러
+│   ├── middlewares/      # 인증, 보안 등 Express 미들웨어
+│   ├── models/           # MongoDB 데이터 모델 (스키마)
+│   ├── routes/           # API 엔드포인트 라우팅
+│   ├── services/         # 비즈니스 로직
+│   ├── socket/           # Socket.IO 관련 로직
+│   ├── types/            # 프로젝트 전역 타입 정의
+│   └── utils/            # 로거, 유효성 검사 등 유틸리티 함수
+│
+├── config/               # 인프라 설정 파일
+│   ├── prometheus.yml    # Prometheus 설정
+│   ├── nginx.conf        # Nginx 설정
+│   └── ecosystem.config.js # PM2 설정
+│
+├── scripts/              # 배포 및 유틸리티 스크립트
+│   ├── deploy.sh         # 배포 스크립트
+│   └── docker-build.sh   # Docker 빌드 스크립트
+│
+├── docs/                 # 프로젝트 문서
+│   ├── API_RESPONSE_STANDARDIZATION.md
+│   ├── MONITORING_GUIDE.md
+│   └── DEPLOY_CHECKLIST.md
+│
+├── .github/              # GitHub Actions CI/CD
+│   └── workflows/
+│       ├── ci.yml
+│       └── cd.yml
+│
+├── grafana/              # Grafana 대시보드 설정
+│   └── provisioning/
+│
+├── public/               # 정적 파일 (Swagger 에셋)
+│
+├── docker-compose.yml    # Docker Compose 설정
+├── Dockerfile            # Docker 이미지 빌드 설정
+└── package.json          # 프로젝트 의존성 및 스크립트
 ```
 
 ## ⚙️ 주요 스크립트
@@ -132,4 +161,12 @@ src/
 | `npm test` | Jest 테스트 실행 |
 | `npm run lint` | ESLint로 코드 품질 검사 |
 | `npm run format` | Prettier로 코드 포맷팅 |
+
+## 📚 문서
+
+프로젝트의 상세 문서는 [`docs/`](./docs) 폴더에서 확인할 수 있습니다:
+
+- **[API 응답 표준화](./docs/API_RESPONSE_STANDARDIZATION.md)** - API 응답 형식 가이드
+- **[모니터링 가이드](./docs/MONITORING_GUIDE.md)** - Prometheus & Grafana 설정 및 사용법
+- **[배포 체크리스트](./docs/DEPLOY_CHECKLIST.md)** - 프로덕션 배포 가이드
 ```

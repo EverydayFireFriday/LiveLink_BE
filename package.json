@@ -16,7 +16,14 @@
     "lint-staged": "lint-staged",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "prepare": "husky"
+    "prepare": "husky",
+    "env:setup": "./scripts/setup-env.sh",
+    "env:setup:prod": "./scripts/setup-env.sh production",
+    "env:validate": "./scripts/validate-env.sh",
+    "env:validate:prod": "./scripts/validate-env.sh .env.production",
+    "env:sync": "./scripts/sync-env.sh to-github .env.production",
+    "secrets:setup": "./scripts/setup-secrets.sh",
+    "predev": "./scripts/validate-env.sh || echo '⚠️  .env 검증 실패. scripts/setup-env.sh를 실행하여 .env 파일을 생성하세요.'"
   },
   "lint-staged": {
     "*.ts": [
