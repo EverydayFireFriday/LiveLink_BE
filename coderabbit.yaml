@@ -1,16 +1,89 @@
 language: "ko-KR"
 early_access: false
+
 reviews:
-  profile: "chill"
-  request_changes_workflow: false
+  profile: "assertive"
+  request_changes_workflow: true
   high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
   poem: false
   review_status: true
   collapse_walkthrough: false
+
   auto_review:
     enabled: true
     drafts: false
     base_branches:
-      - "/*"
+      - "main"
+      - "develop"
+      - "feature/*"
+
+  # 리뷰 범위 설정
+  path_filters:
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!coverage/**"
+    - "!*.lock"
+    - "!*.log"
+
+  # 리뷰 포커스 항목
+  focus_areas:
+    - security
+    - performance
+    - best_practices
+    - error_handling
+    - code_smell
+    - race_condition
+    - documentation
+
+  # 자동 리뷰 트리거
+  auto_title_update: true
+
+  # 리뷰 레벨
+  thoroughness: high
+
 chat:
   auto_reply: true
+
+# 특정 파일 패턴에 대한 추가 지침
+path_instructions:
+  - path: "src/**/*.ts"
+    instructions: |
+      - TypeScript 타입 안정성을 엄격하게 검토
+      - any 타입 사용 시 반드시 지적
+      - 에러 핸들링이 적절한지 확인
+
+  - path: "src/controllers/**"
+    instructions: |
+      - API 엔드포인트의 보안 취약점 검토
+      - 입력 검증이 적절한지 확인
+      - HTTP 상태 코드가 적절한지 확인
+
+  - path: "src/services/**"
+    instructions: |
+      - 비즈니스 로직의 정확성 검토
+      - 예외 상황 처리 확인
+      - 트랜잭션 처리가 필요한지 검토
+
+  - path: "src/middlewares/**"
+    instructions: |
+      - 보안 관련 미들웨어는 특히 엄격하게 검토
+      - 인증/인가 로직의 허점 확인
+      - 에러 핸들링 체인 검토
+
+  - path: "**/*.test.ts"
+    instructions: |
+      - 테스트 커버리지가 충분한지 확인
+      - Edge case 테스트 여부 확인
+      - Mock 사용이 적절한지 검토
+
+# 자동 레이블링
+labels:
+  - name: "security"
+    description: "보안 관련 이슈"
+  - name: "performance"
+    description: "성능 관련 이슈"
+  - name: "bug"
+    description: "버그 가능성"
+  - name: "refactor"
+    description: "리팩토링 필요"
