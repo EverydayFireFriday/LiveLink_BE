@@ -3,17 +3,17 @@ module.exports = {
     {
       name: 'livelink-backend',
       script: 'dist/app.js',
-      instances: 'max',
-      exec_mode: 'cluster',
+      instances: 1, // 'max' -> 1로 변경
+      exec_mode: 'fork', // 'cluster' -> 'fork'로 변경
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
       },
       env_production: {
-        NODE_ENV: 'production'
-      }
-    }
-  ]
+        NODE_ENV: 'production',
+      },
+    },
+  ],
 };
