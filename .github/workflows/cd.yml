@@ -157,9 +157,9 @@ jobs:
             # .env.production 파일 업데이트
             echo "${{ secrets.ENV_PRODUCTION_FILE }}" > .env.production
 
-            # Docker Compose로 서비스 재시작
-            docker-compose pull app
-            docker-compose up -d --force-recreate app
+            # Docker Compose로 전체 스택 재시작
+            docker-compose pull
+            docker-compose up -d
 
             # 헬스체크
             sleep 10
