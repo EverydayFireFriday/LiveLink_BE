@@ -1,0 +1,70 @@
+version: 2
+updates:
+  # npm 의존성 업데이트
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "yangheuibeom"
+    assignees:
+      - "yangheuibeom"
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    # 버전 업데이트 전략
+    versioning-strategy: "increase"
+    # 보안 업데이트는 즉시
+    allow:
+      - dependency-type: "all"
+    # 특정 의존성 무시 (필요시 추가)
+    ignore:
+      # 예시: 특정 버전 무시
+      # - dependency-name: "express"
+      #   versions: ["5.x"]
+
+  # Docker 이미지 업데이트 (사용 시)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "yangheuibeom"
+    assignees:
+      - "yangheuibeom"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore"
+
+  # GitHub Actions 워크플로우 업데이트
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "yangheuibeom"
+    assignees:
+      - "yangheuibeom"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore"

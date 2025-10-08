@@ -1,5 +1,23 @@
-node_modules
+# Build outputs
 dist
 build
 coverage
+
+# Dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Environment files
+.env*
+
+# Lock files
 package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.md
+CHANGELOG.md
