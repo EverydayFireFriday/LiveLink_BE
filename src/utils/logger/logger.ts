@@ -4,7 +4,8 @@ import path from 'path';
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
-const logDir = path.join(__dirname, '..', '..', 'logs');
+// 프로젝트 루트의 logs 디렉토리 (src 밖)
+const logDir = path.join(__dirname, '..', '..', '..', 'logs');
 const logLevel = process.env.LOG_LEVEL || 'info';
 
 const logFormat = combine(
