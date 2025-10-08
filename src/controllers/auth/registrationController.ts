@@ -24,7 +24,23 @@ export class RegistrationController {
   }
 
   registerRequest = async (req: express.Request, res: express.Response) => {
-    const { email, username, password, profileImage, isTermsAgreed } = req.body;
+    const {
+      email,
+      username,
+      password,
+      name,
+      birthDate,
+      profileImage,
+      isTermsAgreed,
+    } = req.body as {
+      email: string;
+      username?: string;
+      password: string;
+      name: string;
+      birthDate: string;
+      profileImage?: string;
+      isTermsAgreed: boolean;
+    };
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
@@ -40,6 +56,22 @@ export class RegistrationController {
       return ResponseBuilder.badRequest(
         res,
         passwordValidation.message || '유효성 검사 실패',
+      );
+    }
+
+    const nameValidation = UserValidator.validateName(name);
+    if (!nameValidation.isValid) {
+      return ResponseBuilder.badRequest(
+        res,
+        nameValidation.message || '이름 형식이 올바르지 않습니다.',
+      );
+    }
+
+    const birthDateValidation = UserValidator.validateBirthDate(birthDate);
+    if (!birthDateValidation.isValid) {
+      return ResponseBuilder.badRequest(
+        res,
+        birthDateValidation.message || '생년월일 형식이 올바르지 않습니다.',
       );
     }
 
@@ -107,6 +139,8 @@ export class RegistrationController {
       const userData = {
         username: finalUsername,
         passwordHash: hashedPassword,
+        name: name.trim(),
+        birthDate: new Date(birthDate),
         profileImage: profileImage || undefined,
         isTermsAgreed: isTermsAgreed,
         termsVersion: CURRENT_TERMS_VERSION, // 약관 버전 추가
@@ -154,7 +188,10 @@ export class RegistrationController {
   };
 
   verifyRegister = async (req: express.Request, res: express.Response) => {
-    const { email, verificationCode } = req.body;
+    const { email, verificationCode } = req.body as {
+      email: string;
+      verificationCode: string;
+    };
 
     if (!email || !verificationCode) {
       return ResponseBuilder.badRequest(
@@ -201,6 +238,8 @@ export class RegistrationController {
         email,
         username: storedData.userData.username,
         passwordHash: storedData.userData.passwordHash,
+        name: storedData.userData.name,
+        birthDate: storedData.userData.birthDate,
         profileImage: storedData.userData.profileImage,
         isTermsAgreed: storedData.userData.isTermsAgreed,
         termsVersion: storedData.userData.termsVersion, // 약관 버전 추가
@@ -218,15 +257,17 @@ export class RegistrationController {
       await this.verificationService.deleteVerificationCode(redisKey);
 
       // 환영 이메일 전송 (비동기)
-      setImmediate(async () => {
-        try {
-          await this.emailService.sendWelcomeEmail({
-            username: (updatedUser || newUser).username,
-            email: (updatedUser || newUser).email,
-          });
-        } catch (emailError) {
-          logger.error('환영 이메일 전송 실패:', emailError);
-        }
+      setImmediate(() => {
+        void (async () => {
+          try {
+            await this.emailService.sendWelcomeEmail({
+              username: (updatedUser || newUser).username,
+              email: (updatedUser || newUser).email,
+            });
+          } catch (emailError) {
+            logger.error('환영 이메일 전송 실패:', emailError);
+          }
+        })();
       });
 
       return ResponseBuilder.created(
@@ -265,9 +306,10 @@ export class RegistrationController {
     }
 
     try {
+      const baseString = typeof base === 'string' ? base : undefined;
       const generatedUsername = await this.userService.generateUsername(
         email,
-        base ? String(base) : undefined,
+        baseString,
       );
 
       return ResponseBuilder.success(
@@ -276,7 +318,9 @@ export class RegistrationController {
         {
           username: generatedUsername,
           available: true,
-          generatedFrom: base ? `기본값: ${base}` : `이메일: ${email}`,
+          generatedFrom: baseString
+            ? `기본값: ${baseString}`
+            : `이메일: ${email}`,
         },
       );
     } catch (error) {
@@ -286,7 +330,7 @@ export class RegistrationController {
   };
 
   checkUsername = async (req: express.Request, res: express.Response) => {
-    const { username } = req.body;
+    const { username } = req.body as { username: string };
 
     const usernameValidation = UserValidator.validateUsername(username);
     if (!usernameValidation.isValid) {

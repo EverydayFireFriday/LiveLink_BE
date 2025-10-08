@@ -22,6 +22,9 @@ const registrationController = new RegistrationController();
  *             required:
  *               - email
  *               - password
+ *               - name
+ *               - birthDate
+ *               - isTermsAgreed
  *             properties:
  *               email:
  *                 type: string
@@ -39,18 +42,25 @@ const registrationController = new RegistrationController();
  *                 description: 비밀번호
  *                 example: "password123!"
  *                 minLength: 8
+ *               name:
+ *                 type: string
+ *                 description: 실명 (한글 또는 영문)
+ *                 example: "홍길동"
+ *                 minLength: 2
+ *                 maxLength: 50
+ *               birthDate:
+ *                 type: string
+ *                 format: date
+ *                 description: 생년월일 (YYYY-MM-DD 형식)
+ *                 example: "1990-01-01"
  *               profileImage:
  *                 type: string
  *                 description: 프로필 이미지 URL (선택사항)
  *                 example: "https://example.com/profile.jpg"
  *               isTermsAgreed:
  *                  type: boolean
- *                  description: 서비스 이용약관 동의 여부
+ *                  description: 서비스 이용약관 동의 여부 (필수)
  *                  example: true
- *               termsVersion:
- *                  type: string
- *                  description: 동의한 약관 버전
- *                  example: "20250828_v1"
  *
  *     responses:
  *       200:
@@ -138,7 +148,7 @@ router.post(
   '/register-request',
   signupLimiter,
   requireNoAuth,
-  registrationController.registerRequest,
+  (req, res) => void registrationController.registerRequest(req, res),
 );
 /**
  * @swagger
@@ -247,7 +257,7 @@ router.post(
   '/verify-register',
   signupLimiter,
   requireNoAuth,
-  registrationController.verifyRegister,
+  (req, res) => void registrationController.verifyRegister(req, res),
 );
 
 // 사용자명 관련
@@ -325,7 +335,10 @@ router.post(
  *                   type: string
  *                   example: "사용자명 생성 실패"
  */
-router.get('/generate-username', registrationController.generateUsername);
+router.get(
+  '/generate-username',
+  (req, res) => void registrationController.generateUsername(req, res),
+);
 /**
  * @swagger
  * /auth/check-username:
@@ -390,6 +403,9 @@ router.get('/generate-username', registrationController.generateUsername);
  *                   type: string
  *                   example: "별명 중복 확인 실패"
  */
-router.post('/check-username', registrationController.checkUsername);
+router.post(
+  '/check-username',
+  (req, res) => void registrationController.checkUsername(req, res),
+);
 
 export default router;
