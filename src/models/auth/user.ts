@@ -344,6 +344,45 @@ export class UserModel {
   async updateLastActivity(id: string | ObjectId): Promise<User | null> {
     return await this.updateUser(id, { updatedAt: new Date() });
   }
+
+  // 이름과 생년월일로 사용자 찾기 (이메일 찾기 기능)
+  async findByNameAndBirthDate(
+    name: string,
+    birthDate: Date,
+  ): Promise<User[]> {
+    // UTC 기준으로 해당 날짜 범위 계산
+    const startOfDay = new Date(birthDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(birthDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    // ISO 문자열 형식으로도 검색 (문자열로 저장된 경우 대비)
+    const birthDateString = birthDate.toISOString();
+
+    logger.info(
+      `[UserModel] Searching users with name: "${name}", birthDate range: ${startOfDay.toISOString()} ~ ${endOfDay.toISOString()}, or exact string: ${birthDateString}`,
+    );
+
+    return await this.userCollection
+      .find({
+        name,
+        $or: [
+          // Date 타입으로 저장된 경우
+          {
+            birthDate: {
+              $gte: startOfDay,
+              $lte: endOfDay,
+            },
+          },
+          // 문자열로 저장된 경우 (ISO 형식)
+          {
+            birthDate: birthDateString as any,
+          },
+        ],
+      } as any)
+      .toArray();
+  }
 }
 
 // 데이터베이스 연결 함수

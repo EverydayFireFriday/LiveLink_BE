@@ -139,8 +139,8 @@ export const configurePassport = (passport: PassportStatic) => {
           accessToken: string,
           refreshToken: string,
           idToken: string,
-          profile: AppleStrategy.Profile,
-          done: AppleStrategy.VerifyCallback,
+          profile: any,
+          done: (error?: Error | null, user?: any) => void,
         ) => {
           try {
             const socialId = profile.id as string;
