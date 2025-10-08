@@ -26,10 +26,9 @@ updates:
     allow:
       - dependency-type: "all"
     # 특정 의존성 무시 (필요시 추가)
-    ignore:
-      # 예시: 특정 버전 무시
-      # - dependency-name: "express"
-      #   versions: ["5.x"]
+    # ignore:
+    #   - dependency-name: "express"
+    #     versions: ["5.x"]
 
   # Docker 이미지 업데이트 (사용 시)
   - package-ecosystem: "docker"
