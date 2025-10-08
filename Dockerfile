@@ -2,7 +2,7 @@
 #------------------- 빌더 단계 -------------------#
 # Using a specific version of Node.js for reproducibility
 # 재현성을 위해 특정 버전의 Node.js 사용
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Set the working directory
 # 작업 디렉토리 설정
@@ -32,7 +32,7 @@ RUN npm prune --production
 #------------------- 프로덕션 단계 -------------------#
 # Use a slim, secure base image for the final stage
 # 최종 단계를 위해 슬림하고 안전한 베이스 이미지 사용
-FROM node:18-alpine
+FROM node:24-alpine
 
 # Set NODE_ENV to production
 # NODE_ENV를 production으로 설정
