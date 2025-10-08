@@ -46,6 +46,8 @@ export class UserService {
     email: string;
     username: string;
     passwordHash: string;
+    name: string;
+    birthDate: Date;
     profileImage?: string;
     isTermsAgreed: boolean;
     termsVersion: string;

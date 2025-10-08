@@ -4,7 +4,7 @@ import {
   Profile as GoogleProfile,
   VerifyCallback,
 } from 'passport-google-oauth20';
-import { Strategy as AppleStrategy } from 'passport-apple';
+import AppleStrategy from 'passport-apple';
 import { UserModel, User } from '../../models/auth/user';
 import logger from '../../utils/logger/logger';
 
@@ -13,23 +13,6 @@ interface GoogleProfileExtended extends GoogleProfile {
   emails?: Array<{ value: string; verified: boolean }>;
   photos?: Array<{ value: string }>;
 }
-
-// Apple Profile 타입 정의
-interface AppleProfileData {
-  id: string;
-  email?: string;
-  name?: {
-    firstName?: string;
-    lastName?: string;
-  };
-}
-
-// Apple Verify Callback 타입
-type AppleVerifyCallbackType = (
-  error: Error | null | undefined,
-  user?: User | false,
-  info?: unknown,
-) => void;
 
 export const configurePassport = (passport: PassportStatic) => {
   const userModel = new UserModel();
@@ -150,17 +133,22 @@ export const configurePassport = (passport: PassportStatic) => {
           privateKeyString: process.env.APPLE_PRIVATE_KEY.replace(/\n/g, '\n'),
           callbackURL: '/api/auth/apple/callback',
           scope: ['name', 'email'],
+          passReqToCallback: false,
         },
         async (
           accessToken: string,
           refreshToken: string,
-          idToken: unknown,
-          profile: AppleProfileData,
-          done: AppleVerifyCallbackType,
+          idToken: string,
+          profile: any,
+          done: (error?: Error | null, user?: any) => void,
         ) => {
           try {
-            const socialId = profile.id;
+            const socialId = profile.id as string;
             const provider = 'apple';
+            const email = profile.email as string | undefined;
+            const name = profile.name as
+              | { firstName?: string; lastName?: string }
+              | undefined;
 
             // 1. 소셜 ID로 기존 사용자 찾기
             let user = await userModel.findByProviderAndSocialId(
@@ -173,8 +161,8 @@ export const configurePassport = (passport: PassportStatic) => {
             }
 
             // 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
-            if (profile.email) {
-              user = await userModel.findByEmail(profile.email);
+            if (email) {
+              user = await userModel.findByEmail(email);
 
               if (user) {
                 // 소셜 정보 업데이트 후 반환
@@ -193,9 +181,9 @@ export const configurePassport = (passport: PassportStatic) => {
 
             // 3. 신규 사용자 생성
             const newUser: Partial<User> = {
-              email: profile.email,
-              username: profile.name
-                ? `${profile.name.firstName}${profile.name.lastName}`
+              email,
+              username: name
+                ? `${name.firstName}${name.lastName}`
                 : `${provider}_${socialId}`,
               provider,
               socialId,

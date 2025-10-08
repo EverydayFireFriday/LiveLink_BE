@@ -290,4 +290,97 @@ router.delete('/account', requireAuth, async (req, res) => {
   await authController.deleteAccount(req, res);
 });
 
+// 이메일 찾기
+/**
+ * @swagger
+ * /auth/find-email:
+ *   post:
+ *     summary: 이메일 찾기
+ *     description: 이름과 생년월일을 사용하여 가입된 이메일 주소를 찾습니다. 보안을 위해 이메일은 마스킹 처리되어 반환됩니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - birthDate
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: 사용자 실명
+ *                 example: "홍길동"
+ *               birthDate:
+ *                 type: string
+ *                 format: date
+ *                 description: 생년월일 (YYYY-MM-DD 형식)
+ *                 example: "1990-01-01"
+ *     responses:
+ *       200:
+ *         description: 이메일 찾기 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "일치하는 계정 2개를 찾았습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: number
+ *                       description: 찾은 계정 수
+ *                       example: 2
+ *                     emails:
+ *                       type: array
+ *                       description: 마스킹 처리된 이메일 목록
+ *                       items:
+ *                         type: string
+ *                       example: ["hong***@gmail.com", "h***@naver.com"]
+ *       400:
+ *         description: 잘못된 요청 (유효성 검증 실패)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     missing_name:
+ *                       value: "이름을 입력해주세요."
+ *                     missing_birthDate:
+ *                       value: "생년월일을 입력해주세요."
+ *                     invalid_date:
+ *                       value: "올바른 생년월일 형식이 아닙니다. (YYYY-MM-DD)"
+ *       404:
+ *         description: 일치하는 계정을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "일치하는 계정을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "서버 에러로 이메일 찾기에 실패했습니다."
+ */
+router.post('/find-email', async (req, res) => {
+  const authController = await getAuthController();
+  await authController.findEmail(req, res);
+});
+
 export default router;

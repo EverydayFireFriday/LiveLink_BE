@@ -7,6 +7,8 @@ export interface User {
   _id?: ObjectId;
   email: string;
   username: string;
+  name: string;
+  birthDate: Date;
   passwordHash?: string;
   status: UserStatus;
   statusReason?: string;
@@ -37,6 +39,8 @@ export interface VerificationData {
   userData?: {
     username: string;
     passwordHash: string;
+    name: string;
+    birthDate: Date;
     profileImage?: string;
     isTermsAgreed: boolean; // 약관 동의 여부 추가
     termsVersion: string; // 약관 버전 추가

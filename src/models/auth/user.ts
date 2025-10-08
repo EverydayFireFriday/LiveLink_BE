@@ -14,6 +14,8 @@ export interface User {
   _id?: ObjectId;
   username: string;
   email: string;
+  name: string; // 실명
+  birthDate: Date; // 생년월일
   passwordHash?: string; // 소셜 로그인을 위해 선택적으로 변경
   status: UserStatus;
   statusReason?: string; // 상태 변경 사유 추가
@@ -168,38 +170,40 @@ export class UserModel {
 
   // 이메일로 사용자 찾기 (좋아요 목록 포함)
   async findByEmailWithLikes(email: string): Promise<User | null> {
-    const results = await this.userCollection.aggregate([
+    const results = await this.userCollection
+      .aggregate([
         { $match: { email: email } },
         {
-            $lookup: {
-                from: 'concerts',
-                localField: 'likedConcerts',
-                foreignField: '_id',
-                as: 'likedConcertsInfo'
-            }
+          $lookup: {
+            from: 'concerts',
+            localField: 'likedConcerts',
+            foreignField: '_id',
+            as: 'likedConcertsInfo',
+          },
         },
         {
-            $lookup: {
-                from: 'articles',
-                localField: 'likedArticles',
-                foreignField: '_id',
-                as: 'likedArticlesInfo'
-            }
+          $lookup: {
+            from: 'articles',
+            localField: 'likedArticles',
+            foreignField: '_id',
+            as: 'likedArticlesInfo',
+          },
         },
         {
-            $addFields: {
-                likedConcerts: '$likedConcertsInfo',
-                likedArticles: '$likedArticlesInfo'
-            }
+          $addFields: {
+            likedConcerts: '$likedConcertsInfo',
+            likedArticles: '$likedArticlesInfo',
+          },
         },
         {
-            $project: {
-                likedConcertsInfo: 0,
-                likedArticlesInfo: 0
-            }
+          $project: {
+            likedConcertsInfo: 0,
+            likedArticlesInfo: 0,
+          },
         },
-        { $limit: 1 }
-    ]).toArray();
+        { $limit: 1 },
+      ])
+      .toArray();
 
     return (results[0] as User) || null;
   }
@@ -237,15 +241,15 @@ export class UserModel {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
 
     // Ensure updatedAt is always updated
-    const updateQuery = { ...updateOperation } as any;
+    const updateQuery = { ...updateOperation } as Record<string, unknown>;
     if (!updateQuery.$set) {
       updateQuery.$set = {};
     }
-    updateQuery.$set.updatedAt = new Date();
+    (updateQuery.$set as Record<string, unknown>).updatedAt = new Date();
 
     const result = await this.userCollection.findOneAndUpdate(
       { _id: objectId },
-      updateQuery,
+      updateQuery as Parameters<typeof this.userCollection.findOneAndUpdate>[1],
       { returnDocument: 'after' },
     );
 
@@ -257,7 +261,9 @@ export class UserModel {
     id: string | ObjectId,
     profileImageUrl: string,
   ): Promise<User | null> {
-    return await this.updateUser(id, { $set: { profileImage: profileImageUrl } });
+    return await this.updateUser(id, {
+      $set: { profileImage: profileImageUrl },
+    });
   }
 
   // 비밀번호 업데이트 - 새로 추가
@@ -337,6 +343,45 @@ export class UserModel {
   // 마지막 활동 시간 업데이트 - 새로 추가
   async updateLastActivity(id: string | ObjectId): Promise<User | null> {
     return await this.updateUser(id, { updatedAt: new Date() });
+  }
+
+  // 이름과 생년월일로 사용자 찾기 (이메일 찾기 기능)
+  async findByNameAndBirthDate(
+    name: string,
+    birthDate: Date,
+  ): Promise<User[]> {
+    // UTC 기준으로 해당 날짜 범위 계산
+    const startOfDay = new Date(birthDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(birthDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    // ISO 문자열 형식으로도 검색 (문자열로 저장된 경우 대비)
+    const birthDateString = birthDate.toISOString();
+
+    logger.info(
+      `[UserModel] Searching users with name: "${name}", birthDate range: ${startOfDay.toISOString()} ~ ${endOfDay.toISOString()}, or exact string: ${birthDateString}`,
+    );
+
+    return await this.userCollection
+      .find({
+        name,
+        $or: [
+          // Date 타입으로 저장된 경우
+          {
+            birthDate: {
+              $gte: startOfDay,
+              $lte: endOfDay,
+            },
+          },
+          // 문자열로 저장된 경우 (ISO 형식)
+          {
+            birthDate: birthDateString as any,
+          },
+        ],
+      } as any)
+      .toArray();
   }
 }
 
