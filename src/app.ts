@@ -106,6 +106,10 @@ import healthRouter from './routes/health/healthRoutes';
 import swaggerRouter from './routes/swagger/swaggerRoutes';
 import termsRouter from './routes/terms/index';
 import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
+import {
+  errorHandler,
+  notFoundHandler,
+} from './middlewares/error/errorHandler';
 
 // connect-redis v6.1.3 방식
 import connectRedis from 'connect-redis';
@@ -628,70 +632,11 @@ const startServer = async (): Promise<void> => {
     chatSocketServer = new ChatSocketServer(httpServer);
     logger.info('✅ Socket.IO server initialized');
 
-    // 에러 핸들링 미들웨어 (모든 라우터 뒤에 위치)
-    app.use(
-      (
-        err: Error & { status?: number; type?: string },
-        req: express.Request,
-        res: express.Response,
-        next: express.NextFunction,
-      ) => {
-        if (res.headersSent) {
-          return next(err);
-        }
+    // 404 핸들러 (모든 라우터 뒤에, 에러 핸들러 앞에 위치)
+    app.use('*', notFoundHandler);
 
-        logger.error('🔥 Request Error:', {
-          error: err.message,
-          stack: isDevelopment() ? err.stack : undefined,
-          url: req.url,
-          method: req.method,
-          ip: req.ip,
-        });
-
-        if (
-          err.type === 'entity.parse.failed' ||
-          err.message?.includes('JSON')
-        ) {
-          return res.status(400).json({
-            message: '잘못된 JSON 형식입니다.',
-            error: isDevelopment() ? err.message : 'Invalid JSON format',
-            timestamp: new Date().toISOString(),
-          });
-        }
-
-        res.status(err.status || 500).json({
-          message: err.message || '서버 내부 에러',
-          error: isDevelopment()
-            ? { stack: err.stack, details: err.message }
-            : '알 수 없는 에러',
-          timestamp: new Date().toISOString(),
-        });
-      },
-    );
-
-    // 404 핸들러 (가장 마지막에 위치)
-    app.use('*', (req: express.Request, res: express.Response) => {
-      logger.warn(
-        `404 Not Found: ${req.method} ${req.originalUrl} from ${req.ip}`,
-      );
-      res.status(404).json({
-        message: '요청한 경로를 찾을 수 없습니다.',
-        requestedPath: req.originalUrl,
-        method: req.method,
-        availableEndpoints: {
-          documentation: 'GET /api-docs',
-          'health-liveness': 'GET /health/liveness',
-          'health-readiness': 'GET /health/readiness',
-          health: '/health/*',
-          auth: '/auth/*',
-          concert: '/concert/*',
-          article: '/article/*',
-          chat: '/chat/*',
-          terms: '/terms/*',
-        },
-        timestamp: new Date().toISOString(),
-      });
-    });
+    // 전역 에러 핸들러 (가장 마지막에 위치)
+    app.use(errorHandler);
 
     // HTTP 서버 시작
     const PORT = parseInt(env.PORT);
