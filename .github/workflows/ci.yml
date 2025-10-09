@@ -37,12 +37,14 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         if: matrix.node-version == '18.x'
+        continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/coverage-final.json
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+          verbose: true
 
       - name: Build TypeScript
         run: npm run build
