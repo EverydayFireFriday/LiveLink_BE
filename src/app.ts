@@ -127,20 +127,28 @@ app.use((req, res, next) => {
 
   const end = httpRequestDurationMicroseconds.startTimer();
   res.on('finish', () => {
-    const route = req.route ? req.route.path : req.path;
+    // Safely extract route path, defaulting to req.path
+    let route: string = req.path;
+    if (req.route && typeof req.route === 'object' && 'path' in req.route) {
+      const routeObj = req.route as Record<string, unknown>;
+      route = String(routeObj.path);
+    }
+    const method: string = req.method;
+    const status: number = res.statusCode;
+
     httpRequestCounter.inc({
-      method: req.method,
+      method,
       route,
-      status: res.statusCode,
+      status,
     });
-    end({ method: req.method, route, status: res.statusCode });
+    end({ method, route, status });
 
     // Track errors
-    if (res.statusCode >= 400) {
+    if (status >= 400) {
       httpErrorCounter.inc({
-        method: req.method,
+        method,
         route,
-        status: res.statusCode,
+        status,
       });
     }
 
@@ -156,9 +164,11 @@ app.use((req, res, next) => {
 });
 
 // Prometheus metrics endpoint
-app.get('/metrics', async (req, res) => {
+app.get('/metrics', (req, res) => {
   res.setHeader('Content-Type', register.contentType);
-  res.end(await register.metrics());
+  void register.metrics().then((metrics) => {
+    res.end(metrics);
+  });
 });
 
 // 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
@@ -226,7 +236,6 @@ app.use(
 // Redis 클라이언트 생성
 const redisClient = createClient({
   url: env.REDIS_URL,
-  legacyMode: true,
 });
 
 // Redis 이벤트 핸들링
@@ -484,8 +493,9 @@ app.post(
   '/csp-report',
   express.json({ type: 'application/csp-report' }),
   (req, res) => {
-    if (req.body) {
-      logger.warn('CSP Violation:', req.body['csp-report']);
+    if (req.body && typeof req.body === 'object' && 'csp-report' in req.body) {
+      const cspReport = (req.body as Record<string, unknown>)['csp-report'];
+      logger.warn('CSP Violation:', cspReport);
     } else {
       logger.warn('CSP Violation: No report data received.');
     }
@@ -682,16 +692,20 @@ process.on('uncaughtException', (err) => {
 });
 
 // 🛑 그레이스풀 셧다운 (MUST)
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => {
+  void gracefulShutdown('SIGTERM');
+});
+process.on('SIGINT', () => {
+  void gracefulShutdown('SIGINT');
+});
 
 // 🚀 서버 시작
 try {
-  startServer().catch((error) => {
+  startServer().catch((error: unknown) => {
     logger.error('❌ Failed to start server:', { error });
     process.exit(1);
   });
-} catch (error) {
+} catch (error: unknown) {
   logger.error('❌ Caught an error during server startup:', { error });
   process.exit(1);
 }
