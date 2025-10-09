@@ -13,7 +13,7 @@ class CacheManager {
       if (!this.client.isOpen) {
         await this.client.connect().catch(logger.error);
       }
-      const data = await this.client.v4.get(key);
+      const data = await this.client.get(key);
       if (data) {
         logger.info(`✅ Cache HIT for key: ${key}`);
         return JSON.parse(data) as T;
@@ -32,7 +32,7 @@ class CacheManager {
         await this.client.connect().catch(logger.error);
       }
       const data = JSON.stringify(value);
-      await this.client.v4.set(key, data, { EX: ttlInSeconds });
+      await this.client.set(key, data, { EX: ttlInSeconds });
       logger.info(`✅ Cache SET for key: ${key} with TTL: ${ttlInSeconds}s`);
     } catch (error) {
       logger.error(`❌ Error setting cache for key ${key}:`, { error });
@@ -44,7 +44,7 @@ class CacheManager {
       if (!this.client.isOpen) {
         await this.client.connect().catch(logger.error);
       }
-      await this.client.v4.del(key);
+      await this.client.del(key);
       logger.info(`✅ Cache DELETED for key: ${key}`);
     } catch (error) {
       logger.error(`❌ Error deleting cache for key ${key}:`, { error });
@@ -56,9 +56,9 @@ class CacheManager {
       if (!this.client.isOpen) {
         await this.client.connect().catch(logger.error);
       }
-      const keys = await this.client.v4.keys(pattern);
-      if (keys.length > 0) {
-        await this.client.v4.del(keys);
+      const keys = await this.client.keys(pattern);
+      if (keys && keys.length > 0) {
+        await this.client.del(keys);
         logger.info(
           `✅ Cache DELETED for pattern: ${pattern}, keys: ${keys.join(', ')}`,
         );

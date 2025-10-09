@@ -121,14 +121,20 @@ export class ChatSocketServer {
   }
 
   public authenticateSocket(
-    socket: Socket,
+    socket: Socket<
+      ClientToServerEvents,
+      ServerToClientEvents,
+      InterServerEvents,
+      SocketData
+    >,
     sessionData: { user?: Partial<SocketUser> },
   ) {
-    if (sessionData && sessionData.user) {
+    if (sessionData?.user) {
+      const userData = sessionData.user;
       socket.data.user = {
-        userId: sessionData.user.userId,
-        username: sessionData.user.username,
-        email: sessionData.user.email,
+        userId: userData.userId ?? '',
+        username: userData.username ?? '',
+        email: userData.email ?? '',
       } as SocketUser;
       return true;
     }
