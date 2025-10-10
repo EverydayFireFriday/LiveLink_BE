@@ -301,31 +301,39 @@ app.use(hpp());
 // 정적 파일 서빙
 app.use(express.static('public'));
 
-// 세션 미들웨어 설정
-app.use(
-  session({
-    store: new RedisStore({
-      client: redisClient,
-      prefix: 'app:sess:',
-    }),
+// 세션 미들웨어 설정 함수 (Redis 연결 후 호출)
+const setupSessionMiddleware = (useRedis: boolean) => {
+  const sessionConfig: session.SessionOptions = {
     secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     rolling: true,
     cookie: {
-      secure: isProduction() || env.COOKIE_SAMESITE === 'none', // SameSite=None requires Secure
+      secure: isProduction() || env.COOKIE_SAMESITE === 'none',
       httpOnly: true,
       maxAge: parseInt(env.SESSION_MAX_AGE),
-      sameSite: env.COOKIE_SAMESITE, // lax | strict | none, // SameSite 정책 (lax, strict, none)
-      domain: env.COOKIE_DOMAIN || undefined, // 쿠키 도메인 (설정 시 해당 도메인으로 제한)
+      sameSite: env.COOKIE_SAMESITE,
+      domain: env.COOKIE_DOMAIN || undefined,
     },
     name: 'app.session.id',
-  }),
-);
+  };
 
-// PASSPORT 초기화
-app.use(passport.initialize());
-app.use(passport.session());
+  if (useRedis && redisClient.isOpen) {
+    sessionConfig.store = new RedisStore({
+      client: redisClient,
+      prefix: 'app:sess:',
+    });
+    logger.info('✅ Session store: Redis');
+  } else {
+    logger.warn('⚠️ Session store: Memory (sessions will not persist across restarts)');
+  }
+
+  app.use(session(sessionConfig));
+
+  // PASSPORT 초기화 (세션 설정 후)
+  app.use(passport.initialize());
+  app.use(passport.session());
+};
 
 // 데이터베이스 연결 상태 추적
 let isUserDBConnected = false;
@@ -347,19 +355,19 @@ app.get('/health/liveness', (req: express.Request, res: express.Response) => {
 
 // Readiness Probe: 서비스 준비 상태 확인
 app.get('/health/readiness', (req: express.Request, res: express.Response) => {
+  // Redis는 선택적 - 필수 서비스만 체크
   const allServicesReady =
     isUserDBConnected &&
     isConcertDBConnected &&
     isArticleDBConnected &&
-    isChatDBConnected &&
-    (redisClient?.isOpen || false);
+    isChatDBConnected;
 
   const serviceStatus = {
     userDB: isUserDBConnected,
     concertDB: isConcertDBConnected,
     articleDB: isArticleDBConnected,
     chatDB: isChatDBConnected,
-    redis: redisClient?.isOpen || false,
+    redis: redisClient?.isOpen || false, // 정보성 - 필수 아님
   };
 
   if (allServicesReady) {
@@ -586,8 +594,11 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 // 서버 시작 함수
 const startServer = async (): Promise<void> => {
   try {
-    // Redis 연결 확인
-    await connectRedisClient();
+    // Redis 연결 시도
+    const isRedisConnected = await connectRedisClient();
+
+    // 세션 미들웨어 설정 (Redis 연결 상태에 따라)
+    setupSessionMiddleware(isRedisConnected);
 
     // 데이터베이스 초기화
     await initializeDatabases();

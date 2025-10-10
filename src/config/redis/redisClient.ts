@@ -47,16 +47,19 @@ redisClient.on('reconnecting', () => {
 });
 
 // Redis 클라이언트 연결 함수
-export const connectRedis = async (): Promise<void> => {
+export const connectRedis = async (): Promise<boolean> => {
   try {
     if (!redisClient.isOpen) {
       await redisClient.connect();
       await redisClient.ping();
       logger.info('✅ Redis ping successful');
+      return true;
     }
+    return true;
   } catch (error) {
-    logger.error('❌ Redis connection failed:', { error });
-    throw error;
+    logger.warn('⚠️ Redis connection failed. Server will continue without Redis.', { error });
+    logger.warn('⚠️ Sessions, rate limiting, and caching will operate in degraded mode.');
+    return false;
   }
 };
 
