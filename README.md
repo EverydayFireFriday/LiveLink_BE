@@ -169,4 +169,3 @@ LiveLink_BE/
 - **[API 응답 표준화](./docs/API_RESPONSE_STANDARDIZATION.md)** - API 응답 형식 가이드
 - **[모니터링 가이드](./docs/MONITORING_GUIDE.md)** - Prometheus & Grafana 설정 및 사용법
 - **[배포 체크리스트](./docs/DEPLOY_CHECKLIST.md)** - 프로덕션 배포 가이드
-```
