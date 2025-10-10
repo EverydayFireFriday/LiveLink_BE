@@ -236,6 +236,21 @@ app.use(
 // Redis 클라이언트 생성
 const redisClient = createClient({
   url: env.REDIS_URL,
+  socket: {
+    connectTimeout: 10000, // 10초
+    reconnectStrategy: (retries) => {
+      if (retries > 10) {
+        logger.error('❌ Redis reconnection failed after 10 attempts');
+        return new Error('Redis reconnection limit exceeded');
+      }
+      // Exponential backoff: 2^retries * 100ms, max 3 seconds
+      const delay = Math.min(Math.pow(2, retries) * 100, 3000);
+      logger.info(
+        `🔄 Redis reconnecting in ${delay}ms (attempt ${retries + 1})`,
+      );
+      return delay;
+    },
+  },
 });
 
 // Redis 이벤트 핸들링
