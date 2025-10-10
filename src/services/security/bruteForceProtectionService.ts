@@ -10,7 +10,7 @@ export class BruteForceProtectionService {
   private isRedisAvailable: boolean = true; // Redis 가용성 플래그
 
   constructor(redisClient: any) {
-    this.redisClient = redisClient.v4;
+    this.redisClient = redisClient;
     this.checkRedisConnection();
   }
 
