@@ -11,26 +11,12 @@ const RedisStore = connectRedis(session);
 // Redis 클라이언트 생성 (index.ts와 동일하게)
 const redisClient = createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379',
-  socket: {
-    connectTimeout: 10000, // 10초
-    reconnectStrategy: (retries) => {
-      if (retries > 10) {
-        logger.info('❌ Redis reconnection failed after 10 attempts (session)');
-        return new Error('Redis reconnection limit exceeded');
-      }
-      // Exponential backoff: 2^retries * 100ms, max 3 seconds
-      const delay = Math.min(Math.pow(2, retries) * 100, 3000);
-      logger.info(
-        `🔄 Redis reconnecting in ${delay}ms (attempt ${retries + 1}) (session)`,
-      );
-      return delay;
-    },
-  },
+  legacyMode: true, // 중요!
 });
 
 // Redis 이벤트 핸들링 (에러 필터링)
 redisClient.on('connect', () => logger.info('✅ Redis connected (session)'));
-redisClient.on('error', (err: Error) => {
+redisClient.on('error', (err) => {
   // 종료 과정에서 발생하는 에러는 무시
   if (
     err.message?.includes('Disconnects client') ||

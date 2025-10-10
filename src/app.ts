@@ -127,28 +127,20 @@ app.use((req, res, next) => {
 
   const end = httpRequestDurationMicroseconds.startTimer();
   res.on('finish', () => {
-    // Safely extract route path, defaulting to req.path
-    let route: string = req.path;
-    if (req.route && typeof req.route === 'object' && 'path' in req.route) {
-      const routeObj = req.route as Record<string, unknown>;
-      route = String(routeObj.path);
-    }
-    const method: string = req.method;
-    const status: number = res.statusCode;
-
+    const route = req.route ? req.route.path : req.path;
     httpRequestCounter.inc({
-      method,
+      method: req.method,
       route,
-      status,
+      status: res.statusCode,
     });
-    end({ method, route, status });
+    end({ method: req.method, route, status: res.statusCode });
 
     // Track errors
-    if (status >= 400) {
+    if (res.statusCode >= 400) {
       httpErrorCounter.inc({
-        method,
+        method: req.method,
         route,
-        status,
+        status: res.statusCode,
       });
     }
 
@@ -164,11 +156,9 @@ app.use((req, res, next) => {
 });
 
 // Prometheus metrics endpoint
-app.get('/metrics', (req, res) => {
+app.get('/metrics', async (req, res) => {
   res.setHeader('Content-Type', register.contentType);
-  void register.metrics().then((metrics) => {
-    res.end(metrics);
-  });
+  res.end(await register.metrics());
 });
 
 // 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
@@ -236,21 +226,7 @@ app.use(
 // Redis 클라이언트 생성
 const redisClient = createClient({
   url: env.REDIS_URL,
-  socket: {
-    connectTimeout: 10000, // 10초
-    reconnectStrategy: (retries) => {
-      if (retries > 10) {
-        logger.error('❌ Redis reconnection failed after 10 attempts');
-        return new Error('Redis reconnection limit exceeded');
-      }
-      // Exponential backoff: 2^retries * 100ms, max 3 seconds
-      const delay = Math.min(Math.pow(2, retries) * 100, 3000);
-      logger.info(
-        `🔄 Redis reconnecting in ${delay}ms (attempt ${retries + 1})`,
-      );
-      return delay;
-    },
-  },
+  legacyMode: true,
 });
 
 // Redis 이벤트 핸들링
@@ -508,9 +484,8 @@ app.post(
   '/csp-report',
   express.json({ type: 'application/csp-report' }),
   (req, res) => {
-    if (req.body && typeof req.body === 'object' && 'csp-report' in req.body) {
-      const cspReport = (req.body as Record<string, unknown>)['csp-report'];
-      logger.warn('CSP Violation:', cspReport);
+    if (req.body) {
+      logger.warn('CSP Violation:', req.body['csp-report']);
     } else {
       logger.warn('CSP Violation: No report data received.');
     }
@@ -707,20 +682,16 @@ process.on('uncaughtException', (err) => {
 });
 
 // 🛑 그레이스풀 셧다운 (MUST)
-process.on('SIGTERM', () => {
-  void gracefulShutdown('SIGTERM');
-});
-process.on('SIGINT', () => {
-  void gracefulShutdown('SIGINT');
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // 🚀 서버 시작
 try {
-  startServer().catch((error: unknown) => {
+  startServer().catch((error) => {
     logger.error('❌ Failed to start server:', { error });
     process.exit(1);
   });
-} catch (error: unknown) {
+} catch (error) {
   logger.error('❌ Caught an error during server startup:', { error });
   process.exit(1);
 }

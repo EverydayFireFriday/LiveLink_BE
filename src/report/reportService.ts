@@ -9,7 +9,7 @@ export class ReportService {
 
   constructor(db: Db) {
     this.reportsCollection = db.collection<Report>('reports');
-    void this.ensureIndexes();
+    this.ensureIndexes();
   }
 
   private async ensureIndexes() {
