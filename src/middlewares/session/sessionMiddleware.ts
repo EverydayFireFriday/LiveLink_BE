@@ -11,11 +11,12 @@ const RedisStore = connectRedis(session);
 // Redis 클라이언트 생성 (index.ts와 동일하게)
 const redisClient = createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379',
+  legacyMode: true, // 중요!
 });
 
 // Redis 이벤트 핸들링 (에러 필터링)
 redisClient.on('connect', () => logger.info('✅ Redis connected (session)'));
-redisClient.on('error', (err: Error) => {
+redisClient.on('error', (err) => {
   // 종료 과정에서 발생하는 에러는 무시
   if (
     err.message?.includes('Disconnects client') ||

@@ -34,7 +34,7 @@ export class EmailTemplates {
         <body>
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333;">회원가입 이메일 인증</h2>
-            <p>안녕하세요${data.username ? `, <strong>${data.username}</strong>님` : ''}!</p>
+            <p>안녕하세요${data.username ? `, <strong>${data.username}</strong>님` : ""}!</p>
             <p><strong>stagelives</strong>에 회원가입해주셔서 감사합니다.</p>
             <p>아래 인증 코드를 입력하여 회원가입을 완료해주세요.</p>
             <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
@@ -67,7 +67,7 @@ export class EmailTemplates {
         <body>
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333;">비밀번호 재설정 인증 코드</h2>
-            <p>안녕하세요${data.username ? `, <strong>${data.username}</strong>님` : ''}!</p>
+            <p>안녕하세요${data.username ? `, <strong>${data.username}</strong>님` : ""}!</p>
             <p>비밀번호 재설정을 위한 인증 코드를 발송해드립니다.</p>
             <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
               <h3 style="color: #dc3545; font-size: 24px; margin: 0;">인증 코드: ${data.verificationCode}</h3>
