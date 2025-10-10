@@ -5,7 +5,7 @@ export const requireAuth = (
   res: express.Response,
   next: express.NextFunction
 ) => {
-  if (!req.session.user) {
+  if (!req.session || !req.session.user) {
     res.status(401).json({ message: "로그인이 필요합니다." });
     return;
   }
@@ -17,6 +17,10 @@ export const requireNoAuth = (
   res: express.Response,
   next: express.NextFunction
 ) => {
+  if (!req.session) {
+    res.status(500).json({ message: "세션이 초기화되지 않았습니다." });
+    return;
+  }
   if (req.session.user) {
     res.status(400).json({ message: "이미 로그인되어 있습니다." });
     return;
@@ -29,7 +33,7 @@ export const requireAdmin = (
   res: express.Response,
   next: express.NextFunction
 ) => {
-  if (!req.session.user) {
+  if (!req.session || !req.session.user) {
     res.status(401).json({ message: "로그인이 필요합니다." });
     return;
   }
