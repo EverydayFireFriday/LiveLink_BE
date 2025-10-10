@@ -57,8 +57,11 @@ class CacheManager {
         await this.client.connect().catch(logger.error);
       }
       const keys = await this.client.keys(pattern);
-      if (keys && keys.length > 0) {
-        await this.client.del(keys);
+      if (keys && Array.isArray(keys) && keys.length > 0) {
+        // Delete each key individually to avoid type issues
+        for (const key of keys) {
+          await this.client.del(key);
+        }
         logger.info(
           `✅ Cache DELETED for pattern: ${pattern}, keys: ${keys.join(', ')}`,
         );
