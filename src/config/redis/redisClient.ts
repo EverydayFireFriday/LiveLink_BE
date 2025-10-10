@@ -2,6 +2,24 @@ import { createClient } from 'redis';
 import logger from '../../utils/logger/logger';
 import { env } from '../env/env';
 
+/**
+ * ⚠️ IMPORTANT: Redis 버전 관리 주의사항
+ *
+ * 현재 구성:
+ * - redis: ^4.6.5
+ * - connect-redis: ^6.1.3
+ * - legacyMode: true (필수)
+ *
+ * ❌ Redis v5로 업그레이드 금지:
+ * - connect-redis v6는 redis v4까지만 지원
+ * - Redis v5는 connect-redis v7이 필요하지만 호환성 문제 있음
+ * - 업그레이드 시 세션 저장 기능이 작동하지 않음
+ *
+ * ✅ 안전한 업그레이드 경로 (필요 시):
+ * 1. ioredis로 완전 마이그레이션
+ * 2. 또는 현재 구성(redis v4) 유지 권장
+ */
+
 // 전역 Redis 클라이언트 (싱글톤)
 const redisClient = createClient({
   url: env.REDIS_URL,
