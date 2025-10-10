@@ -60,7 +60,6 @@ import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { configurePassport } from './config/oauth/passport';
-import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -114,6 +113,13 @@ import {
 // connect-redis v6.1.3 방식
 import connectRedis from 'connect-redis';
 const RedisStore = connectRedis(session);
+
+// Redis 클라이언트 import
+import {
+  redisClient,
+  connectRedis as connectRedisClient,
+  disconnectRedis,
+} from './config/redis/redisClient';
 
 const app = express();
 import * as http from 'http';
@@ -223,30 +229,14 @@ app.use(
   }),
 );
 
-// Redis 클라이언트 생성
-const redisClient = createClient({
-  url: env.REDIS_URL,
-  legacyMode: true,
-});
-
-// Redis 이벤트 핸들링
+// Redis 이벤트 핸들링 (Prometheus 메트릭 추가)
 redisClient.on('connect', () => {
-  logger.info('✅ Redis connected');
   redisConnectionGauge.set(1);
 });
-redisClient.on('error', (err: Error) => {
-  if (
-    err.message?.includes('Disconnects client') ||
-    err.message?.includes('destroy') ||
-    err.message?.includes('Connection is closed')
-  ) {
-    return;
-  }
-  logger.error(`❌ Redis Error: ${err.message}`);
+redisClient.on('error', () => {
   redisConnectionGauge.set(0);
 });
 redisClient.on('end', () => {
-  logger.info('ℹ️ Redis connection ended');
   redisConnectionGauge.set(0);
 });
 
@@ -579,10 +569,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     }
 
     // Redis 연결 종료
-    if (redisClient?.isOpen) {
-      await redisClient.disconnect();
-      logger.info('✅ Redis disconnected');
-    }
+    await disconnectRedis();
 
     // MongoDB 연결 종료
     await disconnectUserDB();
@@ -600,8 +587,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 const startServer = async (): Promise<void> => {
   try {
     // Redis 연결 확인
-    await redisClient.connect();
-    await redisClient.ping();
+    await connectRedisClient();
 
     // 데이터베이스 초기화
     await initializeDatabases();

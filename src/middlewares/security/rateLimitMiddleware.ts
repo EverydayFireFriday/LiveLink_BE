@@ -1,23 +1,9 @@
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
-import { createClient } from 'redis';
 import { Request, Response, NextFunction } from 'express';
 import logger from '../../utils/logger/logger';
 import { env } from '../../config/env/env';
-
-// Rate Limiting 전용 Redis 클라이언트 생성 (모든 리미터가 공유)
-const rateLimitRedisClient = createClient({
-  url: env.REDIS_URL, // 💡 환경 변수 사용
-});
-
-rateLimitRedisClient.on('connect', () =>
-  logger.info('✅ Redis connected (rate-limiter)'),
-);
-rateLimitRedisClient.on('error', (err) =>
-  logger.error('❌ Redis Error (rate-limiter):', err),
-);
-
-rateLimitRedisClient.connect().catch(logger.error);
+import { redisClient } from '../../config/redis/redisClient';
 
 // 공통 핸들러
 const handler = (
@@ -34,10 +20,9 @@ const handler = (
 
 // 1. 기본 API Rate Limiter (Default)
 export const defaultLimiter = rateLimit({
-  store: rateLimitRedisClient.isOpen
+  store: redisClient.isOpen
     ? new RedisStore({
-        sendCommand: (...args: string[]) =>
-          rateLimitRedisClient.sendCommand(args),
+        sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         prefix: 'rl_default:',
       })
     : undefined, // 메모리 기반 사용
@@ -50,10 +35,9 @@ export const defaultLimiter = rateLimit({
 
 // 2. 엄격한 API Rate Limiter (Strict)
 export const strictLimiter = rateLimit({
-  store: rateLimitRedisClient.isOpen
+  store: redisClient.isOpen
     ? new RedisStore({
-        sendCommand: (...args: string[]) =>
-          rateLimitRedisClient.sendCommand(args),
+        sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         prefix: 'rl_strict:',
       })
     : undefined, // 메모리 기반 사용
@@ -66,10 +50,9 @@ export const strictLimiter = rateLimit({
 
 // 3. 완화된 API Rate Limiter (Relaxed)
 export const relaxedLimiter = rateLimit({
-  store: rateLimitRedisClient.isOpen
+  store: redisClient.isOpen
     ? new RedisStore({
-        sendCommand: (...args: string[]) =>
-          rateLimitRedisClient.sendCommand(args),
+        sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         prefix: 'rl_relaxed:',
       })
     : undefined, // 메모리 기반 사용
@@ -82,10 +65,9 @@ export const relaxedLimiter = rateLimit({
 
 // 4. 로그인 API Rate Limiter: 15분당 10개 (기존 유지)
 export const loginLimiter = rateLimit({
-  store: rateLimitRedisClient.isOpen
+  store: redisClient.isOpen
     ? new RedisStore({
-        sendCommand: (...args: string[]) =>
-          rateLimitRedisClient.sendCommand(args),
+        sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         prefix: 'rl_login:',
       })
     : undefined, // 메모리 기반 사용
@@ -98,10 +80,9 @@ export const loginLimiter = rateLimit({
 
 // 5. 회원가입 API Rate Limiter: 1시간당 10개 (기존 유지)
 export const signupLimiter = rateLimit({
-  store: rateLimitRedisClient.isOpen
+  store: redisClient.isOpen
     ? new RedisStore({
-        sendCommand: (...args: string[]) =>
-          rateLimitRedisClient.sendCommand(args),
+        sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         prefix: 'rl_signup:',
       })
     : undefined, // 메모리 기반 사용
