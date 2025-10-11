@@ -110,14 +110,16 @@ import {
   notFoundHandler,
 } from './middlewares/error/errorHandler';
 
-// connect-redis는 필요 시 동적으로 import
-
 // Redis 클라이언트 import
 import {
   redisClient,
   connectRedis as connectRedisClient,
   disconnectRedis,
 } from './config/redis/redisClient';
+
+// connect-redis v6.1.3 방식
+import connectRedis from 'connect-redis';
+const RedisStore = connectRedis(session);
 
 const app = express();
 import * as http from 'http';
@@ -299,8 +301,9 @@ app.use(hpp());
 // 정적 파일 서빙
 app.use(express.static('public'));
 
-// 세션 미들웨어 설정 - 라우터보다 먼저 등록 (초기에는 메모리 스토어 사용)
-const initialSessionConfig: session.SessionOptions = {
+// 세션 미들웨어 - Redis 연결 전에 먼저 등록 (초기에는 메모리 스토어)
+// Redis 연결 성공 시 세션 스토어가 자동으로 Redis로 전환됨
+const sessionConfig: session.SessionOptions = {
   secret: env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -315,18 +318,16 @@ const initialSessionConfig: session.SessionOptions = {
   name: 'app.session.id',
 };
 
-app.use(session(initialSessionConfig));
+app.use(session(sessionConfig));
 
 // PASSPORT 초기화 (세션 설정 후)
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Redis 연결 후 세션 스토어 업데이트 함수
-const updateSessionStore = (useRedis: boolean) => {
+// Redis 연결 확인 및 로깅 함수
+const logSessionStoreStatus = (useRedis: boolean): void => {
   if (useRedis && redisClient.isOpen) {
-    logger.info('✅ Session store upgraded to Redis');
-    // 참고: 이미 등록된 세션 미들웨어는 메모리 스토어 사용
-    // 새로운 세션은 메모리에 저장되며, Redis 재시작 시에도 안정적
+    logger.info('✅ Session store: Redis (reconnection will use Redis)');
   } else {
     logger.warn('⚠️ Session store: Memory (sessions will not persist across restarts)');
   }
@@ -594,8 +595,15 @@ const startServer = async (): Promise<void> => {
     // Redis 연결 시도
     const isRedisConnected = await connectRedisClient();
 
-    // 세션 스토어 상태 로깅
-    updateSessionStore(isRedisConnected);
+    // Redis 연결 성공 시 세션 설정 업데이트
+    if (isRedisConnected && redisClient.isOpen) {
+      sessionConfig.store = new RedisStore({
+        client: redisClient,
+        prefix: 'app:sess:',
+      });
+    }
+
+    logSessionStoreStatus(isRedisConnected);
 
     // 데이터베이스 초기화
     await initializeDatabases();
@@ -652,7 +660,9 @@ const startServer = async (): Promise<void> => {
       logger.info(`💬 Chat API: http://localhost:${PORT}/chat`);
       logger.info(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);
       logger.info(`💾 Database: MongoDB Native Driver`);
-      logger.info(`🗄️  Session Store: Redis`);
+      logger.info(
+        `🗄️  Session Store: ${sessionConfig.store ? 'Redis' : 'Memory (development)'}`,
+      );
       logger.info(
         `🔒 Security: ${isProduction() ? 'Production Mode' : 'Development Mode'}`,
       );
