@@ -11,6 +11,17 @@ export const baseStyles = `
   .swagger-ui .info .title { 
     color: #1e40af; 
   }
+
+  /* 버전 및 OAS 스탬프 스타일 통일 (다크 모드 기반) */
+  .swagger-ui .info .version,
+  .swagger-ui .info .version-stamp {
+    background: transparent !important;
+    color: #333 !important; /* 라이트 모드에 맞게 텍스트 색상 조정 */
+    border: none !important;
+    padding: 2px 5px !important;
+    font-weight: bold;
+    text-shadow: none !important;
+  }
   
   /* 서버 선택 영역 */
   .swagger-ui .scheme-container { 

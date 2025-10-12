@@ -32,6 +32,10 @@ export const customStyles = `
   h2.title small pre {
     margin: 0; /* Remove default pre margin */
     line-height: 1; /* Ensure consistent line height */
+    background: transparent !important;
+    color: inherit !important;
+    border: none !important;
+    padding: 0 !important;
   }
 
   /* Custom styles for session authorization modal */
