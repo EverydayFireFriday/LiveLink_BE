@@ -9,22 +9,40 @@ export class ReportService {
 
   constructor(db: Db) {
     this.reportsCollection = db.collection<Report>('reports');
-    this.ensureIndexes();
+    void this.ensureIndexes();
   }
 
-  private async ensureIndexes() {
-    await this.reportsCollection.createIndex({
-      reportedEntityType: 1,
-      reportedEntityId: 1,
-    });
-    await this.reportsCollection.createIndex({ reporterId: 1 });
-    await this.reportsCollection.createIndex({ status: 1, createdAt: -1 });
-    // Optimized compound index for queries filtering by status and entity type, and sorting by creation date
-    await this.reportsCollection.createIndex({
-      status: 1,
-      reportedEntityType: 1,
-      createdAt: -1,
-    });
+  private async ensureIndexes(): Promise<void> {
+    try {
+      // 기존 인덱스 목록 조회
+      const existingIndexes = await this.reportsCollection.listIndexes().toArray();
+
+      // 오래된 contentId 관련 인덱스 삭제
+      for (const index of existingIndexes) {
+        const indexName = index.name as string | undefined;
+        if (indexName?.includes('contentId')) {
+          await this.reportsCollection.dropIndex(indexName);
+          // eslint-disable-next-line no-console
+          console.log(`Dropped old index: ${indexName}`);
+        }
+      }
+
+      // 새로운 인덱스 생성
+      await this.reportsCollection.createIndex({
+        reportedEntityType: 1,
+        reportedEntityId: 1,
+      });
+      await this.reportsCollection.createIndex({ reporterId: 1 });
+      await this.reportsCollection.createIndex({ status: 1, createdAt: -1 });
+      // Optimized compound index for queries filtering by status and entity type, and sorting by creation date
+      await this.reportsCollection.createIndex({
+        status: 1,
+        reportedEntityType: 1,
+        createdAt: -1,
+      });
+    } catch (error) {
+      console.error('Error ensuring indexes:', error);
+    }
   }
 
   async createReport(
