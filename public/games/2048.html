@@ -50,6 +50,70 @@
       color: #667eea;
     }
 
+    .difficulty-selector {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .difficulty-selector label {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #666;
+    }
+
+    .difficulty-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty-btn {
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .difficulty-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .difficulty-btn.easy {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: white;
+    }
+
+    .difficulty-btn.normal {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: white;
+    }
+
+    .difficulty-btn.hard {
+      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+      color: white;
+    }
+
+    .difficulty-btn.active {
+      border: 2px solid white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .difficulty-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .grid {
       background: #bbada0;
       border-radius: 10px;
@@ -177,6 +241,99 @@
       font-size: 2em;
       margin-bottom: 20px;
     }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .game-container {
+        padding: 20px;
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 2em;
+        margin-bottom: 15px;
+      }
+
+      .score-board {
+        font-size: 1em;
+        margin-bottom: 15px;
+      }
+
+      .difficulty-selector {
+        margin-bottom: 15px;
+      }
+
+      .difficulty-selector label {
+        font-size: 1em;
+      }
+
+      .difficulty-selector select {
+        padding: 6px 15px;
+        font-size: 0.9em;
+      }
+
+      .grid {
+        grid-template-columns: repeat(4, 70px);
+        grid-template-rows: repeat(4, 70px);
+        gap: 8px;
+        padding: 8px;
+      }
+
+      .cell {
+        font-size: 1.5em;
+      }
+
+      .cell.tile-128,
+      .cell.tile-256,
+      .cell.tile-512 {
+        font-size: 1.3em;
+      }
+
+      .cell.tile-1024,
+      .cell.tile-2048 {
+        font-size: 1.1em;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 0.9em;
+      }
+
+      .instructions {
+        font-size: 0.9em;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .grid {
+        grid-template-columns: repeat(4, 60px);
+        grid-template-rows: repeat(4, 60px);
+        gap: 6px;
+        padding: 6px;
+      }
+
+      .cell {
+        font-size: 1.3em;
+      }
+
+      .cell.tile-128,
+      .cell.tile-256,
+      .cell.tile-512 {
+        font-size: 1.1em;
+      }
+
+      .cell.tile-1024,
+      .cell.tile-2048 {
+        font-size: 0.9em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -186,6 +343,21 @@
     <div class="score-board">
       <div>점수: <span class="score" id="score">0</span></div>
       <div>최고점수: <span class="score" id="highScore">0</span></div>
+    </div>
+
+    <div class="difficulty-selector">
+      <label>난이도:</label>
+      <div class="difficulty-buttons">
+        <button class="difficulty-btn easy" data-difficulty="easy">
+          🟢 쉬움
+        </button>
+        <button class="difficulty-btn normal active" data-difficulty="normal">
+          🟡 보통
+        </button>
+        <button class="difficulty-btn hard" data-difficulty="hard">
+          🔴 어려움
+        </button>
+      </div>
     </div>
 
     <div class="grid" id="grid"></div>
@@ -217,12 +389,31 @@
     const gameOverElement = document.getElementById('gameOver');
     const gameOverTitle = document.getElementById('gameOverTitle');
     const finalScoreElement = document.getElementById('finalScore');
+    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+    let selectedDifficulty = 'normal';
+
+    // 난이도별 4 타일 생성 확률
+    const difficultySettings = {
+      easy: 0.05,   // 5%
+      normal: 0.1,  // 10%
+      hard: 0.2     // 20%
+    };
 
     let board = [];
     let score = 0;
     let highScore = localStorage.getItem('2048HighScore') || 0;
+    let tile4Probability = 0.1; // 기본값
 
     highScoreElement.textContent = highScore;
+
+    // 난이도 버튼 클릭 이벤트
+    difficultyBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        difficultyBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedDifficulty = btn.dataset.difficulty;
+      });
+    });
 
     function init() {
       board = [
@@ -240,6 +431,10 @@
 
     function newGame() {
       gameOverElement.classList.remove('show');
+
+      // 선택한 난이도에 따라 4 타일 생성 확률 설정
+      tile4Probability = difficultySettings[selectedDifficulty];
+
       init();
     }
 
@@ -255,7 +450,8 @@
 
       if (emptyCells.length > 0) {
         const cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        board[cell.row][cell.col] = Math.random() < 0.9 ? 2 : 4;
+        // 난이도에 따른 확률로 4 타일 생성
+        board[cell.row][cell.col] = Math.random() < (1 - tile4Probability) ? 2 : 4;
       }
     }
 

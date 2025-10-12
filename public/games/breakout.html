@@ -49,6 +49,70 @@
       color: #667eea;
     }
 
+    .difficulty-selector {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .difficulty-selector label {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #666;
+    }
+
+    .difficulty-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty-btn {
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .difficulty-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .difficulty-btn.easy {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: white;
+    }
+
+    .difficulty-btn.normal {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: white;
+    }
+
+    .difficulty-btn.hard {
+      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+      color: white;
+    }
+
+    .difficulty-btn.active {
+      border: 2px solid white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .difficulty-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     canvas {
       border: 3px solid #667eea;
       border-radius: 10px;
@@ -56,6 +120,8 @@
       display: block;
       margin: 0 auto 20px;
       cursor: pointer;
+      max-width: 100%;
+      height: auto;
     }
 
     .controls {
@@ -138,6 +204,56 @@
       font-size: 2em;
       margin-bottom: 20px;
     }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .game-container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 2em;
+        margin-bottom: 15px;
+      }
+
+      .score-board {
+        font-size: 1em;
+        margin-bottom: 15px;
+      }
+
+      .difficulty-selector {
+        margin-bottom: 15px;
+      }
+
+      .difficulty-selector label {
+        font-size: 1em;
+      }
+
+      .difficulty-selector select {
+        padding: 6px 15px;
+        font-size: 0.9em;
+      }
+
+      canvas {
+        width: 100%;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 0.9em;
+      }
+
+      .instructions {
+        font-size: 0.9em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -147,6 +263,21 @@
     <div class="score-board">
       <div>점수: <span class="score" id="score">0</span></div>
       <div>생명: <span class="score" id="lives">3</span></div>
+    </div>
+
+    <div class="difficulty-selector">
+      <label>난이도:</label>
+      <div class="difficulty-buttons">
+        <button class="difficulty-btn easy" data-difficulty="easy">
+          🟢 쉬움
+        </button>
+        <button class="difficulty-btn normal active" data-difficulty="normal">
+          🟡 보통
+        </button>
+        <button class="difficulty-btn hard" data-difficulty="hard">
+          🔴 어려움
+        </button>
+      </div>
     </div>
 
     <canvas id="gameCanvas" width="480" height="320"></canvas>
@@ -181,6 +312,15 @@
     const gameOverElement = document.getElementById('gameOver');
     const gameOverTitle = document.getElementById('gameOverTitle');
     const finalScoreElement = document.getElementById('finalScore');
+    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+    let selectedDifficulty = 'normal';
+
+    // 난이도별 공 속도 설정
+    const difficultySettings = {
+      easy: { dx: 1.5, dy: -1.5 },
+      normal: { dx: 2, dy: -2 },
+      hard: { dx: 3, dy: -3 }
+    };
 
     let x = canvas.width / 2;
     let y = canvas.height - 30;
@@ -213,6 +353,17 @@
       }
     }
 
+    // 난이도 버튼 클릭 이벤트
+    difficultyBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (gameStarted) return;
+
+        difficultyBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedDifficulty = btn.dataset.difficulty;
+      });
+    });
+
     document.addEventListener('mousemove', mouseMoveHandler);
 
     function mouseMoveHandler(e) {
@@ -226,6 +377,13 @@
       if (gameStarted) return;
       gameStarted = true;
       document.getElementById('startBtn').disabled = true;
+      difficultyBtns.forEach(btn => btn.disabled = true);
+
+      // 선택한 난이도에 따라 공 속도 설정
+      const settings = difficultySettings[selectedDifficulty];
+      dx = settings.dx;
+      dy = settings.dy;
+
       gameLoop = setInterval(draw, 10);
     }
 
