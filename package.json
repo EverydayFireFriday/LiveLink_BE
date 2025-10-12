@@ -23,7 +23,14 @@
     "env:validate:prod": "./scripts/validate-env.sh .env.production",
     "env:sync": "./scripts/sync-env.sh to-github .env.production",
     "secrets:setup": "./scripts/setup-secrets.sh",
-    "predev": "./scripts/validate-env.sh || echo '⚠️  .env 검증 실패. scripts/setup-env.sh를 실행하여 .env 파일을 생성하세요.'"
+    "predev": "./scripts/validate-env.sh || echo '⚠️  .env 검증 실패. scripts/setup-env.sh를 실행하여 .env 파일을 생성하세요.'",
+    "docs:export": "ts-node src/scripts/export-openapi.ts",
+    "docs:postman": "ts-node src/scripts/generate-postman.ts",
+    "docs:generate": "npm run docs:export && npm run docs:postman",
+    "migrate:up": "ts-node src/scripts/migrate.ts up",
+    "migrate:down": "ts-node src/scripts/migrate.ts down",
+    "migrate:status": "ts-node src/scripts/migrate.ts status",
+    "db:seed": "ts-node src/scripts/seed.ts"
   },
   "lint-staged": {
     "*.ts": [
@@ -80,6 +87,7 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.0.0",
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/connect-redis": "^0.0.23",
@@ -93,6 +101,7 @@
     "@types/hpp": "^0.2.6",
     "@types/ioredis": "^4.28.10",
     "@types/jest": "^29.5.8",
+    "@types/js-yaml": "^4.0.9",
     "@types/mongodb": "^4.0.6",
     "@types/morgan": "^1.9.10",
     "@types/node": "^20.19.17",
@@ -109,8 +118,10 @@
     "eslint-plugin-prettier": "^5.5.4",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "js-yaml": "^4.1.0",
     "lint-staged": "^16.1.6",
     "nodemon": "^3.0.2",
+    "openapi-to-postmanv2": "^5.3.2",
     "prettier": "^3.6.2",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
