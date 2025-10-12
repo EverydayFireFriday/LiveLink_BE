@@ -50,6 +50,70 @@
       color: #667eea;
     }
 
+    .difficulty-selector {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .difficulty-selector label {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #666;
+    }
+
+    .difficulty-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty-btn {
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .difficulty-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .difficulty-btn.easy {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: white;
+    }
+
+    .difficulty-btn.normal {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: white;
+    }
+
+    .difficulty-btn.hard {
+      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+      color: white;
+    }
+
+    .difficulty-btn.active {
+      border: 2px solid white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .difficulty-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .status {
       font-size: 1.3em;
       font-weight: bold;
@@ -153,6 +217,82 @@
     .back-link a:hover {
       text-decoration: underline;
     }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .game-container {
+        padding: 20px;
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 2em;
+        margin-bottom: 15px;
+      }
+
+      .score-board {
+        font-size: 1em;
+        margin-bottom: 15px;
+      }
+
+      .difficulty-selector {
+        margin-bottom: 15px;
+      }
+
+      .difficulty-selector label {
+        font-size: 1em;
+      }
+
+      .difficulty-selector select {
+        padding: 6px 15px;
+        font-size: 0.9em;
+      }
+
+      .status {
+        font-size: 1.1em;
+        margin-bottom: 15px;
+      }
+
+      .board {
+        grid-template-columns: repeat(3, 90px);
+        grid-template-rows: repeat(3, 90px);
+        gap: 8px;
+        padding: 8px;
+      }
+
+      .cell {
+        font-size: 2.5em;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 0.9em;
+      }
+
+      .instructions {
+        font-size: 0.9em;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .board {
+        grid-template-columns: repeat(3, 70px);
+        grid-template-rows: repeat(3, 70px);
+        gap: 6px;
+        padding: 6px;
+      }
+
+      .cell {
+        font-size: 2em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -163,6 +303,21 @@
       <div>승리: <span class="score" id="wins">0</span></div>
       <div>무승부: <span class="score" id="draws">0</span></div>
       <div>패배: <span class="score" id="losses">0</span></div>
+    </div>
+
+    <div class="difficulty-selector">
+      <label>난이도:</label>
+      <div class="difficulty-buttons">
+        <button class="difficulty-btn easy" data-difficulty="easy">
+          🟢 쉬움
+        </button>
+        <button class="difficulty-btn normal" data-difficulty="normal">
+          🟡 보통
+        </button>
+        <button class="difficulty-btn hard active" data-difficulty="hard">
+          🔴 어려움
+        </button>
+      </div>
     </div>
 
     <div class="status" id="status">게임을 시작하세요!</div>
@@ -201,6 +356,8 @@
     const drawsElement = document.getElementById('draws');
     const lossesElement = document.getElementById('losses');
     const cells = document.querySelectorAll('.cell');
+    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+    let selectedDifficulty = 'hard';
 
     const PLAYER = 'O';
     const AI = 'X';
@@ -211,6 +368,7 @@
     let wins = parseInt(localStorage.getItem('tttWins') || '0');
     let draws = parseInt(localStorage.getItem('tttDraws') || '0');
     let losses = parseInt(localStorage.getItem('tttLosses') || '0');
+    let aiDifficulty = 'hard'; // 기본 난이도
 
     // 승리 조건
     const winningConditions = [
@@ -221,6 +379,15 @@
 
     // 초기 통계 표시
     updateStats();
+
+    // 난이도 버튼 클릭 이벤트
+    difficultyBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        difficultyBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedDifficulty = btn.dataset.difficulty;
+      });
+    });
 
     function updateStats() {
       winsElement.textContent = wins;
@@ -233,6 +400,9 @@
       currentPlayer = PLAYER;
       gameActive = true;
       statusElement.textContent = '당신의 차례입니다! (O)';
+
+      // 선택한 난이도 설정
+      aiDifficulty = selectedDifficulty;
 
       cells.forEach(cell => {
         cell.textContent = '';
@@ -291,9 +461,32 @@
     }
 
     function aiMove() {
-      // 미니맥스 알고리즘 사용
-      const bestMove = minimax(board, AI).index;
-      makeMove(bestMove, AI);
+      let moveIndex;
+
+      if (aiDifficulty === 'easy') {
+        // 쉬움: 랜덤하게 빈 칸 선택
+        const availSpots = board.reduce((acc, val, idx) => {
+          if (val === '') acc.push(idx);
+          return acc;
+        }, []);
+        moveIndex = availSpots[Math.floor(Math.random() * availSpots.length)];
+      } else if (aiDifficulty === 'normal') {
+        // 보통: 50% 확률로 미니맥스, 50% 확률로 랜덤
+        if (Math.random() < 0.5) {
+          moveIndex = minimax(board, AI).index;
+        } else {
+          const availSpots = board.reduce((acc, val, idx) => {
+            if (val === '') acc.push(idx);
+            return acc;
+          }, []);
+          moveIndex = availSpots[Math.floor(Math.random() * availSpots.length)];
+        }
+      } else {
+        // 어려움: 완전한 미니맥스 알고리즘
+        moveIndex = minimax(board, AI).index;
+      }
+
+      makeMove(moveIndex, AI);
     }
 
     function minimax(newBoard, player) {
