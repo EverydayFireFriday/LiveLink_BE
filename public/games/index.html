@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 Mini Games - LiveLink</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      font-size: 3em;
+      margin-bottom: 20px;
+      text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      animation: fadeInDown 0.8s ease-out;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.2em;
+      margin-bottom: 50px;
+      animation: fadeInDown 1s ease-out;
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .game-card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      animation: fadeInUp 0.6s ease-out backwards;
+    }
+
+    .game-card:nth-child(1) { animation-delay: 0.1s; }
+    .game-card:nth-child(2) { animation-delay: 0.2s; }
+    .game-card:nth-child(3) { animation-delay: 0.3s; }
+    .game-card:nth-child(4) { animation-delay: 0.4s; }
+
+    .game-card:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .game-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+      animation: bounce 2s infinite;
+    }
+
+    .game-card:hover .game-icon {
+      animation: spin 0.6s ease-in-out;
+    }
+
+    .game-title {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .game-description {
+      color: #666;
+      font-size: 1em;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .play-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .play-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      color: white;
+      text-decoration: none;
+      font-size: 1.1em;
+      padding: 10px 25px;
+      border: 2px solid white;
+      border-radius: 25px;
+      display: inline-block;
+      transition: all 0.3s ease;
+    }
+
+    .back-link a:hover {
+      background: white;
+      color: #667eea;
+      transform: scale(1.05);
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2em;
+      }
+
+      .games-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Mini Games</h1>
+    <p class="subtitle">잠깐의 휴식이 필요할 때, 재미있는 미니게임을 즐겨보세요!</p>
+
+    <div class="games-grid">
+      <div class="game-card" data-game="snake.html">
+        <div class="game-icon">🐍</div>
+        <h2 class="game-title">Snake Game</h2>
+        <p class="game-description">
+          클래식한 뱀 게임! 먹이를 먹고 점점 길어지는 뱀을 조종하세요.
+          벽이나 자기 몸에 부딪히면 게임 오버!
+        </p>
+        <button class="play-button">게임 시작</button>
+      </div>
+
+      <div class="game-card" data-game="breakout.html">
+        <div class="game-icon">🎯</div>
+        <h2 class="game-title">Breakout</h2>
+        <p class="game-description">
+          벽돌깨기의 고전! 패들을 움직여 공을 튕기고
+          모든 벽돌을 깨부수세요.
+        </p>
+        <button class="play-button">게임 시작</button>
+      </div>
+
+      <div class="game-card" data-game="flappy.html">
+        <div class="game-icon">🐦</div>
+        <h2 class="game-title">Flappy Bird</h2>
+        <p class="game-description">
+          날아가는 새를 조종해 파이프 사이를 통과하세요.
+          간단하지만 중독성 있는 게임!
+        </p>
+        <button class="play-button">게임 시작</button>
+      </div>
+
+      <div class="game-card" data-game="2048.html">
+        <div class="game-icon">🧩</div>
+        <h2 class="game-title">2048</h2>
+        <p class="game-description">
+          숫자 타일을 합쳐 2048을 만드세요!
+          전략이 필요한 퍼즐 게임입니다.
+        </p>
+        <button class="play-button">게임 시작</button>
+      </div>
+
+      <div class="game-card" data-game="pong.html">
+        <div class="game-icon">🏓</div>
+        <h2 class="game-title">Pong</h2>
+        <p class="game-description">
+          클래식 탁구 게임! AI와 대결하며
+          먼저 5점을 획득하세요.
+        </p>
+        <button class="play-button">게임 시작</button>
+      </div>
+
+      <div class="game-card" data-game="tictactoe.html">
+        <div class="game-icon">⭕❌</div>
+        <h2 class="game-title">Tic-Tac-Toe</h2>
+        <p class="game-description">
+          3x3 보드에서 AI와 대결!
+          먼저 3개를 일렬로 만드세요.
+        </p>
+        <button class="play-button">게임 시작</button>
+      </div>
+    </div>
+
+    <div class="back-link">
+      <a href="/api-docs">← API 문서로 돌아가기</a>
+    </div>
+  </div>
+
+  <script>
+    // 게임 카드 클릭 이벤트
+    document.querySelectorAll('.game-card').forEach(card => {
+      card.addEventListener('click', function() {
+        const game = this.getAttribute('data-game');
+        location.href = game;
+      });
+    });
+  </script>
+</body>
+</html>

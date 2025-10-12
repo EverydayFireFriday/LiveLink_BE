@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Breakout - LiveLink</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .game-container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 2.5em;
+    }
+
+    .score-board {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    .score {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    canvas {
+      border: 3px solid #667eea;
+      border-radius: 10px;
+      background: #f0f0f0;
+      display: block;
+      margin: 0 auto 20px;
+      cursor: pointer;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .instructions {
+      color: #666;
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+
+    .back-link {
+      margin-top: 20px;
+    }
+
+    .back-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+
+    .game-over {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+
+    .game-over.show {
+      display: block;
+      animation: popIn 0.3s ease-out;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    .game-over h2 {
+      color: #667eea;
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>🎯 Breakout</h1>
+
+    <div class="score-board">
+      <div>점수: <span class="score" id="score">0</span></div>
+      <div>생명: <span class="score" id="lives">3</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+
+    <div class="controls">
+      <button id="startBtn">게임 시작</button>
+      <button id="restartBtn">다시 시작</button>
+    </div>
+
+    <div class="instructions">
+      <p>🖱️ 마우스로 패들 조종</p>
+      <p>🎯 모든 벽돌을 깨부수세요!</p>
+      <p>❤️ 공을 놓치면 생명이 줄어듭니다</p>
+    </div>
+
+    <div class="back-link">
+      <a href="index.html">← 게임 목록으로 돌아가기</a>
+    </div>
+  </div>
+
+  <div class="game-over" id="gameOver">
+    <h2 id="gameOverTitle">Game Over!</h2>
+    <p class="final-score">최종 점수: <span id="finalScore">0</span></p>
+    <button id="retryBtn">다시 도전하기</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const livesElement = document.getElementById('lives');
+    const gameOverElement = document.getElementById('gameOver');
+    const gameOverTitle = document.getElementById('gameOverTitle');
+    const finalScoreElement = document.getElementById('finalScore');
+
+    let x = canvas.width / 2;
+    let y = canvas.height - 30;
+    let dx = 2;
+    let dy = -2;
+    const ballRadius = 8;
+
+    const paddleHeight = 10;
+    const paddleWidth = 75;
+    let paddleX = (canvas.width - paddleWidth) / 2;
+
+    const brickRowCount = 5;
+    const brickColumnCount = 8;
+    const brickWidth = 55;
+    const brickHeight = 20;
+    const brickPadding = 5;
+    const brickOffsetTop = 30;
+    const brickOffsetLeft = 15;
+
+    let score = 0;
+    let lives = 3;
+    let gameStarted = false;
+    let gameLoop = null;
+
+    const bricks = [];
+    for (let c = 0; c < brickColumnCount; c++) {
+      bricks[c] = [];
+      for (let r = 0; r < brickRowCount; r++) {
+        bricks[c][r] = { x: 0, y: 0, status: 1 };
+      }
+    }
+
+    document.addEventListener('mousemove', mouseMoveHandler);
+
+    function mouseMoveHandler(e) {
+      const relativeX = e.clientX - canvas.offsetLeft;
+      if (relativeX > 0 && relativeX < canvas.width) {
+        paddleX = relativeX - paddleWidth / 2;
+      }
+    }
+
+    function startGame() {
+      if (gameStarted) return;
+      gameStarted = true;
+      document.getElementById('startBtn').disabled = true;
+      gameLoop = setInterval(draw, 10);
+    }
+
+    function collisionDetection() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          const b = bricks[c][r];
+          if (b.status === 1) {
+            if (
+              x > b.x &&
+              x < b.x + brickWidth &&
+              y > b.y &&
+              y < b.y + brickHeight
+            ) {
+              dy = -dy;
+              b.status = 0;
+              score++;
+              scoreElement.textContent = score;
+              if (score === brickRowCount * brickColumnCount) {
+                gameOverTitle.textContent = '🎉 축하합니다!';
+                endGame();
+              }
+            }
+          }
+        }
+      }
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#0095DD';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.roundRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight, 5);
+      ctx.fillStyle = '#0095DD';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawBricks() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          if (bricks[c][r].status === 1) {
+            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+            bricks[c][r].x = brickX;
+            bricks[c][r].y = brickY;
+
+            ctx.beginPath();
+            ctx.roundRect(brickX, brickY, brickWidth, brickHeight, 3);
+
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
+            ctx.fillStyle = colors[r % colors.length];
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBricks();
+      drawBall();
+      drawPaddle();
+      collisionDetection();
+
+      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+        dx = -dx;
+      }
+      if (y + dy < ballRadius) {
+        dy = -dy;
+      } else if (y + dy > canvas.height - ballRadius) {
+        if (x > paddleX && x < paddleX + paddleWidth) {
+          dy = -dy;
+        } else {
+          lives--;
+          livesElement.textContent = lives;
+          if (!lives) {
+            gameOverTitle.textContent = 'Game Over!';
+            endGame();
+          } else {
+            x = canvas.width / 2;
+            y = canvas.height - 30;
+            dx = 2;
+            dy = -2;
+            paddleX = (canvas.width - paddleWidth) / 2;
+          }
+        }
+      }
+
+      x += dx;
+      y += dy;
+    }
+
+    function endGame() {
+      clearInterval(gameLoop);
+      finalScoreElement.textContent = score;
+      gameOverElement.classList.add('show');
+    }
+
+    // roundRect polyfill for older browsers
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+        this.moveTo(x + radius, y);
+        this.lineTo(x + width - radius, y);
+        this.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.lineTo(x + width, y + height - radius);
+        this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.lineTo(x + radius, y + height);
+        this.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.lineTo(x, y + radius);
+        this.quadraticCurveTo(x, y, x + radius, y);
+      };
+    }
+
+    // 버튼 이벤트 리스너
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+    document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+  </script>
+</body>
+</html>

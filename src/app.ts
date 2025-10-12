@@ -300,7 +300,8 @@ app.use((req, res, next) => {
 app.use(hpp());
 
 // 정적 파일 서빙
-app.use(express.static('public'));
+import * as path from 'path';
+app.use(express.static(path.join(__dirname, '../public')));
 
 // 세션 미들웨어 - Redis 연결 전에 먼저 등록 (초기에는 메모리 스토어)
 // Redis 연결 성공 시 세션 스토어가 자동으로 Redis로 전환됨
@@ -449,6 +450,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
     environment: env.NODE_ENV,
     endpoints: {
       documentation: '/api-docs',
+      games: '/games',
       'health-liveness': '/health/liveness',
       'health-readiness': '/health/readiness',
       'health-general': '/health',

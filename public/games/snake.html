@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐍 Snake Game - LiveLink</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .game-container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 2.5em;
+    }
+
+    .score-board {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    .score {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    canvas {
+      border: 3px solid #667eea;
+      border-radius: 10px;
+      background: #f0f0f0;
+      display: block;
+      margin: 0 auto 20px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .instructions {
+      color: #666;
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+
+    .back-link {
+      margin-top: 20px;
+    }
+
+    .back-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+
+    .game-over {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+
+    .game-over.show {
+      display: block;
+      animation: popIn 0.3s ease-out;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    .game-over h2 {
+      color: #667eea;
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+
+    .game-over .final-score {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>🐍 Snake Game</h1>
+
+    <div class="score-board">
+      <div>점수: <span class="score" id="score">0</span></div>
+      <div>최고점수: <span class="score" id="highScore">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="controls">
+      <button id="startBtn">게임 시작</button>
+      <button id="restartBtn">다시 시작</button>
+    </div>
+
+    <div class="instructions">
+      <p>⌨️ 화살표 키로 방향 조절</p>
+      <p>🍎 빨간 사과를 먹어 점수를 올리세요</p>
+      <p>⚠️ 벽이나 자기 몸에 부딪히면 게임 오버!</p>
+    </div>
+
+    <div class="back-link">
+      <a href="index.html">← 게임 목록으로 돌아가기</a>
+    </div>
+  </div>
+
+  <div class="game-over" id="gameOver">
+    <h2>Game Over!</h2>
+    <p class="final-score">최종 점수: <span id="finalScore">0</span></p>
+    <button id="retryBtn">다시 도전하기</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const highScoreElement = document.getElementById('highScore');
+    const gameOverElement = document.getElementById('gameOver');
+    const finalScoreElement = document.getElementById('finalScore');
+    const startBtn = document.getElementById('startBtn');
+
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+
+    let snake = [{x: 10, y: 10}];
+    let velocity = {x: 0, y: 0};
+    let food = {x: 15, y: 15};
+    let score = 0;
+    let highScore = localStorage.getItem('snakeHighScore') || 0;
+    let gameLoop = null;
+    let gameStarted = false;
+
+    highScoreElement.textContent = highScore;
+
+    function startGame() {
+      if (gameStarted) return;
+      gameStarted = true;
+      startBtn.disabled = true;
+      velocity = {x: 1, y: 0};
+      gameLoop = setInterval(update, 100);
+    }
+
+    function update() {
+      moveSnake();
+      if (checkCollision()) {
+        endGame();
+        return;
+      }
+      if (checkFoodCollision()) {
+        score++;
+        scoreElement.textContent = score;
+        placeFood();
+        growSnake();
+      }
+      draw();
+    }
+
+    function moveSnake() {
+      const head = {
+        x: snake[0].x + velocity.x,
+        y: snake[0].y + velocity.y
+      };
+      snake.unshift(head);
+      snake.pop();
+    }
+
+    function growSnake() {
+      const tail = {...snake[snake.length - 1]};
+      snake.push(tail);
+    }
+
+    function checkCollision() {
+      const head = snake[0];
+
+      // 벽 충돌
+      if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+        return true;
+      }
+
+      // 자기 몸 충돌
+      for (let i = 1; i < snake.length; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function checkFoodCollision() {
+      return snake[0].x === food.x && snake[0].y === food.y;
+    }
+
+    function placeFood() {
+      food = {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount)
+      };
+
+      // 뱀 몸통과 겹치지 않게
+      for (let segment of snake) {
+        if (food.x === segment.x && food.y === segment.y) {
+          placeFood();
+          return;
+        }
+      }
+    }
+
+    function draw() {
+      // 배경
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 뱀
+      snake.forEach((segment, index) => {
+        if (index === 0) {
+          ctx.fillStyle = '#4CAF50'; // 머리
+        } else {
+          ctx.fillStyle = '#8BC34A'; // 몸통
+        }
+        ctx.fillRect(
+          segment.x * gridSize,
+          segment.y * gridSize,
+          gridSize - 2,
+          gridSize - 2
+        );
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(
+          segment.x * gridSize,
+          segment.y * gridSize,
+          gridSize - 2,
+          gridSize - 2
+        );
+      });
+
+      // 음식
+      ctx.fillStyle = '#f44336';
+      ctx.beginPath();
+      ctx.arc(
+        food.x * gridSize + gridSize / 2,
+        food.y * gridSize + gridSize / 2,
+        gridSize / 2 - 2,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+    }
+
+    function endGame() {
+      clearInterval(gameLoop);
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('snakeHighScore', highScore);
+        highScoreElement.textContent = highScore;
+      }
+
+      finalScoreElement.textContent = score;
+      gameOverElement.classList.add('show');
+    }
+
+    // 키보드 컨트롤
+    document.addEventListener('keydown', (e) => {
+      if (!gameStarted) return;
+
+      switch(e.key) {
+        case 'ArrowUp':
+          if (velocity.y === 0) velocity = {x: 0, y: -1};
+          break;
+        case 'ArrowDown':
+          if (velocity.y === 0) velocity = {x: 0, y: 1};
+          break;
+        case 'ArrowLeft':
+          if (velocity.x === 0) velocity = {x: -1, y: 0};
+          break;
+        case 'ArrowRight':
+          if (velocity.x === 0) velocity = {x: 1, y: 0};
+          break;
+      }
+    });
+
+    // 버튼 이벤트 리스너
+    startBtn.addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+    document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+
+    // 초기 그리기
+    draw();
+  </script>
+</body>
+</html>
