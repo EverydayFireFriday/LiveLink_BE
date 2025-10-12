@@ -64,12 +64,12 @@ export const rainbowModeStyles = `
     color: var(--rainbow-text) !important;
   }
 
-  html[data-theme="rainbow"] .swagger-ui .info .version {
+  html[data-theme="rainbow"] .swagger-ui .info .version,
+  html[data-theme="rainbow"] .swagger-ui .info .version-stamp {
     background: transparent !important;
     color: var(--rainbow-text) !important;
-    border: 1px solid #e5e7eb !important;
-    padding: 4px 10px !important;
-    border-radius: 6px;
+    border: none !important;
+    padding: 2px 5px !important;
   }
 
   html[data-theme="rainbow"] .swagger-ui .scheme-container,

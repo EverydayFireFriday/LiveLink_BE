@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⭕❌ Tic-Tac-Toe - LiveLink</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .game-container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 500px;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 2.5em;
+    }
+
+    .score-board {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    .score {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .status {
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 20px;
+      min-height: 30px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      grid-template-rows: repeat(3, 120px);
+      gap: 10px;
+      margin: 0 auto 20px;
+      background: #bbada0;
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .cell {
+      background: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 3em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cell:hover:not(.taken) {
+      background: #f0f0f0;
+      transform: scale(1.05);
+    }
+
+    .cell.taken {
+      cursor: not-allowed;
+    }
+
+    .cell.x {
+      color: #3b82f6;
+    }
+
+    .cell.o {
+      color: #ef4444;
+    }
+
+    .cell.winner {
+      background: #fef3c7;
+      animation: pulse 0.5s ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .instructions {
+      color: #666;
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+
+    .back-link {
+      margin-top: 20px;
+    }
+
+    .back-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>⭕❌ Tic-Tac-Toe</h1>
+
+    <div class="score-board">
+      <div>승리: <span class="score" id="wins">0</span></div>
+      <div>무승부: <span class="score" id="draws">0</span></div>
+      <div>패배: <span class="score" id="losses">0</span></div>
+    </div>
+
+    <div class="status" id="status">게임을 시작하세요!</div>
+
+    <div class="board" id="board">
+      <button class="cell" data-index="0"></button>
+      <button class="cell" data-index="1"></button>
+      <button class="cell" data-index="2"></button>
+      <button class="cell" data-index="3"></button>
+      <button class="cell" data-index="4"></button>
+      <button class="cell" data-index="5"></button>
+      <button class="cell" data-index="6"></button>
+      <button class="cell" data-index="7"></button>
+      <button class="cell" data-index="8"></button>
+    </div>
+
+    <div class="controls">
+      <button id="newGameBtn">새 게임</button>
+      <button id="resetStatsBtn">통계 초기화</button>
+    </div>
+
+    <div class="instructions">
+      <p>⭕ 당신은 O입니다</p>
+      <p>❌ AI는 X입니다</p>
+      <p>🎯 먼저 3개를 일렬로 만들면 승리!</p>
+    </div>
+
+    <div class="back-link">
+      <a href="index.html">← 게임 목록으로 돌아가기</a>
+    </div>
+  </div>
+
+  <script>
+    const statusElement = document.getElementById('status');
+    const winsElement = document.getElementById('wins');
+    const drawsElement = document.getElementById('draws');
+    const lossesElement = document.getElementById('losses');
+    const cells = document.querySelectorAll('.cell');
+
+    const PLAYER = 'O';
+    const AI = 'X';
+
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let currentPlayer = PLAYER;
+    let gameActive = false;
+    let wins = parseInt(localStorage.getItem('tttWins') || '0');
+    let draws = parseInt(localStorage.getItem('tttDraws') || '0');
+    let losses = parseInt(localStorage.getItem('tttLosses') || '0');
+
+    // 승리 조건
+    const winningConditions = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // 가로
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // 세로
+      [0, 4, 8], [2, 4, 6]             // 대각선
+    ];
+
+    // 초기 통계 표시
+    updateStats();
+
+    function updateStats() {
+      winsElement.textContent = wins;
+      drawsElement.textContent = draws;
+      lossesElement.textContent = losses;
+    }
+
+    function newGame() {
+      board = ['', '', '', '', '', '', '', '', ''];
+      currentPlayer = PLAYER;
+      gameActive = true;
+      statusElement.textContent = '당신의 차례입니다! (O)';
+
+      cells.forEach(cell => {
+        cell.textContent = '';
+        cell.classList.remove('taken', 'x', 'o', 'winner');
+      });
+    }
+
+    function handleCellClick(index) {
+      if (!gameActive || board[index] !== '' || currentPlayer !== PLAYER) {
+        return;
+      }
+
+      makeMove(index, PLAYER);
+
+      if (gameActive) {
+        // AI 차례
+        setTimeout(() => {
+          if (gameActive) {
+            aiMove();
+          }
+        }, 500);
+      }
+    }
+
+    function makeMove(index, player) {
+      board[index] = player;
+      cells[index].textContent = player;
+      cells[index].classList.add('taken', player.toLowerCase());
+
+      const result = checkGameEnd();
+
+      if (result) {
+        gameActive = false;
+        if (result === 'win') {
+          if (player === PLAYER) {
+            statusElement.textContent = '🎉 승리했습니다!';
+            wins++;
+            localStorage.setItem('tttWins', wins.toString());
+          } else {
+            statusElement.textContent = '😢 AI가 이겼습니다!';
+            losses++;
+            localStorage.setItem('tttLosses', losses.toString());
+          }
+          highlightWinner();
+        } else if (result === 'draw') {
+          statusElement.textContent = '🤝 무승부입니다!';
+          draws++;
+          localStorage.setItem('tttDraws', draws.toString());
+        }
+        updateStats();
+      } else {
+        currentPlayer = player === PLAYER ? AI : PLAYER;
+        statusElement.textContent = currentPlayer === PLAYER ?
+          '당신의 차례입니다! (O)' : 'AI가 생각 중...';
+      }
+    }
+
+    function aiMove() {
+      // 미니맥스 알고리즘 사용
+      const bestMove = minimax(board, AI).index;
+      makeMove(bestMove, AI);
+    }
+
+    function minimax(newBoard, player) {
+      const availSpots = newBoard.reduce((acc, val, idx) => {
+        if (val === '') acc.push(idx);
+        return acc;
+      }, []);
+
+      const winner = checkWinner(newBoard);
+      if (winner === AI) return { score: 10 };
+      if (winner === PLAYER) return { score: -10 };
+      if (availSpots.length === 0) return { score: 0 };
+
+      const moves = [];
+
+      for (let i = 0; i < availSpots.length; i++) {
+        const move = {};
+        move.index = availSpots[i];
+        newBoard[availSpots[i]] = player;
+
+        if (player === AI) {
+          const result = minimax(newBoard, PLAYER);
+          move.score = result.score;
+        } else {
+          const result = minimax(newBoard, AI);
+          move.score = result.score;
+        }
+
+        newBoard[availSpots[i]] = '';
+        moves.push(move);
+      }
+
+      let bestMove;
+      if (player === AI) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score > bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score < bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      }
+
+      return moves[bestMove];
+    }
+
+    function checkGameEnd() {
+      const winner = checkWinner(board);
+      if (winner) return 'win';
+
+      if (board.every(cell => cell !== '')) return 'draw';
+
+      return null;
+    }
+
+    function checkWinner(boardState) {
+      for (let condition of winningConditions) {
+        const [a, b, c] = condition;
+        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+          return boardState[a];
+        }
+      }
+      return null;
+    }
+
+    function highlightWinner() {
+      for (let condition of winningConditions) {
+        const [a, b, c] = condition;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          cells[a].classList.add('winner');
+          cells[b].classList.add('winner');
+          cells[c].classList.add('winner');
+          break;
+        }
+      }
+    }
+
+    function resetStats() {
+      if (confirm('통계를 초기화하시겠습니까?')) {
+        wins = 0;
+        draws = 0;
+        losses = 0;
+        localStorage.setItem('tttWins', '0');
+        localStorage.setItem('tttDraws', '0');
+        localStorage.setItem('tttLosses', '0');
+        updateStats();
+      }
+    }
+
+    // 이벤트 리스너
+    cells.forEach((cell, index) => {
+      cell.addEventListener('click', () => handleCellClick(index));
+    });
+
+    document.getElementById('newGameBtn').addEventListener('click', newGame);
+    document.getElementById('resetStatsBtn').addEventListener('click', resetStats);
+
+    // 초기 게임 시작
+    newGame();
+  </script>
+</body>
+</html>

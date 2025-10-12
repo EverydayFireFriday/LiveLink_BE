@@ -61,11 +61,12 @@ export const darkModeStyles = `
     color: #DDDDDD !important;
   }
 
-  html[data-theme="dark"] .swagger-ui .info .version {
+  html[data-theme="dark"] .swagger-ui .info .version,
+  html[data-theme="dark"] .swagger-ui .info .version-stamp {
     background: transparent !important;
     color: white !important;
     border: none !important;
-    padding: 2px 5px !important; /* Add some padding */
+    padding: 2px 5px !important;
   }
 
   html[data-theme="dark"] .swagger-ui .scheme-container,
