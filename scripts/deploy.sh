@@ -20,6 +20,6 @@ npm ci
 npm run build
 
 # Restart with PM2
-pm2 restart ../ecosystem.config.js --env develop
+pm2 restart ecosystem.config.js --env develop
 
 echo "✅ Deployment complete!"
