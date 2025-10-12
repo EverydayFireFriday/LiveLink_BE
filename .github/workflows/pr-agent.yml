@@ -1,8 +1,6 @@
 name: PR Agent
 
 on:
-  pull_request:
-    types: [opened, reopened, ready_for_review, synchronize]
   issue_comment:
     types: [created, edited]
 
@@ -13,7 +11,7 @@ permissions:
 
 jobs:
   pr_agent_job:
-    if: ${{ github.event.sender.type != 'Bot' }}
+    if: ${{ github.event.sender.type != 'Bot' && contains(github.event.comment.body, '/review') }}
     runs-on: ubuntu-latest
     name: Run PR Agent
 
@@ -23,7 +21,4 @@ jobs:
         uses: Codium-ai/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          github_action_config.auto_review: "true"
-          github_action_config.auto_describe: "true"
-          github_action_config.auto_improve: "true"
           config.model: "github/gpt-4o"
