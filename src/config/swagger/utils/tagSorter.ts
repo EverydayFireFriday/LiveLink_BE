@@ -30,6 +30,9 @@ export const swaggerTags = [
   // Chat 관련
   { name: 'Chat', description: '실시간 채팅 관리' },
 
+  // Report 관련
+  { name: 'Report', description: '신고 관리' },
+
   // Admin 관련
   { name: 'Admin', description: '관리자 전용 기능' },
 ];

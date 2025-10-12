@@ -63,8 +63,8 @@ const envSchema = z.object({
   SKIP_AUTH: z
     .string()
     .optional()
-    .transform((val) => val === 'true')
-    .default(false),
+    .default('false')
+    .transform((val) => val === 'true'),
 
   // 🗃️ 기타 옵션
   LOG_LEVEL: z

@@ -104,6 +104,7 @@ import concertRouter from './routes/concert/index';
 import healthRouter from './routes/health/healthRoutes';
 import swaggerRouter from './routes/swagger/swaggerRoutes';
 import termsRouter from './routes/terms/index';
+import { createReportRouterWithService } from './routes/report/index';
 import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
 import {
   errorHandler,
@@ -456,6 +457,8 @@ app.get('/', (req: express.Request, res: express.Response) => {
       concerts: '/concert',
       articles: '/article',
       chat: '/chat',
+      'report-rest': '/report',
+      'report-graphql': '/graphql',
     },
     features: {
       authenticationSkip: shouldSkipAuth(),
@@ -624,7 +627,13 @@ const startServer = async (): Promise<void> => {
     app.use('/chat', chatRouter);
     logger.info('✅ Chat routes loaded and connected');
 
-    // Setup Apollo Server
+    // Setup Report REST API
+    logger.info('🔌 Setting up Report REST API...');
+    const reportRouter = createReportRouterWithService(reportService);
+    app.use('/report', reportRouter);
+    logger.info('✅ Report REST API setup complete');
+
+    // Setup Apollo Server (GraphQL)
     logger.info('🔌 Setting up Apollo Server...');
     await setupApolloServer(app, httpServer, reportService);
     logger.info('✅ Apollo Server setup complete');
@@ -658,6 +667,8 @@ const startServer = async (): Promise<void> => {
       logger.info(`🎵 Concert API: http://localhost:${PORT}/concert`);
       logger.info(`📝 Article API: http://localhost:${PORT}/article`);
       logger.info(`💬 Chat API: http://localhost:${PORT}/chat`);
+      logger.info(`📢 Report REST API: http://localhost:${PORT}/report`);
+      logger.info(`📊 Report GraphQL API: http://localhost:${PORT}/graphql`);
       logger.info(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);
       logger.info(`💾 Database: MongoDB Native Driver`);
       logger.info(
