@@ -46,7 +46,7 @@ export class ReportController {
       }
 
       // Validate enums
-      if (!Object.values(ReportEntityType).includes(reportedEntityType)) {
+      if (!Object.values(ReportEntityType).includes(reportedEntityType as ReportEntityType)) {
         res.status(400).json({
           message: '유효하지 않은 엔티티 타입입니다.',
           validValues: Object.values(ReportEntityType),
@@ -54,7 +54,7 @@ export class ReportController {
         return;
       }
 
-      if (!Object.values(ReportType).includes(reportType)) {
+      if (!Object.values(ReportType).includes(reportType as ReportType)) {
         res.status(400).json({
           message: '유효하지 않은 신고 타입입니다.',
           validValues: Object.values(ReportType),
@@ -215,7 +215,7 @@ export class ReportController {
         return;
       }
 
-      if (!status || !Object.values(ReportStatus).includes(status)) {
+      if (!status || !Object.values(ReportStatus).includes(status as ReportStatus)) {
         res.status(400).json({
           message: '유효하지 않은 상태 값입니다.',
           validValues: Object.values(ReportStatus),
