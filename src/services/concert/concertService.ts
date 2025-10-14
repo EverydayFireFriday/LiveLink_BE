@@ -320,7 +320,7 @@ export class ConcertService {
 
       const concertsWithLikeStatus = concerts.map((concert: IConcert) => ({
         ...concert,
-        isLiked: likedConcertIds.has(concert._id.toString()),
+        ...(userId && { isLiked: likedConcertIds.has(concert._id.toString()) }),
       }));
 
       const totalPages = Math.ceil(total / parseInt(limit.toString()));
@@ -391,7 +391,7 @@ export class ConcertService {
       const concertsWithLikeStatus = randomConcerts.map(
         (concert: IConcert) => ({
           ...concert,
-          isLiked: likedConcertIds.has(concert._id.toString()),
+          ...(userId && { isLiked: likedConcertIds.has(concert._id.toString()) }),
         }),
       );
 
@@ -597,7 +597,7 @@ export class ConcertService {
 
       const concertsWithLikeStatus = finalConcerts.map((concert: IConcert) => ({
         ...concert,
-        isLiked: likedConcertIds.has(concert._id.toString()),
+        ...(userId && { isLiked: likedConcertIds.has(concert._id.toString()) }),
       }));
 
       return {
