@@ -47,6 +47,7 @@ export class ConcertStatusScheduler {
 
   /**
    * 스케줄러 중지
+   * setInterval을 정리하여 메모리 누수를 방지합니다.
    */
   stop(): void {
     if (this.intervalId) {

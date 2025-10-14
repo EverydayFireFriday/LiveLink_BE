@@ -114,8 +114,28 @@ export class ChatSocketServer {
         socket.to(roomId).emit('stopTyping', user.userId, roomId);
       });
 
-      socket.on('disconnect', (reason) => {
+      socket.on('disconnect', async (reason) => {
         logger.info(`🔌 Socket disconnected: ${socket.id}, reason: ${reason}`);
+        const user = socket.data.user;
+        if (!user) return;
+
+        const roomIds = Array.from(socket.rooms).filter(
+          (roomId) => roomId !== socket.id,
+        );
+
+        await Promise.all(
+          roomIds.map(async (roomId) => {
+            try {
+              await this.chatRoomService.leaveChatRoom(roomId, user.userId);
+              socket.to(roomId).emit('userLeft', user, roomId);
+              logger.info(`👤 User ${user.username} left room ${roomId}`);
+            } catch (error: unknown) {
+              logger.error(
+                `Error leaving room ${roomId}: ${(error as Error).message}`,
+              );
+            }
+          }),
+        );
       });
     });
   }
