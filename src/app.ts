@@ -91,6 +91,7 @@ import {
 } from './models/auth/user';
 import {
   connectDB as connectConcertDB,
+  disconnectDB as disconnectConcertDB,
   initializeConcertModel,
 } from './utils/database/db';
 import { initializeAllArticleModels } from './models/article';
@@ -585,6 +586,9 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     // MongoDB 연결 종료
     await disconnectUserDB();
     logger.info('✅ User MongoDB disconnected');
+
+    await disconnectConcertDB();
+    logger.info('✅ Concert, Article, and Chat MongoDB disconnected');
 
     logger.info('👋 Graceful shutdown completed');
     process.exit(0);
