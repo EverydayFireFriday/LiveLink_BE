@@ -424,7 +424,7 @@ export class ConcertService {
         status: { $in: ['upcoming', 'ongoing'] as const },
       };
 
-      // 플랫폼별로 최신 콘서트 가져오기
+      //플랫폼 파이프라인
       const platformPipeline = [
         { $match: filter },
         { $sort: { createdAt: -1 } as Sort },
@@ -445,23 +445,15 @@ export class ConcertService {
           $project: {
             _id: 0,
             platform: '$_id',
-            concerts: {
-              $map: {
-                input: { $slice: ['$concerts', Math.ceil(limit / 2)] },
-                as: 'concert',
-                in: {
-                  $mergeObjects: [
-                    '$$concert',
-                    { primaryPlatform: '$$REMOVE' }  // ← 필드 제거
-                  ]
-                }
-              }
-            }
+            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
           },
+        },
+        {
+          $unset: 'concerts.primaryPlatform',  // ← 명시적 제거
         },
       ];
 
-      // 카테고리별로 최신 콘서트 가져오기
+      // 카테고리 파이프라인
       const categoryPipeline = [
         { $match: filter },
         { $sort: { createdAt: -1 } as Sort },
@@ -482,19 +474,11 @@ export class ConcertService {
           $project: {
             _id: 0,
             category: '$_id',
-            concerts: {
-              $map: {
-                input: { $slice: ['$concerts', Math.ceil(limit / 2)] },
-                as: 'concert',
-                in: {
-                  $mergeObjects: [
-                    '$$concert',
-                    { primaryCategory: '$$REMOVE' }  // ← 필드 제거
-                  ]
-                }
-              }
-            }
+            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
           },
+        },
+        {
+          $unset: 'concerts.primaryCategory',  // ← 명시적 제거
         },
       ];
 
