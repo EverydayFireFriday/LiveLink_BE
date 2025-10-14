@@ -445,7 +445,18 @@ export class ConcertService {
           $project: {
             _id: 0,
             platform: '$_id',
-            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+            concerts: {
+              $map: {
+                input: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+                as: 'concert',
+                in: {
+                  $mergeObjects: [
+                    '$$concert',
+                    { primaryPlatform: '$$REMOVE' }  // ← 필드 제거
+                  ]
+                }
+              }
+            }
           },
         },
       ];
@@ -471,7 +482,18 @@ export class ConcertService {
           $project: {
             _id: 0,
             category: '$_id',
-            concerts: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+            concerts: {
+              $map: {
+                input: { $slice: ['$concerts', Math.ceil(limit / 2)] },
+                as: 'concert',
+                in: {
+                  $mergeObjects: [
+                    '$$concert',
+                    { primaryCategory: '$$REMOVE' }  // ← 필드 제거
+                  ]
+                }
+              }
+            }
           },
         },
       ];
