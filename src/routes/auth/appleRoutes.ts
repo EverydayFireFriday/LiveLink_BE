@@ -66,8 +66,15 @@ router.post(
     failureRedirect: `${env.FRONTEND_URL}/login/error`,
     failureMessage: true,
   }),
-  (req, res) => {
-    // 인증 성공 시, 프론트엔드 홈으로 리디렉션
+  async (req, res) => {
+    // 인증 성공 시, 세션에 사용자 정보 저장
+    if (req.user) {
+      const { AuthService } = await import('../../services/auth/authService');
+      const authService = new AuthService();
+      const sessionData = authService.createSessionData(req.user as any);
+      req.session.user = sessionData;
+    }
+    // 프론트엔드 홈으로 리디렉션
     res.redirect(env.FRONTEND_URL);
   },
 );
