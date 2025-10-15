@@ -1,6 +1,7 @@
 export const paginationSchema = {
   Pagination: {
     type: 'object',
+    required: ['page', 'limit', 'total', 'totalPages'],
     properties: {
       page: { type: 'number', example: 1, description: 'Current page number' },
       limit: {
@@ -22,6 +23,7 @@ export const paginationSchema = {
   },
   PaginationInfo: {
     type: 'object',
+    required: ['page', 'limit', 'totalItems', 'totalPages'],
     properties: {
       page: { type: 'number', example: 1, description: 'Current page number' },
       limit: {
@@ -43,6 +45,7 @@ export const paginationSchema = {
   },
   PaginationResponse: {
     type: 'object',
+    required: ['pagination'],
     properties: {
       pagination: {
         $ref: '#/components/schemas/PaginationInfo',
