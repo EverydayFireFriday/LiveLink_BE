@@ -130,7 +130,7 @@ export class AuthController {
 
         return ResponseBuilder.success(res, '로그인 성공', {
           user: {
-            id: user._id,
+            userId: user._id,
             email: user.email,
             username: user.username,
             profileImage: user.profileImage,
@@ -186,7 +186,6 @@ export class AuthController {
     try {
       const { AuthService } = await import('../../services/auth/authService');
       const { UserService } = await import('../../services/auth/userService');
-
       const authService = new AuthService();
       const userService = new UserService();
 

@@ -22,7 +22,7 @@ export class AuthService {
 
   createSessionData(user: User): any {
     return {
-      id: user._id!.toString(), // ObjectId를 string으로 변환
+      userId: user._id!.toString(), // ObjectId를 string으로 변환
       email: user.email,
       username: user.username,
       profileImage: user.profileImage,
