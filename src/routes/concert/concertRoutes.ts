@@ -1,18 +1,18 @@
 import express from 'express';
 import {
-  uploadConcert,
-  getConcert,
-  getAllConcerts,
-  updateConcert,
   deleteConcert,
-  getRandomConcerts,
+  getAllConcerts,
+  getConcert,
   getLatestConcerts,
+  getRandomConcerts,
+  updateConcert,
+  uploadConcert,
 } from '../../controllers/concert/concertController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import {
-  requireAuthInProductionMiddleware,
-  logSessionInfoMiddleware,
   getCurrentUserInfo,
+  logSessionInfoMiddleware,
+  requireAuthInProductionMiddleware,
 } from '../../middlewares/auth/conditionalAuthMiddleware';
 
 const router = express.Router();
@@ -377,7 +377,7 @@ router.get('/', getAllConcerts);
  *     description: |
  *       upcoming 또는 ongoing 상태의 콘서트 중에서 무작위로 지정된 수만큼 조회합니다.
  *       MongoDB의 $sample 파이프라인을 사용하여 효율적으로 랜덤 샘플링을 수행합니다.
- *       로그인한 사용자의 경우 각 콘서트에 대한 좋아요 여부(`likedByUser`)가 포함됩니다.
+ *       로그인한 사용자의 경우 각 콘서트에 대한 좋아요 여부(likedByUser)가 포함됩니다.
  *
  *       **주요 특징**:
  *       - **효율적인 랜덤 샘플링**: DB에서 직접 $sample을 사용하여 빠르고 메모리 효율적입니다.
