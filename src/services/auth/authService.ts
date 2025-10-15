@@ -1,6 +1,6 @@
-import bcrypt from "bcrypt";
-import crypto from "crypto";
-import { User } from "../../types/auth/authTypes";
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import { User } from '../../types/auth/authTypes';
 
 export class AuthService {
   private readonly SALT_ROUNDS = 12;
@@ -11,7 +11,7 @@ export class AuthService {
 
   async verifyPassword(
     password: string,
-    hashedPassword: string
+    hashedPassword: string,
   ): Promise<boolean> {
     return await bcrypt.compare(password, hashedPassword);
   }
@@ -22,8 +22,8 @@ export class AuthService {
 
   createSessionData(user: User): any {
     return {
+      id: user._id!.toString(), // ObjectId를 string으로 변환
       email: user.email,
-      userId: user._id!.toString(), // ObjectId를 string으로 변환
       username: user.username,
       profileImage: user.profileImage,
       loginTime: new Date().toISOString(),
