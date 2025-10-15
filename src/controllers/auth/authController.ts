@@ -1,8 +1,8 @@
 import express from 'express';
-import { AuthValidator } from '../../utils/validation/auth/authValidator';
+import { maskEmails } from '../../utils/email/emailMask';
 import logger, { maskIpAddress } from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
-import { maskEmails } from '../../utils/email/emailMask';
+import { AuthValidator } from '../../utils/validation/auth/authValidator';
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
@@ -130,10 +130,22 @@ export class AuthController {
 
         return ResponseBuilder.success(res, '로그인 성공', {
           user: {
-            userId: user._id,
+            userId: user._id!.toString(), // ObjectId를 string으로 변환
             email: user.email,
             username: user.username,
+            name: user.name,
+            birthDate: user.birthDate,
+            status: user.status,
+            statusReason: user.statusReason,
             profileImage: user.profileImage,
+            isTermsAgreed: user.isTermsAgreed,
+            termsVersion: user.termsVersion,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            provider: user.provider,
+            socialId: user.socialId,
+            likedConcerts: user.likedConcerts,
+            likedArticles: user.likedArticles,
           },
           sessionId: req.sessionID,
         });
@@ -304,9 +316,7 @@ export class AuthController {
         birthDateObj,
       );
 
-      logger.info(
-        `[Auth] Email search result: found ${users.length} user(s)`,
-      );
+      logger.info(`[Auth] Email search result: found ${users.length} user(s)`);
 
       if (users.length === 0) {
         return ResponseBuilder.notFound(
