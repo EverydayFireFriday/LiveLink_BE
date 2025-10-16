@@ -68,16 +68,39 @@ export const authSchemas = {
 
   User: {
     type: 'object',
+    required: [
+      '_id',
+      'email',
+      'username',
+      'name',
+      'birthDate',
+      'isEmailVerified',
+      'status',
+      'role',
+      'createdAt',
+      'updatedAt',
+    ],
     properties: {
       _id: { type: 'string' },
       email: { type: 'string', format: 'email' },
       username: { type: 'string' },
       name: { type: 'string', description: '실명' },
       birthDate: { type: 'string', format: 'date', description: '생년월일' },
-      profileImage: { type: 'string', format: 'uri' },
+      profileImage: {
+        type: 'string',
+        format: 'uri',
+        description: '프로필 이미지 URL (선택사항)',
+      },
       isEmailVerified: { type: 'boolean' },
-      verificationCode: { type: 'string' },
-      verificationCodeExpires: { type: 'string', format: 'date-time' },
+      verificationCode: {
+        type: 'string',
+        description: '이메일 인증 코드 (선택사항)',
+      },
+      verificationCodeExpires: {
+        type: 'string',
+        format: 'date-time',
+        description: '인증 코드 만료 시간 (선택사항)',
+      },
       status: {
         type: 'string',
         enum: ['active', 'inactive', 'suspended', 'banned'],
@@ -89,6 +112,13 @@ export const authSchemas = {
   },
   AdminStats: {
     type: 'object',
+    required: [
+      'totalUsers',
+      'activeUsers',
+      'totalConcerts',
+      'totalArticles',
+      'totalComments',
+    ],
     properties: {
       totalUsers: { type: 'number', example: 150 },
       activeUsers: { type: 'number', example: 120 },
@@ -99,6 +129,7 @@ export const authSchemas = {
   },
   AdminUserView: {
     type: 'object',
+    required: ['_id', 'email', 'username', 'role', 'status', 'createdAt'],
     properties: {
       _id: { type: 'string', example: '60d0fe4f5311236168a109ca' },
       email: { type: 'string', format: 'email', example: 'user@example.com' },
