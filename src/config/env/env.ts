@@ -44,6 +44,17 @@ const envSchema = z.object({
     .optional()
     .default('http://localhost:3000'),
 
+  // 🔐 CORS 보안 설정
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .default('http://localhost:3000,http://localhost:3001')
+    .transform((val) => val.split(',').map((origin) => origin.trim()))
+    .refine(
+      (origins) =>
+        origins.every((origin) => z.string().url().safeParse(origin).success),
+      '모든 허용 도메인이 올바른 URL 형식이어야 합니다',
+    ),
+
   // 📧 이메일 관련
   EMAIL_USER: z.string().email('올바른 이메일 형식이 아닙니다'),
   EMAIL_PASS: z.string().min(1, '이메일 비밀번호가 필요합니다').optional(),
@@ -126,6 +137,7 @@ const validateEnv = () => {
     );
     logger.info(`🍪 쿠키 도메인: ${parsed.COOKIE_DOMAIN || '설정되지 않음'}`);
     logger.info(`🍪 SameSite 정책: ${parsed.COOKIE_SAMESITE}`);
+    logger.info(`🔐 CORS 허용 도메인 개수: ${parsed.CORS_ALLOWED_ORIGINS.length}`);
 
     // 🔧 조건부 인증 설정 로그
     logger.info('\n🔧 조건부 인증 미들웨어 설정:');

@@ -241,13 +241,34 @@ app.use(
 const logFormat = isDevelopment() ? 'dev' : 'combined';
 app.use(morgan(logFormat, { stream }));
 
-// CORS 설정 (환경별)
+// CORS 설정 (보안 강화)
 app.use(
   cors({
-    origin: isDevelopment() ? '*' : env.FRONTEND_URL,
-    credentials: isDevelopment() ? false : true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: (origin, callback) => {
+      // 프로덕션: FRONTEND_URL만 허용
+      // 개발: CORS_ALLOWED_ORIGINS 목록의 도메인만 허용
+      const allowedOrigins = isProduction()
+        ? [env.FRONTEND_URL]
+        : env.CORS_ALLOWED_ORIGINS;
+
+      // Origin이 없는 경우 (서버 간 통신, Postman 등)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // 허용된 도메인인지 확인
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`🚫 CORS blocked request from origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true, // 항상 credentials 활성화
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'],
+    maxAge: 86400, // Preflight 캐시 24시간
   }),
 );
 
