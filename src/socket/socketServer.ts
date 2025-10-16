@@ -13,6 +13,11 @@ import {
 import logger from '../utils/logger/logger';
 import { pubClient, subClient } from '../config/redis/socketRedisClient';
 import { env, isProduction } from '../config/env/env';
+import { SocketEvents } from './events';
+
+interface SessionData {
+  user?: Partial<SocketUser>;
+}
 
 export class ChatSocketServer {
   private io: SocketServer<
@@ -73,7 +78,7 @@ export class ChatSocketServer {
   }
 
   private setupSocketEvents() {
-    this.io.on('connection', (socket) => {
+    this.io.on(SocketEvents.CONNECTION, (socket) => {
       logger.info(`🔌 Socket connected: ${socket.id}`);
 
       socket.use((packet, next) => {
@@ -83,7 +88,7 @@ export class ChatSocketServer {
         next();
       });
 
-      socket.on('joinRoom', async (roomId) => {
+      socket.on(SocketEvents.JOIN_ROOM, async (roomId) => {
         try {
           const user = socket.data.user;
           if (!user) return;
@@ -93,34 +98,34 @@ export class ChatSocketServer {
             user.userId,
           );
           if (!chatRoom) {
-            socket.emit('error', '채팅방을 찾을 수 없습니다.');
+            socket.emit(SocketEvents.ERROR, '채팅방을 찾을 수 없습니다.');
             return;
           }
 
           await socket.join(roomId);
-          socket.to(roomId).emit('userJoined', user, roomId);
+          socket.to(roomId).emit(SocketEvents.USER_JOINED, user, roomId);
 
           logger.info(`👤 User ${user.username} joined room ${roomId}`);
         } catch (error: unknown) {
-          socket.emit('error', (error as Error).message);
+          socket.emit(SocketEvents.ERROR, (error as Error).message);
         }
       });
 
-      socket.on('leaveRoom', async (roomId) => {
+      socket.on(SocketEvents.LEAVE_ROOM, async (roomId) => {
         try {
           const user = socket.data.user;
           if (!user) return;
 
           await socket.leave(roomId);
-          socket.to(roomId).emit('userLeft', user, roomId);
+          socket.to(roomId).emit(SocketEvents.USER_LEFT, user, roomId);
 
           logger.info(`👤 User ${user.username} left room ${roomId}`);
         } catch (error: unknown) {
-          socket.emit('error', (error as Error).message);
+          socket.emit(SocketEvents.ERROR, (error as Error).message);
         }
       });
 
-      socket.on('sendMessage', async (roomId, messageData) => {
+      socket.on(SocketEvents.SEND_MESSAGE, async (roomId, messageData) => {
         try {
           const user = socket.data.user;
           if (!user) return;
@@ -131,27 +136,27 @@ export class ChatSocketServer {
             messageData,
           );
 
-          this.io.to(roomId).emit('message', message);
+          this.io.to(roomId).emit(SocketEvents.MESSAGE, message);
 
           logger.info(`💬 Message sent in room ${roomId} by ${user.username}`);
         } catch (error: unknown) {
-          socket.emit('error', (error as Error).message);
+          socket.emit(SocketEvents.ERROR, (error as Error).message);
         }
       });
 
-      socket.on('typing', (roomId) => {
+      socket.on(SocketEvents.TYPING, (roomId) => {
         const user = socket.data.user;
         if (!user) return;
-        socket.to(roomId).emit('typing', user.userId, user.username, roomId);
+        socket.to(roomId).emit(SocketEvents.TYPING, user.userId, user.username, roomId);
       });
 
-      socket.on('stopTyping', (roomId) => {
+      socket.on(SocketEvents.STOP_TYPING, (roomId) => {
         const user = socket.data.user;
         if (!user) return;
-        socket.to(roomId).emit('stopTyping', user.userId, roomId);
+        socket.to(roomId).emit(SocketEvents.STOP_TYPING, user.userId, roomId);
       });
 
-      socket.on('disconnect', async (reason) => {
+      socket.on(SocketEvents.DISCONNECT, async (reason) => {
         logger.info(`🔌 Socket disconnected: ${socket.id}, reason: ${reason}`);
         const user = socket.data.user;
         if (!user) return;
@@ -164,7 +169,7 @@ export class ChatSocketServer {
           roomIds.map(async (roomId) => {
             try {
               await this.chatRoomService.leaveChatRoom(roomId, user.userId);
-              socket.to(roomId).emit('userLeft', user, roomId);
+              socket.to(roomId).emit(SocketEvents.USER_LEFT, user, roomId);
               logger.info(`👤 User ${user.username} left room ${roomId}`);
             } catch (error: unknown) {
               logger.error(
@@ -177,15 +182,13 @@ export class ChatSocketServer {
     });
   }
 
-  public authenticateSocket(
-    socket: Socket,
-    sessionData: { user?: Partial<SocketUser> },
-  ) {
-    if (sessionData && sessionData.user) {
+  public authenticateSocket(socket: Socket, sessionData: SessionData): boolean {
+    const user = sessionData?.user;
+    if (user && user.userId && user.username && user.email) {
       socket.data.user = {
-        userId: sessionData.user.userId,
-        username: sessionData.user.username,
-        email: sessionData.user.email,
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
       } as SocketUser;
       return true;
     }
