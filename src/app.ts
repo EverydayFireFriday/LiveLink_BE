@@ -696,6 +696,12 @@ const startServer = async (): Promise<void> => {
         `🔒 Security: ${isProduction() ? 'Production Mode' : 'Development Mode'}`,
       );
       logger.info('🎉 ================================');
+
+      // PM2 ready 신호 전송 (무중단 배포 지원)
+      if (process.send) {
+        process.send('ready');
+        logger.info('✅ PM2 ready signal sent - Zero-downtime deployment enabled');
+      }
     });
   } catch (err) {
     logger.error('❌ Startup failed', { error: err });
