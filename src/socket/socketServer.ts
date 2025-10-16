@@ -1,5 +1,6 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { ChatRoomService } from '../services/chat/chatRoomService';
 import { MessageService } from '../services/chat/messageService';
 import {
@@ -10,6 +11,7 @@ import {
   SocketUser,
 } from '../types/chat';
 import logger from '../utils/logger/logger';
+import { pubClient, subClient } from '../config/redis/socketRedisClient';
 
 export class ChatSocketServer {
   private io: SocketServer<
@@ -30,9 +32,25 @@ export class ChatSocketServer {
       },
     });
 
+    // Redis adapter 설정 (수평 확장 지원)
+    this.setupRedisAdapter();
+
     this.chatRoomService = new ChatRoomService();
     this.messageService = new MessageService();
     this.setupSocketEvents();
+  }
+
+  /**
+   * Redis adapter 설정
+   * 여러 서버 인스턴스 간 Socket.IO 이벤트 동기화
+   */
+  private setupRedisAdapter() {
+    try {
+      this.io.adapter(createAdapter(pubClient, subClient));
+      logger.info('✅ Socket.IO Redis adapter enabled - Horizontal scaling ready');
+    } catch (error) {
+      logger.warn('⚠️ Failed to setup Redis adapter. Running in single-server mode.', { error });
+    }
   }
 
   private setupSocketEvents() {

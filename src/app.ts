@@ -118,6 +118,10 @@ import {
   connectRedis as connectRedisClient,
   disconnectRedis,
 } from './config/redis/redisClient';
+import {
+  connectSocketRedis,
+  disconnectSocketRedis,
+} from './config/redis/socketRedisClient';
 
 // connect-redis v6.1.3 방식
 import connectRedis from 'connect-redis';
@@ -580,6 +584,9 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
       logger.info('✅ Concert Status Scheduler stopped');
     }
 
+    // Socket.IO Redis 연결 종료
+    await disconnectSocketRedis();
+
     // Redis 연결 종료
     await disconnectRedis();
 
@@ -601,7 +608,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 // 서버 시작 함수
 const startServer = async (): Promise<void> => {
   try {
-    // Redis 연결 시도
+    // Redis 연결 시도 (세션 스토어용)
     const isRedisConnected = await connectRedisClient();
 
     // Redis 연결 성공 시 세션 설정 업데이트
@@ -613,6 +620,11 @@ const startServer = async (): Promise<void> => {
     }
 
     logSessionStoreStatus(isRedisConnected);
+
+    // Socket.IO Redis adapter용 Redis 연결
+    logger.info('🔌 Connecting to Socket.IO Redis clients...');
+    await connectSocketRedis();
+    logger.info('✅ Socket.IO Redis clients ready');
 
     // 데이터베이스 초기화
     await initializeDatabases();
