@@ -1,5 +1,6 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { ChatRoomService } from '../services/chat/chatRoomService';
 import { MessageService } from '../services/chat/messageService';
 import {
@@ -10,6 +11,8 @@ import {
   SocketUser,
 } from '../types/chat';
 import logger from '../utils/logger/logger';
+import { pubClient, subClient } from '../config/redis/socketRedisClient';
+import { env, isProduction } from '../config/env/env';
 
 export class ChatSocketServer {
   private io: SocketServer<
@@ -22,17 +25,51 @@ export class ChatSocketServer {
   private messageService: MessageService;
 
   constructor(httpServer: HttpServer) {
+    // CORS 허용 도메인 결정: 프로덕션은 FRONTEND_URL만, 개발은 CORS_ALLOWED_ORIGINS
+    const allowedOrigins = isProduction()
+      ? [env.FRONTEND_URL]
+      : env.CORS_ALLOWED_ORIGINS;
+
     this.io = new SocketServer(httpServer, {
       cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: (origin, callback) => {
+          // Origin이 없는 경우 (서버 간 통신)
+          if (!origin) {
+            return callback(null, true);
+          }
+
+          // 허용된 도메인인지 확인
+          if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            logger.warn(`🚫 Socket.IO CORS blocked request from origin: ${origin}`);
+            callback(new Error('Not allowed by Socket.IO CORS'));
+          }
+        },
         credentials: true,
         methods: ['GET', 'POST'],
       },
     });
 
+    // Redis adapter 설정 (수평 확장 지원)
+    this.setupRedisAdapter();
+
     this.chatRoomService = new ChatRoomService();
     this.messageService = new MessageService();
     this.setupSocketEvents();
+  }
+
+  /**
+   * Redis adapter 설정
+   * 여러 서버 인스턴스 간 Socket.IO 이벤트 동기화
+   */
+  private setupRedisAdapter() {
+    try {
+      this.io.adapter(createAdapter(pubClient, subClient));
+      logger.info('✅ Socket.IO Redis adapter enabled - Horizontal scaling ready');
+    } catch (error) {
+      logger.warn('⚠️ Failed to setup Redis adapter. Running in single-server mode.', { error });
+    }
   }
 
   private setupSocketEvents() {

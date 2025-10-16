@@ -118,6 +118,10 @@ import {
   connectRedis as connectRedisClient,
   disconnectRedis,
 } from './config/redis/redisClient';
+import {
+  connectSocketRedis,
+  disconnectSocketRedis,
+} from './config/redis/socketRedisClient';
 
 // connect-redis v6.1.3 방식
 import connectRedis from 'connect-redis';
@@ -130,7 +134,19 @@ const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
 app.use((req, res, next) => {
-  // Track active connections
+  // Graceful shutdown: 새로운 요청 거부
+  if (isShuttingDown) {
+    res.set('Connection', 'close');
+    return res.status(503).json({
+      error: 'Server is shutting down',
+      message: '서버가 종료 중입니다. 잠시 후 다시 시도해주세요.',
+    });
+  }
+
+  // 진행 중인 요청 추적
+  activeRequests++;
+
+  // Track active connections (Prometheus)
   activeConnectionsGauge.inc();
 
   const end = httpRequestDurationMicroseconds.startTimer();
@@ -154,10 +170,14 @@ app.use((req, res, next) => {
 
     // Decrease active connections
     activeConnectionsGauge.dec();
+
+    // 완료된 요청 카운트 감소
+    activeRequests--;
   });
 
   res.on('close', () => {
     activeConnectionsGauge.dec();
+    activeRequests--;
   });
 
   next();
@@ -221,13 +241,34 @@ app.use(
 const logFormat = isDevelopment() ? 'dev' : 'combined';
 app.use(morgan(logFormat, { stream }));
 
-// CORS 설정 (환경별)
+// CORS 설정 (보안 강화)
 app.use(
   cors({
-    origin: isDevelopment() ? '*' : env.FRONTEND_URL,
-    credentials: isDevelopment() ? false : true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: (origin, callback) => {
+      // 프로덕션: FRONTEND_URL만 허용
+      // 개발: CORS_ALLOWED_ORIGINS 목록의 도메인만 허용
+      const allowedOrigins = isProduction()
+        ? [env.FRONTEND_URL]
+        : env.CORS_ALLOWED_ORIGINS;
+
+      // Origin이 없는 경우 (서버 간 통신, Postman 등)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // 허용된 도메인인지 확인
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`🚫 CORS blocked request from origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true, // 항상 credentials 활성화
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'],
+    maxAge: 86400, // Preflight 캐시 24시간
   }),
 );
 
@@ -343,6 +384,10 @@ let isArticleDBConnected = false;
 let isChatDBConnected = false;
 let reportService: ReportService;
 let concertStatusScheduler: ConcertStatusScheduler | null = null;
+
+// Graceful shutdown 상태 추적
+let isShuttingDown = false;
+let activeRequests = 0;
 
 // 🩺 헬스체크 엔드포인트들 (인증 없음 - K8s/로드밸런서용)
 // Liveness Probe: 단순 생존 확인
@@ -553,44 +598,112 @@ const initializeDatabases = async (): Promise<void> => {
 const gracefulShutdown = async (signal: string): Promise<void> => {
   logger.info(`\n🛑 ${signal} received. Starting graceful shutdown...`);
 
+  // 중복 종료 방지
+  if (isShuttingDown) {
+    logger.warn('⚠️ Shutdown already in progress, ignoring signal');
+    return;
+  }
+
+  isShuttingDown = true;
+  const shutdownStartTime = Date.now();
+
   try {
-    // HTTP 서버 종료
-    if (httpServer.listening) {
-      await new Promise<void>((resolve) => {
-        httpServer.close(() => {
-          logger.info('✅ HTTP server closed');
-          resolve();
-        });
+    // 1️⃣ 새로운 요청 거부 시작 (미들웨어에서 처리)
+    logger.info('1️⃣ Rejecting new requests...');
+
+    // 2️⃣ Socket.IO 클라이언트에게 종료 알림 전송
+    if (chatSocketServer) {
+      logger.info('2️⃣ Notifying Socket.IO clients about shutdown...');
+      const io = chatSocketServer.getIO();
+      io.emit('server:shutdown', {
+        message: '서버가 곧 종료됩니다. 재연결을 준비해주세요.',
+        reconnectAfter: 5000,
       });
+
+      // 클라이언트가 메시지를 받을 시간 제공 (5초)
+      logger.info('⏳ Waiting 5 seconds for clients to receive shutdown notice...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
-    // Socket.IO 종료
+    // 3️⃣ 진행 중인 요청 완료 대기 (최대 30초)
+    logger.info(`3️⃣ Waiting for ${activeRequests} active requests to complete (max 30s)...`);
+    const requestWaitStart = Date.now();
+    const maxWaitTime = 30000; // 30초
+
+    while (activeRequests > 0 && Date.now() - requestWaitStart < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초마다 체크
+      if (activeRequests > 0) {
+        logger.info(`⏳ Still waiting... ${activeRequests} active requests remaining`);
+      }
+    }
+
+    if (activeRequests > 0) {
+      logger.warn(`⚠️ Force closing with ${activeRequests} active requests after 30s timeout`);
+    } else {
+      logger.info('✅ All requests completed successfully');
+    }
+
+    // 4️⃣ HTTP 서버 종료 (타임아웃 포함)
+    if (httpServer.listening) {
+      logger.info('4️⃣ Closing HTTP server...');
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          httpServer.close(() => {
+            logger.info('✅ HTTP server closed gracefully');
+            resolve();
+          });
+        }),
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            logger.warn('⚠️ HTTP server close timeout, forcing shutdown');
+            resolve();
+          }, 10000); // 10초 타임아웃
+        }),
+      ]);
+    }
+
+    // 5️⃣ Socket.IO 서버 종료
     if (chatSocketServer) {
-      logger.info('🔌 Closing Socket.IO server...');
-      // Socket.IO 서버 종료 로직이 있다면 여기에 추가
+      logger.info('5️⃣ Closing Socket.IO server...');
+      const io = chatSocketServer.getIO();
+
+      // 모든 소켓 연결 강제 종료
+      const sockets = await io.fetchSockets();
+      sockets.forEach(socket => socket.disconnect(true));
+
+      await io.close();
       chatSocketServer = null;
       logger.info('✅ Socket.IO server closed');
     }
 
-    // Concert Status Scheduler 종료
+    // 6️⃣ Concert Status Scheduler 종료
     if (concertStatusScheduler) {
-      logger.info('🔌 Stopping Concert Status Scheduler...');
+      logger.info('6️⃣ Stopping Concert Status Scheduler...');
       concertStatusScheduler.stop();
       concertStatusScheduler = null;
       logger.info('✅ Concert Status Scheduler stopped');
     }
 
-    // Redis 연결 종료
+    // 7️⃣ Socket.IO Redis 연결 종료
+    logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');
+    await disconnectSocketRedis();
+
+    // 8️⃣ Redis 연결 종료
+    logger.info('8️⃣ Disconnecting Redis client...');
     await disconnectRedis();
 
-    // MongoDB 연결 종료
+    // 9️⃣ MongoDB 연결 종료
+    logger.info('9️⃣ Disconnecting MongoDB...');
     await disconnectUserDB();
     logger.info('✅ User MongoDB disconnected');
 
     await disconnectConcertDB();
     logger.info('✅ Concert, Article, and Chat MongoDB disconnected');
 
-    logger.info('👋 Graceful shutdown completed');
+    const shutdownDuration = Date.now() - shutdownStartTime;
+    logger.info('🎉 ================================');
+    logger.info(`👋 Graceful shutdown completed in ${shutdownDuration}ms`);
+    logger.info('🎉 ================================');
     process.exit(0);
   } catch (error) {
     logger.error('❌ Graceful shutdown failed', { error });
@@ -601,7 +714,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 // 서버 시작 함수
 const startServer = async (): Promise<void> => {
   try {
-    // Redis 연결 시도
+    // Redis 연결 시도 (세션 스토어용)
     const isRedisConnected = await connectRedisClient();
 
     // Redis 연결 성공 시 세션 설정 업데이트
@@ -613,6 +726,11 @@ const startServer = async (): Promise<void> => {
     }
 
     logSessionStoreStatus(isRedisConnected);
+
+    // Socket.IO Redis adapter용 Redis 연결
+    logger.info('🔌 Connecting to Socket.IO Redis clients...');
+    await connectSocketRedis();
+    logger.info('✅ Socket.IO Redis clients ready');
 
     // 데이터베이스 초기화
     await initializeDatabases();
@@ -684,6 +802,12 @@ const startServer = async (): Promise<void> => {
         `🔒 Security: ${isProduction() ? 'Production Mode' : 'Development Mode'}`,
       );
       logger.info('🎉 ================================');
+
+      // PM2 ready 신호 전송 (무중단 배포 지원)
+      if (process.send) {
+        process.send('ready');
+        logger.info('✅ PM2 ready signal sent - Zero-downtime deployment enabled');
+      }
     });
   } catch (err) {
     logger.error('❌ Startup failed', { error: err });

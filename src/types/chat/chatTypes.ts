@@ -61,6 +61,7 @@ export interface ServerToClientEvents {
   typing: (userId: string, username: string, roomId: string) => void;
   stopTyping: (userId: string, roomId: string) => void;
   error: (error: string) => void;
+  'server:shutdown': (data: { message: string; reconnectAfter: number }) => void;
 }
 
 export interface ClientToServerEvents {
