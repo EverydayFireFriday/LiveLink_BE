@@ -134,7 +134,19 @@ const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
 app.use((req, res, next) => {
-  // Track active connections
+  // Graceful shutdown: 새로운 요청 거부
+  if (isShuttingDown) {
+    res.set('Connection', 'close');
+    return res.status(503).json({
+      error: 'Server is shutting down',
+      message: '서버가 종료 중입니다. 잠시 후 다시 시도해주세요.',
+    });
+  }
+
+  // 진행 중인 요청 추적
+  activeRequests++;
+
+  // Track active connections (Prometheus)
   activeConnectionsGauge.inc();
 
   const end = httpRequestDurationMicroseconds.startTimer();
@@ -158,10 +170,14 @@ app.use((req, res, next) => {
 
     // Decrease active connections
     activeConnectionsGauge.dec();
+
+    // 완료된 요청 카운트 감소
+    activeRequests--;
   });
 
   res.on('close', () => {
     activeConnectionsGauge.dec();
+    activeRequests--;
   });
 
   next();
@@ -347,6 +363,10 @@ let isArticleDBConnected = false;
 let isChatDBConnected = false;
 let reportService: ReportService;
 let concertStatusScheduler: ConcertStatusScheduler | null = null;
+
+// Graceful shutdown 상태 추적
+let isShuttingDown = false;
+let activeRequests = 0;
 
 // 🩺 헬스체크 엔드포인트들 (인증 없음 - K8s/로드밸런서용)
 // Liveness Probe: 단순 생존 확인
@@ -557,47 +577,112 @@ const initializeDatabases = async (): Promise<void> => {
 const gracefulShutdown = async (signal: string): Promise<void> => {
   logger.info(`\n🛑 ${signal} received. Starting graceful shutdown...`);
 
+  // 중복 종료 방지
+  if (isShuttingDown) {
+    logger.warn('⚠️ Shutdown already in progress, ignoring signal');
+    return;
+  }
+
+  isShuttingDown = true;
+  const shutdownStartTime = Date.now();
+
   try {
-    // HTTP 서버 종료
-    if (httpServer.listening) {
-      await new Promise<void>((resolve) => {
-        httpServer.close(() => {
-          logger.info('✅ HTTP server closed');
-          resolve();
-        });
+    // 1️⃣ 새로운 요청 거부 시작 (미들웨어에서 처리)
+    logger.info('1️⃣ Rejecting new requests...');
+
+    // 2️⃣ Socket.IO 클라이언트에게 종료 알림 전송
+    if (chatSocketServer) {
+      logger.info('2️⃣ Notifying Socket.IO clients about shutdown...');
+      const io = chatSocketServer.getIO();
+      io.emit('server:shutdown', {
+        message: '서버가 곧 종료됩니다. 재연결을 준비해주세요.',
+        reconnectAfter: 5000,
       });
+
+      // 클라이언트가 메시지를 받을 시간 제공 (5초)
+      logger.info('⏳ Waiting 5 seconds for clients to receive shutdown notice...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
-    // Socket.IO 종료
+    // 3️⃣ 진행 중인 요청 완료 대기 (최대 30초)
+    logger.info(`3️⃣ Waiting for ${activeRequests} active requests to complete (max 30s)...`);
+    const requestWaitStart = Date.now();
+    const maxWaitTime = 30000; // 30초
+
+    while (activeRequests > 0 && Date.now() - requestWaitStart < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초마다 체크
+      if (activeRequests > 0) {
+        logger.info(`⏳ Still waiting... ${activeRequests} active requests remaining`);
+      }
+    }
+
+    if (activeRequests > 0) {
+      logger.warn(`⚠️ Force closing with ${activeRequests} active requests after 30s timeout`);
+    } else {
+      logger.info('✅ All requests completed successfully');
+    }
+
+    // 4️⃣ HTTP 서버 종료 (타임아웃 포함)
+    if (httpServer.listening) {
+      logger.info('4️⃣ Closing HTTP server...');
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          httpServer.close(() => {
+            logger.info('✅ HTTP server closed gracefully');
+            resolve();
+          });
+        }),
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            logger.warn('⚠️ HTTP server close timeout, forcing shutdown');
+            resolve();
+          }, 10000); // 10초 타임아웃
+        }),
+      ]);
+    }
+
+    // 5️⃣ Socket.IO 서버 종료
     if (chatSocketServer) {
-      logger.info('🔌 Closing Socket.IO server...');
-      // Socket.IO 서버 종료 로직이 있다면 여기에 추가
+      logger.info('5️⃣ Closing Socket.IO server...');
+      const io = chatSocketServer.getIO();
+
+      // 모든 소켓 연결 강제 종료
+      const sockets = await io.fetchSockets();
+      sockets.forEach(socket => socket.disconnect(true));
+
+      await io.close();
       chatSocketServer = null;
       logger.info('✅ Socket.IO server closed');
     }
 
-    // Concert Status Scheduler 종료
+    // 6️⃣ Concert Status Scheduler 종료
     if (concertStatusScheduler) {
-      logger.info('🔌 Stopping Concert Status Scheduler...');
+      logger.info('6️⃣ Stopping Concert Status Scheduler...');
       concertStatusScheduler.stop();
       concertStatusScheduler = null;
       logger.info('✅ Concert Status Scheduler stopped');
     }
 
-    // Socket.IO Redis 연결 종료
+    // 7️⃣ Socket.IO Redis 연결 종료
+    logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');
     await disconnectSocketRedis();
 
-    // Redis 연결 종료
+    // 8️⃣ Redis 연결 종료
+    logger.info('8️⃣ Disconnecting Redis client...');
     await disconnectRedis();
 
-    // MongoDB 연결 종료
+    // 9️⃣ MongoDB 연결 종료
+    logger.info('9️⃣ Disconnecting MongoDB...');
     await disconnectUserDB();
     logger.info('✅ User MongoDB disconnected');
 
     await disconnectConcertDB();
     logger.info('✅ Concert, Article, and Chat MongoDB disconnected');
 
-    logger.info('👋 Graceful shutdown completed');
+    const shutdownDuration = Date.now() - shutdownStartTime;
+    logger.info('🎉 ================================');
+    logger.info(`👋 Graceful shutdown completed in ${shutdownDuration}ms`);
+    logger.info('🎉 ================================');
     process.exit(0);
   } catch (error) {
     logger.error('❌ Graceful shutdown failed', { error });
