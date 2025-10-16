@@ -7,8 +7,14 @@ let db: Db;
 
 export const connectDB = async (): Promise<Db> => {
   try {
-    const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
+    const MONGO_URI = process.env.MONGO_URI;
     const DB_NAME = process.env.MONGO_DB_NAME || 'livelink';
+
+    if (!MONGO_URI) {
+      throw new Error(
+        'MONGO_URI 환경변수가 설정되지 않았습니다. 프로덕션 환경에서는 필수입니다.',
+      );
+    }
 
     client = new MongoClient(MONGO_URI);
     await client.connect();

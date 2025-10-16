@@ -118,6 +118,60 @@ const validateEnv = () => {
   try {
     const parsed = envSchema.parse(process.env);
 
+    // 🚨 프로덕션 환경 추가 검증
+    if (parsed.NODE_ENV === 'production') {
+      const productionErrors: string[] = [];
+
+      // PORT 검증
+      if (parsed.PORT === '3000') {
+        productionErrors.push(
+          'PORT: 프로덕션 환경에서는 명시적인 포트 설정이 권장됩니다',
+        );
+      }
+
+      // FRONTEND_URL 검증
+      if (parsed.FRONTEND_URL.includes('localhost')) {
+        productionErrors.push(
+          'FRONTEND_URL: 프로덕션 환경에서는 localhost를 사용할 수 없습니다',
+        );
+      }
+
+      // CORS_ALLOWED_ORIGINS 검증
+      const hasLocalhostOrigin = parsed.CORS_ALLOWED_ORIGINS.some((origin) =>
+        origin.includes('localhost'),
+      );
+      if (hasLocalhostOrigin) {
+        productionErrors.push(
+          'CORS_ALLOWED_ORIGINS: 프로덕션 환경에서는 localhost를 사용할 수 없습니다',
+        );
+      }
+
+      // COOKIE_DOMAIN 검증
+      if (!parsed.COOKIE_DOMAIN) {
+        productionErrors.push(
+          'COOKIE_DOMAIN: 프로덕션 환경에서는 쿠키 도메인 설정이 필수입니다',
+        );
+      }
+
+      // SameSite 검증
+      if (parsed.COOKIE_SAMESITE === 'none') {
+        logger.warn(
+          '⚠️ COOKIE_SAMESITE가 "none"으로 설정되었습니다. HTTPS와 Secure 플래그가 필수입니다.',
+        );
+      }
+
+      if (productionErrors.length > 0) {
+        logger.error('❌ 프로덕션 환경 검증 실패:');
+        productionErrors.forEach((error) => {
+          logger.error(`   ${error}`);
+        });
+        logger.error(
+          '\n🚨 프로덕션 환경에서는 모든 환경변수를 명시적으로 설정해야 합니다.',
+        );
+        process.exit(1);
+      }
+    }
+
     // ✅ 성공 로그
     logger.info(`📧 EMAIL_USER: ✅ ${parsed.EMAIL_USER}`);
     logger.info(`🔄 REDIS_URL: ✅ 설정됨`);
@@ -137,7 +191,9 @@ const validateEnv = () => {
     );
     logger.info(`🍪 쿠키 도메인: ${parsed.COOKIE_DOMAIN || '설정되지 않음'}`);
     logger.info(`🍪 SameSite 정책: ${parsed.COOKIE_SAMESITE}`);
-    logger.info(`🔐 CORS 허용 도메인 개수: ${parsed.CORS_ALLOWED_ORIGINS.length}`);
+    logger.info(
+      `🔐 CORS 허용 도메인 개수: ${parsed.CORS_ALLOWED_ORIGINS.length}`,
+    );
 
     // 🔧 조건부 인증 설정 로그
     logger.info('\n🔧 조건부 인증 미들웨어 설정:');

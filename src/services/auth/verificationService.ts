@@ -6,14 +6,22 @@ export class VerificationService {
   private redis: Redis;
 
   constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    const REDIS_URL = process.env.REDIS_URL;
+
+    if (!REDIS_URL) {
+      throw new Error(
+        'REDIS_URL 환경변수가 설정되지 않았습니다. 프로덕션 환경에서는 필수입니다.',
+      );
+    }
+
+    this.redis = new Redis(REDIS_URL);
   }
 
   async saveVerificationCode(
     type: string,
     email: string,
     code: string,
-    userData?: any,
+    userData?: VerificationData['userData'],
   ): Promise<string> {
     const key = `verification:${type}:${email}`;
     const data: VerificationData = {
@@ -33,7 +41,8 @@ export class VerificationService {
       const data = await this.redis.get(key);
       if (!data) return null;
 
-      return JSON.parse(data) as VerificationData;
+      const parsed: unknown = JSON.parse(data);
+      return parsed as VerificationData;
     } catch (error) {
       logger.error('Redis 데이터 파싱 에러:', error);
       return null;
