@@ -15,7 +15,39 @@ const envSchema = z.object({
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
     .optional()
-    .default('86400000'),
+    .default('86400000'), // 호환성을 위해 유지 (deprecated)
+  // 디바이스별 세션 만료 시간 (밀리초)
+  SESSION_MAX_AGE_MOBILE: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('2592000000'), // 30일
+  SESSION_MAX_AGE_WEB: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('86400000'), // 1일
+  SESSION_MAX_AGE_TABLET: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('2592000000'), // 30일
+  SESSION_MAX_AGE_DESKTOP: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('86400000'), // 1일
+  SESSION_MAX_AGE_DEFAULT: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('86400000'), // 1일 (fallback)
+  // 최대 세션 개수 제한
+  SESSION_MAX_COUNT: z
+    .string()
+    .regex(/^\d+$/, '숫자만 입력 가능합니다')
+    .optional()
+    .default('10'), // 기본값: 10개
   BRUTE_FORCE_MAX_ATTEMPTS: z
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
@@ -180,9 +212,23 @@ const validateEnv = () => {
     logger.info(`🌍 환경: ${parsed.NODE_ENV}`);
     logger.info(`🚪 포트: ${parsed.PORT}`);
     logger.info(`📊 로그 레벨: ${parsed.LOG_LEVEL}`);
+    logger.info('\n🔐 디바이스별 세션 만료시간:');
     logger.info(
-      `🔐 세션 만료시간: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE) / 1000 / 60)}분`,
+      `  📱 모바일: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_MOBILE) / 1000 / 60 / 60 / 24)}일`,
     );
+    logger.info(
+      `  💻 웹: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_WEB) / 1000 / 60 / 60)}시간`,
+    );
+    logger.info(
+      `  📲 태블릿: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_TABLET) / 1000 / 60 / 60 / 24)}일`,
+    );
+    logger.info(
+      `  🖥️  데스크톱: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_DESKTOP) / 1000 / 60 / 60)}시간`,
+    );
+    logger.info(
+      `  🔧 기본값: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_DEFAULT) / 1000 / 60 / 60)}시간`,
+    );
+    logger.info(`🔢 최대 세션 개수: ${parsed.SESSION_MAX_COUNT}개`);
     logger.info(
       `🛡️ 브루트포스 보호 - 최대 시도 횟수: ${parsed.BRUTE_FORCE_MAX_ATTEMPTS}`,
     );
@@ -256,4 +302,20 @@ export const isAdminEmail = (email: string): boolean => {
 // 🔐 인증 스킵 여부 확인
 export const shouldSkipAuth = (): boolean => {
   return isDevelopment() || env.SKIP_AUTH;
+};
+
+// 📱 디바이스 타입별 세션 만료 시간 가져오기
+export const getSessionMaxAge = (deviceType: string): number => {
+  switch (deviceType.toLowerCase()) {
+    case 'mobile':
+      return parseInt(env.SESSION_MAX_AGE_MOBILE);
+    case 'web':
+      return parseInt(env.SESSION_MAX_AGE_WEB);
+    case 'tablet':
+      return parseInt(env.SESSION_MAX_AGE_TABLET);
+    case 'desktop':
+      return parseInt(env.SESSION_MAX_AGE_DESKTOP);
+    default:
+      return parseInt(env.SESSION_MAX_AGE_DEFAULT);
+  }
 };

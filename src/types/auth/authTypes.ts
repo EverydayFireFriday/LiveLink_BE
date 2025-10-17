@@ -64,3 +64,41 @@ export interface PasswordResetRequest {
   verificationCode: string;
   newPassword: string;
 }
+
+// 디바이스 타입 정의
+export enum DeviceType {
+  MOBILE = 'mobile',
+  WEB = 'web',
+  TABLET = 'tablet',
+  DESKTOP = 'desktop',
+  UNKNOWN = 'unknown',
+}
+
+// 디바이스 정보
+export interface DeviceInfo {
+  name: string; // "iPhone 14", "Chrome on Windows"
+  type: DeviceType;
+  userAgent: string;
+  ipAddress: string;
+}
+
+// UserSession 문서 스키마
+export interface UserSession {
+  _id?: ObjectId;
+  userId: ObjectId; // User 참조
+  sessionId: string; // Redis 세션 ID (connect.sid)
+  deviceInfo: DeviceInfo;
+  createdAt: Date;
+  lastActivityAt: Date;
+  expiresAt: Date;
+}
+
+// 세션 조회 응답
+export interface SessionResponse {
+  sessionId: string;
+  deviceInfo: DeviceInfo;
+  createdAt: string;
+  lastActivityAt: string;
+  expiresAt: string;
+  isCurrent: boolean; // 현재 요청의 세션인지 여부
+}

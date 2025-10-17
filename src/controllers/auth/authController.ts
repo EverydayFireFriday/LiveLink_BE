@@ -119,7 +119,7 @@ export class AuthController {
       // 세션 고정 공격 방지를 위해 세션 재생성
       const sessionData = authService.createSessionData(user);
 
-      req.session.regenerate((err) => {
+      req.session.regenerate(async (err) => {
         if (err) {
           logger.error('세션 재생성 에러:', err);
           return ResponseBuilder.internalError(res, '로그인 실패 (세션 오류)');
@@ -127,6 +127,72 @@ export class AuthController {
 
         // 재생성된 세션에 사용자 정보 저장
         req.session.user = sessionData;
+
+        // 디바이스별 세션 쿠키 만료 시간 설정 (UserSession과 동기화)
+        // UserSession에 세션 정보 저장 (멀티 디바이스 지원)
+        try {
+          const { UserSessionModel } = await import(
+            '../../models/auth/userSession'
+          );
+          const { DeviceDetector } = await import(
+            '../../utils/device/deviceDetector'
+          );
+          const { getSessionMaxAge, env } = await import('../../config/env/env');
+          const { redisClient } = await import('../../app');
+
+          const userSessionModel = new UserSessionModel();
+          const deviceInfo = DeviceDetector.detectDevice(req);
+
+          // 세션 개수 제한 체크
+          const maxSessionCount = parseInt(env.SESSION_MAX_COUNT);
+          const currentSessions = await userSessionModel.findByUserId(user._id!);
+
+          if (currentSessions.length >= maxSessionCount) {
+            // 최대 개수 초과 - 가장 오래된 세션 삭제
+            const oldestSession = currentSessions
+              .sort((a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime())[0];
+
+            // MongoDB에서 삭제
+            await userSessionModel.deleteSession(oldestSession.sessionId);
+
+            // Redis에서도 삭제
+            if (redisClient.isOpen) {
+              await redisClient.del(`app:sess:${oldestSession.sessionId}`);
+            }
+
+            logger.info(
+              `[Session] Max session limit (${maxSessionCount}) reached for user: ${user.email}. Deleted oldest session: ${oldestSession.sessionId}`,
+            );
+          }
+
+          // 디바이스 타입에 따른 세션 만료 시간 계산
+          const sessionMaxAge = getSessionMaxAge(deviceInfo.type);
+          const expiresAt = new Date(Date.now() + sessionMaxAge);
+
+          // Express 세션 쿠키의 maxAge도 디바이스 타입에 맞게 설정
+          req.session.cookie.maxAge = sessionMaxAge;
+
+          // UserSession 생성
+          await userSessionModel.createSession(
+            user._id!,
+            req.sessionID,
+            deviceInfo,
+            expiresAt,
+          );
+
+          const expiresInDays = Math.floor(sessionMaxAge / 1000 / 60 / 60 / 24);
+          const expiresInHours = Math.floor(sessionMaxAge / 1000 / 60 / 60);
+          const expiryDisplay = expiresInDays > 0
+            ? `${expiresInDays}일`
+            : `${expiresInHours}시간`;
+
+          logger.info(
+            `[Session] Created session for user: ${user.email}, device: ${deviceInfo.type}, expires in: ${expiryDisplay}`,
+          );
+        } catch (sessionError) {
+          // UserSession 생성 실패는 로그만 남기고 로그인은 계속 진행
+          logger.error('[Session] Failed to create UserSession:', sessionError);
+        }
 
         return ResponseBuilder.success(res, '로그인 성공', {
           user: {
@@ -156,9 +222,28 @@ export class AuthController {
     }
   };
 
-  logout = (req: express.Request, res: express.Response) => {
+  logout = async (req: express.Request, res: express.Response) => {
     const sessionId = req.sessionID;
+    const userId = req.session.user?.userId;
 
+    // UserSession에서 해당 세션 삭제
+    if (userId) {
+      try {
+        const { UserSessionModel } = await import(
+          '../../models/auth/userSession'
+        );
+        const userSessionModel = new UserSessionModel();
+        await userSessionModel.deleteSession(sessionId);
+        logger.info(
+          `[Session] Deleted session: ${sessionId} for user: ${userId}`,
+        );
+      } catch (sessionError) {
+        // UserSession 삭제 실패는 로그만 남기고 로그아웃은 계속 진행
+        logger.error('[Session] Failed to delete UserSession:', sessionError);
+      }
+    }
+
+    // Express 세션 삭제
     req.session.destroy((err) => {
       if (err) {
         logger.error('로그아웃 에러:', err);
@@ -348,6 +433,193 @@ export class AuthController {
       return ResponseBuilder.internalError(
         res,
         '서버 에러로 이메일 찾기에 실패했습니다.',
+      );
+    }
+  };
+
+  /**
+   * 활성 세션 목록 조회
+   * GET /auth/sessions
+   */
+  getSessions = async (req: express.Request, res: express.Response) => {
+    const userId = req.session.user?.userId;
+
+    if (!userId) {
+      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+    }
+
+    try {
+      const { UserSessionModel } = await import(
+        '../../models/auth/userSession'
+      );
+      const userSessionModel = new UserSessionModel();
+
+      // 사용자의 모든 활성 세션 조회
+      const sessions = await userSessionModel.findByUserId(userId);
+
+      // 응답 형식으로 변환
+      const sessionResponses = userSessionModel.toSessionResponses(
+        sessions,
+        req.sessionID,
+      );
+
+      return ResponseBuilder.success(
+        res,
+        '활성 세션 목록을 가져왔습니다.',
+        {
+          totalSessions: sessions.length,
+          sessions: sessionResponses,
+        },
+      );
+    } catch (error) {
+      logger.error('[Session] Failed to get sessions:', error);
+      return ResponseBuilder.internalError(
+        res,
+        '서버 에러로 세션 목록 조회에 실패했습니다.',
+      );
+    }
+  };
+
+  /**
+   * 특정 세션 강제 종료
+   * DELETE /auth/sessions/:sessionId
+   */
+  deleteSessionById = async (req: express.Request, res: express.Response) => {
+    const userId = req.session.user?.userId;
+    const { sessionId } = req.params;
+
+    if (!userId) {
+      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+    }
+
+    if (!sessionId) {
+      return ResponseBuilder.badRequest(res, '세션 ID가 필요합니다.');
+    }
+
+    // 현재 세션은 삭제할 수 없음 (logout 사용해야 함)
+    if (sessionId === req.sessionID) {
+      return ResponseBuilder.badRequest(
+        res,
+        '현재 세션은 이 방법으로 삭제할 수 없습니다. /auth/logout을 사용해주세요.',
+      );
+    }
+
+    try {
+      const { UserSessionModel } = await import(
+        '../../models/auth/userSession'
+      );
+      const { redisClient } = await import('../../app');
+      const userSessionModel = new UserSessionModel();
+
+      // 해당 세션이 현재 사용자의 것인지 확인
+      const session = await userSessionModel.findBySessionId(sessionId);
+      if (!session) {
+        return ResponseBuilder.notFound(res, '세션을 찾을 수 없습니다.');
+      }
+
+      if (session.userId.toString() !== userId) {
+        return ResponseBuilder.forbidden(
+          res,
+          '다른 사용자의 세션을 삭제할 수 없습니다.',
+        );
+      }
+
+      // UserSession에서 삭제
+      await userSessionModel.deleteSession(sessionId);
+
+      // Redis에서도 세션 삭제
+      if (redisClient.isOpen) {
+        const sessionKey = `app:sess:${sessionId}`;
+        await redisClient.del(sessionKey);
+      }
+
+      logger.info(
+        `[Session] User ${userId} deleted session: ${sessionId}`,
+      );
+
+      return ResponseBuilder.success(res, '세션이 종료되었습니다.', {
+        deletedSessionId: sessionId,
+      });
+    } catch (error) {
+      logger.error('[Session] Failed to delete session:', error);
+      return ResponseBuilder.internalError(
+        res,
+        '서버 에러로 세션 삭제에 실패했습니다.',
+      );
+    }
+  };
+
+  /**
+   * 모든 세션 로그아웃 (현재 세션 제외)
+   * DELETE /auth/sessions/all
+   */
+  deleteAllSessions = async (req: express.Request, res: express.Response) => {
+    const userId = req.session.user?.userId;
+    const currentSessionId = req.sessionID;
+
+    if (!userId) {
+      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+    }
+
+    try {
+      const { UserSessionModel } = await import(
+        '../../models/auth/userSession'
+      );
+      const { redisClient } = await import('../../app');
+      const userSessionModel = new UserSessionModel();
+
+      // 현재 세션을 제외한 모든 활성 세션 조회
+      const sessions = await userSessionModel.findByUserId(userId);
+      const otherSessions = sessions.filter(
+        (session) => session.sessionId !== currentSessionId,
+      );
+
+      logger.info(
+        `[Session] Found ${sessions.length} total sessions, ${otherSessions.length} to delete (current: ${currentSessionId})`,
+      );
+
+      // Redis에서 각 세션 삭제
+      if (redisClient.isOpen) {
+        const deleteResults = await Promise.all(
+          otherSessions.map(async (session) => {
+            const key = `app:sess:${session.sessionId}`;
+            const result = await redisClient.del(key);
+            logger.info(
+              `[Session] Redis delete key: ${key}, result: ${result} (1=deleted, 0=not found)`,
+            );
+            return result;
+          }),
+        );
+        logger.info(
+          `[Session] Redis deletion results: ${deleteResults.join(', ')}`,
+        );
+      } else {
+        logger.warn('[Session] Redis client is not open, skipping Redis deletion');
+      }
+
+      // UserSession에서 모든 세션 삭제 (현재 세션 제외)
+      const deletedCount = await userSessionModel.deleteOtherSessions(
+        userId,
+        currentSessionId,
+      );
+
+      logger.info(
+        `[Session] User ${userId} deleted ${deletedCount} other sessions from MongoDB`,
+      );
+
+      return ResponseBuilder.success(
+        res,
+        '다른 모든 세션이 로그아웃되었습니다.',
+        {
+          deletedCount,
+          currentSessionId,
+        },
+      );
+    } catch (error) {
+      logger.error('[Session] Failed to delete all sessions:', error);
+      return ResponseBuilder.internalError(
+        res,
+        '서버 에러로 세션 삭제에 실패했습니다.',
       );
     }
   };
