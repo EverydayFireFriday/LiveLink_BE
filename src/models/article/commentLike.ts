@@ -1,5 +1,5 @@
 // models/article/commentLike.ts
-import { ObjectId, Collection, Db } from 'mongodb';
+import { ObjectId, Collection, Db, ClientSession } from 'mongodb';
 import logger from '../../utils/logger/logger';
 
 export interface ICommentLike {
@@ -73,7 +73,11 @@ export class CommentLikeModel {
   }
 
   // ✅ 모든 메서드에 withIndexes() 적용
-  async create(commentId: string, userId: string): Promise<ICommentLike> {
+  async create(
+    commentId: string,
+    userId: string,
+    session?: ClientSession,
+  ): Promise<ICommentLike> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(commentId) || !ObjectId.isValid(userId)) {
         throw new Error('유효하지 않은 ID입니다.');
@@ -83,10 +87,14 @@ export class CommentLikeModel {
       const userObjectId = new ObjectId(userId);
 
       // 이미 좋아요했는지 확인
-      const existingLike = await this.collection.findOne({
-        comment_id: commentObjectId,
-        user_id: userObjectId,
-      });
+      const findOptions = session ? { session } : {};
+      const existingLike = await this.collection.findOne(
+        {
+          comment_id: commentObjectId,
+          user_id: userObjectId,
+        },
+        findOptions,
+      );
 
       if (existingLike) {
         throw new Error('이미 좋아요한 댓글입니다.');
@@ -99,7 +107,8 @@ export class CommentLikeModel {
         created_at: new Date(),
       };
 
-      const result = await this.collection.insertOne(like);
+      const insertOptions = session ? { session } : {};
+      const result = await this.collection.insertOne(like, insertOptions);
       if (!result.insertedId) {
         throw new Error('댓글 좋아요 추가에 실패했습니다.');
       }
@@ -112,16 +121,21 @@ export class CommentLikeModel {
   async delete(
     commentId: string,
     userId: string,
+    session?: ClientSession,
   ): Promise<ICommentLike | null> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(commentId) || !ObjectId.isValid(userId)) {
         return null;
       }
 
-      const result = await this.collection.findOneAndDelete({
-        comment_id: new ObjectId(commentId),
-        user_id: new ObjectId(userId),
-      });
+      const deleteOptions = session ? { session } : {};
+      const result = await this.collection.findOneAndDelete(
+        {
+          comment_id: new ObjectId(commentId),
+          user_id: new ObjectId(userId),
+        },
+        deleteOptions,
+      );
 
       return result || null;
     });

@@ -11,6 +11,7 @@ import {
   getCommentsSchema,
 } from '../../utils/validation/article';
 import { ObjectId } from 'mongodb';
+import { getClient } from '../../utils/database/db';
 
 // 타입 정의
 interface CreateCommentData {
@@ -190,8 +191,7 @@ export class ArticleCommentService {
       if (likeStatusMap instanceof Map) {
         isLiked = likeStatusMap.get(commentId) || false;
       } else {
-        isLiked =
-          (likeStatusMap as Record<string, boolean>)[commentId] || false;
+        isLiked = likeStatusMap[commentId] || false;
       }
 
       return {
@@ -398,22 +398,34 @@ export class ArticleCommentService {
     commentId: string,
     userId: string,
   ): Promise<{ newLikesCount: number }> {
-    // 댓글 존재 확인
-    const comment = await this.commentModel.findById(commentId);
-    if (!comment) {
-      throw new Error('댓글을 찾을 수 없습니다.');
+    const client = getClient();
+    const session = client.startSession();
+
+    try {
+      // 댓글 존재 확인
+      const comment = await this.commentModel.findById(commentId);
+      if (!comment) {
+        throw new Error('댓글을 찾을 수 없습니다.');
+      }
+
+      let newLikesCount = 0;
+
+      // 트랜잭션 시작
+      await session.withTransaction(async () => {
+        // 좋아요 추가
+        await this.commentLikeModel.create(commentId, userId, session);
+
+        // 댓글의 좋아요 수 업데이트
+        await this.commentModel.updateLikesCount(commentId, 1, session);
+
+        // 새로운 좋아요 수 조회
+        newLikesCount = await this.commentLikeModel.countByComment(commentId);
+      });
+
+      return { newLikesCount };
+    } finally {
+      await session.endSession();
     }
-
-    // 좋아요 추가
-    await this.commentLikeModel.create(commentId, userId);
-
-    // 댓글의 좋아요 수 업데이트
-    await this.commentModel.updateLikesCount(commentId, 1);
-
-    // 새로운 좋아요 수 조회
-    const newLikesCount = await this.commentLikeModel.countByComment(commentId);
-
-    return { newLikesCount };
   }
 
   // 댓글 좋아요 취소
@@ -421,19 +433,35 @@ export class ArticleCommentService {
     commentId: string,
     userId: string,
   ): Promise<{ newLikesCount: number }> {
-    // 좋아요 삭제
-    const deletedLike = await this.commentLikeModel.delete(commentId, userId);
-    if (!deletedLike) {
-      throw new Error('댓글 좋아요를 찾을 수 없습니다.');
+    const client = getClient();
+    const session = client.startSession();
+
+    try {
+      let newLikesCount = 0;
+
+      // 트랜잭션 시작
+      await session.withTransaction(async () => {
+        // 좋아요 삭제
+        const deletedLike = await this.commentLikeModel.delete(
+          commentId,
+          userId,
+          session,
+        );
+        if (!deletedLike) {
+          throw new Error('댓글 좋아요를 찾을 수 없습니다.');
+        }
+
+        // 댓글의 좋아요 수 업데이트
+        await this.commentModel.updateLikesCount(commentId, -1, session);
+
+        // 새로운 좋아요 수 조회
+        newLikesCount = await this.commentLikeModel.countByComment(commentId);
+      });
+
+      return { newLikesCount };
+    } finally {
+      await session.endSession();
     }
-
-    // 댓글의 좋아요 수 업데이트
-    await this.commentModel.updateLikesCount(commentId, -1);
-
-    // 새로운 좋아요 수 조회
-    const newLikesCount = await this.commentLikeModel.countByComment(commentId);
-
-    return { newLikesCount };
   }
 
   // 댓글 좋아요 상태 확인

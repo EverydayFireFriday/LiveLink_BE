@@ -29,16 +29,29 @@ export class ReportController {
       };
 
       // Validate required fields
-      if (!reporterId || !reportedEntityType || !reportedEntityId || !reportType) {
+      if (
+        !reporterId ||
+        !reportedEntityType ||
+        !reportedEntityId ||
+        !reportType
+      ) {
         res.status(400).json({
           message: '필수 필드가 누락되었습니다.',
-          required: ['reporterId', 'reportedEntityType', 'reportedEntityId', 'reportType'],
+          required: [
+            'reporterId',
+            'reportedEntityType',
+            'reportedEntityId',
+            'reportType',
+          ],
         });
         return;
       }
 
       // Validate ObjectId format
-      if (!ObjectId.isValid(reporterId) || !ObjectId.isValid(reportedEntityId)) {
+      if (
+        !ObjectId.isValid(reporterId) ||
+        !ObjectId.isValid(reportedEntityId)
+      ) {
         res.status(400).json({
           message: '유효하지 않은 ID 형식입니다.',
         });
@@ -46,7 +59,11 @@ export class ReportController {
       }
 
       // Validate enums
-      if (!Object.values(ReportEntityType).includes(reportedEntityType as ReportEntityType)) {
+      if (
+        !Object.values(ReportEntityType).includes(
+          reportedEntityType as ReportEntityType,
+        )
+      ) {
         res.status(400).json({
           message: '유효하지 않은 엔티티 타입입니다.',
           validValues: Object.values(ReportEntityType),
@@ -127,7 +144,12 @@ export class ReportController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const { status, reportedEntityType, limit = '20', skip = '0' } = req.query;
+      const {
+        status,
+        reportedEntityType,
+        limit = '20',
+        skip = '0',
+      } = req.query;
 
       interface ReportFilter {
         status?: ReportStatus;
@@ -148,7 +170,11 @@ export class ReportController {
       }
 
       if (reportedEntityType) {
-        if (!Object.values(ReportEntityType).includes(reportedEntityType as ReportEntityType)) {
+        if (
+          !Object.values(ReportEntityType).includes(
+            reportedEntityType as ReportEntityType,
+          )
+        ) {
           res.status(400).json({
             message: '유효하지 않은 엔티티 타입입니다.',
             validValues: Object.values(ReportEntityType),
@@ -215,7 +241,10 @@ export class ReportController {
         return;
       }
 
-      if (!status || !Object.values(ReportStatus).includes(status as ReportStatus)) {
+      if (
+        !status ||
+        !Object.values(ReportStatus).includes(status as ReportStatus)
+      ) {
         res.status(400).json({
           message: '유효하지 않은 상태 값입니다.',
           validValues: Object.values(ReportStatus),

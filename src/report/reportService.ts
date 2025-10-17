@@ -4,6 +4,12 @@ import { Collection, ObjectId, Db, Filter, FindOptions } from 'mongodb';
 import { Report } from './reportModel';
 import { ReportStatus } from './reportEnums';
 
+// MongoDB Index 타입
+interface MongoIndex {
+  name?: string;
+  [key: string]: unknown;
+}
+
 export class ReportService {
   private reportsCollection: Collection<Report>;
 
@@ -15,11 +21,13 @@ export class ReportService {
   private async ensureIndexes(): Promise<void> {
     try {
       // 기존 인덱스 목록 조회
-      const existingIndexes = await this.reportsCollection.listIndexes().toArray();
+      const existingIndexes = await this.reportsCollection
+        .listIndexes()
+        .toArray();
 
       // 오래된 contentId 관련 인덱스 삭제
-      for (const index of existingIndexes) {
-        const indexName = index.name as string | undefined;
+      for (const index of existingIndexes as MongoIndex[]) {
+        const indexName = index.name;
         if (indexName?.includes('contentId')) {
           await this.reportsCollection.dropIndex(indexName);
           // eslint-disable-next-line no-console

@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+// 환경변수 먼저 로드
+dotenv.config();
+
 import { MongoClient, Db } from 'mongodb';
 import { initializeConcertModel } from '../../models/concert/concert';
 import { logger } from '../index';

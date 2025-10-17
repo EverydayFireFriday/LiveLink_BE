@@ -19,6 +19,13 @@ interface SessionData {
   user?: Partial<SocketUser>;
 }
 
+type TypedSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
+
 export class ChatSocketServer {
   private io: SocketServer<
     ClientToServerEvents,
@@ -47,7 +54,9 @@ export class ChatSocketServer {
           if (allowedOrigins.includes(origin)) {
             callback(null, true);
           } else {
-            logger.warn(`🚫 Socket.IO CORS blocked request from origin: ${origin}`);
+            logger.warn(
+              `🚫 Socket.IO CORS blocked request from origin: ${origin}`,
+            );
             callback(new Error('Not allowed by Socket.IO CORS'));
           }
         },
@@ -71,9 +80,14 @@ export class ChatSocketServer {
   private setupRedisAdapter() {
     try {
       this.io.adapter(createAdapter(pubClient, subClient));
-      logger.info('✅ Socket.IO Redis adapter enabled - Horizontal scaling ready');
+      logger.info(
+        '✅ Socket.IO Redis adapter enabled - Horizontal scaling ready',
+      );
     } catch (error) {
-      logger.warn('⚠️ Failed to setup Redis adapter. Running in single-server mode.', { error });
+      logger.warn(
+        '⚠️ Failed to setup Redis adapter. Running in single-server mode.',
+        { error },
+      );
     }
   }
 
@@ -147,7 +161,9 @@ export class ChatSocketServer {
       socket.on(SocketEvents.TYPING, (roomId) => {
         const user = socket.data.user;
         if (!user) return;
-        socket.to(roomId).emit(SocketEvents.TYPING, user.userId, user.username, roomId);
+        socket
+          .to(roomId)
+          .emit(SocketEvents.TYPING, user.userId, user.username, roomId);
       });
 
       socket.on(SocketEvents.STOP_TYPING, (roomId) => {
@@ -182,14 +198,22 @@ export class ChatSocketServer {
     });
   }
 
-  public authenticateSocket(socket: Socket, sessionData: SessionData): boolean {
+  public authenticateSocket(
+    socket: TypedSocket,
+    sessionData: SessionData,
+  ): boolean {
     const user = sessionData?.user;
-    if (user && user.userId && user.username && user.email) {
+    if (
+      user &&
+      typeof user.userId === 'string' &&
+      typeof user.username === 'string' &&
+      typeof user.email === 'string'
+    ) {
       socket.data.user = {
         userId: user.userId,
         username: user.username,
         email: user.email,
-      } as SocketUser;
+      };
       return true;
     }
     return false;
