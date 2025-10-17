@@ -1,6 +1,12 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import logger from '../../utils/logger/logger';
 import { getDB } from '../../utils/database/db';
+import {
+  getMongoClientOptions,
+  getMongoConnectionString,
+  getMongoDatabaseName,
+  setupMongoMonitoring,
+} from '../../config/database/mongoConfig';
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -66,10 +72,18 @@ export class Database {
 
   public async connect(): Promise<void> {
     try {
-      this.client = new MongoClient(process.env.MONGO_URI as string);
+      const MONGO_URI = getMongoConnectionString();
+      const DB_NAME = getMongoDatabaseName();
+      const clientOptions = getMongoClientOptions();
+
+      this.client = new MongoClient(MONGO_URI, clientOptions);
+
+      // Connection pool 모니터링 설정
+      setupMongoMonitoring(this.client);
+
       await this.client.connect();
-      this.db = this.client.db(process.env.MONGO_DB_NAME || 'livelink');
-      logger.info('✅ MongoDB Native Driver connected');
+      this.db = this.client.db(DB_NAME);
+      logger.info('✅ MongoDB Native Driver connected (User DB)');
 
       // 인덱스 생성
       await this.setupIndexes();
