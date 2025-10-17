@@ -98,6 +98,7 @@ import { initializeAllArticleModels } from './models/article';
 import { ReportService } from './report/reportService';
 import { setupApolloServer } from './report/apolloServer';
 import { ConcertStatusScheduler } from './services/concert/concertStatusScheduler';
+import { SessionCleanupScheduler } from './services/auth/sessionCleanupScheduler';
 
 // 라우터 import
 import authRouter from './routes/auth/index';
@@ -362,7 +363,9 @@ const sessionConfig: session.SessionOptions = {
   name: 'app.session.id',
 };
 
-app.use(session(sessionConfig));
+// 세션 미들웨어 인스턴스 생성 (Socket.IO에서도 사용)
+const sessionMiddleware = session(sessionConfig);
+app.use(sessionMiddleware);
 
 // PASSPORT 초기화 (세션 설정 후)
 app.use(passport.initialize());
@@ -384,6 +387,7 @@ let isArticleDBConnected = false;
 let isChatDBConnected = false;
 let reportService: ReportService;
 let concertStatusScheduler: ConcertStatusScheduler | null = null;
+let sessionCleanupScheduler: SessionCleanupScheduler | null = null;
 
 // Graceful shutdown 상태 추적
 let isShuttingDown = false;
@@ -577,6 +581,12 @@ const initializeDatabases = async (): Promise<void> => {
     concertStatusScheduler = new ConcertStatusScheduler(concertDB);
     concertStatusScheduler.start();
     logger.info('✅ Concert Status Scheduler started');
+
+    // Initialize Session Cleanup Scheduler
+    logger.info('🔌 Initializing Session Cleanup Scheduler...');
+    sessionCleanupScheduler = new SessionCleanupScheduler();
+    sessionCleanupScheduler.start();
+    logger.info('✅ Session Cleanup Scheduler started');
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
     // Set all database connection gauges to 0 on failure
@@ -684,6 +694,14 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
       logger.info('✅ Concert Status Scheduler stopped');
     }
 
+    // 6️⃣-2 Session Cleanup Scheduler 종료
+    if (sessionCleanupScheduler) {
+      logger.info('6️⃣-2 Stopping Session Cleanup Scheduler...');
+      sessionCleanupScheduler.stop();
+      sessionCleanupScheduler = null;
+      logger.info('✅ Session Cleanup Scheduler stopped');
+    }
+
     // 7️⃣ Socket.IO Redis 연결 종료
     logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');
     await disconnectSocketRedis();
@@ -764,7 +782,7 @@ const startServer = async (): Promise<void> => {
 
     // Socket.IO 초기화
     logger.info('🔌 Initializing Socket.IO server...');
-    chatSocketServer = new ChatSocketServer(httpServer);
+    chatSocketServer = new ChatSocketServer(httpServer, sessionMiddleware);
     logger.info('✅ Socket.IO server initialized');
 
     // 404 핸들러 (모든 라우터 뒤에, 에러 핸들러 앞에 위치)

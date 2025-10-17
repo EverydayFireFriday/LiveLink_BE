@@ -147,7 +147,7 @@ router.post('/login', loginLimiter, requireNoAuth, async (req, res) => {
  */
 router.post('/logout', requireAuth, async (req, res) => {
   const authController = await getAuthController();
-  authController.logout(req, res);
+  await authController.logout(req, res);
 });
 
 // 세션
@@ -381,6 +381,170 @@ router.delete('/account', requireAuth, async (req, res) => {
 router.post('/find-email', async (req, res) => {
   const authController = await getAuthController();
   await authController.findEmail(req, res);
+});
+
+// 세션 관리
+/**
+ * @swagger
+ * /auth/sessions:
+ *   get:
+ *     summary: 활성 세션 목록 조회
+ *     description: 현재 사용자의 모든 활성 세션 목록을 가져옵니다. 멀티 디바이스 지원을 위해 각 세션의 디바이스 정보를 포함합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 세션 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "활성 세션 목록을 가져왔습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalSessions:
+ *                       type: number
+ *                       description: 활성 세션 총 개수
+ *                       example: 3
+ *                     sessions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           sessionId:
+ *                             type: string
+ *                             description: 세션 ID
+ *                           deviceInfo:
+ *                             type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
+ *                                 description: 디바이스 이름
+ *                                 example: "Chrome on Windows 10"
+ *                               type:
+ *                                 type: string
+ *                                 description: 디바이스 타입
+ *                                 enum: [mobile, web, tablet, desktop, unknown]
+ *                                 example: "web"
+ *                               ipAddress:
+ *                                 type: string
+ *                                 description: IP 주소
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 세션 생성 시간
+ *                           lastActivityAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 마지막 활동 시간
+ *                           expiresAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: 세션 만료 시간
+ *                           isCurrent:
+ *                             type: boolean
+ *                             description: 현재 요청의 세션 여부
+ *       401:
+ *         description: 인증 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/sessions', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.getSessions(req, res);
+});
+
+/**
+ * @swagger
+ * /auth/sessions/{sessionId}:
+ *   delete:
+ *     summary: 특정 세션 강제 종료
+ *     description: 지정된 세션을 강제로 종료합니다. 현재 세션은 이 방법으로 종료할 수 없습니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 종료할 세션 ID
+ *     responses:
+ *       200:
+ *         description: 세션 종료 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "세션이 종료되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedSessionId:
+ *                       type: string
+ *                       description: 삭제된 세션 ID
+ *       400:
+ *         description: 잘못된 요청 (현재 세션 삭제 시도)
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 권한 없음 (다른 사용자의 세션)
+ *       404:
+ *         description: 세션을 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
+router.delete('/sessions/:sessionId', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.deleteSessionById(req, res);
+});
+
+/**
+ * @swagger
+ * /auth/sessions/all:
+ *   delete:
+ *     summary: 모든 세션 로그아웃 (현재 제외)
+ *     description: 현재 세션을 제외한 모든 활성 세션을 종료합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 모든 세션 로그아웃 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "다른 모든 세션이 로그아웃되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedCount:
+ *                       type: number
+ *                       description: 삭제된 세션 개수
+ *                     currentSessionId:
+ *                       type: string
+ *                       description: 유지되는 현재 세션 ID
+ *       401:
+ *         description: 인증 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.delete('/sessions/all', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.deleteAllSessions(req, res);
 });
 
 export default router;

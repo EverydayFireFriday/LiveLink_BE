@@ -1,6 +1,7 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { createAdapter } from '@socket.io/redis-adapter';
+import session from 'express-session';
 import { ChatRoomService } from '../services/chat/chatRoomService';
 import { MessageService } from '../services/chat/messageService';
 import {
@@ -36,7 +37,10 @@ export class ChatSocketServer {
   private chatRoomService: ChatRoomService;
   private messageService: MessageService;
 
-  constructor(httpServer: HttpServer) {
+  constructor(
+    httpServer: HttpServer,
+    sessionMiddleware: ReturnType<typeof session>,
+  ) {
     // CORS 허용 도메인 결정: 프로덕션은 FRONTEND_URL만, 개발은 CORS_ALLOWED_ORIGINS
     const allowedOrigins = isProduction()
       ? [env.FRONTEND_URL]
@@ -68,6 +72,9 @@ export class ChatSocketServer {
     // Redis adapter 설정 (수평 확장 지원)
     this.setupRedisAdapter();
 
+    // Express 세션 미들웨어를 Socket.IO에 연결
+    this.setupSessionMiddleware(sessionMiddleware);
+
     this.chatRoomService = new ChatRoomService();
     this.messageService = new MessageService();
     this.setupSocketEvents();
@@ -91,16 +98,55 @@ export class ChatSocketServer {
     }
   }
 
+  /**
+   * Express 세션을 Socket.IO에 연결
+   * Socket.IO connection이 Express 세션에 접근할 수 있도록 설정
+   */
+  private setupSessionMiddleware(
+    sessionMiddleware: ReturnType<typeof session>,
+  ) {
+    // Socket.IO의 handshake 과정에서 세션 미들웨어 적용
+    this.io.engine.use(sessionMiddleware);
+
+    // 연결 시 세션에서 사용자 정보 추출
+    this.io.use((socket: TypedSocket, next) => {
+      const req = socket.request as unknown as Express.Request & {
+        session?: SessionData;
+      };
+      const session = req.session;
+
+      if (session?.user) {
+        // 세션에서 user 정보를 socket.data.user에 설정
+        const { userId, username, email } = session.user;
+        if (userId && username && email) {
+          socket.data.user = {
+            userId,
+            username,
+            email,
+          };
+          logger.info(
+            `🔐 Socket.IO authenticated: ${username} (${socket.id})`,
+          );
+          next();
+          return;
+        }
+      }
+
+      logger.warn(
+        `🚫 Socket.IO authentication failed: No session (${socket.id})`,
+      );
+      next(new Error('Authentication required'));
+    });
+
+    logger.info('✅ Socket.IO session middleware configured');
+  }
+
   private setupSocketEvents() {
     this.io.on(SocketEvents.CONNECTION, (socket) => {
-      logger.info(`🔌 Socket connected: ${socket.id}`);
-
-      socket.use((packet, next) => {
-        if (!socket.data.user) {
-          return next(new Error('Authentication required'));
-        }
-        next();
-      });
+      const user = socket.data.user;
+      logger.info(
+        `🔌 Socket connected: ${socket.id} (User: ${user?.username || 'Unknown'})`,
+      );
 
       socket.on(SocketEvents.JOIN_ROOM, async (roomId) => {
         try {

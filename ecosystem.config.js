@@ -12,7 +12,7 @@ module.exports = {
       // 무중단 배포 설정
       wait_ready: true, // 앱이 준비 신호를 보낼 때까지 대기
       listen_timeout: 10000, // 앱이 준비되기까지 대기 시간 (10초)
-      kill_timeout: 5000, // graceful shutdown 대기 시간 (5초)
+      kill_timeout: 10000, // graceful shutdown 대기 시간 (10초)
       max_restarts: 10, // 최대 재시작 횟수
       min_uptime: 10000, // 정상 실행으로 간주하는 최소 실행 시간 (10초)
 
