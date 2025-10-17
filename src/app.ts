@@ -95,6 +95,7 @@ import {
   initializeConcertModel,
 } from './utils/database/db';
 import { initializeAllArticleModels } from './models/article';
+import { initializeConcertTestModel } from './models/test/test';
 import { ReportService } from './report/reportService';
 import { setupApolloServer } from './report/apolloServer';
 import { ConcertStatusScheduler } from './services/concert/concertStatusScheduler';
@@ -103,6 +104,7 @@ import { SessionCleanupScheduler } from './services/auth/sessionCleanupScheduler
 // 라우터 import
 import authRouter from './routes/auth/index';
 import concertRouter from './routes/concert/index';
+import testRouter from './routes/test/testRoutes';
 import healthRouter from './routes/health/healthRoutes';
 import swaggerRouter from './routes/swagger/swaggerRoutes';
 import termsRouter from './routes/terms/index';
@@ -529,6 +531,7 @@ app.use('/terms', termsRouter);
 app.use(defaultLimiter);
 app.use('/auth', authRouter);
 app.use('/concert', concertRouter);
+app.use('/test', testRouter);
 
 // CSP Violation Report Endpoint
 app.post(
@@ -556,6 +559,7 @@ const initializeDatabases = async (): Promise<void> => {
     logger.info('🔌 Connecting to Concert Database...');
     const concertDB = await connectConcertDB();
     initializeConcertModel(concertDB);
+    initializeConcertTestModel(concertDB);
     isConcertDBConnected = true;
     dbConnectionGauge.set({ database: 'concert' }, 1);
     logger.info('✅ Concert Database connected and models initialized');
