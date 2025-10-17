@@ -15,4 +15,8 @@ module.exports = {
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
   verbose: true,
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/src/models/test/test.ts'
+  ],
 };
