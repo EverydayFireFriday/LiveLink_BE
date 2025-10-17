@@ -1,4 +1,4 @@
-import { ObjectId, Collection, Db } from 'mongodb';
+import { ObjectId, Collection, Db, ClientSession } from 'mongodb';
 import logger from '../../utils/logger/logger';
 
 // Article 인터페이스
@@ -19,6 +19,13 @@ export interface IArticle {
 // MongoDB 에러 타입
 interface MongoError extends Error {
   code?: number;
+}
+
+// MongoDB Index 타입
+interface MongoIndex {
+  key?: Record<string, unknown>;
+  name?: string;
+  [key: string]: unknown;
 }
 
 // 필터 타입들
@@ -94,11 +101,11 @@ export class ArticleModel {
       try {
         const existingIndexes = await this.collection.listIndexes().toArray();
         const textIndex = existingIndexes.find(
-          (index) =>
+          (index: MongoIndex) =>
             index.key && typeof index.key === 'object' && '_fts' in index.key,
-        );
+        ) as MongoIndex | undefined;
 
-        if (textIndex) {
+        if (textIndex && textIndex.name) {
           logger.info(
             `🔄 기존 텍스트 인덱스 발견: ${textIndex.name}, 삭제 중...`,
           );
@@ -355,11 +362,17 @@ export class ArticleModel {
     });
   }
 
-  async updateLikesCount(id: string, increment: number): Promise<void> {
+  async updateLikesCount(
+    id: string,
+    increment: number,
+    session?: ClientSession,
+  ): Promise<void> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(id)) {
         return;
       }
+
+      const updateOptions = session ? { session } : {};
 
       await this.collection.updateOne(
         { _id: new ObjectId(id) },
@@ -367,6 +380,7 @@ export class ArticleModel {
           $inc: { likes_count: increment },
           $set: { updated_at: new Date() },
         },
+        updateOptions,
       );
     });
   }

@@ -55,7 +55,10 @@ export const reportTypeDefs = gql`
 
   type Query {
     getReport(id: ObjectId!): Report
-    getReports(status: ReportStatus, reportedEntityType: ReportEntityType): [Report]
+    getReports(
+      status: ReportStatus
+      reportedEntityType: ReportEntityType
+    ): [Report]
   }
 
   type Mutation {

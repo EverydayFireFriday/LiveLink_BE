@@ -1,5 +1,6 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import logger from '../../utils/logger/logger';
+import { getDB } from '../../utils/database/db';
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -40,8 +41,16 @@ interface MongoDBDuplicateError {
   };
 }
 
+// 사용자 검색 필터 타입 (birthDate를 Date 또는 string으로 허용)
+interface UserBirthDateFilter {
+  name: string;
+  $or: Array<
+    { birthDate: { $gte: Date; $lte: Date } } | { birthDate: Date | string }
+  >;
+}
+
 // MongoDB 연결 설정
-class Database {
+export class Database {
   private static instance: Database;
   private client!: MongoClient;
   private db!: Db;
@@ -96,6 +105,13 @@ class Database {
     return this.db;
   }
 
+  public getClient(): MongoClient {
+    if (!this.client) {
+      throw new Error('Database not connected. Call connect() first.');
+    }
+    return this.client;
+  }
+
   public getUserCollection(): Collection<User> {
     return this.getDb().collection<User>('users');
   }
@@ -106,8 +122,9 @@ export class UserModel {
   public userCollection: Collection<User>;
 
   constructor() {
-    const db = Database.getInstance();
-    this.userCollection = db.getUserCollection();
+    // db.ts의 getDB()를 사용하여 같은 클라이언트 사용
+    const db = getDB();
+    this.userCollection = db.collection<User>('users');
   }
 
   // 사용자 생성
@@ -346,10 +363,7 @@ export class UserModel {
   }
 
   // 이름과 생년월일로 사용자 찾기 (이메일 찾기 기능)
-  async findByNameAndBirthDate(
-    name: string,
-    birthDate: Date,
-  ): Promise<User[]> {
+  async findByNameAndBirthDate(name: string, birthDate: Date): Promise<User[]> {
     // UTC 기준으로 해당 날짜 범위 계산
     const startOfDay = new Date(birthDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
@@ -364,23 +378,25 @@ export class UserModel {
       `[UserModel] Searching users with name: "${name}", birthDate range: ${startOfDay.toISOString()} ~ ${endOfDay.toISOString()}, or exact string: ${birthDateString}`,
     );
 
+    const filter: UserBirthDateFilter = {
+      name,
+      $or: [
+        // Date 타입으로 저장된 경우
+        {
+          birthDate: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+        // 문자열로 저장된 경우 (ISO 형식)
+        {
+          birthDate: birthDateString,
+        },
+      ],
+    };
+
     return await this.userCollection
-      .find({
-        name,
-        $or: [
-          // Date 타입으로 저장된 경우
-          {
-            birthDate: {
-              $gte: startOfDay,
-              $lte: endOfDay,
-            },
-          },
-          // 문자열로 저장된 경우 (ISO 형식)
-          {
-            birthDate: birthDateString as any,
-          },
-        ],
-      } as any)
+      .find(filter as Parameters<typeof this.userCollection.find>[0])
       .toArray();
   }
 }
@@ -400,4 +416,9 @@ export async function disconnectDatabase(): Promise<void> {
 // 데이터베이스 인스턴스 가져오기
 export function getDatabase(): Db {
   return Database.getInstance().getDb();
+}
+
+// 데이터베이스 인스턴스(싱글톤) 가져오기
+export function getDatabaseInstance(): Database {
+  return Database.getInstance();
 }

@@ -1,12 +1,23 @@
 import { getConcertModel } from '../../models/concert/concert';
 import { UserModel } from '../../models/auth/user';
+import { getClient } from '../../utils/database/db';
 import { ObjectId } from 'mongodb';
 import logger from '../../utils/logger/logger';
 import { IConcert } from '../../models/concert/base/ConcertTypes';
 
 export interface ConcertServiceResponse {
   success: boolean;
-  data?: any;
+  data?: {
+    isLiked?: boolean;
+    likesCount?: number;
+    concerts?: IConcert[];
+    pagination?: {
+      currentPage: number;
+      totalPages: number;
+      totalConcerts: number;
+      limit: number;
+    };
+  };
   error?: string;
   statusCode?: number;
 }
@@ -31,11 +42,17 @@ export class ConcertLikeService {
       const userModel = new UserModel();
       const user = await userModel.findById(userId);
       if (!user) {
-        return { success: false, error: '사용자를 찾을 수 없습니다.', statusCode: 404 };
+        return {
+          success: false,
+          error: '사용자를 찾을 수 없습니다.',
+          statusCode: 404,
+        };
       }
 
       const Concert = getConcertModel();
-      const query = ObjectId.isValid(concertIdentifier) ? { _id: new ObjectId(concertIdentifier) } : { uid: concertIdentifier };
+      const query = ObjectId.isValid(concertIdentifier)
+        ? { _id: new ObjectId(concertIdentifier) }
+        : { uid: concertIdentifier };
       const concert = await Concert.collection.findOne(query);
 
       if (!concert) {
@@ -47,7 +64,8 @@ export class ConcertLikeService {
       }
 
       const concertObjectId = concert._id; // Use the actual ObjectId
-      const isLiked = user.likedConcerts?.some(id => id.equals(concertObjectId)) || false;
+      const isLiked =
+        user.likedConcerts?.some((id) => id.equals(concertObjectId)) || false;
 
       return {
         success: true,
@@ -74,13 +92,22 @@ export class ConcertLikeService {
     concertIdentifier: string, // _id or uid
     userId: string,
   ): Promise<ConcertServiceResponse> {
+    const client = getClient();
+    const session = client.startSession();
+
     try {
       if (!userId) {
-        return { success: false, error: '로그인이 필요합니다.', statusCode: 401 };
+        return {
+          success: false,
+          error: '로그인이 필요합니다.',
+          statusCode: 401,
+        };
       }
 
       const Concert = getConcertModel();
-      const query = ObjectId.isValid(concertIdentifier) ? { _id: new ObjectId(concertIdentifier) } : { uid: concertIdentifier };
+      const query = ObjectId.isValid(concertIdentifier)
+        ? { _id: new ObjectId(concertIdentifier) }
+        : { uid: concertIdentifier };
       const concert = await Concert.collection.findOne(query);
 
       if (!concert) {
@@ -91,23 +118,28 @@ export class ConcertLikeService {
       const userModel = new UserModel();
       const userObjectId = new ObjectId(userId);
 
-      const userUpdateResult = await userModel.userCollection.updateOne(
-        { _id: userObjectId },
-        { $addToSet: { likedConcerts: concertObjectId } }
-      );
-
       let updatedConcert = concert;
-      if (userUpdateResult.modifiedCount > 0) {
-        const result = await Concert.collection.findOneAndUpdate(
+
+      // 트랜잭션 시작
+      await session.withTransaction(async () => {
+        const userUpdateResult = await userModel.userCollection.updateOne(
+          { _id: userObjectId },
+          { $addToSet: { likedConcerts: concertObjectId } },
+          { session },
+        );
+
+        if (userUpdateResult.modifiedCount > 0) {
+          const result = await Concert.collection.findOneAndUpdate(
             { _id: concertObjectId },
             { $inc: { likesCount: 1 } },
-            { returnDocument: 'after' }
-        );
-        if (result) {
-          updatedConcert = result;
+            { returnDocument: 'after', session },
+          );
+          if (result) {
+            updatedConcert = result;
+          }
         }
-      }
-      
+      });
+
       return {
         success: true,
         data: {
@@ -123,6 +155,8 @@ export class ConcertLikeService {
         error: error instanceof Error ? error.message : '좋아요 추가 실패',
         statusCode: 500,
       };
+    } finally {
+      await session.endSession();
     }
   }
 
@@ -133,13 +167,22 @@ export class ConcertLikeService {
     concertIdentifier: string, // _id or uid
     userId: string,
   ): Promise<ConcertServiceResponse> {
+    const client = getClient();
+    const session = client.startSession();
+
     try {
       if (!userId) {
-        return { success: false, error: '로그인이 필요합니다.', statusCode: 401 };
+        return {
+          success: false,
+          error: '로그인이 필요합니다.',
+          statusCode: 401,
+        };
       }
 
       const Concert = getConcertModel();
-      const query = ObjectId.isValid(concertIdentifier) ? { _id: new ObjectId(concertIdentifier) } : { uid: concertIdentifier };
+      const query = ObjectId.isValid(concertIdentifier)
+        ? { _id: new ObjectId(concertIdentifier) }
+        : { uid: concertIdentifier };
       const concert = await Concert.collection.findOne(query);
 
       if (!concert) {
@@ -150,32 +193,42 @@ export class ConcertLikeService {
       const userModel = new UserModel();
       const userObjectId = new ObjectId(userId);
 
-      const userUpdateResult = await userModel.userCollection.updateOne(
-        { _id: userObjectId },
-        { $pull: { likedConcerts: concertObjectId } }
-      );
-
       let updatedConcert = concert;
-      if (userUpdateResult.modifiedCount > 0) {
-        const result = await Concert.collection.findOneAndUpdate(
+
+      // 트랜잭션 시작
+      await session.withTransaction(async () => {
+        const userUpdateResult = await userModel.userCollection.updateOne(
+          { _id: userObjectId },
+          { $pull: { likedConcerts: concertObjectId } },
+          { session },
+        );
+
+        if (userUpdateResult.modifiedCount > 0) {
+          const result = await Concert.collection.findOneAndUpdate(
             { _id: concertObjectId },
             { $inc: { likesCount: -1 } },
-            { returnDocument: 'after' }
-        );
-        if (result) {
-          updatedConcert = result;
-        }
-        if (updatedConcert && typeof updatedConcert.likesCount === 'number' && updatedConcert.likesCount < 0) {
+            { returnDocument: 'after', session },
+          );
+          if (result) {
+            updatedConcert = result;
+          }
+          // 좋아요 수가 음수가 되지 않도록 보정
+          if (
+            updatedConcert &&
+            typeof updatedConcert.likesCount === 'number' &&
+            updatedConcert.likesCount < 0
+          ) {
             const finalConcert = await Concert.collection.findOneAndUpdate(
-                { _id: concertObjectId },
-                { $set: { likesCount: 0 } },
-                { returnDocument: 'after' }
+              { _id: concertObjectId },
+              { $set: { likesCount: 0 } },
+              { returnDocument: 'after', session },
             );
             if (finalConcert) {
               updatedConcert = finalConcert;
             }
+          }
         }
-      }
+      });
 
       return {
         success: true,
@@ -192,6 +245,8 @@ export class ConcertLikeService {
         error: error instanceof Error ? error.message : '좋아요 삭제 실패',
         statusCode: 500,
       };
+    } finally {
+      await session.endSession();
     }
   }
 
@@ -223,7 +278,12 @@ export class ConcertLikeService {
           success: true,
           data: {
             concerts: [],
-            pagination: { currentPage: page, totalPages: 0, totalConcerts: 0, limit },
+            pagination: {
+              currentPage: page,
+              totalPages: 0,
+              totalConcerts: 0,
+              limit,
+            },
           },
           statusCode: 200,
         };
@@ -232,30 +292,41 @@ export class ConcertLikeService {
       const likedConcertIds = user.likedConcerts;
       const total = likedConcertIds.length;
       const totalPages = Math.ceil(total / limit);
-      const paginatedIds = likedConcertIds.slice((page - 1) * limit, page * limit);
+      const paginatedIds = likedConcertIds.slice(
+        (page - 1) * limit,
+        page * limit,
+      );
 
       if (paginatedIds.length === 0) {
         return {
           success: true,
           data: {
             concerts: [],
-            pagination: { currentPage: page, totalPages, totalConcerts: total, limit },
+            pagination: {
+              currentPage: page,
+              totalPages,
+              totalConcerts: total,
+              limit,
+            },
           },
           statusCode: 200,
         };
       }
 
       const Concert = getConcertModel();
-      const concerts = await Concert.collection.find({ _id: { $in: paginatedIds } }).toArray();
+      const concerts = await Concert.collection
+        .find({ _id: { $in: paginatedIds } })
+        .toArray();
 
-      const concertMap = new Map(concerts.map(c => [c._id.toString(), c]));
-      const sortedConcerts = paginatedIds.map(id => concertMap.get(id.toString())).filter(Boolean) as IConcert[];
-
+      const concertMap = new Map(concerts.map((c) => [c._id.toString(), c]));
+      const sortedConcerts = paginatedIds
+        .map((id) => concertMap.get(id.toString()))
+        .filter(Boolean) as IConcert[];
 
       return {
         success: true,
         data: {
-          concerts: sortedConcerts.map((concert: any) => ({
+          concerts: sortedConcerts.map((concert: IConcert) => ({
             ...concert,
             isLiked: true,
           })),

@@ -1,4 +1,4 @@
-import { ObjectId, Collection, Db } from 'mongodb';
+import { ObjectId, Collection, Db, ClientSession } from 'mongodb';
 import logger from '../../utils/logger/logger';
 
 export interface IComment {
@@ -23,6 +23,15 @@ interface UserCommentActivity {
   totalComments: number;
   totalLikesReceived: number;
   recentComments: number;
+}
+
+// 댓글 필터 타입
+interface CommentFilter {
+  article_id?: ObjectId;
+  author_id?: ObjectId;
+  parent_id?: ObjectId | null;
+  created_at?: { $gte: Date };
+  likes_count?: { $gte: number };
 }
 
 export class CommentModel {
@@ -246,11 +255,17 @@ export class CommentModel {
   }
 
   // 좋아요 수 업데이트
-  async updateLikesCount(id: string, increment: number): Promise<void> {
+  async updateLikesCount(
+    id: string,
+    increment: number,
+    session?: ClientSession,
+  ): Promise<void> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(id)) {
         return;
       }
+
+      const updateOptions = session ? { session } : {};
 
       await this.collection.updateOne(
         { _id: new ObjectId(id) },
@@ -258,6 +273,7 @@ export class CommentModel {
           $inc: { likes_count: increment },
           $set: { updated_at: new Date() },
         },
+        updateOptions,
       );
     });
   }
@@ -443,7 +459,7 @@ export class CommentModel {
       const dateThreshold = new Date();
       dateThreshold.setDate(dateThreshold.getDate() - days);
 
-      const filter: any = {
+      const filter: CommentFilter = {
         article_id: new ObjectId(articleId),
         created_at: { $gte: dateThreshold },
       };
@@ -482,7 +498,7 @@ export class CommentModel {
       const dateThreshold = new Date();
       dateThreshold.setDate(dateThreshold.getDate() - days);
 
-      const filter: any = {
+      const filter: CommentFilter = {
         created_at: { $gte: dateThreshold },
         likes_count: { $gte: minLikes },
       };
