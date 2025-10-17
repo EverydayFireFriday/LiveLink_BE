@@ -461,6 +461,45 @@ router.get('/sessions', requireAuth, async (req, res) => {
 
 /**
  * @swagger
+ * /auth/sessions/all:
+ *   delete:
+ *     summary: 모든 세션 로그아웃 (현재 제외)
+ *     description: 현재 세션을 제외한 모든 활성 세션을 종료합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 모든 세션 로그아웃 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "다른 모든 세션이 로그아웃되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedCount:
+ *                       type: number
+ *                       description: 삭제된 세션 개수
+ *                     currentSessionId:
+ *                       type: string
+ *                       description: 유지되는 현재 세션 ID
+ *       401:
+ *         description: 인증 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.delete('/sessions/all', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.deleteAllSessions(req, res);
+});
+
+/**
+ * @swagger
  * /auth/sessions/{sessionId}:
  *   delete:
  *     summary: 특정 세션 강제 종료
@@ -506,45 +545,6 @@ router.get('/sessions', requireAuth, async (req, res) => {
 router.delete('/sessions/:sessionId', requireAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.deleteSessionById(req, res);
-});
-
-/**
- * @swagger
- * /auth/sessions/all:
- *   delete:
- *     summary: 모든 세션 로그아웃 (현재 제외)
- *     description: 현재 세션을 제외한 모든 활성 세션을 종료합니다.
- *     tags: [Auth]
- *     security:
- *       - sessionAuth: []
- *     responses:
- *       200:
- *         description: 모든 세션 로그아웃 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "다른 모든 세션이 로그아웃되었습니다."
- *                 data:
- *                   type: object
- *                   properties:
- *                     deletedCount:
- *                       type: number
- *                       description: 삭제된 세션 개수
- *                     currentSessionId:
- *                       type: string
- *                       description: 유지되는 현재 세션 ID
- *       401:
- *         description: 인증 필요
- *       500:
- *         description: 서버 에러
- */
-router.delete('/sessions/all', requireAuth, async (req, res) => {
-  const authController = await getAuthController();
-  await authController.deleteAllSessions(req, res);
 });
 
 export default router;

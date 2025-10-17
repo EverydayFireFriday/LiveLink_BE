@@ -574,13 +574,27 @@ export class AuthController {
         (session) => session.sessionId !== currentSessionId,
       );
 
+      logger.info(
+        `[Session] Found ${sessions.length} total sessions, ${otherSessions.length} to delete (current: ${currentSessionId})`,
+      );
+
       // Redis에서 각 세션 삭제
       if (redisClient.isOpen) {
-        await Promise.all(
-          otherSessions.map((session) =>
-            redisClient.del(`app:sess:${session.sessionId}`),
-          ),
+        const deleteResults = await Promise.all(
+          otherSessions.map(async (session) => {
+            const key = `app:sess:${session.sessionId}`;
+            const result = await redisClient.del(key);
+            logger.info(
+              `[Session] Redis delete key: ${key}, result: ${result} (1=deleted, 0=not found)`,
+            );
+            return result;
+          }),
         );
+        logger.info(
+          `[Session] Redis deletion results: ${deleteResults.join(', ')}`,
+        );
+      } else {
+        logger.warn('[Session] Redis client is not open, skipping Redis deletion');
       }
 
       // UserSession에서 모든 세션 삭제 (현재 세션 제외)
@@ -590,7 +604,7 @@ export class AuthController {
       );
 
       logger.info(
-        `[Session] User ${userId} deleted ${deletedCount} other sessions`,
+        `[Session] User ${userId} deleted ${deletedCount} other sessions from MongoDB`,
       );
 
       return ResponseBuilder.success(
