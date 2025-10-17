@@ -124,9 +124,7 @@ export class ChatSocketServer {
             username,
             email,
           };
-          logger.info(
-            `🔐 Socket.IO authenticated: ${username} (${socket.id})`,
-          );
+          logger.info(`🔐 Socket.IO authenticated: ${username} (${socket.id})`);
           next();
           return;
         }

@@ -35,4 +35,7 @@ export const swaggerTags = [
 
   // Admin 관련
   { name: 'Admin', description: '관리자 전용 기능' },
+
+  // Test 관련
+  { name: 'Test', description: '테스트용 API' },
 ];
