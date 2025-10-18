@@ -2,14 +2,14 @@ import { RateLimiterRedis } from 'rate-limiter-flexible';
 import { Request, Response, NextFunction } from 'express';
 import logger from '../../utils/logger/logger';
 import { env } from '../../config/env/env';
-import { redisClient } from '../../config/redis/redisClient';
+import { pubClient as ioredisClient } from '../../config/redis/socketRedisClient';
 
 /**
  * ⚠️ IMPORTANT: Rate Limiter 설정 정책
  *
  * 현재 구성:
  * - rate-limiter-flexible: ^8.1.0
- * - redis: ^4.6.5
+ * - ioredis (socketRedisClient의 pubClient 사용)
  * - insuranceLimiter: undefined (메모리 폴백 비활성화)
  *
  * ✅ 안전성 원칙:
@@ -50,7 +50,7 @@ const handleRedisError = (req: Request, res: Response) => {
 
 // 1. 기본 API Rate Limiter (Default)
 const defaultLimiterInstance = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: ioredisClient,
   keyPrefix: 'rl_default',
   points: parseInt(env.API_LIMIT_DEFAULT_MAX) || 100, // 요청 수
   duration: (parseInt(env.API_LIMIT_DEFAULT_WINDOW_MS) || 60000) / 1000, // 초 단위로 변환
@@ -60,7 +60,7 @@ const defaultLimiterInstance = new RateLimiterRedis({
 
 // 2. 엄격한 API Rate Limiter (Strict)
 const strictLimiterInstance = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: ioredisClient,
   keyPrefix: 'rl_strict',
   points: parseInt(env.API_LIMIT_STRICT_MAX) || 20,
   duration: (parseInt(env.API_LIMIT_STRICT_WINDOW_MS) || 60000) / 1000,
@@ -70,7 +70,7 @@ const strictLimiterInstance = new RateLimiterRedis({
 
 // 3. 완화된 API Rate Limiter (Relaxed)
 const relaxedLimiterInstance = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: ioredisClient,
   keyPrefix: 'rl_relaxed',
   points: parseInt(env.API_LIMIT_RELAXED_MAX) || 200,
   duration: (parseInt(env.API_LIMIT_RELAXED_WINDOW_MS) || 60000) / 1000,
@@ -80,7 +80,7 @@ const relaxedLimiterInstance = new RateLimiterRedis({
 
 // 4. 로그인 API Rate Limiter: 15분당 10개
 const loginLimiterInstance = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: ioredisClient,
   keyPrefix: 'rl_login',
   points: 10,
   duration: 15 * 60, // 15분 (초 단위)
@@ -90,7 +90,7 @@ const loginLimiterInstance = new RateLimiterRedis({
 
 // 5. 회원가입 API Rate Limiter: 1시간당 10개
 const signupLimiterInstance = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: ioredisClient,
   keyPrefix: 'rl_signup',
   points: 10,
   duration: 60 * 60, // 1시간 (초 단위)
@@ -109,7 +109,7 @@ const createRateLimitMiddleware = (
 ) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     // Redis 연결 확인
-    if (!redisClient.isOpen) {
+    if (ioredisClient.status !== 'ready') {
       return handleRedisError(req, res);
     }
 
