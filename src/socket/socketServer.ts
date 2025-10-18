@@ -15,6 +15,7 @@ import logger from '../utils/logger/logger';
 import { pubClient, subClient } from '../config/redis/socketRedisClient';
 import { env, isProduction } from '../config/env/env';
 import { SocketEvents } from './events';
+import { authenticateSocketConnection } from './middleware/sessionAuth';
 
 interface SessionData {
   user?: Partial<SocketUser>;
@@ -66,6 +67,10 @@ export class ChatSocketServer {
         },
         credentials: true,
         methods: ['GET', 'POST'],
+      },
+      // ⚠️ SECURITY: WebSocket 핸드셰이크 전 인증 체크 (DoS 방지)
+      allowRequest: (req, callback) => {
+        void authenticateSocketConnection(req, callback);
       },
     });
 

@@ -5,22 +5,27 @@ dotenv.config();
 import { MongoClient, Db } from 'mongodb';
 import { initializeConcertModel } from '../../models/concert/concert';
 import { logger } from '../index';
+import {
+  getMongoClientOptions,
+  getMongoConnectionString,
+  getMongoDatabaseName,
+  setupMongoMonitoring,
+} from '../../config/database/mongoConfig';
 
 let client: MongoClient;
 let db: Db;
 
 export const connectDB = async (): Promise<Db> => {
   try {
-    const MONGO_URI = process.env.MONGO_URI;
-    const DB_NAME = process.env.MONGO_DB_NAME || 'livelink';
+    const MONGO_URI = getMongoConnectionString();
+    const DB_NAME = getMongoDatabaseName();
+    const clientOptions = getMongoClientOptions();
 
-    if (!MONGO_URI) {
-      throw new Error(
-        'MONGO_URI 환경변수가 설정되지 않았습니다. 프로덕션 환경에서는 필수입니다.',
-      );
-    }
+    client = new MongoClient(MONGO_URI, clientOptions);
 
-    client = new MongoClient(MONGO_URI);
+    // Connection pool 모니터링 설정
+    setupMongoMonitoring(client);
+
     await client.connect();
 
     db = client.db(DB_NAME);
