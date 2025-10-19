@@ -21,6 +21,8 @@ export interface User {
   socialId?: string;
   likedConcerts?: Array<ObjectId | IConcert>; // Can be ObjectId or populated IConcert
   likedArticles?: Array<string | Article>; // Can be string ID or populated Article
+  fcmToken?: string; // FCM 푸시 알림 토큰
+  fcmTokenUpdatedAt?: Date; // FCM 토큰 업데이트 시간
 }
 
 export interface SessionUser {

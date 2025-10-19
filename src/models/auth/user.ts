@@ -35,6 +35,8 @@ export interface User {
   socialId?: string; // 소셜 로그인 ID
   likedConcerts?: ObjectId[]; // 좋아요한 콘서트
   likedArticles?: ObjectId[]; // 좋아요한 게시글
+  fcmToken?: string; // FCM 푸시 알림 토큰
+  fcmTokenUpdatedAt?: Date; // FCM 토큰 업데이트 시간
 }
 
 // MongoDB 에러 타입 정의
