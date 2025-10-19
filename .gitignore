@@ -89,6 +89,10 @@ nyc_output/
 *.cert
 secrets/
 
+# Firebase 서비스 계정 파일
+src/config/firebase/serviceAccountKey.json
+**/firebase/**/serviceAccount*.json
+
 # ==============================================
 # 데이터베이스 관련
 # ==============================================
