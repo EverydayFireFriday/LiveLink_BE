@@ -227,4 +227,53 @@ export const customStyles = `
   html[data-theme="dark"] .swagger-ui .auth-container div:not(.auth-btn-wrapper) > *:not(input):not(button) {
     background-color: #2c2c2c !important;
   }
+
+  /* ============================
+     Custom Logo Styles
+     ============================ */
+
+  /* Topbar 스타일링 */
+  .swagger-ui .topbar {
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #f0f0f0;
+    padding: 10px 20px !important;
+  }
+
+  html[data-theme="dark"] .swagger-ui .topbar {
+    background-color: #1a1a1a !important;
+    border-bottom: 2px solid #333333;
+  }
+
+  /* 로고 추가 - topbar-wrapper에 before 사용 */
+  .swagger-ui .topbar-wrapper::before {
+    content: '';
+    display: inline-block;
+    width: 150px;
+    height: 50px;
+    background-image: url('/images/logo.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center left;
+    margin-right: 20px;
+    vertical-align: middle;
+  }
+
+  /* 다크모드에서 로고 이미지 변경 (선택적) */
+  html[data-theme="dark"] .swagger-ui .topbar-wrapper::before {
+    background-image: url('/images/logo-dark.png');
+    /* 다크 모드용 로고가 없으면 기본 로고 사용:
+       background-image: url('/images/logo.png');
+    */
+  }
+
+  /* 기본 Swagger 로고 숨기기 */
+  .swagger-ui .topbar-wrapper .link {
+    display: none;
+  }
+
+  /* topbar-wrapper 레이아웃 조정 */
+  .swagger-ui .topbar-wrapper {
+    display: flex;
+    align-items: center;
+  }
 `;
