@@ -348,6 +348,10 @@ app.use(hpp());
 import * as path from 'path';
 app.use(express.static(path.join(__dirname, '../public')));
 
+// 유지보수 모드 미들웨어 (정적 파일 서빙 후, 라우터 전에 위치)
+import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMiddleware';
+app.use(maintenanceMiddleware);
+
 // 세션 미들웨어 - Redis 연결 전에 먼저 등록 (초기에는 메모리 스토어)
 // Redis 연결 성공 시 세션 스토어가 자동으로 Redis로 전환됨
 const sessionConfig: session.SessionOptions = {
