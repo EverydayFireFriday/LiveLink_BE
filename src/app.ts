@@ -736,6 +736,16 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 // 서버 시작 함수
 const startServer = async (): Promise<void> => {
   try {
+    // Firebase 초기화
+    try {
+      const { initializeFirebase } = await import('./config/firebase/firebaseConfig');
+      initializeFirebase();
+      logger.info('✅ Firebase Admin SDK initialized');
+    } catch (firebaseError) {
+      logger.warn('⚠️ Firebase initialization failed, notifications will be disabled:', firebaseError);
+      // Firebase 실패는 서버 시작을 중단하지 않음
+    }
+
     // Redis 연결 시도 (세션 스토어용)
     const isRedisConnected = await connectRedisClient();
 

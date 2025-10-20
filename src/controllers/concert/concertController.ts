@@ -3,6 +3,7 @@ import { ConcertService } from '../../services/concert/concertService';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import concertNotificationService from '../../services/notification/concertNotificationService';
 
 export const uploadConcert = async (
   req: express.Request,
@@ -400,6 +401,10 @@ export const updateConcert = async (
       return ResponseBuilder.badRequest(res, '수정 가능한 필드가 없습니다.');
     }
 
+    // 기존 콘서트 정보 조회 (변경사항 감지를 위해)
+    const existingConcert = await ConcertService.getConcert(id);
+    const oldConcertData = existingConcert.success ? existingConcert.data : null;
+
     // 미들웨어에서 이미 인증 확인됨
     const result = await ConcertService.updateConcert(id, req.body);
 
@@ -416,6 +421,43 @@ export const updateConcert = async (
       logger.info(
         `✅ 콘서트 정보 수정 완료: ${id} - 수정 필드: [${modifiableFields.join(', ')}] - 수정 사용자: ${userInfo.username} (${userInfo.email})`,
       );
+
+      // FCM 알림 전송 (비동기로 처리하여 응답 지연 방지)
+      setImmediate(async () => {
+        try {
+          if (!oldConcertData) {
+            logger.warn('⚠️ 이전 콘서트 데이터를 찾을 수 없어 알림을 보낼 수 없습니다.');
+            return;
+          }
+
+          const newConcertData = result.data as any;
+
+          // 업데이트 타입 감지
+          let updateType: 'info_updated' | 'date_changed' | 'ticket_open' | 'cancelled' = 'info_updated';
+          let message = '공연 정보가 업데이트되었습니다';
+
+          if (newConcertData.status === 'cancelled' && oldConcertData.status !== 'cancelled') {
+            updateType = 'cancelled';
+            message = '공연이 취소되었습니다';
+          } else if (newConcertData.ticketOpenDate && !oldConcertData.ticketOpenDate) {
+            updateType = 'ticket_open';
+            message = `티켓 예매가 ${new Date(newConcertData.ticketOpenDate).toLocaleDateString('ko-KR')}에 오픈됩니다`;
+          } else if (JSON.stringify(newConcertData.datetime) !== JSON.stringify(oldConcertData.datetime)) {
+            updateType = 'date_changed';
+            message = '공연 일정이 변경되었습니다';
+          }
+
+          await concertNotificationService.notifyLikedUsers(id, {
+            concertId: id,
+            concertTitle: newConcertData.title || '공연',
+            updateType,
+            message,
+          });
+        } catch (notificationError) {
+          logger.error('❌ 콘서트 업데이트 알림 전송 실패:', notificationError);
+          // 알림 전송 실패는 API 응답에 영향을 주지 않음
+        }
+      });
 
       return ResponseBuilder.success(res, '콘서트 정보 수정 성공', {
         ...result.data,

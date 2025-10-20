@@ -258,6 +258,79 @@ router.put('/profile', requireAuth, profileController.updateProfile);
  */
 router.put('/username', requireAuth, profileController.updateUsername);
 
+/**
+ * @swagger
+ * /auth/fcm-token:
+ *   put:
+ *     summary: FCM 토큰 등록
+ *     description: 푸시 알림을 위한 FCM 토큰을 등록합니다.
+ *     tags: [Profile]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fcmToken
+ *             properties:
+ *               fcmToken:
+ *                 type: string
+ *                 description: Firebase Cloud Messaging 토큰
+ *                 example: "dXJkNGM4ZjY3MzY4NzY4..."
+ *     responses:
+ *       200:
+ *         description: FCM 토큰 등록 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "FCM 토큰이 등록되었습니다."
+ *                 fcmTokenRegistered:
+ *                   type: boolean
+ *                   example: true
+ *                 registeredAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: 토큰 등록 시간
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "FCM 토큰이 필요합니다."
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "사용자를 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "FCM 토큰 등록 실패"
+ */
+router.put('/fcm-token', requireAuth, profileController.updateFCMToken);
+
 // 관리자 전용
 /**
  * @swagger

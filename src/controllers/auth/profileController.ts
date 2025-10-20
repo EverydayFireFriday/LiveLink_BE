@@ -159,4 +159,36 @@ export class ProfileController {
       return ResponseBuilder.internalError(res, '사용자 목록 조회 실패');
     }
   };
+
+  updateFCMToken = async (req: express.Request, res: express.Response) => {
+    try {
+      const userId = req.session.user!.userId;
+      const { fcmToken } = req.body;
+
+      if (!fcmToken || typeof fcmToken !== 'string') {
+        return ResponseBuilder.badRequest(res, 'FCM 토큰이 필요합니다.');
+      }
+
+      const updatedUser = await this.userService.updateUser(userId, {
+        fcmToken,
+        fcmTokenUpdatedAt: new Date(),
+      });
+
+      if (!updatedUser) {
+        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+      }
+
+      logger.info(
+        `✅ FCM 토큰 등록: 사용자 ${updatedUser.username} (${updatedUser.email})`,
+      );
+
+      return ResponseBuilder.success(res, 'FCM 토큰이 등록되었습니다.', {
+        fcmTokenRegistered: true,
+        registeredAt: updatedUser.fcmTokenUpdatedAt,
+      });
+    } catch (error) {
+      logger.error('FCM 토큰 등록 에러:', error);
+      return ResponseBuilder.internalError(res, 'FCM 토큰 등록 실패');
+    }
+  };
 }
