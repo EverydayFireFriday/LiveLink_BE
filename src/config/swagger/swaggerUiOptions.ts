@@ -11,6 +11,7 @@ export const swaggerUiOptions = {
   customJs: '/swagger-assets/theme-initializer.js',
   customSiteTitle: 'stagelives API Documentation',
   customfavIcon: '/favicon.ico',
+  customLogoSrc: '/images/logo.png',
   swaggerOptions: {
     persistAuthorization: true,
     displayRequestDuration: true,
