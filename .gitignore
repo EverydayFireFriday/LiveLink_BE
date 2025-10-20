@@ -108,3 +108,24 @@ dumps/
 .clinic/
 isolate-*
 v8.log
+
+# ==============================================
+# Public 폴더 - 선택적 제외
+# ==============================================
+# 유지보수 모드 락 파일 (동적으로 생성/삭제됨)
+maintenance.lock
+
+# 로고 및 이미지 파일들 (환경별로 다를 수 있음)
+public/images/*.png
+public/images/*.jpg
+public/images/*.jpeg
+public/images/*.gif
+public/images/*.svg
+public/images/*.ico
+public/images/*.webp
+
+# 단, README.md는 포함 (가이드 문서이므로)
+!public/images/README.md
+
+# 업로드된 파일들 (있을 경우)
+public/uploads/
