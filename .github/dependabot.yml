@@ -1,69 +1,69 @@
 version: 2
 updates:
   # npm 의존성 업데이트
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Seoul"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Seoul'
     open-pull-requests-limit: 10
     reviewers:
-      - "yangheuibeom"
+      - 'sinbla78'
     assignees:
-      - "yangheuibeom"
+      - 'sinbla78'
     labels:
-      - "dependencies"
-      - "npm"
+      - 'dependencies'
+      - 'npm'
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
-      include: "scope"
+      prefix: 'chore'
+      prefix-development: 'chore'
+      include: 'scope'
     # 버전 업데이트 전략
-    versioning-strategy: "increase"
+    versioning-strategy: 'increase'
     # 보안 업데이트는 즉시
     allow:
-      - dependency-type: "all"
+      - dependency-type: 'all'
     # 특정 의존성 무시 (필요시 추가)
     # ignore:
     #   - dependency-name: "express"
     #     versions: ["5.x"]
 
   # Docker 이미지 업데이트 (사용 시)
-  - package-ecosystem: "docker"
-    directory: "/"
+  - package-ecosystem: 'docker'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Seoul"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Seoul'
     open-pull-requests-limit: 5
     reviewers:
-      - "yangheuibeom"
+      - 'sinbla78'
     assignees:
-      - "yangheuibeom"
+      - 'sinbla78'
     labels:
-      - "dependencies"
-      - "docker"
+      - 'dependencies'
+      - 'docker'
     commit-message:
-      prefix: "chore"
+      prefix: 'chore'
 
   # GitHub Actions 워크플로우 업데이트
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Seoul"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Seoul'
     open-pull-requests-limit: 5
     reviewers:
-      - "yangheuibeom"
+      - 'sinbla78'
     assignees:
-      - "yangheuibeom"
+      - 'sinbla78'
     labels:
-      - "dependencies"
-      - "github-actions"
+      - 'dependencies'
+      - 'github-actions'
     commit-message:
-      prefix: "chore"
+      prefix: 'chore'
