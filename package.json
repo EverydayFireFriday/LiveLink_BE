@@ -101,7 +101,7 @@
     "@types/ioredis": "^4.28.10",
     "@types/jest": "^29.5.8",
     "@types/js-yaml": "^4.0.9",
-    "@types/mongodb": "^4.0.6",
+    "@types/mongodb": "^4.0.7",
     "@types/morgan": "^1.9.10",
     "@types/node": "^20.19.17",
     "@types/nodemailer": "^6.4.19",
