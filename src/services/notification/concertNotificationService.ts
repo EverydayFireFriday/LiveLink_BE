@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb';
 import { Database, UserStatus } from '../../models/auth/user';
 import logger from '../../utils/logger/logger';
 import fcmService, { ConcertUpdateNotification } from './fcmService';
+import { getConcertModel } from '../../models/concert/concert';
 
 export class ConcertNotificationService {
   /**
@@ -15,8 +16,20 @@ export class ConcertNotificationService {
       const db = Database.getInstance();
       const userCollection = db.getUserCollection();
 
+      // 콘서트 ID(UID 또는 ObjectId)로 실제 콘서트 찾기
+      const Concert = getConcertModel();
+      const query = ObjectId.isValid(concertId)
+        ? { _id: new ObjectId(concertId) }
+        : { uid: concertId };
+      const concert = await Concert.collection.findOne(query);
+
+      if (!concert) {
+        logger.warn(`Concert not found: ${concertId}`);
+        return;
+      }
+
       // 해당 콘서트를 좋아요한 사용자들의 FCM 토큰 조회
-      const concertObjectId = new ObjectId(concertId);
+      const concertObjectId = concert._id;
       const users = await userCollection
         .find({
           likedConcerts: concertObjectId,
@@ -33,7 +46,10 @@ export class ConcertNotificationService {
 
       const tokens = users
         .map((user) => user.fcmToken)
-        .filter((token): token is string => typeof token === 'string' && token.length > 0);
+        .filter(
+          (token): token is string =>
+            typeof token === 'string' && token.length > 0,
+        );
 
       logger.info(
         `📤 Sending concert update notifications to ${tokens.length} users`,
