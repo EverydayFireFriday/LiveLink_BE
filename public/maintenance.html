@@ -1,253 +1,213 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>서비스 점검 중 - stagelives</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Apple SD Gothic Neo', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      padding: 1rem;
-    }
-
-    .container {
-      text-align: center;
-      padding: 2rem;
-      max-width: 600px;
-      width: 100%;
-    }
-
-    .logo {
-      width: 120px;
-      height: 120px;
-      margin: 0 auto 2rem;
-      background-color: rgba(255, 255, 255, 0.15);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: float 3s ease-in-out infinite;
-      backdrop-filter: blur(10px);
-      border: 3px solid rgba(255, 255, 255, 0.3);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    }
-
-    .logo-icon {
-      font-size: 4rem;
-      animation: rotate 4s linear infinite;
-    }
-
-    @keyframes float {
-      0%, 100% {
-        transform: translateY(0px);
-      }
-      50% {
-        transform: translateY(-20px);
-      }
-    }
-
-    @keyframes rotate {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .maintenance-image {
-      width: 100%;
-      max-width: 400px;
-      margin-bottom: 2rem;
-      animation: float 3s ease-in-out infinite;
-      display: none; /* 이미지가 있을 때만 표시 */
-    }
-
-    .maintenance-image.loaded {
-      display: inline-block;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    p {
-      font-size: 1.2rem;
-      line-height: 1.8;
-      margin-bottom: 1rem;
-      opacity: 0.95;
-      font-weight: 400;
-    }
-
-    .description {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 1.5rem;
-      border-radius: 12px;
-      margin: 2rem 0;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .time-box {
-      font-size: 1rem;
-      margin-top: 2rem;
-      padding: 1.5rem;
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    }
-
-    .time-box .label {
-      font-size: 0.9rem;
-      opacity: 0.9;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-
-    .time-box .time {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #fff;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .contact-info {
-      margin-top: 2rem;
-      font-size: 0.95rem;
-      opacity: 0.85;
-    }
-
-    .contact-info a {
-      color: #ffffff;
-      text-decoration: none;
-      font-weight: 600;
-      border-bottom: 2px solid rgba(255, 255, 255, 0.4);
-      transition: all 0.3s ease;
-    }
-
-    .contact-info a:hover {
-      border-bottom-color: #ffffff;
-      opacity: 1;
-    }
-
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 2rem;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>서비스 점검 중 - stagelives</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
 
-      p {
-        font-size: 1rem;
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+          'Apple SD Gothic Neo', sans-serif;
+        background: #ffffff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #333;
+        padding: 1rem;
+      }
+
+      .container {
+        text-align: center;
+        padding: 2rem;
+        max-width: 600px;
+        width: 100%;
       }
 
       .logo {
-        width: 100px;
-        height: 100px;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: float 3s ease-in-out infinite;
       }
 
       .logo-icon {
-        font-size: 3rem;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
       }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <!-- 로고 아이콘 -->
-    <div class="logo">
-      <div class="logo-icon">🔧</div>
-    </div>
 
-    <!-- 점검 이미지 (선택적) -->
-    <img
-      src="/images/maintenance.png"
-      alt="서비스 점검 중"
-      class="maintenance-image"
-      id="maintenance-img"
-      onerror="this.style.display='none'"
-      onload="this.classList.add('loaded')"
-    >
-
-    <h1>서비스 점검 중</h1>
-
-    <div class="description">
-      <p>
-        더 나은 서비스를 제공하기 위해<br>
-        시스템 점검을 진행하고 있습니다.
-      </p>
-      <p>
-        잠시 후 다시 시도해 주세요.
-      </p>
-    </div>
-
-    <div class="time-box">
-      <div class="label">예상 완료 시간</div>
-      <div class="time" id="estimated-time">계산 중...</div>
-    </div>
-
-    <div class="contact-info">
-      문의사항이 있으시면
-      <a href="mailto:support@stagelives.com">support@stagelives.com</a>
-      으로 연락해 주세요.
-    </div>
-  </div>
-
-  <script>
-    // 예상 완료 시간 표시 (서버에서 설정하거나 기본값 사용)
-    const ESTIMATED_COMPLETION = window.MAINTENANCE_END_TIME || null;
-
-    function updateEstimatedTime() {
-      const timeElement = document.getElementById('estimated-time');
-
-      if (ESTIMATED_COMPLETION) {
-        const endTime = new Date(ESTIMATED_COMPLETION);
-        timeElement.textContent = endTime.toLocaleString('ko-KR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        });
-      } else {
-        // 기본값: 현재 시간 + 1시간
-        const estimatedTime = new Date();
-        estimatedTime.setHours(estimatedTime.getHours() + 1);
-        timeElement.textContent = estimatedTime.toLocaleString('ko-KR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        });
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
       }
-    }
 
-    // 페이지 로드 시 시간 업데이트
-    updateEstimatedTime();
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
+        color: #212529;
+        letter-spacing: -0.5px;
+      }
 
-    // 30초마다 자동 새로고침 (서버가 다시 살아났는지 확인)
-    setTimeout(() => {
-      window.location.reload();
-    }, 30000);
-  </script>
-</body>
+      p {
+        font-size: 1.1rem;
+        line-height: 1.7;
+        margin-bottom: 0.8rem;
+        color: #495057;
+        font-weight: 400;
+      }
+
+      .description {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 2rem 0;
+        border: 1px solid #e9ecef;
+      }
+
+      .time-box {
+        font-size: 1rem;
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+      }
+
+      .time-box .label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+
+      .time-box .time {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #212529;
+      }
+
+      .contact-info {
+        margin-top: 2rem;
+        font-size: 0.95rem;
+        color: #6c757d;
+      }
+
+      .contact-info a {
+        color: #495057;
+        text-decoration: none;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+        transition: all 0.3s ease;
+      }
+
+      .contact-info a:hover {
+        color: #212529;
+        border-bottom-color: #495057;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 1.75rem;
+        }
+
+        p {
+          font-size: 1rem;
+        }
+
+        .logo {
+          width: 120px;
+          height: 120px;
+        }
+
+        .description {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- 로고 이미지 -->
+      <div class="logo">
+        <img src="/images/logo.png" alt="stagelives logo" class="logo-icon" />
+      </div>
+
+      <h1>서비스 점검 중</h1>
+
+      <div class="description">
+        <p>
+          더 나은 서비스를 제공하기 위해<br />
+          시스템 점검을 진행하고 있습니다.
+        </p>
+        <p>잠시 후 다시 시도해 주세요.</p>
+      </div>
+
+      <div class="time-box">
+        <div class="label">예상 완료 시간</div>
+        <div class="time" id="estimated-time">계산 중...</div>
+      </div>
+
+      <div class="contact-info">
+        <a href="mailto:no-reply@stagelives.com">no-reply@stagelives.com</a>
+      </div>
+    </div>
+
+    <script>
+      // 예상 완료 시간 표시 (서버에서 설정하거나 기본값 사용)
+      const ESTIMATED_COMPLETION = window.MAINTENANCE_END_TIME || null;
+
+      function updateEstimatedTime() {
+        const timeElement = document.getElementById('estimated-time');
+
+        if (ESTIMATED_COMPLETION) {
+          const endTime = new Date(ESTIMATED_COMPLETION);
+          timeElement.textContent = endTime.toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        } else {
+          // 기본값: 현재 시간 + 1시간
+          const estimatedTime = new Date();
+          estimatedTime.setHours(estimatedTime.getHours() + 1);
+          timeElement.textContent = estimatedTime.toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        }
+      }
+
+      // 페이지 로드 시 시간 업데이트
+      updateEstimatedTime();
+
+      // 30초마다 자동 새로고침 (서버가 다시 살아났는지 확인)
+      setTimeout(() => {
+        window.location.reload();
+      }, 30000);
+    </script>
+  </body>
 </html>
