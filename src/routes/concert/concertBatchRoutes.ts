@@ -108,10 +108,19 @@ const router = express.Router();
  *                           url: { type: string, example: "https://ticket.interpark.com/..." }
  *                       description: 티켓 예매 링크
  *                     ticketOpenDate:
- *                       type: string
- *                       format: date-time
- *                       description: 티켓 오픈 일시
- *                       example: "2024-11-01T10:00:00Z"
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           openTitle:
+ *                             type: string
+ *                             example: "선예매 오픈"
+ *                           openDate:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2024-11-01T10:00:00Z"
+ *                       description: 티켓 오픈 일시 목록
+ *                       example: [{"openTitle": "선예매 오픈", "openDate": "2024-11-01T10:00:00Z"}, {"openTitle": "일반예매 오픈", "openDate": "2024-11-05T10:00:00Z"}]
  *                     posterImage:
  *                       type: string
  *                       format: uri
@@ -295,9 +304,19 @@ router.post("/batch", requireAdmin, batchUploadConcerts);
  *                         enum: [rock/metal/indie, jazz/soul, rap/hiphop/edm, folk/trot, RnB/ballad, tour, idol, festival, fan, other]
  *                       description: 수정할 음악 카테고리 (선택사항)
  *                     ticketOpenDate:
- *                       type: string
- *                       format: date-time
- *                       description: 수정할 티켓 오픈 일시 (선택사항)
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           openTitle:
+ *                             type: string
+ *                             example: "선예매 오픈"
+ *                           openDate:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2024-11-01T10:00:00Z"
+ *                       description: 수정할 티켓 오픈 일시 목록 (선택사항)
+ *                       example: [{"openTitle": "선예매 오픈", "openDate": "2024-11-01T10:00:00Z"}, {"openTitle": "일반예매 오픈", "openDate": "2024-11-05T10:00:00Z"}]
  *                     posterImage:
  *                       type: string
  *                       format: uri

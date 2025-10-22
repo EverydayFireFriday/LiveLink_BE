@@ -11,8 +11,11 @@ export class ConcertTicketing {
   async findUpcomingTicketOpen(): Promise<IConcert[]> {
     const now = new Date();
     return await this.collection
-      .find({ ticketOpenDate: { $gte: now }, status: 'upcoming' })
-      .sort({ ticketOpenDate: 1 })
+      .find({
+        'ticketOpenDate.openDate': { $gte: now },
+        status: 'upcoming'
+      })
+      .sort({ 'ticketOpenDate.openDate': 1 })
       .toArray();
   }
 }

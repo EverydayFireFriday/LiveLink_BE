@@ -91,10 +91,19 @@ const router = express.Router();
  *                     url: { type: string, example: "https://ticket.interpark.com/example" }
  *                 description: "[옵셔널] 티켓 예매 링크"
  *               ticketOpenDate:
- *                 type: string
- *                 format: date-time
- *                 description: "[옵셔널] 티켓 오픈 일시"
- *                 example: "2024-05-01T10:00:00+09:00"
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     openTitle:
+ *                       type: string
+ *                       example: "선예매 오픈"
+ *                     openDate:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-11-01T10:00:00Z"
+ *                 description: "[옵셔널] 티켓 오픈 일시 목록"
+ *                 example: [{"openTitle": "선예매 오픈", "openDate": "2024-11-01T10:00:00Z"}, {"openTitle": "일반예매 오픈", "openDate": "2024-11-05T10:00:00Z"}]
  *               posterImage:
  *                 type: string
  *                 format: uri
@@ -132,7 +141,7 @@ const router = express.Router();
  *                 description: "아이유의 특별한 콘서트"
  *                 category: ["idol", "tour"]
  *                 ticketLink: [{"platform": "인터파크", "url": "https://ticket.interpark.com/example"}]
- *                 ticketOpenDate: "2024-05-01T10:00:00+09:00"
+ *                 ticketOpenDate: [{"openTitle": "선예매 오픈", "openDate": "2024-05-01T10:00:00+09:00"}, {"openTitle": "일반예매 오픈", "openDate": "2024-05-05T10:00:00+09:00"}]
  *                 posterImage: "https://your-bucket.s3.amazonaws.com/concerts/iu2024/poster.jpg"
  *                 infoImages: ["https://your-bucket.s3.amazonaws.com/concerts/iu2024/info1.jpg", "https://your-bucket.s3.amazonaws.com/concerts/iu2024/info2.jpg"]
  *             minimalExample:

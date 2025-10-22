@@ -12,6 +12,12 @@ export interface ITicketLink {
   url: string;
 }
 
+// Ticket Open 인터페이스
+export interface ITicketOpen {
+  openTitle: string;
+  openDate: Date;
+}
+
 // Concert 메인 인터페이스
 export interface IConcert {
   _id: ObjectId;
@@ -24,7 +30,7 @@ export interface IConcert {
   description?: string;
   category?: string[];
   ticketLink?: ITicketLink[];
-  ticketOpenDate?: Date;
+  ticketOpenDate?: ITicketOpen[];
   posterImage?: string;
   infoImages?: string[];
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';

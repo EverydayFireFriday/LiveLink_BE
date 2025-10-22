@@ -233,8 +233,11 @@ export class ConcertBatchService {
             : concertData.ticketLink
               ? [concertData.ticketLink]
               : [],
-          ticketOpenDate: concertData.ticketOpenDate
-            ? new Date(concertData.ticketOpenDate)
+          ticketOpenDate: Array.isArray(concertData.ticketOpenDate)
+            ? concertData.ticketOpenDate.map((item: any) => ({
+                openTitle: item.openTitle,
+                openDate: new Date(item.openDate),
+              }))
             : undefined,
           posterImage: concertData.posterImage || '',
           infoImages: concertData.infoImages || [], // info → infoImages로 변경

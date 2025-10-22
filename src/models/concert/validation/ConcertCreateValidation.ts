@@ -170,15 +170,28 @@ export const validateConcertData = (concertData: any): ValidationResult => {
   }
 
   if (concertData.ticketOpenDate !== undefined) {
-    if (
-      typeof concertData.ticketOpenDate !== 'string' ||
-      !Date.parse(concertData.ticketOpenDate)
-    ) {
+    if (!Array.isArray(concertData.ticketOpenDate)) {
       return {
         isValid: false,
-        message: 'ticketOpenDate는 유효한 날짜 형식의 문자열이어야 합니다.',
+        message: 'ticketOpenDate는 배열이어야 합니다.',
         field: 'ticketOpenDate',
       };
+    }
+    for (const item of concertData.ticketOpenDate) {
+      if (!item.openTitle || typeof item.openTitle !== 'string') {
+        return {
+          isValid: false,
+          message: 'ticketOpenDate의 각 항목은 openTitle(문자열)을 포함해야 합니다.',
+          field: 'ticketOpenDate',
+        };
+      }
+      if (!item.openDate || typeof item.openDate !== 'string' || !Date.parse(item.openDate)) {
+        return {
+          isValid: false,
+          message: 'ticketOpenDate의 각 항목은 유효한 날짜 형식의 openDate를 포함해야 합니다.',
+          field: 'ticketOpenDate',
+        };
+      }
     }
   }
 
@@ -239,8 +252,11 @@ export const normalizeConcertData = (rawData: any): any => {
       ? rawData.category.filter((c: string) => c && isValidMusicCategory(c))
       : [],
     ticketLink: Array.isArray(rawData.ticketLink) ? rawData.ticketLink : [],
-    ticketOpenDate: rawData.ticketOpenDate
-      ? new Date(rawData.ticketOpenDate)
+    ticketOpenDate: Array.isArray(rawData.ticketOpenDate)
+      ? rawData.ticketOpenDate.map((item: any) => ({
+          openTitle: item.openTitle,
+          openDate: new Date(item.openDate),
+        }))
       : undefined,
     posterImage: rawData.posterImage?.trim() || '',
     infoImages: Array.isArray(rawData.infoImages)

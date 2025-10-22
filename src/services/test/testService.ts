@@ -21,7 +21,7 @@ export interface CreateConcertRequest {
   description?: string;
   category?: string[];
   ticketLink?: Array<{ platform: string; url: string }>;
-  ticketOpenDate?: string;
+  ticketOpenDate?: Array<{ openTitle: string; openDate: string }>;
   posterImage?: string;
   infoImages?: string[]; // info -> infoImages로 변경
 }
@@ -137,8 +137,11 @@ export class TestService {
           : concertData.ticketLink
             ? [concertData.ticketLink]
             : [],
-        ticketOpenDate: concertData.ticketOpenDate
-          ? new Date(concertData.ticketOpenDate)
+        ticketOpenDate: Array.isArray(concertData.ticketOpenDate)
+          ? concertData.ticketOpenDate.map((item) => ({
+              openTitle: item.openTitle,
+              openDate: new Date(item.openDate),
+            }))
           : undefined,
         posterImage: concertData.posterImage || '',
         infoImages: concertData.infoImages || [], // info -> infoImages로 변경

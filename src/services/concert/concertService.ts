@@ -11,7 +11,7 @@ import {
 } from '../../models/concert/validation/ConcertValidationUtils';
 
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
-import type { IConcert } from '../../models/concert/base/ConcertTypes';
+import type { IConcert, ITicketOpen } from '../../models/concert/base/ConcertTypes';
 
 export interface CreateConcertRequest {
   uid: string;
@@ -139,8 +139,11 @@ export class ConcertService {
           : concertData.ticketLink
             ? [concertData.ticketLink]
             : [],
-        ticketOpenDate: concertData.ticketOpenDate
-          ? new Date(concertData.ticketOpenDate)
+        ticketOpenDate: Array.isArray(concertData.ticketOpenDate)
+          ? concertData.ticketOpenDate.map((item: { openTitle: string; openDate: string }) => ({
+              openTitle: item.openTitle,
+              openDate: new Date(item.openDate),
+            }))
           : undefined,
         posterImage: concertData.posterImage || '',
         infoImages: concertData.infoImages || [], // info -> infoImages로 변경
@@ -695,9 +698,12 @@ export class ConcertService {
       }
 
       if (cleanUpdateData.ticketOpenDate) {
-        cleanUpdateData.ticketOpenDate = new Date(
-          cleanUpdateData.ticketOpenDate as string,
-        );
+        cleanUpdateData.ticketOpenDate = Array.isArray(cleanUpdateData.ticketOpenDate)
+          ? cleanUpdateData.ticketOpenDate.map((item: { openTitle: string; openDate: string }) => ({
+              openTitle: item.openTitle,
+              openDate: new Date(item.openDate),
+            }))
+          : cleanUpdateData.ticketOpenDate;
       }
 
       // 7. 업데이트 실행

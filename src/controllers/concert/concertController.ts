@@ -130,7 +130,7 @@ export const getConcert = async (
             status: result.data.status,
             hasTicketInfo:
               !!result.data.ticketLink && result.data.ticketLink.length > 0,
-            hasTicketOpenDate: !!result.data.ticketOpenDate,
+            hasTicketOpenDate: !!(result.data.ticketOpenDate && result.data.ticketOpenDate.length > 0),
             upcomingDates:
               result.data.datetime?.filter(
                 (date: Date) => new Date(date) > new Date(),
@@ -439,9 +439,15 @@ export const updateConcert = async (
           if (newConcertData.status === 'cancelled' && oldConcertData.status !== 'cancelled') {
             updateType = 'cancelled';
             message = '공연이 취소되었습니다';
-          } else if (newConcertData.ticketOpenDate && !oldConcertData.ticketOpenDate) {
+          } else if (
+            newConcertData.ticketOpenDate &&
+            Array.isArray(newConcertData.ticketOpenDate) &&
+            newConcertData.ticketOpenDate.length > 0 &&
+            (!oldConcertData.ticketOpenDate || oldConcertData.ticketOpenDate.length === 0)
+          ) {
             updateType = 'ticket_open';
-            message = `티켓 예매가 ${new Date(newConcertData.ticketOpenDate).toLocaleDateString('ko-KR')}에 오픈됩니다`;
+            const firstTicketOpen = newConcertData.ticketOpenDate[0];
+            message = `${firstTicketOpen.openTitle}: ${new Date(firstTicketOpen.openDate).toLocaleDateString('ko-KR')}에 오픈됩니다`;
           } else if (JSON.stringify(newConcertData.datetime) !== JSON.stringify(oldConcertData.datetime)) {
             updateType = 'date_changed';
             message = '공연 일정이 변경되었습니다';

@@ -32,7 +32,75 @@ export const concertSchemas = {
         example: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"],
         description: "공연 날짜 및 시간 배열 (ISO 8601 형식)",
       },
-      // ... 나머지 Concert 속성들
+      price: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            tier: { type: "string", example: "VIP" },
+            amount: { type: "number", example: 150000 },
+          },
+        },
+        description: "가격 정보 (선택사항)",
+      },
+      description: {
+        type: "string",
+        example: "아이유의 연말 콘서트입니다.",
+        description: "공연 설명 (선택사항)",
+      },
+      category: {
+        type: "array",
+        items: { type: "string" },
+        example: ["K-POP"],
+        description: "카테고리 (선택사항)",
+      },
+      ticketLink: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            platform: { type: "string", example: "멜론티켓" },
+            url: { type: "string", example: "https://ticket.melon.com/..." },
+          },
+        },
+        description: "티켓 구매 링크 (선택사항)",
+      },
+      ticketOpenDate: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            openTitle: { type: "string", example: "선예매 오픈" },
+            openDate: {
+              type: "string",
+              format: "date-time",
+              example: "2024-11-01T10:00:00Z",
+            },
+          },
+        },
+        example: [
+          {
+            openTitle: "선예매 오픈",
+            openDate: "2024-11-01T10:00:00Z",
+          },
+          {
+            openTitle: "일반예매 오픈",
+            openDate: "2024-11-05T10:00:00Z",
+          },
+        ],
+        description: "티켓 오픈 날짜 목록 (선택사항)",
+      },
+      posterImage: {
+        type: "string",
+        example: "https://example.com/poster.jpg",
+        description: "포스터 이미지 URL (선택사항)",
+      },
+      infoImages: {
+        type: "array",
+        items: { type: "string" },
+        example: ["https://example.com/info1.jpg"],
+        description: "상세 정보 이미지들 (선택사항)",
+      },
       status: {
         type: "string",
         enum: ["upcoming", "ongoing", "completed", "cancelled"],
@@ -86,6 +154,75 @@ export const concertSchemas = {
         items: { type: "string", format: "date-time" },
         example: ["2024-06-15T19:00:00+09:00", "2024-06-16T19:00:00+09:00"],
         description: "공연 날짜 및 시간 배열 (ISO 8601 형식)",
+      },
+      price: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            tier: { type: "string", example: "VIP" },
+            amount: { type: "number", example: 150000 },
+          },
+        },
+        description: "가격 정보 (선택사항)",
+      },
+      description: {
+        type: "string",
+        example: "아이유의 연말 콘서트입니다.",
+        description: "공연 설명 (선택사항)",
+      },
+      category: {
+        type: "array",
+        items: { type: "string" },
+        example: ["K-POP"],
+        description: "카테고리 (선택사항)",
+      },
+      ticketLink: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            platform: { type: "string", example: "멜론티켓" },
+            url: { type: "string", example: "https://ticket.melon.com/..." },
+          },
+        },
+        description: "티켓 구매 링크 (선택사항)",
+      },
+      ticketOpenDate: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            openTitle: { type: "string", example: "선예매 오픈" },
+            openDate: {
+              type: "string",
+              format: "date-time",
+              example: "2024-11-01T10:00:00Z",
+            },
+          },
+        },
+        example: [
+          {
+            openTitle: "선예매 오픈",
+            openDate: "2024-11-01T10:00:00Z",
+          },
+          {
+            openTitle: "일반예매 오픈",
+            openDate: "2024-11-05T10:00:00Z",
+          },
+        ],
+        description: "티켓 오픈 날짜 목록 (선택사항)",
+      },
+      posterImage: {
+        type: "string",
+        example: "https://example.com/poster.jpg",
+        description: "포스터 이미지 URL (선택사항)",
+      },
+      infoImages: {
+        type: "array",
+        items: { type: "string" },
+        example: ["https://example.com/info1.jpg"],
+        description: "상세 정보 이미지들 (선택사항)",
       },
       status: {
         type: "string",

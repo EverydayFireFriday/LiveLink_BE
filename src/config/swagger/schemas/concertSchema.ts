@@ -61,10 +61,29 @@ export const concertSchema = {
         description: '티켓 구매 링크 (선택사항)',
       },
       ticketOpenDate: {
-        type: 'string',
-        format: 'date-time',
-        example: '2024-11-01T10:00:00Z',
-        description: '티켓 오픈 날짜 (선택사항)',
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            openTitle: { type: 'string', example: '선예매 오픈' },
+            openDate: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-11-01T10:00:00Z',
+            },
+          },
+        },
+        example: [
+          {
+            openTitle: '선예매 오픈',
+            openDate: '2024-11-01T10:00:00Z',
+          },
+          {
+            openTitle: '일반예매 오픈',
+            openDate: '2024-11-05T10:00:00Z',
+          },
+        ],
+        description: '티켓 오픈 날짜 목록 (선택사항)',
       },
       posterImage: {
         type: 'string',

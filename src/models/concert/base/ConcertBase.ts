@@ -55,8 +55,11 @@ export class ConcertBase {
         dt instanceof Date ? dt : new Date(dt),
       );
     }
-    if (concert.ticketOpenDate && !(concert.ticketOpenDate instanceof Date)) {
-      concert.ticketOpenDate = new Date(concert.ticketOpenDate);
+    if (concert.ticketOpenDate && Array.isArray(concert.ticketOpenDate)) {
+      concert.ticketOpenDate = concert.ticketOpenDate.map((item) => ({
+        ...item,
+        openDate: item.openDate instanceof Date ? item.openDate : new Date(item.openDate),
+      }));
     }
 
     const result = await this.collection.insertOne(concert);
@@ -107,11 +110,11 @@ export class ConcertBase {
     if (updateData.datetime && Array.isArray(updateData.datetime)) {
       updateData.datetime = updateData.datetime.map((dt) => new Date(dt));
     }
-    if (
-      updateData.ticketOpenDate &&
-      !(updateData.ticketOpenDate instanceof Date)
-    ) {
-      updateData.ticketOpenDate = new Date(updateData.ticketOpenDate);
+    if (updateData.ticketOpenDate && Array.isArray(updateData.ticketOpenDate)) {
+      updateData.ticketOpenDate = updateData.ticketOpenDate.map((item) => ({
+        ...item,
+        openDate: item.openDate instanceof Date ? item.openDate : new Date(item.openDate),
+      }));
     }
 
     const query = ObjectId.isValid(id)
