@@ -1,8 +1,8 @@
-/* eslint-disable no-console */
 import { MongoClient } from 'mongodb';
 import * as dotenv from 'dotenv';
 import { MigrationRunner } from '../utils/database/migrations';
 import { migrations } from '../migrations';
+import logger from '../utils/logger/logger';
 
 dotenv.config();
 
@@ -32,15 +32,15 @@ async function main() {
         break;
 
       default:
-        console.log('Usage:');
-        console.log('  npm run migrate:up      - Run all pending migrations');
-        console.log('  npm run migrate:down    - Rollback last migration');
-        console.log('  npm run migrate:down 0  - Rollback all migrations');
-        console.log('  npm run migrate:status  - Show migration status');
+        logger.info('Usage:');
+        logger.info('  npm run migrate:up      - Run all pending migrations');
+        logger.info('  npm run migrate:down    - Rollback last migration');
+        logger.info('  npm run migrate:down 0  - Rollback all migrations');
+        logger.info('  npm run migrate:status  - Show migration status');
         process.exit(1);
     }
   } catch (error) {
-    console.error('Migration error:', error);
+    logger.error('Migration error:', error);
     process.exit(1);
   } finally {
     await client.close();
