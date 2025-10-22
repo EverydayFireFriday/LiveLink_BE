@@ -1,7 +1,8 @@
-/* eslint-disable no-console, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import * as fs from 'fs';
 import * as path from 'path';
 import { swaggerSpec } from '../config/swagger';
+import logger from '../utils/logger/logger';
 
 const Converter = require('openapi-to-postmanv2');
 
@@ -27,12 +28,12 @@ Converter.convert(
   options,
   (err: Error | null, conversionResult: any) => {
     if (err) {
-      console.error('❌ Error converting to Postman:', err);
+      logger.error('❌ Error converting to Postman:', err);
       process.exit(1);
     }
 
     if (!conversionResult.result) {
-      console.error('❌ Conversion failed:', conversionResult.reason);
+      logger.error('❌ Conversion failed:', conversionResult.reason);
       process.exit(1);
     }
 
@@ -40,7 +41,7 @@ Converter.convert(
     const collection = conversionResult.output[0].data;
     fs.writeFileSync(outputPath, JSON.stringify(collection, null, 2));
 
-    console.log('✅ Postman collection generated successfully!');
-    console.log(`📄 File: ${outputPath}`);
+    logger.info('✅ Postman collection generated successfully!');
+    logger.info(`📄 File: ${outputPath}`);
   },
 );

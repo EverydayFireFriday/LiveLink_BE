@@ -3,6 +3,7 @@
 import { Collection, ObjectId, Db, Filter, FindOptions } from 'mongodb';
 import { Report } from './reportModel';
 import { ReportStatus } from './reportEnums';
+import logger from '../utils/logger/logger';
 
 // MongoDB Index 타입
 interface MongoIndex {
@@ -30,8 +31,7 @@ export class ReportService {
         const indexName = index.name;
         if (indexName?.includes('contentId')) {
           await this.reportsCollection.dropIndex(indexName);
-          // eslint-disable-next-line no-console
-          console.log(`Dropped old index: ${indexName}`);
+          logger.info(`Dropped old index: ${indexName}`);
         }
       }
 
@@ -49,7 +49,7 @@ export class ReportService {
         createdAt: -1,
       });
     } catch (error) {
-      console.error('Error ensuring indexes:', error);
+      logger.error('Error ensuring indexes:', error);
     }
   }
 

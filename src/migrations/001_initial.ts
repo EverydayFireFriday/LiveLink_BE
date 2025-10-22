@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
 import { Db } from 'mongodb';
 import { Migration } from '../utils/database/migrations';
+import logger from '../utils/logger/logger';
 
 export const migration001_initial: Migration = {
   version: 1,
@@ -53,7 +53,7 @@ export const migration001_initial: Migration = {
     await db.collection('reports').createIndex({ status: 1 });
     await db.collection('reports').createIndex({ createdAt: -1 });
 
-    console.log('✅ Created all initial indexes');
+    logger.info('✅ Created all initial indexes');
   },
 
   async down(db: Db): Promise<void> {
@@ -72,6 +72,6 @@ export const migration001_initial: Migration = {
       await db.collection(collection).dropIndexes();
     }
 
-    console.log('✅ Dropped all indexes');
+    logger.info('✅ Dropped all indexes');
   },
 };

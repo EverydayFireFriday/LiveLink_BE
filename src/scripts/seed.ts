@@ -1,8 +1,9 @@
-/* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Db, MongoClient, ObjectId } from 'mongodb';
 import * as dotenv from 'dotenv';
 import { faker } from '@faker-js/faker';
 import * as bcrypt from 'bcrypt';
+import logger from '../utils/logger/logger';
 
 dotenv.config();
 
@@ -16,19 +17,19 @@ interface SeedOptions {
 }
 
 async function clearDatabase(db: Db) {
-  console.log('🗑️  Clearing database...');
+  logger.info('🗑️  Clearing database...');
   const collections = await db.listCollections().toArray();
 
   for (const collection of collections) {
     if (collection.name !== 'migrations') {
       await db.collection(collection.name).deleteMany({});
-      console.log(`  Cleared ${collection.name}`);
+      logger.info(`  Cleared ${collection.name}`);
     }
   }
 }
 
 async function seedUsers(db: Db, count: number) {
-  console.log(`👤 Seeding ${count} users...`);
+  logger.info(`👤 Seeding ${count} users...`);
   const users = [];
 
   // Create admin user
@@ -60,12 +61,12 @@ async function seedUsers(db: Db, count: number) {
   }
 
   await db.collection('users').insertMany(users);
-  console.log(`✅ Created ${users.length} users`);
+  logger.info(`✅ Created ${users.length} users`);
   return users;
 }
 
 async function seedConcerts(db: Db, count: number) {
-  console.log(`🎵 Seeding ${count} concerts...`);
+  logger.info(`🎵 Seeding ${count} concerts...`);
   const concerts = [];
 
   const genres = [
@@ -135,7 +136,7 @@ async function seedConcerts(db: Db, count: number) {
   }
 
   await db.collection('concerts').insertMany(concerts);
-  console.log(`✅ Created ${concerts.length} concerts`);
+  logger.info(`✅ Created ${concerts.length} concerts`);
   return concerts;
 }
 
@@ -145,7 +146,7 @@ async function seedArticles(
   users: any[],
   concerts: any[],
 ) {
-  console.log(`📝 Seeding ${count} articles...`);
+  logger.info(`📝 Seeding ${count} articles...`);
   const articles = [];
 
   const categories = ['Review', 'Preview', 'Interview', 'News', 'Opinion'];
@@ -174,7 +175,7 @@ async function seedArticles(
   }
 
   await db.collection('articles').insertMany(articles);
-  console.log(`✅ Created ${articles.length} articles`);
+  logger.info(`✅ Created ${articles.length} articles`);
   return articles;
 }
 
@@ -200,7 +201,7 @@ async function main() {
     }
   });
 
-  console.log('🌱 Starting database seeding...\n');
+  logger.info('🌱 Starting database seeding...\n');
 
   const client = await MongoClient.connect(MONGO_URI);
   const db = client.db();
@@ -208,7 +209,7 @@ async function main() {
   try {
     if (options.clear) {
       await clearDatabase(db);
-      console.log();
+      logger.info('');
     }
 
     const users = await seedUsers(db, options.users || 20);
@@ -220,16 +221,16 @@ async function main() {
       concerts,
     );
 
-    console.log('\n✅ Database seeding completed successfully!');
-    console.log('\n📊 Summary:');
-    console.log(`  Users: ${users.length}`);
-    console.log(`  Concerts: ${concerts.length}`);
-    console.log(`  Articles: ${articles.length}`);
-    console.log('\n🔐 Admin credentials:');
-    console.log('  Email: admin@livelink.com');
-    console.log('  Password: admin123');
+    logger.info('\n✅ Database seeding completed successfully!');
+    logger.info('\n📊 Summary:');
+    logger.info(`  Users: ${users.length}`);
+    logger.info(`  Concerts: ${concerts.length}`);
+    logger.info(`  Articles: ${articles.length}`);
+    logger.info('\n🔐 Admin credentials:');
+    logger.info('  Email: admin@livelink.com');
+    logger.info('  Password: admin123');
   } catch (error) {
-    console.error('❌ Seeding error:', error);
+    logger.error('❌ Seeding error:', error);
     process.exit(1);
   } finally {
     await client.close();

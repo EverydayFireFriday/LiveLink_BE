@@ -1,5 +1,5 @@
-/* eslint-disable no-console */
 import { Db } from 'mongodb';
+import logger from '../logger/logger';
 
 export interface Migration {
   version: number;
@@ -31,7 +31,7 @@ export class MigrationRunner {
 
     if (!exists) {
       await this.db.createCollection(this.migrationsCollection);
-      console.log(`✅ Created ${this.migrationsCollection} collection`);
+      logger.info(`✅ Created ${this.migrationsCollection} collection`);
     }
   }
 
@@ -55,14 +55,14 @@ export class MigrationRunner {
       .sort((a, b) => a.version - b.version);
 
     if (pendingMigrations.length === 0) {
-      console.log('✅ No pending migrations');
+      logger.info('✅ No pending migrations');
       return;
     }
 
-    console.log(`📦 Running ${pendingMigrations.length} migration(s)...`);
+    logger.info(`📦 Running ${pendingMigrations.length} migration(s)...`);
 
     for (const migration of pendingMigrations) {
-      console.log(`⬆️  Migrating: v${migration.version} - ${migration.name}`);
+      logger.info(`⬆️  Migrating: v${migration.version} - ${migration.name}`);
 
       try {
         await migration.up(this.db);
@@ -73,14 +73,14 @@ export class MigrationRunner {
           appliedAt: new Date(),
         });
 
-        console.log(`✅ Migration v${migration.version} completed`);
+        logger.info(`✅ Migration v${migration.version} completed`);
       } catch (error) {
-        console.error(`❌ Migration v${migration.version} failed:`, error);
+        logger.error(`❌ Migration v${migration.version} failed:`, error);
         throw error;
       }
     }
 
-    console.log('✅ All migrations completed successfully');
+    logger.info('✅ All migrations completed successfully');
   }
 
   async down(migrations: Migration[], targetVersion?: number): Promise<void> {
@@ -88,7 +88,7 @@ export class MigrationRunner {
     const currentVersion = await this.getCurrentVersion();
 
     if (currentVersion === 0) {
-      console.log('✅ No migrations to rollback');
+      logger.info('✅ No migrations to rollback');
       return;
     }
 
@@ -99,16 +99,16 @@ export class MigrationRunner {
       .sort((a, b) => b.version - a.version);
 
     if (migrationsToRollback.length === 0) {
-      console.log('✅ No migrations to rollback');
+      logger.info('✅ No migrations to rollback');
       return;
     }
 
-    console.log(
+    logger.info(
       `📦 Rolling back ${migrationsToRollback.length} migration(s)...`,
     );
 
     for (const migration of migrationsToRollback) {
-      console.log(
+      logger.info(
         `⬇️  Rolling back: v${migration.version} - ${migration.name}`,
       );
 
@@ -119,28 +119,28 @@ export class MigrationRunner {
           version: migration.version,
         });
 
-        console.log(`✅ Rollback v${migration.version} completed`);
+        logger.info(`✅ Rollback v${migration.version} completed`);
       } catch (error) {
-        console.error(`❌ Rollback v${migration.version} failed:`, error);
+        logger.error(`❌ Rollback v${migration.version} failed:`, error);
         throw error;
       }
     }
 
-    console.log('✅ All rollbacks completed successfully');
+    logger.info('✅ All rollbacks completed successfully');
   }
 
   async status(migrations: Migration[]): Promise<void> {
     await this.initialize();
     const currentVersion = await this.getCurrentVersion();
 
-    console.log(`\n📊 Migration Status`);
-    console.log(`Current version: ${currentVersion}`);
-    console.log(`\nMigrations:`);
+    logger.info(`\n📊 Migration Status`);
+    logger.info(`Current version: ${currentVersion}`);
+    logger.info(`\nMigrations:`);
 
     for (const migration of migrations.sort((a, b) => a.version - b.version)) {
       const applied = migration.version <= currentVersion ? '✅' : '⏳';
-      console.log(`${applied} v${migration.version} - ${migration.name}`);
+      logger.info(`${applied} v${migration.version} - ${migration.name}`);
     }
-    console.log();
+    logger.info('');
   }
 }
