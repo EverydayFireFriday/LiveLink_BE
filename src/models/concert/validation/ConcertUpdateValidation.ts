@@ -104,12 +104,15 @@ export const validateConcertUpdateData = (updateData: any): ValidationResult => 
     if (!Array.isArray(updateData.ticketOpenDate)) {
       return { isValid: false, message: 'ticketOpenDate는 배열이어야 합니다.', field: 'ticketOpenDate' };
     }
-    for (const item of updateData.ticketOpenDate) {
-      if (!item.openTitle || typeof item.openTitle !== 'string') {
-        return { isValid: false, message: 'ticketOpenDate의 각 항목은 openTitle(문자열)을 포함해야 합니다.', field: 'ticketOpenDate' };
-      }
-      if (!item.openDate || typeof item.openDate !== 'string' || !Date.parse(item.openDate)) {
-        return { isValid: false, message: 'ticketOpenDate의 각 항목은 유효한 날짜 형식의 openDate를 포함해야 합니다.', field: 'ticketOpenDate' };
+    // 빈 배열이 아닐 때만 각 항목 검증
+    if (updateData.ticketOpenDate.length > 0) {
+      for (const item of updateData.ticketOpenDate) {
+        if (!item.openTitle || typeof item.openTitle !== 'string') {
+          return { isValid: false, message: 'ticketOpenDate의 각 항목은 openTitle(문자열)을 포함해야 합니다.', field: 'ticketOpenDate' };
+        }
+        if (!item.openDate || typeof item.openDate !== 'string' || !Date.parse(item.openDate)) {
+          return { isValid: false, message: 'ticketOpenDate의 각 항목은 유효한 날짜 형식의 openDate를 포함해야 합니다.', field: 'ticketOpenDate' };
+        }
       }
     }
   }
