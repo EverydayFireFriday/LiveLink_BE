@@ -5,10 +5,7 @@ import {
   removeLike,
   getLikedConcerts,
 } from '../../controllers/concert/concertLikeController';
-import {
-  requireAuth,
-  requireAdmin,
-} from '../../middlewares/auth/authMiddleware';
+import { requireAuth } from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 

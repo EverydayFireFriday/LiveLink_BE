@@ -4,10 +4,7 @@ import {
   batchUpdateConcerts,
   batchDeleteConcerts,
 } from '../../controllers/concert/concertBatchController';
-import {
-  requireAuth,
-  requireAdmin,
-} from '../../middlewares/auth/authMiddleware';
+import { requireAdmin } from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 

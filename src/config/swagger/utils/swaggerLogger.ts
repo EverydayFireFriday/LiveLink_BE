@@ -1,7 +1,10 @@
 import { logger } from '../../../utils';
-import { SwaggerDefinition } from 'swagger-jsdoc';
 
-export function logSwaggerInfo(swaggerSpec: SwaggerDefinition) {
+interface SwaggerSpec {
+  paths?: Record<string, unknown>;
+}
+
+export function logSwaggerInfo(swaggerSpec: SwaggerSpec) {
   if (process.env.NODE_ENV === 'production') return;
 
   try {

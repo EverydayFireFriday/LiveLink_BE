@@ -1,6 +1,5 @@
 import { Collection, ObjectId } from 'mongodb';
 import { IConcert } from '../base/ConcertTypes';
-import logger from '../../../utils/logger/logger';
 
 export class ConcertBatch {
   collection: Collection<IConcert>;

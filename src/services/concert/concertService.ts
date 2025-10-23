@@ -11,10 +11,7 @@ import {
 } from '../../models/concert/validation/ConcertValidationUtils';
 
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
-import type {
-  IConcert,
-  ITicketOpen,
-} from '../../models/concert/base/ConcertTypes';
+import type { IConcert } from '../../models/concert/base/ConcertTypes';
 
 export interface CreateConcertRequest {
   uid: string;

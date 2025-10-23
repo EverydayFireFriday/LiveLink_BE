@@ -110,15 +110,15 @@ export class ConcertBatchService {
 
       // 1. 모든 콘서트 데이터 유효성 검증
       const validationResults = await Promise.allSettled(
-        concerts.map(async (concertData, index): Promise<ValidationResult> => {
+        concerts.map((concertData, index): Promise<ValidationResult> => {
           const validationResult = validateConcertData(concertData);
-          return {
+          return Promise.resolve({
             index,
             concertData,
             validationError: validationResult.isValid
               ? null
               : validationResult.message,
-          };
+          });
         }),
       );
 

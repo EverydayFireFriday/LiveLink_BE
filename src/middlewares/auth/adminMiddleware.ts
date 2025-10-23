@@ -59,7 +59,7 @@ export const requireAdmin = (
 export const checkAdminStatus = (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction,
+  _next: express.NextFunction,
 ) => {
   if (!req.session.user) {
     res.status(401).json({

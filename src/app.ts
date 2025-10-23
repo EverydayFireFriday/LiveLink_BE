@@ -154,20 +154,21 @@ app.use((req, res, next) => {
 
   const end = httpRequestDurationMicroseconds.startTimer();
   res.on('finish', () => {
-    const route = req.route ? req.route.path : req.path;
+    const route: string = req.route ? String(req.route.path) : req.path;
+    const status = res.statusCode;
     httpRequestCounter.inc({
       method: req.method,
       route,
-      status: res.statusCode,
+      status,
     });
-    end({ method: req.method, route, status: res.statusCode });
+    end({ method: req.method, route, status });
 
     // Track errors
-    if (res.statusCode >= 400) {
+    if (status >= 400) {
       httpErrorCounter.inc({
         method: req.method,
         route,
-        status: res.statusCode,
+        status,
       });
     }
 
@@ -552,7 +553,8 @@ app.post(
   express.json({ type: 'application/csp-report' }),
   (req, res) => {
     if (req.body) {
-      logger.warn('CSP Violation:', req.body['csp-report']);
+      const cspReport = req.body as Record<string, unknown>;
+      logger.warn('CSP Violation:', cspReport['csp-report']);
     } else {
       logger.warn('CSP Violation: No report data received.');
     }
@@ -892,11 +894,11 @@ process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 // 🚀 서버 시작
 try {
-  startServer().catch((error) => {
+  startServer().catch((error: unknown) => {
     logger.error('❌ Failed to start server:', { error });
     process.exit(1);
   });
-} catch (error) {
+} catch (error: unknown) {
   logger.error('❌ Caught an error during server startup:', { error });
   process.exit(1);
 }

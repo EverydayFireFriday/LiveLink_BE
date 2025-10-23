@@ -14,6 +14,17 @@ interface GoogleProfileExtended extends GoogleProfile {
   photos?: Array<{ value: string }>;
 }
 
+interface AppleProfile {
+  id: string;
+  email?: string;
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
+type AppleVerifyCallback = (error?: Error | null, user?: User | false) => void;
+
 export const configurePassport = (passport: PassportStatic) => {
   const userModel = new UserModel();
 
@@ -22,13 +33,15 @@ export const configurePassport = (passport: PassportStatic) => {
     done(null, (user as User)._id?.toHexString());
   });
 
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await userModel.findById(id);
-      done(null, user);
-    } catch (error) {
-      done(error, null);
-    }
+  passport.deserializeUser((id: string, done) => {
+    void (async () => {
+      try {
+        const user = await userModel.findById(id);
+        done(null, user);
+      } catch (error) {
+        done(error, null);
+      }
+    })();
   });
 
   // Google OAuth 2.0 전략 설정
@@ -41,73 +54,75 @@ export const configurePassport = (passport: PassportStatic) => {
           callbackURL: '/api/auth/google/callback',
           scope: ['profile', 'email'],
         },
-        async (
+        (
           accessToken: string,
           refreshToken: string,
           profile: GoogleProfileExtended,
           done: VerifyCallback,
         ) => {
-          try {
-            const socialId = profile.id;
-            const provider = 'google';
+          void (async () => {
+            try {
+              const socialId = profile.id;
+              const provider = 'google';
 
-            // 1. 소셜 ID로 기존 사용자 찾기
-            let user = await userModel.findByProviderAndSocialId(
-              provider,
-              socialId,
-            );
-
-            if (user) {
-              return done(null, user);
-            }
-
-            // 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
-            if (profile.emails && profile.emails.length > 0) {
-              const email = profile.emails[0].value;
-              user = await userModel.findByEmail(email);
+              // 1. 소셜 ID로 기존 사용자 찾기
+              let user = await userModel.findByProviderAndSocialId(
+                provider,
+                socialId,
+              );
 
               if (user) {
-                // 소셜 정보 업데이트 후 반환
-                user.provider = provider;
-                user.socialId = socialId;
-                const updatedUser = await userModel.updateUser(user._id!, {
-                  provider,
-                  socialId,
-                });
-                if (!updatedUser) {
-                  return done(new Error('Failed to link Google account.'));
-                }
-                return done(null, updatedUser);
+                return done(null, user);
               }
+
+              // 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
+              if (profile.emails && profile.emails.length > 0) {
+                const email = profile.emails[0].value;
+                user = await userModel.findByEmail(email);
+
+                if (user) {
+                  // 소셜 정보 업데이트 후 반환
+                  user.provider = provider;
+                  user.socialId = socialId;
+                  const updatedUser = await userModel.updateUser(user._id!, {
+                    provider,
+                    socialId,
+                  });
+                  if (!updatedUser) {
+                    return done(new Error('Failed to link Google account.'));
+                  }
+                  return done(null, updatedUser);
+                }
+              }
+
+              // 3. 신규 사용자 생성
+              const newUser: Partial<User> = {
+                email: profile.emails?.[0].value,
+                username: profile.displayName || `${provider}_${socialId}`,
+                provider,
+                socialId,
+                profileImage: profile.photos?.[0].value,
+                isTermsAgreed: false,
+                termsVersion: '1.0',
+              };
+
+              // username 중복 체크
+              const existingUser = await userModel.findByUsername(
+                newUser.username!,
+              );
+              if (existingUser) {
+                newUser.username = `${newUser.username}_${Date.now()}`;
+              }
+
+              const createdUser = await userModel.createUser(
+                newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
+              );
+              return done(null, createdUser);
+            } catch (error) {
+              logger.error('Error in Google OAuth strategy:', error);
+              return done(error as Error);
             }
-
-            // 3. 신규 사용자 생성
-            const newUser: Partial<User> = {
-              email: profile.emails?.[0].value,
-              username: profile.displayName || `${provider}_${socialId}`,
-              provider,
-              socialId,
-              profileImage: profile.photos?.[0].value,
-              isTermsAgreed: false,
-              termsVersion: '1.0',
-            };
-
-            // username 중복 체크
-            const existingUser = await userModel.findByUsername(
-              newUser.username!,
-            );
-            if (existingUser) {
-              newUser.username = `${newUser.username}_${Date.now()}`;
-            }
-
-            const createdUser = await userModel.createUser(
-              newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
-            );
-            return done(null, createdUser);
-          } catch (error) {
-            logger.error('Error in Google OAuth strategy:', error);
-            return done(error as Error);
-          }
+          })();
         },
       ),
     );
@@ -135,78 +150,78 @@ export const configurePassport = (passport: PassportStatic) => {
           scope: ['name', 'email'],
           passReqToCallback: false,
         },
-        async (
+        (
           accessToken: string,
           refreshToken: string,
           idToken: string,
-          profile: any,
-          done: (error?: Error | null, user?: any) => void,
+          profile: AppleProfile,
+          done: AppleVerifyCallback,
         ) => {
-          try {
-            const socialId = profile.id as string;
-            const provider = 'apple';
-            const email = profile.email as string | undefined;
-            const name = profile.name as
-              | { firstName?: string; lastName?: string }
-              | undefined;
+          void (async () => {
+            try {
+              const socialId = profile.id;
+              const provider = 'apple';
+              const email = profile.email;
+              const name = profile.name;
 
-            // 1. 소셜 ID로 기존 사용자 찾기
-            let user = await userModel.findByProviderAndSocialId(
-              provider,
-              socialId,
-            );
-
-            if (user) {
-              return done(null, user);
-            }
-
-            // 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
-            if (email) {
-              user = await userModel.findByEmail(email);
+              // 1. 소셜 ID로 기존 사용자 찾기
+              let user = await userModel.findByProviderAndSocialId(
+                provider,
+                socialId,
+              );
 
               if (user) {
-                // 소셜 정보 업데이트 후 반환
-                user.provider = provider;
-                user.socialId = socialId;
-                const updatedUser = await userModel.updateUser(user._id!, {
-                  provider,
-                  socialId,
-                });
-                if (!updatedUser) {
-                  return done(new Error('Failed to link Apple account.'));
-                }
-                return done(null, updatedUser);
+                return done(null, user);
               }
+
+              // 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
+              if (email) {
+                user = await userModel.findByEmail(email);
+
+                if (user) {
+                  // 소셜 정보 업데이트 후 반환
+                  user.provider = provider;
+                  user.socialId = socialId;
+                  const updatedUser = await userModel.updateUser(user._id!, {
+                    provider,
+                    socialId,
+                  });
+                  if (!updatedUser) {
+                    return done(new Error('Failed to link Apple account.'));
+                  }
+                  return done(null, updatedUser);
+                }
+              }
+
+              // 3. 신규 사용자 생성
+              const newUser: Partial<User> = {
+                email,
+                username: name
+                  ? `${name.firstName}${name.lastName}`
+                  : `${provider}_${socialId}`,
+                provider,
+                socialId,
+                isTermsAgreed: false,
+                termsVersion: '1.0',
+              };
+
+              // username 중복 체크
+              const existingUser = await userModel.findByUsername(
+                newUser.username!,
+              );
+              if (existingUser) {
+                newUser.username = `${newUser.username}_${Date.now()}`;
+              }
+
+              const createdUser = await userModel.createUser(
+                newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
+              );
+              return done(null, createdUser);
+            } catch (error) {
+              logger.error('Error in Apple OAuth strategy:', error);
+              return done(error as Error);
             }
-
-            // 3. 신규 사용자 생성
-            const newUser: Partial<User> = {
-              email,
-              username: name
-                ? `${name.firstName}${name.lastName}`
-                : `${provider}_${socialId}`,
-              provider,
-              socialId,
-              isTermsAgreed: false,
-              termsVersion: '1.0',
-            };
-
-            // username 중복 체크
-            const existingUser = await userModel.findByUsername(
-              newUser.username!,
-            );
-            if (existingUser) {
-              newUser.username = `${newUser.username}_${Date.now()}`;
-            }
-
-            const createdUser = await userModel.createUser(
-              newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
-            );
-            return done(null, createdUser);
-          } catch (error) {
-            logger.error('Error in Apple OAuth strategy:', error);
-            return done(error as Error);
-          }
+          })();
         },
       ),
     );

@@ -36,7 +36,7 @@ export const validateConcertUpdateData = (
     'ticketLink',
   ];
   const hasUpdateableField = updateableFields.some((field) =>
-    updateData.hasOwnProperty(field),
+    Object.prototype.hasOwnProperty.call(updateData, field),
   );
 
   if (!hasUpdateableField) {
@@ -48,7 +48,7 @@ export const validateConcertUpdateData = (
 
   const readOnlyFields = ['uid', 'likes', 'likesCount', '_id', 'createdAt'];
   const foundReadOnlyFields = readOnlyFields.filter((field) =>
-    updateData.hasOwnProperty(field),
+    Object.prototype.hasOwnProperty.call(updateData, field),
   );
   if (foundReadOnlyFields.length > 0) {
     logger.warn(

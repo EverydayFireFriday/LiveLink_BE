@@ -1,10 +1,7 @@
 // routes/article/articleRoutes.ts
 import express from 'express';
 import { ArticleController } from '../../controllers/article';
-import {
-  requireAuthForWriteOnlyMiddleware,
-  requireAuthInProductionMiddleware,
-} from '../../middlewares/auth/conditionalAuthMiddleware';
+import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
 
 const router = express.Router();
 const articleController = new ArticleController();

@@ -11,7 +11,7 @@ export class BruteForceProtectionService {
 
   constructor(redisClient: any) {
     this.redisClient = redisClient;
-    this.checkRedisConnection();
+    void this.checkRedisConnection();
   }
 
   private async checkRedisConnection() {

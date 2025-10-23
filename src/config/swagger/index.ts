@@ -8,4 +8,4 @@ export const swaggerSpec = swaggerJSDoc(swaggerOptions);
 export { swaggerUi, swaggerUiOptions };
 
 // 개발 환경에서 Swagger 정보 로깅
-logSwaggerInfo(swaggerSpec as any);
+logSwaggerInfo(swaggerSpec);
