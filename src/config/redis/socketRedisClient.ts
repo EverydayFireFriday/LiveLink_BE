@@ -16,7 +16,9 @@ import { env } from '../env/env';
 const redisOptions: RedisOptions = {
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 100, 10000);
-    logger.warn(`🔄 Socket.IO Redis reconnection attempt ${times}, delay: ${delay}ms`);
+    logger.warn(
+      `🔄 Socket.IO Redis reconnection attempt ${times}, delay: ${delay}ms`,
+    );
     return delay;
   },
   reconnectOnError: (err: Error) => {
@@ -89,7 +91,10 @@ export const connectSocketRedis = async (): Promise<boolean> => {
     logger.info('✅ Socket.IO Redis clients ping successful');
     return true;
   } catch (error) {
-    logger.warn('⚠️ Socket.IO Redis connection failed. Socket.IO will run in single-server mode.', { error });
+    logger.warn(
+      '⚠️ Socket.IO Redis connection failed. Socket.IO will run in single-server mode.',
+      { error },
+    );
     logger.warn('⚠️ Horizontal scaling will not work without Redis adapter.');
     return false;
   }
@@ -98,10 +103,7 @@ export const connectSocketRedis = async (): Promise<boolean> => {
 // Redis 연결 해제 함수
 export const disconnectSocketRedis = async (): Promise<void> => {
   try {
-    await Promise.all([
-      pubClient.quit(),
-      subClient.quit(),
-    ]);
+    await Promise.all([pubClient.quit(), subClient.quit()]);
     logger.info('✅ Socket.IO Redis clients disconnected');
   } catch (error) {
     logger.error('❌ Socket.IO Redis disconnect error:', { error });

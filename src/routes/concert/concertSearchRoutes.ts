@@ -1,4 +1,4 @@
-import express from "express";
+import express from 'express';
 import {
   searchConcerts,
   getUpcomingConcerts,
@@ -9,7 +9,7 @@ import {
   getConcertsByCategory,
   getConcertsByStatus,
   getConcertStats,
-} from "../../controllers/concert/concertSearchController";
+} from '../../controllers/concert/concertSearchController';
 
 const router = express.Router();
 
@@ -51,7 +51,7 @@ const router = express.Router();
  *       500:
  *         description: 서버 에러
  */
-router.get("/search", searchConcerts);
+router.get('/search', searchConcerts);
 
 /**
  * @swagger
@@ -82,7 +82,7 @@ router.get("/search", searchConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get("/upcoming", getUpcomingConcerts);
+router.get('/upcoming', getUpcomingConcerts);
 
 /**
  * @swagger
@@ -126,7 +126,7 @@ router.get("/upcoming", getUpcomingConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get("/popular", getPopularConcerts);
+router.get('/popular', getPopularConcerts);
 
 /**
  * @swagger
@@ -157,7 +157,7 @@ router.get("/popular", getPopularConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get("/ticket-open", getTicketOpenConcerts);
+router.get('/ticket-open', getTicketOpenConcerts);
 
 /**
  * @swagger
@@ -172,7 +172,7 @@ router.get("/ticket-open", getTicketOpenConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get("/stats", getConcertStats);
+router.get('/stats', getConcertStats);
 
 /**
  * @swagger
@@ -210,7 +210,7 @@ router.get("/stats", getConcertStats);
  *       500:
  *         description: 서버 에러
  */
-router.get("/by-artist/:artist", getConcertsByArtist);
+router.get('/by-artist/:artist', getConcertsByArtist);
 
 /**
  * @swagger
@@ -248,7 +248,7 @@ router.get("/by-artist/:artist", getConcertsByArtist);
  *       500:
  *         description: 서버 에러
  */
-router.get("/by-location/:location", getConcertsByLocation);
+router.get('/by-location/:location', getConcertsByLocation);
 
 /**
  * @swagger
@@ -287,7 +287,7 @@ router.get("/by-location/:location", getConcertsByLocation);
  *       500:
  *         description: 서버 에러
  */
-router.get("/by-category/:category", getConcertsByCategory);
+router.get('/by-category/:category', getConcertsByCategory);
 
 /**
  * @swagger
@@ -328,6 +328,6 @@ router.get("/by-category/:category", getConcertsByCategory);
  *       500:
  *         description: 서버 에러
  */
-router.get("/by-status/:status", getConcertsByStatus);
+router.get('/by-status/:status', getConcertsByStatus);
 
 export default router;

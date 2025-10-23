@@ -449,7 +449,9 @@ export class CategoryModel {
         },
       ];
 
-      const results = await this.collection.aggregate<ICategory>(pipeline).toArray();
+      const results = await this.collection
+        .aggregate<ICategory>(pipeline)
+        .toArray();
       return results.map((item) => ({
         _id: item._id,
         name: item.name,

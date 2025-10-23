@@ -21,7 +21,7 @@ export class ChatRoomModel {
   constructor() {
     const db = getDatabase();
     this.chatRoomCollection = db.collection<ChatRoom>('chatRooms');
-    this.createIndexes();
+    void this.createIndexes();
   }
 
   private async createIndexes() {

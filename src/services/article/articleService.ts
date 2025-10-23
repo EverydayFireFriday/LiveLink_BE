@@ -252,10 +252,12 @@ export class ArticleService {
         limit,
         publishedOnly: true,
       });
-      articles = result.articles.map((article: any): IArticle => ({
-        ...article,
-        likes_count: article.likes_count ?? 0,
-      }));
+      articles = result.articles.map(
+        (article: any): IArticle => ({
+          ...article,
+          likes_count: article.likes_count ?? 0,
+        }),
+      );
       total = result.total;
     } else if (search) {
       // 검색
@@ -670,13 +672,8 @@ export class ArticleService {
       (article) => ({
         ...article,
         stats: {
-          likesCount:
-            (likesCountMap as Record<string, number>)[article._id.toString()] ||
-            0,
-          bookmarksCount:
-            (bookmarksCountMap as Record<string, number>)[
-              article._id.toString()
-            ] || 0,
+          likesCount: likesCountMap[article._id.toString()] || 0,
+          bookmarksCount: bookmarksCountMap[article._id.toString()] || 0,
         },
       }),
     );
@@ -722,8 +719,8 @@ export class ArticleService {
 
     articleIds.forEach((id) => {
       statsMap[id] = {
-        likesCount: (likesMap as Record<string, number>)[id] || 0,
-        bookmarksCount: (bookmarksMap as Record<string, number>)[id] || 0,
+        likesCount: likesMap[id] || 0,
+        bookmarksCount: bookmarksMap[id] || 0,
       };
     });
 
@@ -818,4 +815,3 @@ export const getArticleService = (): ArticleService => {
   }
   return articleService;
 };
-

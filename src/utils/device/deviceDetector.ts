@@ -48,9 +48,7 @@ export class DeviceDetector {
     const ua = userAgent.toLowerCase();
 
     // 모바일 감지
-    if (
-      /mobile|android|iphone|ipod|blackberry|iemobile|opera mini/i.test(ua)
-    ) {
+    if (/mobile|android|iphone|ipod|blackberry|iemobile|opera mini/i.test(ua)) {
       return DeviceType.MOBILE;
     }
 
@@ -60,9 +58,7 @@ export class DeviceDetector {
     }
 
     // 데스크톱/웹 브라우저
-    if (
-      /windows|macintosh|linux|chrome|safari|firefox|edge|opera/i.test(ua)
-    ) {
+    if (/windows|macintosh|linux|chrome|safari|firefox|edge|opera/i.test(ua)) {
       return DeviceType.WEB;
     }
 
@@ -89,9 +85,7 @@ export class DeviceDetector {
     if (/android/i.test(ua)) {
       const version = this.extractAndroidVersion(ua);
       const device = this.extractAndroidDevice(ua);
-      return device
-        ? `${device} (Android ${version})`
-        : `Android ${version}`;
+      return device ? `${device} (Android ${version})` : `Android ${version}`;
     }
 
     // 데스크톱 브라우저

@@ -28,7 +28,9 @@ const redisClient = createClient({
     reconnectStrategy: (retries: number) => {
       // 최대 10초까지 재시도 간격 증가
       const delay = Math.min(retries * 100, 10000);
-      logger.warn(`🔄 Redis reconnection attempt ${retries}, delay: ${delay}ms`);
+      logger.warn(
+        `🔄 Redis reconnection attempt ${retries}, delay: ${delay}ms`,
+      );
       return delay;
     },
     connectTimeout: 10000, // 10초 연결 타임아웃
@@ -75,8 +77,13 @@ export const connectRedis = async (): Promise<boolean> => {
     }
     return true;
   } catch (error) {
-    logger.warn('⚠️ Redis connection failed. Server will continue without Redis.', { error });
-    logger.warn('⚠️ Sessions, rate limiting, and caching will operate in degraded mode.');
+    logger.warn(
+      '⚠️ Redis connection failed. Server will continue without Redis.',
+      { error },
+    );
+    logger.warn(
+      '⚠️ Sessions, rate limiting, and caching will operate in degraded mode.',
+    );
     return false;
   }
 };

@@ -57,7 +57,7 @@ export class TagModel {
     this.collection = db.collection<ITag>('tags');
     // 비동기로 인덱스 생성 - 앱 시작을 블로킹하지 않음
 
-    this.initializeIndexes();
+    void this.initializeIndexes();
   }
 
   private async initializeIndexes() {

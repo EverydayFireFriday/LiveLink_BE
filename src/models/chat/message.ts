@@ -23,7 +23,7 @@ export class MessageModel {
   constructor() {
     const db = getDatabase();
     this.messageCollection = db.collection<Message>('messages');
-    this.createIndexes();
+    void this.createIndexes();
   }
 
   private async createIndexes() {

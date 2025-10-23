@@ -1,10 +1,10 @@
 // routes/article/articleRoutes.ts
-import express from "express";
-import { ArticleController } from "../../controllers/article";
+import express from 'express';
+import { ArticleController } from '../../controllers/article';
 import {
   requireAuthForWriteOnlyMiddleware,
   requireAuthInProductionMiddleware,
-} from "../../middlewares/auth/conditionalAuthMiddleware";
+} from '../../middlewares/auth/conditionalAuthMiddleware';
 
 const router = express.Router();
 const articleController = new ArticleController();
@@ -87,9 +87,9 @@ const articleController = new ArticleController();
  */
 // 게시글 생성 (개발환경에서는 인증 스킵)
 router.post(
-  "/",
+  '/',
   requireAuthInProductionMiddleware,
-  articleController.createArticle
+  articleController.createArticle,
 );
 
 /**
@@ -151,7 +151,7 @@ router.post(
  *         description: 서버 에러
  */
 // 발행된 게시글 목록 조회 (인증 없이 조회 가능)
-router.get("/", articleController.getPublishedArticles);
+router.get('/', articleController.getPublishedArticles);
 
 /**
  * @swagger
@@ -210,8 +210,8 @@ router.get("/", articleController.getPublishedArticles);
  *         description: 서버 에러
  */
 // 인기 게시글 조회 (인증 없이 조회 가능)
-router.get("/popular", articleController.getPopularArticles);
- 
+router.get('/popular', articleController.getPopularArticles);
+
 /**
  * @swagger
  * /article/author/{authorId}:
@@ -268,7 +268,7 @@ router.get("/popular", articleController.getPopularArticles);
  *         description: 서버 에러
  */
 // 작성자별 게시글 조회 (인증 없이 조회 가능)
-router.get("/author/:authorId", articleController.getArticlesByAuthor);
+router.get('/author/:authorId', articleController.getArticlesByAuthor);
 
 /**
  * @swagger
@@ -315,7 +315,7 @@ router.get("/author/:authorId", articleController.getArticlesByAuthor);
  *         description: 서버 에러
  */
 // 게시글 상세 조회 (인증 없이 조회 가능, 조회수 증가)
-router.get("/:id", articleController.getArticleById);
+router.get('/:id', articleController.getArticleById);
 
 /**
  * @swagger
@@ -387,9 +387,9 @@ router.get("/:id", articleController.getArticleById);
  */
 // 게시글 수정 (개발환경에서는 인증 스킵)
 router.put(
-  "/:id",
+  '/:id',
   requireAuthInProductionMiddleware,
-  articleController.updateArticle
+  articleController.updateArticle,
 );
 
 /**
@@ -428,9 +428,9 @@ router.put(
  */
 // 게시글 삭제 (개발환경에서는 인증 스킵)
 router.delete(
-  "/:id",
+  '/:id',
   requireAuthInProductionMiddleware,
-  articleController.deleteArticle
+  articleController.deleteArticle,
 );
 
 export default router;

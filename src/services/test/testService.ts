@@ -95,7 +95,9 @@ export class TestService {
         mongoId = generateObjectIdFromUid(concertData.uid);
 
         // ObjectId 중복 확인
-        const existingById = await ConcertTestModel.findById(mongoId.toString());
+        const existingById = await ConcertTestModel.findById(
+          mongoId.toString(),
+        );
         if (existingById) {
           mongoId = new ObjectId();
         }
@@ -180,7 +182,8 @@ export class TestService {
       logger.error('테스트 콘서트 생성 서비스 에러:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '테스트 콘서트 생성 실패',
+        error:
+          error instanceof Error ? error.message : '테스트 콘서트 생성 실패',
         statusCode: 500,
       };
     }

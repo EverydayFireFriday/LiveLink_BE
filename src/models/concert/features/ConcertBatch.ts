@@ -16,13 +16,13 @@ export class ConcertBatch {
 
   async findByIds(ids: string[]): Promise<IConcert[]> {
     if (!ids || ids.length === 0) return [];
-    const objectIds = ids.map(id => new ObjectId(id));
+    const objectIds = ids.map((id) => new ObjectId(id));
     return await this.collection.find({ _id: { $in: objectIds } }).toArray();
   }
 
   async insertMany(concerts: any[]): Promise<IConcert[]> {
     if (!concerts || concerts.length === 0) return [];
-    const processedConcerts = concerts.map(concert => {
+    const processedConcerts = concerts.map((concert) => {
       const now = new Date();
       return {
         ...concert,
@@ -32,18 +32,24 @@ export class ConcertBatch {
         createdAt: concert.createdAt || now,
         updatedAt: concert.updatedAt || now,
         datetime: concert.datetime.map((dt: any) => new Date(dt)),
-        ticketOpenDate: concert.ticketOpenDate ? new Date(concert.ticketOpenDate) : undefined,
+        ticketOpenDate: concert.ticketOpenDate
+          ? new Date(concert.ticketOpenDate)
+          : undefined,
       };
     });
-    const result = await this.collection.insertMany(processedConcerts, { ordered: false });
+    const result = await this.collection.insertMany(processedConcerts, {
+      ordered: false,
+    });
     const insertedIds = Object.values(result.insertedIds);
     return await this.collection.find({ _id: { $in: insertedIds } }).toArray();
   }
 
   async deleteByIds(ids: string[]): Promise<number> {
     if (!ids || ids.length === 0) return 0;
-    const objectIds = ids.map(id => new ObjectId(id));
-    const result = await this.collection.deleteMany({ _id: { $in: objectIds } });
+    const objectIds = ids.map((id) => new ObjectId(id));
+    const result = await this.collection.deleteMany({
+      _id: { $in: objectIds },
+    });
     return result.deletedCount || 0;
   }
 
@@ -54,8 +60,15 @@ export class ConcertBatch {
     return await this.collection.bulkWrite(operations, { ordered: false });
   }
 
-  async batchLikeOperations(operations: Array<{ concertId: string; userId: string; action: 'add' | 'remove'; }>): Promise<{ success: number; failed: number; errors: any[] }> {
-    if (!operations || operations.length === 0) return { success: 0, failed: 0, errors: [] };
+  async batchLikeOperations(
+    operations: Array<{
+      concertId: string;
+      userId: string;
+      action: 'add' | 'remove';
+    }>,
+  ): Promise<{ success: number; failed: number; errors: any[] }> {
+    if (!operations || operations.length === 0)
+      return { success: 0, failed: 0, errors: [] };
 
     const bulkOps: any[] = [];
     const errors: any[] = [];
@@ -70,14 +83,16 @@ export class ConcertBatch {
           failedCount++;
           continue;
         }
-        const query = ObjectId.isValid(concertId) ? { _id: new ObjectId(concertId) } : { uid: concertId };
+        const query = ObjectId.isValid(concertId)
+          ? { _id: new ObjectId(concertId) }
+          : { uid: concertId };
         const userObjectId = new ObjectId(userId);
 
         if (action === 'add') {
           bulkOps.push({
             updateOne: {
               filter: { ...query, 'likes.userId': { $ne: userObjectId } },
-              update: { 
+              update: {
                 $push: { likes: { userId: userObjectId, likedAt: new Date() } },
                 $inc: { likesCount: 1 },
                 $set: { updatedAt: new Date() },
@@ -98,7 +113,10 @@ export class ConcertBatch {
         }
         successCount++;
       } catch (error) {
-        errors.push({ ...op, error: error instanceof Error ? error.message : '알 수 없는 에러' });
+        errors.push({
+          ...op,
+          error: error instanceof Error ? error.message : '알 수 없는 에러',
+        });
         failedCount++;
       }
     }

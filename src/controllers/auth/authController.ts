@@ -137,7 +137,9 @@ export class AuthController {
           const { DeviceDetector } = await import(
             '../../utils/device/deviceDetector'
           );
-          const { getSessionMaxAge, env } = await import('../../config/env/env');
+          const { getSessionMaxAge, env } = await import(
+            '../../config/env/env'
+          );
           const { redisClient } = await import('../../app');
 
           const userSessionModel = new UserSessionModel();
@@ -145,12 +147,15 @@ export class AuthController {
 
           // 세션 개수 제한 체크
           const maxSessionCount = parseInt(env.SESSION_MAX_COUNT);
-          const currentSessions = await userSessionModel.findByUserId(user._id!);
+          const currentSessions = await userSessionModel.findByUserId(
+            user._id!,
+          );
 
           if (currentSessions.length >= maxSessionCount) {
             // 최대 개수 초과 - 가장 오래된 세션 삭제
-            const oldestSession = currentSessions
-              .sort((a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime())[0];
+            const oldestSession = currentSessions.sort(
+              (a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime(),
+            )[0];
 
             // MongoDB에서 삭제
             await userSessionModel.deleteSession(oldestSession.sessionId);
@@ -182,9 +187,8 @@ export class AuthController {
 
           const expiresInDays = Math.floor(sessionMaxAge / 1000 / 60 / 60 / 24);
           const expiresInHours = Math.floor(sessionMaxAge / 1000 / 60 / 60);
-          const expiryDisplay = expiresInDays > 0
-            ? `${expiresInDays}일`
-            : `${expiresInHours}시간`;
+          const expiryDisplay =
+            expiresInDays > 0 ? `${expiresInDays}일` : `${expiresInHours}시간`;
 
           logger.info(
             `[Session] Created session for user: ${user.email}, device: ${deviceInfo.type}, expires in: ${expiryDisplay}`,
@@ -463,14 +467,10 @@ export class AuthController {
         req.sessionID,
       );
 
-      return ResponseBuilder.success(
-        res,
-        '활성 세션 목록을 가져왔습니다.',
-        {
-          totalSessions: sessions.length,
-          sessions: sessionResponses,
-        },
-      );
+      return ResponseBuilder.success(res, '활성 세션 목록을 가져왔습니다.', {
+        totalSessions: sessions.length,
+        sessions: sessionResponses,
+      });
     } catch (error) {
       logger.error('[Session] Failed to get sessions:', error);
       return ResponseBuilder.internalError(
@@ -533,9 +533,7 @@ export class AuthController {
         await redisClient.del(sessionKey);
       }
 
-      logger.info(
-        `[Session] User ${userId} deleted session: ${sessionId}`,
-      );
+      logger.info(`[Session] User ${userId} deleted session: ${sessionId}`);
 
       return ResponseBuilder.success(res, '세션이 종료되었습니다.', {
         deletedSessionId: sessionId,
@@ -594,7 +592,9 @@ export class AuthController {
           `[Session] Redis deletion results: ${deleteResults.join(', ')}`,
         );
       } else {
-        logger.warn('[Session] Redis client is not open, skipping Redis deletion');
+        logger.warn(
+          '[Session] Redis client is not open, skipping Redis deletion',
+        );
       }
 
       // UserSession에서 모든 세션 삭제 (현재 세션 제외)

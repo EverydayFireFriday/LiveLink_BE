@@ -1,7 +1,7 @@
 // routes/article/articleLikeRoutes.ts
-import express from "express";
-import { ArticleLikeController } from "../../controllers/article";
-import { requireAuthInProductionMiddleware } from "../../middlewares/auth/conditionalAuthMiddleware";
+import express from 'express';
+import { ArticleLikeController } from '../../controllers/article';
+import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
 
 const router = express.Router();
 const articleLikeController = new ArticleLikeController();
@@ -54,9 +54,9 @@ const articleLikeController = new ArticleLikeController();
  *         description: 서버 에러
  */
 router.post(
-  "/like/toggle/:articleId",
+  '/like/toggle/:articleId',
   requireAuthInProductionMiddleware,
-  articleLikeController.toggleLike
+  articleLikeController.toggleLike,
 );
 
 /**
@@ -100,9 +100,9 @@ router.post(
  *         description: 서버 에러
  */
 router.get(
-  "/like/status/:articleId",
+  '/like/status/:articleId',
   requireAuthInProductionMiddleware, // 현재 사용자 상태 조회를 위해 인증 필요
-  articleLikeController.getLikeStatus
+  articleLikeController.getLikeStatus,
 );
 
 /**
@@ -154,9 +154,6 @@ router.get(
  *       500:
  *         description: 서버 에러
  */
-router.get(
-  "/like/user/:userId",
-  articleLikeController.getUserLikedArticles
-);
+router.get('/like/user/:userId', articleLikeController.getUserLikedArticles);
 
 export default router;

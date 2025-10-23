@@ -187,9 +187,16 @@ app.use((req, res, next) => {
 });
 
 // Prometheus metrics endpoint
-app.get('/metrics', async (req, res) => {
-  res.setHeader('Content-Type', register.contentType);
-  res.end(await register.metrics());
+app.get('/metrics', (req, res) => {
+  void (async () => {
+    try {
+      res.setHeader('Content-Type', register.contentType);
+      res.end(await register.metrics());
+    } catch (error) {
+      logger.error('Metrics endpoint error:', error);
+      res.status(500).send('Internal Server Error');
+    }
+  })();
 });
 
 // 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
@@ -382,7 +389,9 @@ const logSessionStoreStatus = (useRedis: boolean): void => {
   if (useRedis && redisClient.isOpen) {
     logger.info('✅ Session store: Redis (reconnection will use Redis)');
   } else {
-    logger.warn('⚠️ Session store: Memory (sessions will not persist across restarts)');
+    logger.warn(
+      '⚠️ Session store: Memory (sessions will not persist across restarts)',
+    );
   }
 };
 
@@ -639,24 +648,32 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
       });
 
       // 클라이언트가 메시지를 받을 시간 제공 (5초)
-      logger.info('⏳ Waiting 5 seconds for clients to receive shutdown notice...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      logger.info(
+        '⏳ Waiting 5 seconds for clients to receive shutdown notice...',
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
 
     // 3️⃣ 진행 중인 요청 완료 대기 (최대 30초)
-    logger.info(`3️⃣ Waiting for ${activeRequests} active requests to complete (max 30s)...`);
+    logger.info(
+      `3️⃣ Waiting for ${activeRequests} active requests to complete (max 30s)...`,
+    );
     const requestWaitStart = Date.now();
     const maxWaitTime = 30000; // 30초
 
     while (activeRequests > 0 && Date.now() - requestWaitStart < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초마다 체크
+      await new Promise((resolve) => setTimeout(resolve, 500)); // 0.5초마다 체크
       if (activeRequests > 0) {
-        logger.info(`⏳ Still waiting... ${activeRequests} active requests remaining`);
+        logger.info(
+          `⏳ Still waiting... ${activeRequests} active requests remaining`,
+        );
       }
     }
 
     if (activeRequests > 0) {
-      logger.warn(`⚠️ Force closing with ${activeRequests} active requests after 30s timeout`);
+      logger.warn(
+        `⚠️ Force closing with ${activeRequests} active requests after 30s timeout`,
+      );
     } else {
       logger.info('✅ All requests completed successfully');
     }
@@ -687,7 +704,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 
       // 모든 소켓 연결 강제 종료
       const sockets = await io.fetchSockets();
-      sockets.forEach(socket => socket.disconnect(true));
+      sockets.forEach((socket) => socket.disconnect(true));
 
       await io.close();
       chatSocketServer = null;
@@ -742,11 +759,16 @@ const startServer = async (): Promise<void> => {
   try {
     // Firebase 초기화
     try {
-      const { initializeFirebase } = await import('./config/firebase/firebaseConfig');
+      const { initializeFirebase } = await import(
+        './config/firebase/firebaseConfig'
+      );
       initializeFirebase();
       logger.info('✅ Firebase Admin SDK initialized');
     } catch (firebaseError) {
-      logger.warn('⚠️ Firebase initialization failed, notifications will be disabled:', firebaseError);
+      logger.warn(
+        '⚠️ Firebase initialization failed, notifications will be disabled:',
+        firebaseError,
+      );
       // Firebase 실패는 서버 시작을 중단하지 않음
     }
 
@@ -842,7 +864,9 @@ const startServer = async (): Promise<void> => {
       // PM2 ready 신호 전송 (무중단 배포 지원)
       if (process.send) {
         process.send('ready');
-        logger.info('✅ PM2 ready signal sent - Zero-downtime deployment enabled');
+        logger.info(
+          '✅ PM2 ready signal sent - Zero-downtime deployment enabled',
+        );
       }
     });
   } catch (err) {
@@ -863,8 +887,8 @@ process.on('uncaughtException', (err) => {
 });
 
 // 🛑 그레이스풀 셧다운 (MUST)
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 // 🚀 서버 시작
 try {

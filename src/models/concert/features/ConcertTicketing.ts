@@ -13,7 +13,7 @@ export class ConcertTicketing {
     return await this.collection
       .find({
         'ticketOpenDate.openDate': { $gte: now },
-        status: 'upcoming'
+        status: 'upcoming',
       })
       .sort({ 'ticketOpenDate.openDate': 1 })
       .toArray();

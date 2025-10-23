@@ -1,11 +1,14 @@
-import express from "express";
+import express from 'express';
 import {
   getLikeStatus,
   addLike,
   removeLike,
   getLikedConcerts,
-} from "../../controllers/concert/concertLikeController";
-import { requireAuth, requireAdmin } from "../../middlewares/auth/authMiddleware";
+} from '../../controllers/concert/concertLikeController';
+import {
+  requireAuth,
+  requireAdmin,
+} from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 
@@ -39,7 +42,7 @@ const router = express.Router();
  *       500:
  *         description: 서버 에러
  */
-router.get("/liked", requireAuth, getLikedConcerts);
+router.get('/liked', requireAuth, getLikedConcerts);
 
 /**
  * @swagger
@@ -68,7 +71,7 @@ router.get("/liked", requireAuth, getLikedConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get("/like/status/:id", requireAuth, getLikeStatus);
+router.get('/like/status/:id', requireAuth, getLikeStatus);
 
 /**
  * @swagger
@@ -99,7 +102,7 @@ router.get("/like/status/:id", requireAuth, getLikeStatus);
  *       500:
  *         description: 서버 에러
  */
-router.post("/like/:id", requireAuth, addLike);
+router.post('/like/:id', requireAuth, addLike);
 
 /**
  * @swagger
@@ -128,6 +131,6 @@ router.post("/like/:id", requireAuth, addLike);
  *       500:
  *         description: 서버 에러
  */
-router.delete("/like/:id", requireAuth, removeLike);
+router.delete('/like/:id', requireAuth, removeLike);
 
 export default router;

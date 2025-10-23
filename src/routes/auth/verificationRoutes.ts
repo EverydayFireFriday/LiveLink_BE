@@ -1,5 +1,5 @@
-import express from "express";
-import { VerificationController } from "../../controllers/auth/verificationController";
+import express from 'express';
+import { VerificationController } from '../../controllers/auth/verificationController';
 
 const router = express.Router();
 const verificationController = new VerificationController();
@@ -101,8 +101,8 @@ const verificationController = new VerificationController();
  */
 // 인증 관련
 router.post(
-  "/verification/status",
-  verificationController.getVerificationStatus
+  '/verification/status',
+  verificationController.getVerificationStatus,
 );
 /**
  * @swagger
@@ -188,6 +188,6 @@ router.post(
  *                   type: string
  *                   example: "인증 프로세스 취소 실패"
  */
-router.post("/verification/cancel", verificationController.cancelVerification);
+router.post('/verification/cancel', verificationController.cancelVerification);
 
 export default router;

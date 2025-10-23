@@ -107,52 +107,54 @@ const createRateLimitMiddleware = (
   limiter: RateLimiterRedis,
   limiterName: string,
 ) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // Redis 연결 확인
-    if (ioredisClient.status !== 'ready') {
-      return handleRedisError(req, res);
-    }
-
-    try {
-      const key = req.ip || 'unknown'; // IP 주소를 키로 사용
-      const result = await limiter.consume(key);
-
-      // Rate limit 헤더 설정
-      res.setHeader('X-RateLimit-Limit', limiter.points);
-      res.setHeader('X-RateLimit-Remaining', result.remainingPoints);
-      res.setHeader(
-        'X-RateLimit-Reset',
-        new Date(Date.now() + result.msBeforeNext).toISOString(),
-      );
-
-      next();
-    } catch (error) {
-      // rate-limiter-flexible은 제한 초과 시 RateLimiterRes 객체를 throw함
-      if (error && typeof error === 'object' && 'msBeforeNext' in error) {
-        const rateLimiterError = error as {
-          msBeforeNext: number;
-          remainingPoints: number;
-        };
-
-        // Retry-After 헤더 설정 (초 단위)
-        const retryAfterSeconds = Math.ceil(
-          rateLimiterError.msBeforeNext / 1000,
-        );
-        res.setHeader('Retry-After', retryAfterSeconds);
-        res.setHeader('X-RateLimit-Limit', limiter.points);
-        res.setHeader('X-RateLimit-Remaining', 0);
-        res.setHeader(
-          'X-RateLimit-Reset',
-          new Date(Date.now() + rateLimiterError.msBeforeNext).toISOString(),
-        );
-
-        return createRateLimitHandler(limiterName)(req, res, next);
+  return (req: Request, res: Response, next: NextFunction) => {
+    void (async () => {
+      // Redis 연결 확인
+      if (ioredisClient.status !== 'ready') {
+        return handleRedisError(req, res);
       }
 
-      // 기타 에러 (Redis 연결 문제 등)
-      logger.error(`Rate limiter error for ${limiterName}:`, error);
-      return handleRedisError(req, res);
-    }
+      try {
+        const key = req.ip || 'unknown'; // IP 주소를 키로 사용
+        const result = await limiter.consume(key);
+
+        // Rate limit 헤더 설정
+        res.setHeader('X-RateLimit-Limit', limiter.points);
+        res.setHeader('X-RateLimit-Remaining', result.remainingPoints);
+        res.setHeader(
+          'X-RateLimit-Reset',
+          new Date(Date.now() + result.msBeforeNext).toISOString(),
+        );
+
+        next();
+      } catch (error) {
+        // rate-limiter-flexible은 제한 초과 시 RateLimiterRes 객체를 throw함
+        if (error && typeof error === 'object' && 'msBeforeNext' in error) {
+          const rateLimiterError = error as {
+            msBeforeNext: number;
+            remainingPoints: number;
+          };
+
+          // Retry-After 헤더 설정 (초 단위)
+          const retryAfterSeconds = Math.ceil(
+            rateLimiterError.msBeforeNext / 1000,
+          );
+          res.setHeader('Retry-After', retryAfterSeconds);
+          res.setHeader('X-RateLimit-Limit', limiter.points);
+          res.setHeader('X-RateLimit-Remaining', 0);
+          res.setHeader(
+            'X-RateLimit-Reset',
+            new Date(Date.now() + rateLimiterError.msBeforeNext).toISOString(),
+          );
+
+          return createRateLimitHandler(limiterName)(req, res, next);
+        }
+
+        // 기타 에러 (Redis 연결 문제 등)
+        logger.error(`Rate limiter error for ${limiterName}:`, error);
+        return handleRedisError(req, res);
+      }
+    })();
   };
 };
 

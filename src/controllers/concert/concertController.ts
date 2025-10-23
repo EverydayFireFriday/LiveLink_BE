@@ -130,7 +130,10 @@ export const getConcert = async (
             status: result.data.status,
             hasTicketInfo:
               !!result.data.ticketLink && result.data.ticketLink.length > 0,
-            hasTicketOpenDate: !!(result.data.ticketOpenDate && result.data.ticketOpenDate.length > 0),
+            hasTicketOpenDate: !!(
+              result.data.ticketOpenDate &&
+              result.data.ticketOpenDate.length > 0
+            ),
             upcomingDates:
               result.data.datetime?.filter(
                 (date: Date) => new Date(date) > new Date(),
@@ -403,7 +406,9 @@ export const updateConcert = async (
 
     // 기존 콘서트 정보 조회 (변경사항 감지를 위해)
     const existingConcert = await ConcertService.getConcert(id);
-    const oldConcertData = existingConcert.success ? existingConcert.data : null;
+    const oldConcertData = existingConcert.success
+      ? existingConcert.data
+      : null;
 
     // 미들웨어에서 이미 인증 확인됨
     const result = await ConcertService.updateConcert(id, req.body);
@@ -426,29 +431,42 @@ export const updateConcert = async (
       setImmediate(async () => {
         try {
           if (!oldConcertData) {
-            logger.warn('⚠️ 이전 콘서트 데이터를 찾을 수 없어 알림을 보낼 수 없습니다.');
+            logger.warn(
+              '⚠️ 이전 콘서트 데이터를 찾을 수 없어 알림을 보낼 수 없습니다.',
+            );
             return;
           }
 
-          const newConcertData = result.data as any;
+          const newConcertData = result.data;
 
           // 업데이트 타입 감지
-          let updateType: 'info_updated' | 'date_changed' | 'ticket_open' | 'cancelled' = 'info_updated';
+          let updateType:
+            | 'info_updated'
+            | 'date_changed'
+            | 'ticket_open'
+            | 'cancelled' = 'info_updated';
           let message = '공연 정보가 업데이트되었습니다';
 
-          if (newConcertData.status === 'cancelled' && oldConcertData.status !== 'cancelled') {
+          if (
+            newConcertData.status === 'cancelled' &&
+            oldConcertData.status !== 'cancelled'
+          ) {
             updateType = 'cancelled';
             message = '공연이 취소되었습니다';
           } else if (
             newConcertData.ticketOpenDate &&
             Array.isArray(newConcertData.ticketOpenDate) &&
             newConcertData.ticketOpenDate.length > 0 &&
-            (!oldConcertData.ticketOpenDate || oldConcertData.ticketOpenDate.length === 0)
+            (!oldConcertData.ticketOpenDate ||
+              oldConcertData.ticketOpenDate.length === 0)
           ) {
             updateType = 'ticket_open';
             const firstTicketOpen = newConcertData.ticketOpenDate[0];
             message = `${firstTicketOpen.openTitle}: ${new Date(firstTicketOpen.openDate).toLocaleDateString('ko-KR')}에 오픈됩니다`;
-          } else if (JSON.stringify(newConcertData.datetime) !== JSON.stringify(oldConcertData.datetime)) {
+          } else if (
+            JSON.stringify(newConcertData.datetime) !==
+            JSON.stringify(oldConcertData.datetime)
+          ) {
             updateType = 'date_changed';
             message = '공연 일정이 변경되었습니다';
           }

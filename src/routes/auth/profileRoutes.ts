@@ -1,6 +1,9 @@
-import express from "express";
-import { ProfileController } from "../../controllers/auth/profileController";
-import { requireAuth, requireAdmin } from "../../middlewares/auth/authMiddleware";
+import express from 'express';
+import { ProfileController } from '../../controllers/auth/profileController';
+import {
+  requireAuth,
+  requireAdmin,
+} from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 const profileController = new ProfileController();

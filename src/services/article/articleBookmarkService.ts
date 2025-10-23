@@ -139,11 +139,9 @@ export class ArticleBookmarkService {
       return result;
     } else {
       const mapResult = new Map<string, boolean>();
-      Object.entries(result as Record<string, boolean>).forEach(
-        ([key, value]) => {
-          mapResult.set(key, value);
-        },
-      );
+      Object.entries(result).forEach(([key, value]) => {
+        mapResult.set(key, value);
+      });
       return mapResult;
     }
   }

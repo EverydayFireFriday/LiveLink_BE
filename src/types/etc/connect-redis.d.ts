@@ -1,8 +1,8 @@
 // types/connect-redis.d.ts
-declare module "connect-redis" {
-  import { Store } from "express-session";
-  import { RedisClientType } from "redis";
-  import * as ioRedis from "ioredis";
+declare module 'connect-redis' {
+  import { Store } from 'express-session';
+  import { RedisClientType } from 'redis';
+  import * as ioRedis from 'ioredis';
 
   namespace connectRedis {
     interface RedisStoreOptions {
@@ -26,11 +26,11 @@ declare module "connect-redis" {
     type Client = RedisClientType | ioRedis.Redis | ioRedis.Cluster;
   }
 
-  interface RedisStore extends Store {
-    new (options?: connectRedis.RedisStoreOptions): RedisStore;
-  }
+  type RedisStoreConstructor = {
+    new (options?: connectRedis.RedisStoreOptions): Store;
+  };
 
-  function connectRedis(session: any): typeof RedisStore;
+  function connectRedis(session: any): RedisStoreConstructor;
 
   export = connectRedis;
 }

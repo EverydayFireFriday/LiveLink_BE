@@ -1,32 +1,32 @@
-export { ArticleService, getArticleService } from "./articleService";
+export { ArticleService, getArticleService } from './articleService';
 export {
   ArticleLikeService,
   getArticleLikeService,
-} from "./articleLikeService";
+} from './articleLikeService';
 export {
   ArticleCommentService,
   getArticleCommentService,
-} from "./articleCommentService";
+} from './articleCommentService';
 export {
   ArticleBookmarkService,
   getArticleBookmarkService,
-} from "./articleBookmarkService";
+} from './articleBookmarkService';
 
 // 모든 서비스를 한 번에 가져오는 헬퍼 함수
 export const getAllArticleServices = () => {
-  const { ArticleService, getArticleService } = require("./articleService");
+  const { ArticleService, getArticleService } = require('./articleService');
   const {
     ArticleLikeService,
     getArticleLikeService,
-  } = require("./articleLikeService");
+  } = require('./articleLikeService');
   const {
     ArticleCommentService,
     getArticleCommentService,
-  } = require("./articleCommentService");
+  } = require('./articleCommentService');
   const {
     ArticleBookmarkService,
     getArticleBookmarkService,
-  } = require("./articleBookmarkService");
+  } = require('./articleBookmarkService');
 
   return {
     articleService: getArticleService(),

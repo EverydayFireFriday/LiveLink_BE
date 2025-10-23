@@ -11,8 +11,9 @@ export class SessionCleanupScheduler {
 
   constructor() {
     // 환경 변수에서 체크 간격 가져오기 (기본값: 1시간 = 3600000ms)
-    this.CHECK_INTERVAL =
-      parseInt(process.env.SESSION_CLEANUP_INTERVAL || '3600000');
+    this.CHECK_INTERVAL = parseInt(
+      process.env.SESSION_CLEANUP_INTERVAL || '3600000',
+    );
   }
 
   /**
@@ -68,9 +69,7 @@ export class SessionCleanupScheduler {
       const deletedCount = await userSessionModel.cleanExpiredSessions();
 
       if (deletedCount > 0) {
-        logger.info(
-          `✅ Cleaned up ${deletedCount} expired session(s)`,
-        );
+        logger.info(`✅ Cleaned up ${deletedCount} expired session(s)`);
       } else {
         logger.debug('Session cleanup completed - no expired sessions found');
       }

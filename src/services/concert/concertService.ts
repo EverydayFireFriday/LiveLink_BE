@@ -11,7 +11,10 @@ import {
 } from '../../models/concert/validation/ConcertValidationUtils';
 
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
-import type { IConcert, ITicketOpen } from '../../models/concert/base/ConcertTypes';
+import type {
+  IConcert,
+  ITicketOpen,
+} from '../../models/concert/base/ConcertTypes';
 
 export interface CreateConcertRequest {
   uid: string;
@@ -140,10 +143,12 @@ export class ConcertService {
             ? [concertData.ticketLink]
             : [],
         ticketOpenDate: Array.isArray(concertData.ticketOpenDate)
-          ? concertData.ticketOpenDate.map((item: { openTitle: string; openDate: string }) => ({
-              openTitle: item.openTitle,
-              openDate: new Date(item.openDate),
-            }))
+          ? concertData.ticketOpenDate.map(
+              (item: { openTitle: string; openDate: string }) => ({
+                openTitle: item.openTitle,
+                openDate: new Date(item.openDate),
+              }),
+            )
           : undefined,
         posterImage: concertData.posterImage || '',
         infoImages: concertData.infoImages || [], // info -> infoImages로 변경
@@ -394,7 +399,9 @@ export class ConcertService {
       const concertsWithLikeStatus = randomConcerts.map(
         (concert: IConcert) => ({
           ...concert,
-          ...(userId && { isLiked: likedConcertIds.has(concert._id.toString()) }),
+          ...(userId && {
+            isLiked: likedConcertIds.has(concert._id.toString()),
+          }),
         }),
       );
 
@@ -452,7 +459,7 @@ export class ConcertService {
           },
         },
         {
-          $unset: 'concerts.primaryPlatform',  // ← 명시적 제거
+          $unset: 'concerts.primaryPlatform', // ← 명시적 제거
         },
       ];
 
@@ -481,7 +488,7 @@ export class ConcertService {
           },
         },
         {
-          $unset: 'concerts.primaryCategory',  // ← 명시적 제거
+          $unset: 'concerts.primaryCategory', // ← 명시적 제거
         },
       ];
 
@@ -698,11 +705,15 @@ export class ConcertService {
       }
 
       if (cleanUpdateData.ticketOpenDate) {
-        cleanUpdateData.ticketOpenDate = Array.isArray(cleanUpdateData.ticketOpenDate)
-          ? cleanUpdateData.ticketOpenDate.map((item: { openTitle: string; openDate: string }) => ({
-              openTitle: item.openTitle,
-              openDate: new Date(item.openDate),
-            }))
+        cleanUpdateData.ticketOpenDate = Array.isArray(
+          cleanUpdateData.ticketOpenDate,
+        )
+          ? cleanUpdateData.ticketOpenDate.map(
+              (item: { openTitle: string; openDate: string }) => ({
+                openTitle: item.openTitle,
+                openDate: new Date(item.openDate),
+              }),
+            )
           : cleanUpdateData.ticketOpenDate;
       }
 

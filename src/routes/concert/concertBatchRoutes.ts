@@ -1,13 +1,13 @@
-import express from "express";
+import express from 'express';
 import {
   batchUploadConcerts,
   batchUpdateConcerts,
   batchDeleteConcerts,
-} from "../../controllers/concert/concertBatchController";
+} from '../../controllers/concert/concertBatchController';
 import {
   requireAuth,
   requireAdmin,
-} from "../../middlewares/auth/authMiddleware";
+} from '../../middlewares/auth/authMiddleware';
 
 const router = express.Router();
 
@@ -215,7 +215,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/batch", requireAdmin, batchUploadConcerts);
+router.post('/batch', requireAdmin, batchUploadConcerts);
 
 /**
  * @swagger
@@ -407,7 +407,7 @@ router.post("/batch", requireAdmin, batchUploadConcerts);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put("/batch", requireAdmin, batchUpdateConcerts);
+router.put('/batch', requireAdmin, batchUpdateConcerts);
 
 /**
  * @swagger
@@ -527,7 +527,6 @@ router.put("/batch", requireAdmin, batchUpdateConcerts);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/batch", requireAdmin, batchDeleteConcerts);
-
+router.delete('/batch', requireAdmin, batchDeleteConcerts);
 
 export default router;

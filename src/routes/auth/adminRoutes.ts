@@ -1,15 +1,15 @@
-import express from "express";
-import { AdminController } from "../../controllers/auth/adminController";
+import express from 'express';
+import { AdminController } from '../../controllers/auth/adminController';
 import {
   requireAdmin,
   checkAdminStatus,
-} from "../../middlewares/auth/adminMiddleware";
+} from '../../middlewares/auth/adminMiddleware';
 
 const router = express.Router();
 const adminController = new AdminController();
 
 // 관리자 권한 확인
-router.get("/check", checkAdminStatus);
+router.get('/check', checkAdminStatus);
 
 // 사용자 관리
 /**
@@ -34,7 +34,7 @@ router.get("/check", checkAdminStatus);
  *         name: skip
  *         schema:
  *           type: integer
-   *           default: 0
+ *           default: 0
  *           minimum: 0
  *         description: 건너뛸 사용자 수
  *       - in: query
@@ -73,7 +73,7 @@ router.get("/check", checkAdminStatus);
  *       500:
  *         description: 서버 에러
  */
-router.get("/users", requireAdmin, adminController.getAllUsers);
+router.get('/users', requireAdmin, adminController.getAllUsers);
 /**
  * @swagger
  * /auth/admin/users/{userId}:
@@ -109,7 +109,7 @@ router.get("/users", requireAdmin, adminController.getAllUsers);
  *       403:
  *         description: 관리자 권한 필요
  */
-router.get("/users/:userId", requireAdmin, adminController.getUserById);
+router.get('/users/:userId', requireAdmin, adminController.getUserById);
 /**
  * @swagger
  * /auth/admin/users/status/{userId}:
@@ -153,9 +153,9 @@ router.get("/users/:userId", requireAdmin, adminController.getUserById);
  *         description: 관리자 권한 필요
  */
 router.patch(
-  "/users/status/:userId",
+  '/users/status/:userId',
   requireAdmin,
-  adminController.updateUserStatus
+  adminController.updateUserStatus,
 );
 
 // 통계 및 대시보드
@@ -167,7 +167,7 @@ router.patch(
  *     description: 사용자 통계 및 시스템 현황을 조회합니다.
  *     tags: [Admin]
  *     security:
-   *       - sessionAuth: []
+ *       - sessionAuth: []
  *     responses:
  *       200:
  *         description: 통계 조회 성공
@@ -185,6 +185,6 @@ router.patch(
  *       403:
  *         description: 관리자 권한 필요
  */
-router.get("/stats", requireAdmin, adminController.getAdminStats);
+router.get('/stats', requireAdmin, adminController.getAdminStats);
 
 export default router;

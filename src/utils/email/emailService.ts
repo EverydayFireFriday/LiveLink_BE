@@ -95,7 +95,7 @@ export class EmailService {
         },
       };
 
-      const info = (await this.transporter.sendMail(mailOptions)) as any;
+      const info = await this.transporter.sendMail(mailOptions);
 
       logger.info(`✅ 이메일 전송 성공: ${to} - Message ID: ${info.messageId}`);
 
@@ -330,7 +330,7 @@ export class EmailService {
     }
   }
 
-  async cleanup(): Promise<void> {
+  cleanup(): void {
     try {
       this.transporter.close();
       logger.info('✅ 이메일 서비스 리소스 정리 완료');

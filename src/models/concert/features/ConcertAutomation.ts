@@ -11,12 +11,12 @@ export class ConcertAutomation {
   async updateExpiredConcerts(): Promise<number> {
     const now = new Date();
     const result = await this.collection.updateMany(
-      { 
-        datetime: { $elemMatch: { $lt: now } }, 
+      {
+        datetime: { $elemMatch: { $lt: now } },
         status: { $in: ['upcoming', 'ongoing'] },
       },
-      { 
-        $set: { 
+      {
+        $set: {
           status: 'completed',
           updatedAt: now,
         },

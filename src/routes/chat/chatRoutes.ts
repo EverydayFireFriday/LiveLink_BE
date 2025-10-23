@@ -314,7 +314,11 @@ router.post('/rooms/leave/:roomId', requireAuth, chatController.leaveChatRoom);
  *       403:
  *         description: 접근 권한 없음
  */
-router.get('/rooms/messages/:roomId', requireAuth, chatController.getChatRoomMessages);
+router.get(
+  '/rooms/messages/:roomId',
+  requireAuth,
+  chatController.getChatRoomMessages,
+);
 /**
  * @swagger
  * /chat/rooms/{roomId}:
@@ -399,7 +403,11 @@ router.get('/rooms/messages/:roomId', requireAuth, chatController.getChatRoomMes
  *       403:
  *         description: 접근 권한 없음
  */
-router.get('/rooms/messages/search/:roomId', requireAuth, chatController.searchMessages);
+router.get(
+  '/rooms/messages/search/:roomId',
+  requireAuth,
+  chatController.searchMessages,
+);
 /**
  * @swagger
  * /chat/messages/{messageId}:
@@ -481,6 +489,10 @@ router.put('/messages/:messageId', requireAuth, chatController.updateMessage);
  *       404:
  *         description: 메시지를 찾을 수 없음
  */
-router.delete('/messages/:messageId', requireAuth, chatController.deleteMessage);
+router.delete(
+  '/messages/:messageId',
+  requireAuth,
+  chatController.deleteMessage,
+);
 
 export default router;

@@ -2,7 +2,11 @@ import { ObjectId } from 'mongodb';
 import { ChatRoomModel, ChatRoom } from '../../models/chat/chatRoom';
 import { MessageModel } from '../../models/chat/message';
 import { UserModel } from '../../models/auth/user';
-import { ChatRoomCreateRequest, ChatRoomResponse, ChatRoomWithLastMessage } from '../../types/chat';
+import {
+  ChatRoomCreateRequest,
+  ChatRoomResponse,
+  ChatRoomWithLastMessage,
+} from '../../types/chat';
 
 export class ChatRoomService {
   private chatRoomModel: ChatRoomModel;
@@ -15,9 +19,12 @@ export class ChatRoomService {
     this.userModel = new UserModel();
   }
 
-  async createChatRoom(createdBy: string, roomData: ChatRoomCreateRequest): Promise<ChatRoomResponse> {
+  async createChatRoom(
+    createdBy: string,
+    roomData: ChatRoomCreateRequest,
+  ): Promise<ChatRoomResponse> {
     const createdByObjectId = new ObjectId(createdBy);
-    
+
     const chatRoom = await this.chatRoomModel.createChatRoom({
       ...roomData,
       participants: [createdByObjectId],
@@ -27,13 +34,18 @@ export class ChatRoomService {
     return this.transformChatRoomToResponse(chatRoom);
   }
 
-  async getChatRoom(roomId: string, userId: string): Promise<ChatRoomResponse | null> {
+  async getChatRoom(
+    roomId: string,
+    userId: string,
+  ): Promise<ChatRoomResponse | null> {
     const chatRoom = await this.chatRoomModel.findById(roomId);
     if (!chatRoom) return null;
 
     const userObjectId = new ObjectId(userId);
-    const isParticipant = chatRoom.participants.some(p => p.equals(userObjectId));
-    
+    const isParticipant = chatRoom.participants.some((p) =>
+      p.equals(userObjectId),
+    );
+
     if (chatRoom.isPrivate && !isParticipant) {
       throw new Error('접근 권한이 없습니다.');
     }
@@ -43,12 +55,16 @@ export class ChatRoomService {
 
   async getUserChatRooms(userId: string): Promise<ChatRoomWithLastMessage[]> {
     const chatRooms = await this.chatRoomModel.findByParticipant(userId);
-    
+
     const roomsWithLastMessage = await Promise.all(
       chatRooms.map(async (room) => {
-        const lastMessages = await this.messageModel.findByChatRoom(room._id!, 1, 0);
+        const lastMessages = await this.messageModel.findByChatRoom(
+          room._id!,
+          1,
+          0,
+        );
         const lastMessage = lastMessages[0];
-        
+
         let lastMessageResponse = undefined;
         if (lastMessage) {
           const sender = await this.userModel.findById(lastMessage.senderId);
@@ -72,13 +88,16 @@ export class ChatRoomService {
           lastMessage: lastMessageResponse,
           unreadCount: 0,
         };
-      })
+      }),
     );
 
     return roomsWithLastMessage;
   }
 
-  async joinChatRoom(roomId: string, userId: string): Promise<ChatRoomResponse | null> {
+  async joinChatRoom(
+    roomId: string,
+    userId: string,
+  ): Promise<ChatRoomResponse | null> {
     const chatRoom = await this.chatRoomModel.findById(roomId);
     if (!chatRoom) throw new Error('채팅방을 찾을 수 없습니다.');
 
@@ -91,18 +110,27 @@ export class ChatRoomService {
   }
 
   async leaveChatRoom(roomId: string, userId: string): Promise<boolean> {
-    const updatedRoom = await this.chatRoomModel.removeParticipant(roomId, userId);
+    const updatedRoom = await this.chatRoomModel.removeParticipant(
+      roomId,
+      userId,
+    );
     return !!updatedRoom;
   }
 
-  async getPublicChatRooms(limit: number = 20, skip: number = 0): Promise<ChatRoomResponse[]> {
+  async getPublicChatRooms(
+    limit: number = 20,
+    skip: number = 0,
+  ): Promise<ChatRoomResponse[]> {
     const chatRooms = await this.chatRoomModel.findPublicRooms(limit, skip);
-    return chatRooms.map(room => this.transformChatRoomToResponse(room));
+    return chatRooms.map((room) => this.transformChatRoomToResponse(room));
   }
 
-  async searchChatRooms(searchTerm: string, limit: number = 20): Promise<ChatRoomResponse[]> {
+  async searchChatRooms(
+    searchTerm: string,
+    limit: number = 20,
+  ): Promise<ChatRoomResponse[]> {
     const chatRooms = await this.chatRoomModel.searchRooms(searchTerm, limit);
-    return chatRooms.map(room => this.transformChatRoomToResponse(room));
+    return chatRooms.map((room) => this.transformChatRoomToResponse(room));
   }
 
   private transformChatRoomToResponse(chatRoom: ChatRoom): ChatRoomResponse {
@@ -111,7 +139,7 @@ export class ChatRoomService {
       name: chatRoom.name,
       description: chatRoom.description,
       isPrivate: chatRoom.isPrivate,
-      participants: chatRoom.participants.map(p => p.toString()),
+      participants: chatRoom.participants.map((p) => p.toString()),
       createdBy: chatRoom.createdBy.toString(),
       createdAt: chatRoom.createdAt.toISOString(),
       updatedAt: chatRoom.updatedAt.toISOString(),

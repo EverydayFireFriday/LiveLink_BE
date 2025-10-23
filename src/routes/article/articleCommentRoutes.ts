@@ -1,10 +1,10 @@
 // routes/article/articleCommentRoutes.ts
-import express from "express";
-import { ArticleCommentController } from "../../controllers/article";
+import express from 'express';
+import { ArticleCommentController } from '../../controllers/article';
 import {
   requireAuthForWriteOnlyMiddleware,
   requireAuthInProductionMiddleware,
-} from "../../middlewares/auth/conditionalAuthMiddleware";
+} from '../../middlewares/auth/conditionalAuthMiddleware';
 
 const router = express.Router();
 const articleCommentController = new ArticleCommentController();
@@ -77,9 +77,9 @@ const articleCommentController = new ArticleCommentController();
  */
 // 댓글 생성 (개발환경에서는 인증 스킵)
 router.post(
-  "/comment/:articleId",
+  '/comment/:articleId',
   requireAuthInProductionMiddleware,
-  articleCommentController.createComment
+  articleCommentController.createComment,
 );
 
 /**
@@ -142,8 +142,8 @@ router.post(
  */
 // 게시글의 댓글 목록 조회 (GET은 인증 없이 가능)
 router.get(
-  "/comment/:articleId",
-  articleCommentController.getCommentsByArticle
+  '/comment/:articleId',
+  articleCommentController.getCommentsByArticle,
 );
 
 /**
@@ -179,8 +179,8 @@ router.get(
  */
 // 게시글의 댓글 수 조회 (GET은 인증 없이 가능)
 router.get(
-  "/comment/count/:articleId",
-  articleCommentController.getCommentCount
+  '/comment/count/:articleId',
+  articleCommentController.getCommentCount,
 );
 
 /**
@@ -216,7 +216,7 @@ router.get(
  *         description: 서버 에러
  */
 // 댓글 상세 조회 (GET은 인증 없이 가능)
-router.get("/comment/:commentId", articleCommentController.getCommentById);
+router.get('/comment/:commentId', articleCommentController.getCommentById);
 
 /**
  * @swagger
@@ -278,9 +278,9 @@ router.get("/comment/:commentId", articleCommentController.getCommentById);
  */
 // 댓글 수정 (개발환경에서는 인증 스킵)
 router.put(
-  "/comment/:commentId",
+  '/comment/:commentId',
   requireAuthInProductionMiddleware,
-  articleCommentController.updateComment
+  articleCommentController.updateComment,
 );
 
 /**
@@ -334,9 +334,9 @@ router.put(
  */
 // 댓글 삭제 (개발환경에서는 인증 스킵)
 router.delete(
-  "/comment/:commentId",
+  '/comment/:commentId',
   requireAuthInProductionMiddleware,
-  articleCommentController.deleteComment
+  articleCommentController.deleteComment,
 );
 
 /**
@@ -392,8 +392,8 @@ router.delete(
  */
 // 댓글의 대댓글 목록 조회 (GET은 인증 없이 가능)
 router.get(
-  "/comment/replies/:commentId",
-  articleCommentController.getRepliesByComment
+  '/comment/replies/:commentId',
+  articleCommentController.getRepliesByComment,
 );
 
 /**
@@ -448,9 +448,9 @@ router.get(
  */
 // 댓글 좋아요 토글 (개발환경에서는 인증 스킵)
 router.post(
-  "/comment/like/toggle/:commentId",
+  '/comment/like/toggle/:commentId',
   requireAuthInProductionMiddleware,
-  articleCommentController.toggleCommentLike
+  articleCommentController.toggleCommentLike,
 );
 
 /**
@@ -508,9 +508,9 @@ router.post(
  */
 // 작성자별 댓글 목록 조회 (개발환경에서는 인증 스킵)
 router.get(
-  "/comment/author/:authorId",
+  '/comment/author/:authorId',
   requireAuthInProductionMiddleware,
-  articleCommentController.getCommentsByAuthor
+  articleCommentController.getCommentsByAuthor,
 );
 
 export default router;

@@ -150,7 +150,8 @@ const setupAdvancedSearch = () => {
       const layoutSelectors = system.layoutSelectors;
 
       if (layoutSelectors && layoutSelectors.taggedOperations) {
-        const originalTaggedOps = layoutSelectors.taggedOperations;
+        const originalTaggedOps =
+          layoutSelectors.taggedOperations.bind(layoutSelectors);
 
         system.layoutSelectors.taggedOperations = function (
           state: unknown,

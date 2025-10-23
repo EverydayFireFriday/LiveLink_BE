@@ -16,7 +16,7 @@ export class ConcertTestBase {
   constructor(db: Db) {
     this.db = db;
     this.collection = db.collection<IConcert>('concert_test');
-    this.createMinimalIndexes();
+    void this.createMinimalIndexes();
   }
 
   private async createMinimalIndexes() {
@@ -58,7 +58,10 @@ export class ConcertTestBase {
     if (concert.ticketOpenDate && Array.isArray(concert.ticketOpenDate)) {
       concert.ticketOpenDate = concert.ticketOpenDate.map((item) => ({
         ...item,
-        openDate: item.openDate instanceof Date ? item.openDate : new Date(item.openDate),
+        openDate:
+          item.openDate instanceof Date
+            ? item.openDate
+            : new Date(item.openDate),
       }));
     }
 
@@ -113,7 +116,10 @@ export class ConcertTestBase {
     if (updateData.ticketOpenDate && Array.isArray(updateData.ticketOpenDate)) {
       updateData.ticketOpenDate = updateData.ticketOpenDate.map((item) => ({
         ...item,
-        openDate: item.openDate instanceof Date ? item.openDate : new Date(item.openDate),
+        openDate:
+          item.openDate instanceof Date
+            ? item.openDate
+            : new Date(item.openDate),
       }));
     }
 

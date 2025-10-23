@@ -18,7 +18,7 @@ import logger from '../../utils/logger/logger';
 export const maintenanceMiddleware = (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void | Response => {
   try {
     // 1. 헬스체크 엔드포인트는 항상 통과 (K8s liveness/readiness probe용)
@@ -35,7 +35,7 @@ export const maintenanceMiddleware = (
     // 3. maintenance.lock 파일 존재 여부 확인
     const maintenanceLockPath = path.join(
       __dirname,
-      '../../../maintenance.lock'
+      '../../../maintenance.lock',
     );
     const hasMaintenanceLock = fs.existsSync(maintenanceLockPath);
 
@@ -78,7 +78,7 @@ export const maintenanceMiddleware = (
     if (acceptsHtml) {
       const maintenancePage = path.join(
         __dirname,
-        '../../../public/maintenance.html'
+        '../../../public/maintenance.html',
       );
 
       // 점검 페이지가 존재하는지 확인

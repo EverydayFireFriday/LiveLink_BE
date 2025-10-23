@@ -15,7 +15,9 @@ class CacheManager {
   private checkRedisAvailability(): boolean {
     if (!this.client.isOpen) {
       if (this.isRedisAvailable) {
-        logger.warn('⚠️ Redis is not connected. Cache operations will be skipped.');
+        logger.warn(
+          '⚠️ Redis is not connected. Cache operations will be skipped.',
+        );
         this.isRedisAvailable = false;
       }
       return false;

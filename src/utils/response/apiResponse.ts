@@ -228,13 +228,25 @@ export class ResponseBuilder {
 /**
  * 간단한 사용을 위한 단축 함수들
  */
-export const sendSuccess = ResponseBuilder.success;
-export const sendCreated = ResponseBuilder.created;
-export const sendPaginated = ResponseBuilder.paginated;
-export const sendNoContent = ResponseBuilder.noContent;
-export const sendBadRequest = ResponseBuilder.badRequest;
-export const sendUnauthorized = ResponseBuilder.unauthorized;
-export const sendForbidden = ResponseBuilder.forbidden;
-export const sendNotFound = ResponseBuilder.notFound;
-export const sendConflict = ResponseBuilder.conflict;
-export const sendInternalError = ResponseBuilder.internalError;
+export const sendSuccess: typeof ResponseBuilder.success = (...args) =>
+  ResponseBuilder.success(...args);
+export const sendCreated: typeof ResponseBuilder.created = (...args) =>
+  ResponseBuilder.created(...args);
+export const sendPaginated: typeof ResponseBuilder.paginated = (...args) =>
+  ResponseBuilder.paginated(...args);
+export const sendNoContent: typeof ResponseBuilder.noContent = (...args) =>
+  ResponseBuilder.noContent(...args);
+export const sendBadRequest: typeof ResponseBuilder.badRequest = (...args) =>
+  ResponseBuilder.badRequest(...args);
+export const sendUnauthorized: typeof ResponseBuilder.unauthorized = (
+  ...args
+) => ResponseBuilder.unauthorized(...args);
+export const sendForbidden: typeof ResponseBuilder.forbidden = (...args) =>
+  ResponseBuilder.forbidden(...args);
+export const sendNotFound: typeof ResponseBuilder.notFound = (...args) =>
+  ResponseBuilder.notFound(...args);
+export const sendConflict: typeof ResponseBuilder.conflict = (...args) =>
+  ResponseBuilder.conflict(...args);
+export const sendInternalError: typeof ResponseBuilder.internalError = (
+  ...args
+) => ResponseBuilder.internalError(...args);

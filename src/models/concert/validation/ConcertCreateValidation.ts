@@ -181,14 +181,20 @@ export const validateConcertData = (concertData: any): ValidationResult => {
       if (!item.openTitle || typeof item.openTitle !== 'string') {
         return {
           isValid: false,
-          message: 'ticketOpenDate의 각 항목은 openTitle(문자열)을 포함해야 합니다.',
+          message:
+            'ticketOpenDate의 각 항목은 openTitle(문자열)을 포함해야 합니다.',
           field: 'ticketOpenDate',
         };
       }
-      if (!item.openDate || typeof item.openDate !== 'string' || !Date.parse(item.openDate)) {
+      if (
+        !item.openDate ||
+        typeof item.openDate !== 'string' ||
+        !Date.parse(item.openDate)
+      ) {
         return {
           isValid: false,
-          message: 'ticketOpenDate의 각 항목은 유효한 날짜 형식의 openDate를 포함해야 합니다.',
+          message:
+            'ticketOpenDate의 각 항목은 유효한 날짜 형식의 openDate를 포함해야 합니다.',
           field: 'ticketOpenDate',
         };
       }

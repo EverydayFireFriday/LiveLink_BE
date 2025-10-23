@@ -22,11 +22,16 @@ export const generateObjectIdFromUid = (uid: string): ObjectId => {
       const timestampInSeconds = Math.floor(timestamp / 1000);
       return new ObjectId(timestampInSeconds);
     } else {
-      logger.warn(`UID에서 timestamp를 찾을 수 없음: ${uid}, 새로운 ObjectId 생성`);
+      logger.warn(
+        `UID에서 timestamp를 찾을 수 없음: ${uid}, 새로운 ObjectId 생성`,
+      );
       return new ObjectId();
     }
   } catch (error) {
-    logger.warn(`UID를 ObjectId로 변환 실패: ${uid}, 새로운 ObjectId 생성`, error);
+    logger.warn(
+      `UID를 ObjectId로 변환 실패: ${uid}, 새로운 ObjectId 생성`,
+      error,
+    );
     return new ObjectId();
   }
 };
@@ -38,7 +43,8 @@ export const isValidImageUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string' || url.trim().length === 0) {
     return false;
   }
-  const s3UrlPattern = /^https:\/\/[\w.-]+\.s3\.[\w.-]+\.amazonaws\.com\/.*\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
+  const s3UrlPattern =
+    /^https:\/\/[\w.-]+\.s3\.[\w.-]+\.amazonaws\.com\/.*\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
   const generalUrlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
   return s3UrlPattern.test(url) || generalUrlPattern.test(url);
 };
@@ -76,5 +82,7 @@ export const formatValidationError = (result: ValidationResult): string => {
   if (result.isValid) {
     return '';
   }
-  return result.field ? `[${result.field}] ${result.message}` : result.message || '유효성 검증 실패';
+  return result.field
+    ? `[${result.field}] ${result.message}`
+    : result.message || '유효성 검증 실패';
 };

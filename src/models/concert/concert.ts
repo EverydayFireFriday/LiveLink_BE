@@ -16,7 +16,8 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
         Object.defineProperty(
           derivedCtor.prototype,
           name,
-          Object.getOwnPropertyDescriptor(baseCtor.prototype, name) || Object.create(null)
+          Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
+            Object.create(null),
         );
       }
     });
@@ -29,7 +30,14 @@ class ConcertModel extends ConcertBase {
   }
 }
 
-interface ConcertModel extends ConcertSearch, ConcertTicketing, ConcertLocation, ConcertPricing, ConcertBatch, ConcertStats, ConcertAutomation {}
+interface ConcertModel
+  extends ConcertSearch,
+    ConcertTicketing,
+    ConcertLocation,
+    ConcertPricing,
+    ConcertBatch,
+    ConcertStats,
+    ConcertAutomation {}
 
 applyMixins(ConcertModel, [
   ConcertSearch,
@@ -52,7 +60,9 @@ export const initializeConcertModel = (db: Db): ConcertModel => {
 
 export const getConcertModel = (): ConcertModel => {
   if (!concertModel) {
-    throw new Error('Concert 모델이 초기화되지 않았습니다. initializeConcertModel()을 먼저 호출하세요.');
+    throw new Error(
+      'Concert 모델이 초기화되지 않았습니다. initializeConcertModel()을 먼저 호출하세요.',
+    );
   }
   return concertModel;
 };
