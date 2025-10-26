@@ -146,11 +146,12 @@ export const getLikedConcerts = async (
       return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
     }
 
-    const { page, limit } = req.query;
+    const { page, limit, sortBy } = req.query;
 
     const result = await ConcertLikeService.getLikedConcerts(userId, {
       page: safeParseInt(page, 1),
       limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
     });
 
     if (result.success) {

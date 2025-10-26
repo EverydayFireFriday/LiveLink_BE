@@ -31,6 +31,19 @@ const router = express.Router();
  *           type: integer
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, likes, created, upcoming_soon, ticket_soon]
+ *           default: date
+ *         description: |
+ *           정렬 기준
+ *           - date: 날짜순 (공연 날짜 빠른 순)
+ *           - likes: 좋아요순 (좋아요 많은 순)
+ *           - created: 생성순 (최근 등록순)
+ *           - upcoming_soon: 공연 임박순 (공연 날짜가 가장 가까운 순)
+ *           - ticket_soon: 예매 임박순 (티켓 오픈 날짜가 가장 가까운 순)
  *     responses:
  *       200:
  *         description: 좋아요한 콘서트 목록 조회 성공

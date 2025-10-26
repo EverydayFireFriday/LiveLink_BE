@@ -9,12 +9,13 @@ export const searchConcerts = async (
   res: express.Response,
 ) => {
   try {
-    const { q: query, page, limit } = req.query;
+    const { q: query, page, limit, sortBy } = req.query;
 
     const result = await ConcertSearchService.searchConcerts({
       query: query as string,
       page: safeParseInt(page, 1),
       limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
     });
 
     if (result.success) {
@@ -145,12 +146,13 @@ export const getConcertsByArtist = async (
 ) => {
   try {
     const { artist } = req.params;
-    const { page, limit } = req.query;
+    const { page, limit, sortBy } = req.query;
 
     const result = await ConcertSearchService.getConcertsByArtist({
       artist,
       page: safeParseInt(page, 1),
       limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
     });
 
     if (result.success) {
@@ -181,12 +183,13 @@ export const getConcertsByLocation = async (
 ) => {
   try {
     const { location } = req.params;
-    const { page, limit } = req.query;
+    const { page, limit, sortBy } = req.query;
 
     const result = await ConcertSearchService.getConcertsByLocation({
       location,
       page: safeParseInt(page, 1),
       limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
     });
 
     if (result.success) {
@@ -217,12 +220,13 @@ export const getConcertsByCategory = async (
 ) => {
   try {
     const { category } = req.params;
-    const { page, limit } = req.query;
+    const { page, limit, sortBy } = req.query;
 
     const result = await ConcertSearchService.getConcertsByCategory({
       category,
       page: safeParseInt(page, 1),
       limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
     });
 
     if (result.success) {
@@ -253,12 +257,13 @@ export const getConcertsByStatus = async (
 ) => {
   try {
     const { status } = req.params;
-    const { page, limit } = req.query;
+    const { page, limit, sortBy } = req.query;
 
     const result = await ConcertSearchService.getConcertsByStatus({
       status,
       page: safeParseInt(page, 1),
       limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
     });
 
     if (result.success) {

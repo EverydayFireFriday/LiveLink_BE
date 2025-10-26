@@ -43,6 +43,19 @@ const router = express.Router();
  *           maximum: 100
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, likes, created, upcoming_soon, ticket_soon]
+ *           default: date
+ *         description: |
+ *           정렬 기준
+ *           - date: 날짜순 (공연 날짜 빠른 순)
+ *           - likes: 좋아요순 (좋아요 많은 순)
+ *           - created: 생성순 (최근 등록순)
+ *           - upcoming_soon: 공연 임박순 (공연 날짜가 가장 가까운 순)
+ *           - ticket_soon: 예매 임박순 (티켓 오픈 날짜가 가장 가까운 순)
  *     responses:
  *       200:
  *         description: 콘서트 검색 성공
@@ -204,6 +217,15 @@ router.get('/stats', getConcertStats);
  *           maximum: 100
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, likes, created, upcoming_soon, ticket_soon]
+ *           default: date
+ *         description: |
+ *           정렬 기준
+ *           - date: 날짜순, likes: 좋아요순, created: 생성순, upcoming_soon: 공연 임박순, ticket_soon: 예매 임박순
  *     responses:
  *       200:
  *         description: 아티스트별 콘서트 목록 조회 성공
@@ -242,6 +264,15 @@ router.get('/by-artist/:artist', getConcertsByArtist);
  *           maximum: 100
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, likes, created, upcoming_soon, ticket_soon]
+ *           default: date
+ *         description: |
+ *           정렬 기준
+ *           - date: 날짜순, likes: 좋아요순, created: 생성순, upcoming_soon: 공연 임박순, ticket_soon: 예매 임박순
  *     responses:
  *       200:
  *         description: 지역별 콘서트 목록 조회 성공
@@ -281,6 +312,15 @@ router.get('/by-location/:location', getConcertsByLocation);
  *           maximum: 100
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, likes, created, upcoming_soon, ticket_soon]
+ *           default: date
+ *         description: |
+ *           정렬 기준
+ *           - date: 날짜순, likes: 좋아요순, created: 생성순, upcoming_soon: 공연 임박순, ticket_soon: 예매 임박순
  *     responses:
  *       200:
  *         description: 카테고리별 콘서트 목록 조회 성공
@@ -320,6 +360,15 @@ router.get('/by-category/:category', getConcertsByCategory);
  *           maximum: 100
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, likes, created, upcoming_soon, ticket_soon]
+ *           default: date
+ *         description: |
+ *           정렬 기준
+ *           - date: 날짜순, likes: 좋아요순, created: 생성순, upcoming_soon: 공연 임박순, ticket_soon: 예매 임박순
  *     responses:
  *       200:
  *         description: 상태별 콘서트 목록 조회 성공

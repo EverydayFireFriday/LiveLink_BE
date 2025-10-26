@@ -5,6 +5,76 @@ import { ObjectId } from 'mongodb';
 import logger from '../../utils/logger/logger';
 import { IConcert } from '../../models/concert/base/ConcertTypes';
 
+/**
+ * 콘서트 배열 정렬 헬퍼 함수
+ */
+function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
+  const sorted = [...concerts];
+
+  switch (sortBy) {
+    case 'likes':
+      // 좋아요 누른순 (좋아요 많은 순)
+      return sorted.sort((a, b) => {
+        const likesA = a.likesCount || 0;
+        const likesB = b.likesCount || 0;
+        if (likesB !== likesA) return likesB - likesA;
+        // 좋아요가 같으면 날짜순
+        return (
+          new Date(a.datetime?.[0] || 0).getTime() -
+          new Date(b.datetime?.[0] || 0).getTime()
+        );
+      });
+
+    case 'created':
+      // 생성일순 (최근 등록순)
+      return sorted.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+    case 'upcoming_soon':
+      // 공연 임박순 (공연 날짜가 가까운 순)
+      return sorted.sort((a, b) => {
+        const dateA = a.datetime?.[0]
+          ? new Date(a.datetime[0]).getTime()
+          : Infinity;
+        const dateB = b.datetime?.[0]
+          ? new Date(b.datetime[0]).getTime()
+          : Infinity;
+        return dateA - dateB;
+      });
+
+    case 'ticket_soon':
+      // 예매 임박순 (티켓 오픈 날짜가 가까운 순)
+      return sorted.sort((a, b) => {
+        const ticketA = a.ticketOpenDate?.[0]?.openDate
+          ? new Date(a.ticketOpenDate[0].openDate).getTime()
+          : Infinity;
+        const ticketB = b.ticketOpenDate?.[0]?.openDate
+          ? new Date(b.ticketOpenDate[0].openDate).getTime()
+          : Infinity;
+        return ticketA - ticketB;
+      });
+
+    case 'date':
+    default:
+      // 날짜순 (공연 날짜 빠른 순)
+      return sorted.sort((a, b) => {
+        const dateA = a.datetime?.[0]
+          ? new Date(a.datetime[0]).getTime()
+          : Infinity;
+        const dateB = b.datetime?.[0]
+          ? new Date(b.datetime[0]).getTime()
+          : Infinity;
+        if (dateA !== dateB) return dateA - dateB;
+        // 날짜가 같으면 생성일순
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+  }
+}
+
 export interface ConcertServiceResponse {
   success: boolean;
   data?: {
@@ -258,6 +328,7 @@ export class ConcertLikeService {
     params: {
       page?: number;
       limit?: number;
+      sortBy?: string;
     },
   ): Promise<ConcertServiceResponse> {
     try {
@@ -269,7 +340,7 @@ export class ConcertLikeService {
         };
       }
 
-      const { page = 1, limit = 20 } = params;
+      const { page = 1, limit = 20, sortBy } = params;
       const userModel = new UserModel();
       const user = await userModel.findById(userId);
 
@@ -290,14 +361,26 @@ export class ConcertLikeService {
       }
 
       const likedConcertIds = user.likedConcerts;
-      const total = likedConcertIds.length;
+      const Concert = getConcertModel();
+
+      // 모든 좋아요한 콘서트 가져오기 (정렬을 위해)
+      const allConcerts = await Concert.collection
+        .find({ _id: { $in: likedConcertIds } })
+        .toArray();
+
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(allConcerts as IConcert[], sortBy);
+
+      const total = sortedConcerts.length;
       const totalPages = Math.ceil(total / limit);
-      const paginatedIds = likedConcertIds.slice(
+
+      // 페이지네이션 적용
+      const paginatedConcerts = sortedConcerts.slice(
         (page - 1) * limit,
         page * limit,
       );
 
-      if (paginatedIds.length === 0) {
+      if (paginatedConcerts.length === 0 && page > 1) {
         return {
           success: true,
           data: {
@@ -313,20 +396,10 @@ export class ConcertLikeService {
         };
       }
 
-      const Concert = getConcertModel();
-      const concerts = await Concert.collection
-        .find({ _id: { $in: paginatedIds } })
-        .toArray();
-
-      const concertMap = new Map(concerts.map((c) => [c._id.toString(), c]));
-      const sortedConcerts = paginatedIds
-        .map((id) => concertMap.get(id.toString()))
-        .filter(Boolean) as IConcert[];
-
       return {
         success: true,
         data: {
-          concerts: sortedConcerts.map((concert: IConcert) => ({
+          concerts: paginatedConcerts.map((concert: IConcert) => ({
             ...concert,
             isLiked: true,
           })),

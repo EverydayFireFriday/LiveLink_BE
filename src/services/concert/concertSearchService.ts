@@ -4,12 +4,83 @@ import {
   validateAndNormalizePagination,
 } from '../../models/concert/validation/ConcertSearchValidation';
 import logger from '../../utils/logger/logger';
+import type { IConcert } from '../../models/concert/base/ConcertTypes';
 
 export interface ConcertServiceResponse {
   success: boolean;
   data?: any;
   error?: string;
   statusCode?: number;
+}
+
+/**
+ * 콘서트 배열 정렬 헬퍼 함수
+ */
+function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
+  const sorted = [...concerts];
+
+  switch (sortBy) {
+    case 'likes':
+      // 좋아요 누른순 (좋아요 많은 순)
+      return sorted.sort((a, b) => {
+        const likesA = a.likesCount || 0;
+        const likesB = b.likesCount || 0;
+        if (likesB !== likesA) return likesB - likesA;
+        // 좋아요가 같으면 날짜순
+        return (
+          new Date(a.datetime?.[0] || 0).getTime() -
+          new Date(b.datetime?.[0] || 0).getTime()
+        );
+      });
+
+    case 'created':
+      // 생성일순 (최근 등록순)
+      return sorted.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+    case 'upcoming_soon':
+      // 공연 임박순 (공연 날짜가 가까운 순)
+      return sorted.sort((a, b) => {
+        const dateA = a.datetime?.[0]
+          ? new Date(a.datetime[0]).getTime()
+          : Infinity;
+        const dateB = b.datetime?.[0]
+          ? new Date(b.datetime[0]).getTime()
+          : Infinity;
+        return dateA - dateB;
+      });
+
+    case 'ticket_soon':
+      // 예매 임박순 (티켓 오픈 날짜가 가까운 순)
+      return sorted.sort((a, b) => {
+        const ticketA = a.ticketOpenDate?.[0]?.openDate
+          ? new Date(a.ticketOpenDate[0].openDate).getTime()
+          : Infinity;
+        const ticketB = b.ticketOpenDate?.[0]?.openDate
+          ? new Date(b.ticketOpenDate[0].openDate).getTime()
+          : Infinity;
+        return ticketA - ticketB;
+      });
+
+    case 'date':
+    default:
+      // 날짜순 (공연 날짜 빠른 순)
+      return sorted.sort((a, b) => {
+        const dateA = a.datetime?.[0]
+          ? new Date(a.datetime[0]).getTime()
+          : Infinity;
+        const dateB = b.datetime?.[0]
+          ? new Date(b.datetime[0]).getTime()
+          : Infinity;
+        if (dateA !== dateB) return dateA - dateB;
+        // 날짜가 같으면 생성일순
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+  }
 }
 
 export class ConcertSearchService {
@@ -20,9 +91,10 @@ export class ConcertSearchService {
     query: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
   }): Promise<ConcertServiceResponse> {
     try {
-      const { query, page = 1, limit = 20 } = params;
+      const { query, page = 1, limit = 20, sortBy } = params;
 
       if (!query || typeof query !== 'string') {
         return {
@@ -36,14 +108,20 @@ export class ConcertSearchService {
       const normalizedQuery = normalizeSearchQuery(query);
       const concerts = await Concert.searchConcerts(normalizedQuery);
 
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(concerts, sortBy);
+
       const {
         page: normalizedPage,
         limit: normalizedLimit,
         skip,
       } = validateAndNormalizePagination(page, limit);
 
-      const paginatedConcerts = concerts.slice(skip, skip + normalizedLimit);
-      const total = concerts.length;
+      const paginatedConcerts = sortedConcerts.slice(
+        skip,
+        skip + normalizedLimit,
+      );
+      const total = sortedConcerts.length;
       const totalPages = Math.ceil(total / normalizedLimit);
 
       return {
@@ -220,19 +298,24 @@ export class ConcertSearchService {
     artist: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
   }): Promise<ConcertServiceResponse> {
     try {
-      const { artist, page = 1, limit = 20 } = params;
+      const { artist, page = 1, limit = 20, sortBy } = params;
       const Concert = getConcertModel();
 
       const allArtistConcerts = await Concert.findByArtist(artist);
+
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(allArtistConcerts, sortBy);
+
       const {
         page: normalizedPage,
         limit: normalizedLimit,
         skip,
       } = validateAndNormalizePagination(page, limit);
 
-      const concerts = allArtistConcerts.slice(skip, skip + normalizedLimit);
+      const concerts = sortedConcerts.slice(skip, skip + normalizedLimit);
       const total = allArtistConcerts.length;
       const totalPages = Math.ceil(total / normalizedLimit);
 
@@ -267,19 +350,24 @@ export class ConcertSearchService {
     location: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
   }): Promise<ConcertServiceResponse> {
     try {
-      const { location, page = 1, limit = 20 } = params;
+      const { location, page = 1, limit = 20, sortBy } = params;
       const Concert = getConcertModel();
 
       const allLocationConcerts = await Concert.findByLocation(location);
+
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(allLocationConcerts, sortBy);
+
       const {
         page: normalizedPage,
         limit: normalizedLimit,
         skip,
       } = validateAndNormalizePagination(page, limit);
 
-      const concerts = allLocationConcerts.slice(skip, skip + normalizedLimit);
+      const concerts = sortedConcerts.slice(skip, skip + normalizedLimit);
       const total = allLocationConcerts.length;
       const totalPages = Math.ceil(total / normalizedLimit);
 
@@ -314,19 +402,24 @@ export class ConcertSearchService {
     category: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
   }): Promise<ConcertServiceResponse> {
     try {
-      const { category, page = 1, limit = 20 } = params;
+      const { category, page = 1, limit = 20, sortBy } = params;
       const Concert = getConcertModel();
 
       const allCategoryConcerts = await Concert.findByCategory(category);
+
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(allCategoryConcerts, sortBy);
+
       const {
         page: normalizedPage,
         limit: normalizedLimit,
         skip,
       } = validateAndNormalizePagination(page, limit);
 
-      const concerts = allCategoryConcerts.slice(skip, skip + normalizedLimit);
+      const concerts = sortedConcerts.slice(skip, skip + normalizedLimit);
       const total = allCategoryConcerts.length;
       const totalPages = Math.ceil(total / normalizedLimit);
 
@@ -361,9 +454,10 @@ export class ConcertSearchService {
     status: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
   }): Promise<ConcertServiceResponse> {
     try {
-      const { status, page = 1, limit = 20 } = params;
+      const { status, page = 1, limit = 20, sortBy } = params;
 
       const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
       if (!validStatuses.includes(status)) {
@@ -376,13 +470,17 @@ export class ConcertSearchService {
 
       const Concert = getConcertModel();
       const allStatusConcerts = await Concert.findByStatus(status as any);
+
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(allStatusConcerts, sortBy);
+
       const {
         page: normalizedPage,
         limit: normalizedLimit,
         skip,
       } = validateAndNormalizePagination(page, limit);
 
-      const concerts = allStatusConcerts.slice(skip, skip + normalizedLimit);
+      const concerts = sortedConcerts.slice(skip, skip + normalizedLimit);
       const total = allStatusConcerts.length;
       const totalPages = Math.ceil(total / normalizedLimit);
 

@@ -294,10 +294,20 @@ export class ConcertService {
       let sort: Sort = {};
       switch (sortBy) {
         case 'likes':
+          // 좋아요 누른순 (좋아요 많은 순)
           sort = { likesCount: -1, datetime: 1 };
           break;
         case 'created':
+          // 생성일순
           sort = { createdAt: -1 };
+          break;
+        case 'upcoming_soon':
+          // 공연 임박순 (공연 날짜가 가까운 순)
+          sort = { datetime: 1 };
+          break;
+        case 'ticket_soon':
+          // 예매 임박순 (티켓 오픈 날짜가 가까운 순)
+          sort = { 'ticketOpenDate.0.openDate': 1 };
           break;
         case 'date':
         default:
