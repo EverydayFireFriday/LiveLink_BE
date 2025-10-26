@@ -46,6 +46,25 @@ export const addLike = async (req: express.Request, res: express.Response) => {
     const result = await ConcertLikeService.addLike(id, userId);
 
     if (result.success) {
+      // 세션 업데이트: 좋아요 후 최신 likedConcerts 반영
+      const { UserService } = await import('../../services/auth/userService');
+      const { cacheManager } = await import('../../utils/cache/cacheManager');
+      const userService = new UserService();
+
+      // 캐시 무효화 후 최신 데이터 조회
+      const cacheKey = `user:${userId}`;
+      await cacheManager.del(cacheKey);
+      const updatedUser = await userService.findById(userId);
+
+      if (updatedUser && req.session.user) {
+        req.session.user = {
+          ...req.session.user,
+          likedConcerts: (updatedUser.likedConcerts || []).map((id) =>
+            String(id),
+          ),
+        } as typeof req.session.user;
+      }
+
       return ResponseBuilder.created(res, '좋아요 추가 성공', {
         concert: result.data,
       });
@@ -79,6 +98,25 @@ export const removeLike = async (
     const result = await ConcertLikeService.removeLike(id, userId);
 
     if (result.success) {
+      // 세션 업데이트: 좋아요 취소 후 최신 likedConcerts 반영
+      const { UserService } = await import('../../services/auth/userService');
+      const { cacheManager } = await import('../../utils/cache/cacheManager');
+      const userService = new UserService();
+
+      // 캐시 무효화 후 최신 데이터 조회
+      const cacheKey = `user:${userId}`;
+      await cacheManager.del(cacheKey);
+      const updatedUser = await userService.findById(userId);
+
+      if (updatedUser && req.session.user) {
+        req.session.user = {
+          ...req.session.user,
+          likedConcerts: (updatedUser.likedConcerts || []).map((id) =>
+            String(id),
+          ),
+        } as typeof req.session.user;
+      }
+
       return ResponseBuilder.success(res, '좋아요 삭제 성공', {
         concert: result.data,
       });

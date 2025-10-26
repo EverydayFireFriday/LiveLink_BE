@@ -29,7 +29,19 @@ export interface SessionUser {
   email: string;
   userId: string; // 세션에서는 문자열로 저장
   username: string;
+  name: string;
+  birthDate: Date;
+  status: string;
+  statusReason?: string;
   profileImage?: string;
+  isTermsAgreed: boolean;
+  termsVersion?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  provider?: string;
+  socialId?: string;
+  likedConcerts: string[];
+  likedArticles: string[];
   loginTime: string;
 }
 

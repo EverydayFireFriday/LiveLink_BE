@@ -32,6 +32,25 @@ export class ArticleLikeController {
         userId,
       );
 
+      // 세션 업데이트: 좋아요 토글 후 최신 likedArticles 반영
+      const { UserService } = await import('../../services/auth/userService');
+      const { cacheManager } = await import('../../utils/cache/cacheManager');
+      const userService = new UserService();
+
+      // 캐시 무효화 후 최신 데이터 조회
+      const cacheKey = `user:${userId}`;
+      await cacheManager.del(cacheKey);
+      const updatedUser = await userService.findById(userId);
+
+      if (updatedUser && req.session.user) {
+        req.session.user = {
+          ...req.session.user,
+          likedArticles: (updatedUser.likedArticles || []).map((id) =>
+            String(id),
+          ),
+        } as typeof req.session.user;
+      }
+
       return ResponseBuilder.success(
         res,
         `좋아요가 ${result.isLiked ? '추가' : '취소'}되었습니다.`,
