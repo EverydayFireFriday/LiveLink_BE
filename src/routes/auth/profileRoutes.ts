@@ -267,7 +267,7 @@ router.put('/username', requireAuth, profileController.updateUsername);
  *   put:
  *     summary: FCM 토큰 등록
  *     description: 푸시 알림을 위한 FCM 토큰을 등록합니다.
- *     tags: [Profile]
+ *     tags: [Notifications]
  *     security:
  *       - sessionAuth: []
  *     requestBody:
