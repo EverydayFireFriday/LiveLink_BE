@@ -4,7 +4,6 @@ npm-debug.log
 yarn-debug.log
 yarn-error.log
 pnpm-debug.log
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -118,3 +117,5 @@ serviceAccountKey.json
 .lintstagedrc
 .commitlintrc
 .releaserc
+
+# package-lock.json is needed for npm ci
