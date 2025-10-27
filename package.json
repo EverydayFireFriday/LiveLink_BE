@@ -121,7 +121,7 @@
     "js-yaml": "^4.1.0",
     "lint-staged": "^16.2.4",
     "nodemon": "^3.0.2",
-    "openapi-to-postmanv2": "^5.3.2",
+    "openapi-to-postmanv2": "^5.3.3",
     "prettier": "^3.6.2",
     "supertest": "^6.3.3",
     "ts-jest": "^29.4.5",
