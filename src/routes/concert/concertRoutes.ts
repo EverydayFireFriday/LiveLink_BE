@@ -14,6 +14,10 @@ import {
   logSessionInfoMiddleware,
   requireAuthInProductionMiddleware,
 } from '../../middlewares/auth/conditionalAuthMiddleware';
+import {
+  relaxedLimiter,
+  strictLimiter,
+} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 
@@ -271,7 +275,12 @@ if (process.env.NODE_ENV === 'development') {
  *         description: 서버 에러
  */
 // 콘서트 업로드 - 개발환경에서는 인증 스킵 (임시 세션 자동 생성)
-router.post('/', requireAuthInProductionMiddleware, uploadConcert);
+router.post(
+  '/',
+  strictLimiter,
+  requireAuthInProductionMiddleware,
+  uploadConcert,
+);
 
 /**
  * @swagger
@@ -390,7 +399,7 @@ router.post('/', requireAuthInProductionMiddleware, uploadConcert);
  *         description: 서버 에러
  */
 // 콘서트 목록 조회 - 인증 없이 가능
-router.get('/', getAllConcerts);
+router.get('/', relaxedLimiter, getAllConcerts);
 
 /**
  * @swagger
@@ -463,7 +472,7 @@ router.get('/', getAllConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get('/random', getRandomConcerts);
+router.get('/random', relaxedLimiter, getRandomConcerts);
 
 /**
  * @swagger
@@ -538,7 +547,7 @@ router.get('/random', getRandomConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get('/latest', getLatestConcerts);
+router.get('/latest', relaxedLimiter, getLatestConcerts);
 
 /**
  * @swagger
@@ -598,7 +607,7 @@ router.get('/latest', getLatestConcerts);
  *         description: 서버 에러
  */
 // 특정 콘서트 조회 - 인증 없이 가능
-router.get('/:id', getConcert);
+router.get('/:id', relaxedLimiter, getConcert);
 
 /**
  * @swagger
@@ -825,7 +834,12 @@ router.get('/:id', getConcert);
  *                 timestamp: { type: string, format: date-time }
  */
 // 콘서트 수정 - 개발환경에서는 인증 스킵
-router.put('/:id', requireAuthInProductionMiddleware, updateConcert);
+router.put(
+  '/:id',
+  strictLimiter,
+  requireAuthInProductionMiddleware,
+  updateConcert,
+);
 
 /**
  * @swagger
@@ -967,7 +981,7 @@ router.put('/:id', requireAuthInProductionMiddleware, updateConcert);
  *                 timestamp: { type: string, format: date-time }
  */
 // 콘서트 삭제 - 항상 인증 필요
-router.delete('/:id', requireAuth, deleteConcert);
+router.delete('/:id', strictLimiter, requireAuth, deleteConcert);
 
 // 개발환경용 디버깅 라우트
 if (process.env.NODE_ENV === 'development') {

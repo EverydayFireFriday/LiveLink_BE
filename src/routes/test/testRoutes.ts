@@ -1,7 +1,11 @@
 import express from 'express';
 import { uploadTestConcert } from '../../controllers/test/testController';
+import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
+
+// 테스트 API에 strictLimiter 적용
+router.use(strictLimiter);
 
 /**
  * @swagger

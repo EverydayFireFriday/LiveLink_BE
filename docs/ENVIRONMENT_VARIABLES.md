@@ -60,6 +60,8 @@
 | `API_LIMIT_RELAXED_WINDOW_MS` | 완화된 Rate Limit 윈도우 | `60000` |
 | `API_LIMIT_RELAXED_MAX` | 완화된 Rate Limit 최대 요청 수 | `200` |
 
+**참고:** `NODE_ENV=development`일 때는 모든 Rate Limiting이 자동으로 비활성화됩니다.
+
 #### 🕐 Scheduler
 | 변수명 | 설명 | 기본값 |
 |--------|------|--------|

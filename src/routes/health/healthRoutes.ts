@@ -8,8 +8,12 @@ import {
   livenessCheck,
 } from '../../controllers/health/healthController';
 import { requireAdmin } from '../../middlewares/auth/adminMiddleware';
+import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
+
+// 모든 헬스체크 API에 strictLimiter 적용 (관리자 전용)
+router.use(strictLimiter);
 
 /**
  * @swagger

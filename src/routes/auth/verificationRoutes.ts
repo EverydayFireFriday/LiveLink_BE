@@ -1,8 +1,12 @@
 import express from 'express';
 import { VerificationController } from '../../controllers/auth/verificationController';
+import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const verificationController = new VerificationController();
+
+// 모든 인증 상태 확인 API에 defaultLimiter 적용
+router.use(defaultLimiter);
 
 /**
  * @swagger

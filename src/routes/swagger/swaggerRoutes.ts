@@ -1,7 +1,11 @@
 import express from 'express';
 import { getSwaggerJson } from '../../controllers/swagger/swaggerController';
+import { relaxedLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
+
+// Swagger JSON 다운로드 API에 relaxedLimiter 적용
+router.use(relaxedLimiter);
 
 /**
  * @swagger

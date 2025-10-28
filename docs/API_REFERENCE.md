@@ -618,15 +618,21 @@ Swagger JSON Specification
 
 ## Rate Limiting
 
-### Default Rate Limit
+### 개발 환경
+- **`NODE_ENV=development`일 때:** 모든 Rate Limiting이 자동으로 비활성화됩니다.
+- 개발 중 제한 없이 API 테스트 가능
+
+### 프로덕션 환경
+
+#### Default Rate Limit
 - **Window:** 60초
 - **Max Requests:** 100회
 
-### Strict Rate Limit (로그인, 회원가입)
+#### Strict Rate Limit (로그인, 회원가입)
 - **Window:** 15분 (로그인) / 60분 (회원가입)
 - **Max Requests:** 10회
 
-### Brute Force Protection
+#### Brute Force Protection
 - **Max Failed Attempts:** 5회
 - **Block Duration:** 30분
 

@@ -1,7 +1,7 @@
 import { RateLimiterRedis } from 'rate-limiter-flexible';
 import { Request, Response, NextFunction } from 'express';
 import logger from '../../utils/logger/logger';
-import { env, isAdminEmail, isDevelopment } from '../../config/env/env';
+import { env, isDevelopment } from '../../config/env/env';
 import { pubClient as ioredisClient } from '../../config/redis/socketRedisClient';
 
 /**
@@ -78,37 +78,25 @@ const relaxedLimiterInstance = new RateLimiterRedis({
   insuranceLimiter: undefined,
 });
 
-// 4. 로그인 API Rate Limiter: 15분당 10개
-const loginLimiterInstance = isDevelopment()
-  ? ({
-      consume: (_key: string) =>
-        Promise.resolve({ remainingPoints: 1000, msBeforeNext: 0 }),
-      points: 1000,
-    } as unknown as RateLimiterRedis) // Mock RateLimiterRedis for development
-  : new RateLimiterRedis({
-      storeClient: ioredisClient,
-      keyPrefix: 'rl_login',
-      points: parseInt(env.API_LIMIT_LOGIN_MAX),
-      duration: parseInt(env.API_LIMIT_LOGIN_WINDOW_MS) / 1000, // 초 단위로 변환
-      blockDuration: 30 * 60, // 30분 차단
-      insuranceLimiter: undefined,
-    });
+// 4. 로그인 API Rate Limiter
+const loginLimiterInstance = new RateLimiterRedis({
+  storeClient: ioredisClient,
+  keyPrefix: 'rl_login',
+  points: parseInt(env.API_LIMIT_LOGIN_MAX),
+  duration: parseInt(env.API_LIMIT_LOGIN_WINDOW_MS) / 1000, // 초 단위로 변환
+  blockDuration: 30 * 60, // 30분 차단
+  insuranceLimiter: undefined,
+});
 
-// 5. 회원가입 API Rate Limiter: 1시간당 10개
-const signupLimiterInstance = isDevelopment()
-  ? ({
-      consume: (_key: string) =>
-        Promise.resolve({ remainingPoints: 1000, msBeforeNext: 0 }),
-      points: 1000,
-    } as unknown as RateLimiterRedis) // Mock RateLimiterRedis for development
-  : new RateLimiterRedis({
-      storeClient: ioredisClient,
-      keyPrefix: 'rl_signup',
-      points: parseInt(env.API_LIMIT_SIGNUP_MAX),
-      duration: parseInt(env.API_LIMIT_SIGNUP_WINDOW_MS) / 1000, // 초 단위로 변환
-      blockDuration: 60 * 60, // 1시간 차단
-      insuranceLimiter: undefined,
-    });
+// 5. 회원가입 API Rate Limiter
+const signupLimiterInstance = new RateLimiterRedis({
+  storeClient: ioredisClient,
+  keyPrefix: 'rl_signup',
+  points: parseInt(env.API_LIMIT_SIGNUP_MAX),
+  duration: parseInt(env.API_LIMIT_SIGNUP_WINDOW_MS) / 1000, // 초 단위로 변환
+  blockDuration: 60 * 60, // 1시간 차단
+  insuranceLimiter: undefined,
+});
 
 /**
  * Express 미들웨어 래퍼 팩토리
@@ -120,15 +108,12 @@ const createRateLimitMiddleware = (
   limiterName: string,
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    void (async () => {
-      // 👑 관리자 요청은 Rate Limit을 적용하지 않음
-      if (req.session?.user?.email && isAdminEmail(req.session.user.email)) {
-        logger.debug(
-          `Admin user ${req.session.user.email} bypassed rate limit for ${limiterName}`,
-        );
-        return next();
-      }
+    // 개발 환경에서는 rate limiting 스킵
+    if (isDevelopment()) {
+      return next();
+    }
 
+    void (async () => {
       // Redis 연결 확인
       if (ioredisClient.status !== 'ready') {
         return handleRedisError(req, res);

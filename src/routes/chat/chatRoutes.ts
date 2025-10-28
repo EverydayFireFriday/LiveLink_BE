@@ -1,9 +1,13 @@
 import express from 'express';
 import { ChatController } from '../../controllers/chat/chatController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
+import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const chatController = new ChatController();
+
+// 모든 채팅 API에 defaultLimiter 적용
+router.use(defaultLimiter);
 
 /**
  * @swagger
