@@ -1,4 +1,5 @@
 import { UserStatus } from '../../../models/auth/user';
+import { containsProfanity } from '../profanityFilter.js';
 
 export class UserValidator {
   static validateUsername(username: string): {
@@ -20,6 +21,15 @@ export class UserValidator {
       return {
         isValid: false,
         message: '사용자명은 최대 20자까지 가능합니다.',
+      };
+    }
+
+    // 욕설 및 부적절한 단어 검사
+    if (containsProfanity(username)) {
+      return {
+        isValid: false,
+        message:
+          '부적절한 단어가 포함되어 있습니다. 다른 사용자명을 입력해주세요.',
       };
     }
 
