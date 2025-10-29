@@ -14,10 +14,6 @@ import {
   logSessionInfoMiddleware,
   requireAuthInProductionMiddleware,
 } from '../../middlewares/auth/conditionalAuthMiddleware';
-import {
-  relaxedLimiter,
-  strictLimiter,
-} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 
@@ -275,12 +271,7 @@ if (process.env.NODE_ENV === 'development') {
  *         description: 서버 에러
  */
 // 콘서트 업로드 - 개발환경에서는 인증 스킵 (임시 세션 자동 생성)
-router.post(
-  '/',
-  strictLimiter,
-  requireAuthInProductionMiddleware,
-  uploadConcert,
-);
+router.post('/', requireAuthInProductionMiddleware, uploadConcert);
 
 /**
  * @swagger
@@ -399,7 +390,7 @@ router.post(
  *         description: 서버 에러
  */
 // 콘서트 목록 조회 - 인증 없이 가능
-router.get('/', relaxedLimiter, getAllConcerts);
+router.get('/', getAllConcerts);
 
 /**
  * @swagger
@@ -472,7 +463,7 @@ router.get('/', relaxedLimiter, getAllConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get('/random', relaxedLimiter, getRandomConcerts);
+router.get('/random', getRandomConcerts);
 
 /**
  * @swagger
@@ -547,7 +538,7 @@ router.get('/random', relaxedLimiter, getRandomConcerts);
  *       500:
  *         description: 서버 에러
  */
-router.get('/latest', relaxedLimiter, getLatestConcerts);
+router.get('/latest', getLatestConcerts);
 
 /**
  * @swagger
@@ -607,7 +598,7 @@ router.get('/latest', relaxedLimiter, getLatestConcerts);
  *         description: 서버 에러
  */
 // 특정 콘서트 조회 - 인증 없이 가능
-router.get('/:id', relaxedLimiter, getConcert);
+router.get('/:id', getConcert);
 
 /**
  * @swagger
@@ -834,12 +825,7 @@ router.get('/:id', relaxedLimiter, getConcert);
  *                 timestamp: { type: string, format: date-time }
  */
 // 콘서트 수정 - 개발환경에서는 인증 스킵
-router.put(
-  '/:id',
-  strictLimiter,
-  requireAuthInProductionMiddleware,
-  updateConcert,
-);
+router.put('/:id', requireAuthInProductionMiddleware, updateConcert);
 
 /**
  * @swagger
@@ -981,7 +967,7 @@ router.put(
  *                 timestamp: { type: string, format: date-time }
  */
 // 콘서트 삭제 - 항상 인증 필요
-router.delete('/:id', strictLimiter, requireAuth, deleteConcert);
+router.delete('/:id', requireAuth, deleteConcert);
 
 // 개발환경용 디버깅 라우트
 if (process.env.NODE_ENV === 'development') {

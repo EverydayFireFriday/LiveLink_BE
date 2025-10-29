@@ -2,10 +2,6 @@
 import express from 'express';
 import { ArticleController } from '../../controllers/article';
 import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
-import {
-  relaxedLimiter,
-  strictLimiter,
-} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const articleController = new ArticleController();
@@ -89,7 +85,6 @@ const articleController = new ArticleController();
 // 게시글 생성 (개발환경에서는 인증 스킵)
 router.post(
   '/',
-  strictLimiter,
   requireAuthInProductionMiddleware,
   articleController.createArticle,
 );
@@ -153,7 +148,7 @@ router.post(
  *         description: 서버 에러
  */
 // 발행된 게시글 목록 조회 (인증 없이 조회 가능)
-router.get('/', relaxedLimiter, articleController.getPublishedArticles);
+router.get('/', articleController.getPublishedArticles);
 
 /**
  * @swagger
@@ -212,7 +207,7 @@ router.get('/', relaxedLimiter, articleController.getPublishedArticles);
  *         description: 서버 에러
  */
 // 인기 게시글 조회 (인증 없이 조회 가능)
-router.get('/popular', relaxedLimiter, articleController.getPopularArticles);
+router.get('/popular', articleController.getPopularArticles);
 
 /**
  * @swagger
@@ -270,11 +265,7 @@ router.get('/popular', relaxedLimiter, articleController.getPopularArticles);
  *         description: 서버 에러
  */
 // 작성자별 게시글 조회 (인증 없이 조회 가능)
-router.get(
-  '/author/:authorId',
-  relaxedLimiter,
-  articleController.getArticlesByAuthor,
-);
+router.get('/author/:authorId', articleController.getArticlesByAuthor);
 
 /**
  * @swagger
@@ -321,7 +312,7 @@ router.get(
  *         description: 서버 에러
  */
 // 게시글 상세 조회 (인증 없이 조회 가능, 조회수 증가)
-router.get('/:id', relaxedLimiter, articleController.getArticleById);
+router.get('/:id', articleController.getArticleById);
 
 /**
  * @swagger
@@ -394,7 +385,6 @@ router.get('/:id', relaxedLimiter, articleController.getArticleById);
 // 게시글 수정 (개발환경에서는 인증 스킵)
 router.put(
   '/:id',
-  strictLimiter,
   requireAuthInProductionMiddleware,
   articleController.updateArticle,
 );
@@ -436,7 +426,6 @@ router.put(
 // 게시글 삭제 (개발환경에서는 인증 스킵)
 router.delete(
   '/:id',
-  strictLimiter,
   requireAuthInProductionMiddleware,
   articleController.deleteArticle,
 );

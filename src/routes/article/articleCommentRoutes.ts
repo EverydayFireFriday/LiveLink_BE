@@ -2,13 +2,9 @@
 import express from 'express';
 import { ArticleCommentController } from '../../controllers/article';
 import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
-import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const articleCommentController = new ArticleCommentController();
-
-// 모든 댓글 API에 defaultLimiter 적용
-router.use(defaultLimiter);
 
 /**
  * @swagger

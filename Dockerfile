@@ -1,8 +1,8 @@
 #------------------- Builder Stage -------------------#
 #------------------- 빌더 단계 -------------------#
-# Using a LTS version of Node.js for stability and security
-# 안정성과 보안을 위해 Node.js LTS 버전 사용
-FROM node:20-alpine AS builder
+# Using a specific version of Node.js for reproducibility
+# 재현성을 위해 특정 버전의 Node.js 사용
+FROM node:25-alpine AS builder
 
 # Set the working directory
 # 작업 디렉토리 설정
@@ -32,7 +32,7 @@ RUN npm prune --production
 #------------------- 프로덕션 단계 -------------------#
 # Use a slim, secure base image for the final stage
 # 최종 단계를 위해 슬림하고 안전한 베이스 이미지 사용
-FROM node:20-alpine
+FROM node:25-alpine
 
 # Set NODE_ENV to production
 # NODE_ENV를 production으로 설정
@@ -72,17 +72,6 @@ USER appuser
 # Expose the port the app runs on
 # 앱이 실행되는 포트 노출
 EXPOSE 3000
-
-# Add healthcheck for container monitoring
-# 컨테이너 모니터링을 위한 헬스체크 추가
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:3000/health/liveness || exit 1
-
-# Add labels for better container management
-# 컨테이너 관리 개선을 위한 레이블 추가
-LABEL maintainer="LiveLink Team" \
-      version="1.0" \
-      description="LiveLink Backend API Server"
 
 # The command to run the application
 # 애플리케이션을 실행하는 명령어

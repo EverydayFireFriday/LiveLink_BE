@@ -1,7 +1,6 @@
 import express from 'express';
 import { PasswordController } from '../../controllers/auth/passwordController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
-import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const passwordController = new PasswordController();
@@ -87,11 +86,7 @@ const passwordController = new PasswordController();
  *                   example: "서버 에러가 발생했습니다."
  */
 // 비밀번호 재설정 (로그인 없이)
-router.post(
-  '/reset-password',
-  strictLimiter,
-  passwordController.resetPasswordRequest,
-);
+router.post('/reset-password', passwordController.resetPasswordRequest);
 /**
  * @swagger
  * /auth/verify-reset-password:
@@ -181,11 +176,7 @@ router.post(
  *                   type: string
  *                   example: "서버 에러가 발생했습니다."
  */
-router.post(
-  '/verify-reset-password',
-  strictLimiter,
-  passwordController.verifyResetPassword,
-);
+router.post('/verify-reset-password', passwordController.verifyResetPassword);
 
 /**
  * @swagger
@@ -263,11 +254,6 @@ router.post(
  *                   example: "서버 에러가 발생했습니다."
  */
 // 비밀번호 변경 (로그인 필요)
-router.put(
-  '/change-password',
-  strictLimiter,
-  requireAuth,
-  passwordController.changePassword,
-);
+router.put('/change-password', requireAuth, passwordController.changePassword);
 
 export default router;

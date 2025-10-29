@@ -1,8 +1,5 @@
 import Redis from 'ioredis';
-import {
-  VerificationData,
-  EmailVerificationToken,
-} from '../../types/auth/authTypes';
+import { VerificationData } from '../../types/auth/authTypes';
 import logger from '../../utils/logger/logger';
 
 export class VerificationService {
@@ -75,54 +72,5 @@ export class VerificationService {
 
   async getTTL(key: string): Promise<number> {
     return await this.redis.ttl(key);
-  }
-
-  // ============================================================
-  // 새로운 회원가입 플로우: 이메일 인증 완료 토큰 관리
-  // ============================================================
-
-  /**
-   * 이메일 인증 완료 토큰 저장 (10분 TTL)
-   */
-  async saveEmailVerificationToken(
-    token: string,
-    email: string,
-  ): Promise<string> {
-    const key = `verification_token:${token}`;
-    const data: EmailVerificationToken = {
-      email,
-      verified: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    await this.redis.setex(key, 600, JSON.stringify(data)); // 10분 TTL
-    return key;
-  }
-
-  /**
-   * 이메일 인증 완료 토큰 조회
-   */
-  async getEmailVerificationToken(
-    token: string,
-  ): Promise<EmailVerificationToken | null> {
-    try {
-      const key = `verification_token:${token}`;
-      const data = await this.redis.get(key);
-      if (!data) return null;
-
-      const parsed: unknown = JSON.parse(data);
-      return parsed as EmailVerificationToken;
-    } catch (error) {
-      logger.error('Redis 데이터 파싱 에러:', error);
-      return null;
-    }
-  }
-
-  /**
-   * 이메일 인증 완료 토큰 삭제
-   */
-  async deleteEmailVerificationToken(token: string): Promise<void> {
-    const key = `verification_token:${token}`;
-    await this.redis.del(key);
   }
 }

@@ -1,7 +1,7 @@
 import { RateLimiterRedis } from 'rate-limiter-flexible';
 import { Request, Response, NextFunction } from 'express';
 import logger from '../../utils/logger/logger';
-import { env, isDevelopment } from '../../config/env/env';
+import { env } from '../../config/env/env';
 import { pubClient as ioredisClient } from '../../config/redis/socketRedisClient';
 
 /**
@@ -78,22 +78,22 @@ const relaxedLimiterInstance = new RateLimiterRedis({
   insuranceLimiter: undefined,
 });
 
-// 4. 로그인 API Rate Limiter
+// 4. 로그인 API Rate Limiter: 15분당 10개
 const loginLimiterInstance = new RateLimiterRedis({
   storeClient: ioredisClient,
   keyPrefix: 'rl_login',
-  points: parseInt(env.API_LIMIT_LOGIN_MAX),
-  duration: parseInt(env.API_LIMIT_LOGIN_WINDOW_MS) / 1000, // 초 단위로 변환
+  points: 10,
+  duration: 15 * 60, // 15분 (초 단위)
   blockDuration: 30 * 60, // 30분 차단
   insuranceLimiter: undefined,
 });
 
-// 5. 회원가입 API Rate Limiter
+// 5. 회원가입 API Rate Limiter: 1시간당 10개
 const signupLimiterInstance = new RateLimiterRedis({
   storeClient: ioredisClient,
   keyPrefix: 'rl_signup',
-  points: parseInt(env.API_LIMIT_SIGNUP_MAX),
-  duration: parseInt(env.API_LIMIT_SIGNUP_WINDOW_MS) / 1000, // 초 단위로 변환
+  points: 10,
+  duration: 60 * 60, // 1시간 (초 단위)
   blockDuration: 60 * 60, // 1시간 차단
   insuranceLimiter: undefined,
 });
@@ -108,11 +108,6 @@ const createRateLimitMiddleware = (
   limiterName: string,
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    // 개발 환경에서는 rate limiting 스킵
-    if (isDevelopment()) {
-      return next();
-    }
-
     void (async () => {
       // Redis 연결 확인
       if (ioredisClient.status !== 'ready') {

@@ -4,11 +4,6 @@ import {
   requireAuth,
   requireAdmin,
 } from '../../middlewares/auth/authMiddleware';
-import {
-  relaxedLimiter,
-  defaultLimiter,
-  strictLimiter,
-} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const profileController = new ProfileController();
@@ -91,12 +86,7 @@ const profileController = new ProfileController();
  *                   type: string
  *                   example: "프로필 조회 실패"
  */
-router.get(
-  '/profile',
-  relaxedLimiter,
-  requireAuth,
-  profileController.getProfile,
-);
+router.get('/profile', requireAuth, profileController.getProfile);
 /**
  * @swagger
  * /auth/profile:
@@ -169,12 +159,7 @@ router.get(
  *                   type: string
  *                   example: "프로필 업데이트 실패"
  */
-router.put(
-  '/profile',
-  strictLimiter,
-  requireAuth,
-  profileController.updateProfile,
-);
+router.put('/profile', requireAuth, profileController.updateProfile);
 /**
  * @swagger
  * /auth/username:
@@ -274,12 +259,7 @@ router.put(
  *                   type: string
  *                   example: "별명 변경 실패"
  */
-router.put(
-  '/username',
-  strictLimiter,
-  requireAuth,
-  profileController.updateUsername,
-);
+router.put('/username', requireAuth, profileController.updateUsername);
 
 /**
  * @swagger
@@ -287,7 +267,7 @@ router.put(
  *   put:
  *     summary: FCM 토큰 등록
  *     description: 푸시 알림을 위한 FCM 토큰을 등록합니다.
- *     tags: [Notifications]
+ *     tags: [Profile]
  *     security:
  *       - sessionAuth: []
  *     requestBody:
@@ -352,12 +332,7 @@ router.put(
  *                   type: string
  *                   example: "FCM 토큰 등록 실패"
  */
-router.put(
-  '/fcm-token',
-  defaultLimiter,
-  requireAuth,
-  profileController.updateFCMToken,
-);
+router.put('/fcm-token', requireAuth, profileController.updateFCMToken);
 
 // 관리자 전용
 /**
@@ -445,11 +420,6 @@ router.put(
  *                   type: string
  *                   example: "사용자 목록 조회 실패"
  */
-router.get(
-  '/users',
-  strictLimiter,
-  requireAdmin,
-  profileController.getAllUsers,
-);
+router.get('/users', requireAdmin, profileController.getAllUsers);
 
 export default router;
