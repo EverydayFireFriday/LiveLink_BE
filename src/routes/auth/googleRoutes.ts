@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 import { env } from '../../config/env/env';
+import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = Router();
+
+// 모든 OAuth API에 defaultLimiter 적용
+router.use(defaultLimiter);
 
 /**
  * @swagger

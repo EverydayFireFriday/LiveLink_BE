@@ -2,9 +2,13 @@
 import express from 'express';
 import { ArticleBookmarkController } from '../../controllers/article';
 import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
+import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const articleBookmarkController = new ArticleBookmarkController();
+
+// 모든 북마크 API에 defaultLimiter 적용
+router.use(defaultLimiter);
 
 /**
  * @swagger

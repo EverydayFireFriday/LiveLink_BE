@@ -61,7 +61,7 @@ jobs:
           echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-info.txt
 
       - name: Upload deployment artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: deployment-info
           path: deployment-info.txt
@@ -76,7 +76,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download deployment artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: deployment-info
 

@@ -5,8 +5,12 @@ import {
   batchDeleteConcerts,
 } from '../../controllers/concert/concertBatchController';
 import { requireAdmin } from '../../middlewares/auth/authMiddleware';
+import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
+
+// 모든 배치 API에 strictLimiter 적용 (관리자 전용)
+router.use(strictLimiter);
 
 /**
  * @swagger

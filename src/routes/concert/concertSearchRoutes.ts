@@ -10,8 +10,12 @@ import {
   getConcertsByStatus,
   getConcertStats,
 } from '../../controllers/concert/concertSearchController';
+import { relaxedLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
+
+// 모든 검색 API에 relaxedLimiter 적용 (공개 조회 API)
+router.use(relaxedLimiter);
 
 /**
  * @swagger

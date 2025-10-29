@@ -9,11 +9,30 @@ services:
     ports:
       - '3000:3000'
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - ./.env.production
     restart: always
+    networks:
+      - backend
+      - monitoring
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    # Read-only root filesystem for security
+    # read_only: true  # 로그 작성이 필요하면 주석 유지
+    # Resource limits to prevent resource exhaustion
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health/liveness']
       interval: 30s
@@ -22,83 +41,202 @@ services:
       start_period: 30s
 
   mongo:
-    image: mongo:latest
+    image: mongo:8.0  # 버전 고정 (latest 대신 특정 버전 사용)
     ports:
-      - '27017:27017'
+      - '127.0.0.1:27017:27017'  # 로컬호스트에만 바인딩 (보안 강화)
     volumes:
       - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    environment:
+      # MongoDB 인증 설정 (.env 파일에서 관리 권장)
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-changeme}
+    networks:
+      - backend
     restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    # Health check
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   redis:
-    image: redis:latest
+    image: redis:7-alpine  # 버전 고정, alpine for smaller image
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"  # 로컬호스트에만 바인딩 (보안 강화)
     volumes:
       - redis-data:/data
+    # Redis 비밀번호 설정 (.env 파일에서 관리 권장)
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-changeme}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+    networks:
+      - backend
     restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # Health check
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   mongodb-exporter:
-    image: percona/mongodb_exporter:0.40
+    image: percona/mongodb_exporter:0.40  # 버전 고정
     ports:
-      - "9216:9216"
+      - "127.0.0.1:9216:9216"  # 로컬호스트에만 바인딩
     environment:
-      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017
     command:
-      - '--mongodb.uri=mongodb://mongo:27017'
+      - '--mongodb.uri=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017'
       - '--discovering-mode'
       - '--compatible-mode'
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    networks:
+      - backend
+      - monitoring
     restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   redis-exporter:
-    image: oliver006/redis_exporter:latest
+    image: oliver006/redis_exporter:v1.62-alpine  # 버전 고정
     ports:
-      - "9121:9121"
+      - "127.0.0.1:9121:9121"  # 로컬호스트에만 바인딩
     environment:
       - REDIS_ADDR=redis://redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - monitoring
     restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1  # 버전 고정
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"  # 로컬호스트에만 바인딩
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro  # Read-only
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'  # 데이터 보관 기간
+      - '--web.enable-lifecycle'  # 설정 리로드 활성화
     depends_on:
-      - app
+      app:
+        condition: service_healthy
+    networks:
+      - monitoring
     restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.3.0  # 버전 고정
     ports:
-      - "3001:3000" # Grafana runs on 3000 by default, map to 3001 on host
+      - "127.0.0.1:3001:3000" # Grafana runs on 3000 by default, map to 3001 on host
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-      - ./grafana/provisioning/dashboards/files:/etc/grafana/provisioning/dashboards/files
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/provisioning/dashboards/files:/etc/grafana/provisioning/dashboards/files:ro
     environment:
+      # ⚠️ 운영 환경에서는 반드시 .env 파일에서 강력한 비밀번호 설정!
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme_in_production}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3001
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      # Security headers
+      - GF_SECURITY_COOKIE_SECURE=false  # HTTPS 사용 시 true로 변경
+      - GF_SECURITY_COOKIE_SAMESITE=lax
+      - GF_SECURITY_STRICT_TRANSPORT_SECURITY=false  # HTTPS 사용 시 true로 변경
+      # 로그인 시도 제한 (브루트포스 방지)
+      - GF_AUTH_LOGIN_MAXIMUM_INACTIVE_LIFETIME_DURATION=7d
+      - GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION=30d
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
+    networks:
+      - monitoring
     restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
 volumes:
   mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
   redis-data:
+    driver: local
   prometheus-data:
+    driver: local
   grafana-data:
+    driver: local
+
+# Network isolation for security
+networks:
+  backend:
+    driver: bridge
+    internal: false  # true로 설정하면 외부 인터넷 차단 (DB만 격리할 경우)
+  monitoring:
+    driver: bridge
+    internal: false

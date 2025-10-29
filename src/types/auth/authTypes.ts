@@ -61,13 +61,6 @@ export interface VerificationData {
   };
 }
 
-export interface RegisterRequest {
-  email: string;
-  username?: string;
-  password: string;
-  profileImage?: string;
-}
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -77,6 +70,39 @@ export interface PasswordResetRequest {
   email: string;
   verificationCode: string;
   newPassword: string;
+}
+
+// 새로운 회원가입 플로우 타입 정의
+export interface SendVerificationEmailRequest {
+  email: string;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  verificationCode: string;
+}
+
+export interface VerifyEmailResponse {
+  verificationToken: string; // 이메일 인증 완료 토큰
+  expiresIn: string;
+}
+
+export interface CompleteRegistrationRequest {
+  verificationToken: string; // 이메일 인증 완료 토큰
+  password: string;
+  name: string;
+  birthDate: string; // YYYY-MM-DD 형식
+  username?: string;
+  profileImage?: string;
+  isTermsAgreed: boolean;
+  termsVersion: string;
+}
+
+// Redis에 저장될 이메일 인증 완료 토큰 데이터
+export interface EmailVerificationToken {
+  email: string;
+  verified: boolean;
+  createdAt: string;
 }
 
 // 디바이스 타입 정의
