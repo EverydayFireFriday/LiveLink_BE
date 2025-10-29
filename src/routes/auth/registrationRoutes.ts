@@ -6,260 +6,6 @@ import { requireNoAuth } from '../../middlewares/auth/authMiddleware';
 const router = express.Router();
 const registrationController = new RegistrationController();
 
-/**
- * @swagger
- * /auth/register-request:
- *   post:
- *     summary: 회원가입 이메일 인증 요청
- *     description: 회원가입을 위한 이메일 인증 코드를 전송합니다. 사용자명이 제공되지 않으면 자동으로 생성됩니다.
- *     tags: [Registration]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - name
- *               - birthDate
- *               - isTermsAgreed
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 description: 사용자 이메일 주소
- *                 example: "user@example.com"
- *               username:
- *                 type: string
- *                 description: 사용자명 (선택사항, 비어있으면 자동 생성)
- *                 example: "내별명"
- *                 minLength: 2
- *                 maxLength: 20
- *               password:
- *                 type: string
- *                 description: 비밀번호
- *                 example: "password123!"
- *                 minLength: 8
- *               name:
- *                 type: string
- *                 description: 실명 (한글 또는 영문)
- *                 example: "홍길동"
- *                 minLength: 2
- *                 maxLength: 50
- *               birthDate:
- *                 type: string
- *                 format: date
- *                 description: 생년월일 (YYYY-MM-DD 형식)
- *                 example: "1990-01-01"
- *               profileImage:
- *                 type: string
- *                 description: 프로필 이미지 URL (선택사항)
- *                 example: "https://example.com/profile.jpg"
- *               isTermsAgreed:
- *                  type: boolean
- *                  description: 서비스 이용약관 동의 여부 (필수)
- *                  example: true
- *
- *     responses:
- *       200:
- *         description: 인증 코드 전송 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "회원가입 인증 코드가 이메일로 전송되었습니다."
- *                 email:
- *                   type: string
- *                   description: 인증 코드가 전송된 이메일
- *                 username:
- *                   type: string
- *                   description: 최종 확정된 사용자명
- *                 usernameGenerated:
- *                   type: boolean
- *                   description: 사용자명이 자동 생성되었는지 여부
- *                 redisKey:
- *                   type: string
- *                   description: Redis 키 (내부 사용)
- *                 expiresIn:
- *                   type: string
- *                   example: "3분"
- *                   description: 인증 코드 유효 시간
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   examples:
- *                     invalid_email:
- *                       value: "올바른 이메일 주소를 입력해주세요."
- *                     invalid_password:
- *                       value: "비밀번호는 8자 이상이어야 합니다."
- *                     email_exists:
- *                       value: "이미 사용 중인 이메일입니다."
- *                     username_exists:
- *                       value: "이미 사용 중인 별명입니다."
- *                 suggestion:
- *                   type: string
- *                   description: 사용자명 중복 시 제안 메시지
- *                   example: "자동 생성을 원하시면 별명을 비워두세요."
- *       429:
- *         description: 요청 제한 초과
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요."
- *                 retryAfter:
- *                   type: number
- *                   example: 60
- *                   description: 재시도 가능한 시간(초)
- *       500:
- *         description: 서버 에러
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   examples:
- *                     email_failed:
- *                       value: "이메일 전송에 실패했습니다. 다시 시도해주세요."
- *                     server_error:
- *                       value: "이메일 전송 실패"
- *                 error:
- *                   type: string
- *                   description: 상세 에러 정보
- */
-// 회원가입 관련
-router.post(
-  '/register-request',
-  signupLimiter,
-  requireNoAuth,
-  (req, res) => void registrationController.registerRequest(req, res),
-);
-/**
- * @swagger
- * /auth/verify-register:
- *   post:
- *     summary: 회원가입 이메일 인증 완료
- *     description: 이메일로 받은 인증 코드를 확인하여 회원가입을 완료합니다.
- *     tags: [Registration]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - verificationCode
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 description: 인증받을 이메일 주소
- *                 example: "user@example.com"
- *               verificationCode:
- *                 type: string
- *                 description: 이메일로 받은 인증 코드
- *                 example: "123456"
- *     responses:
- *       201:
- *         description: 회원가입 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "이메일 인증이 완료되어 회원가입이 성공했습니다!"
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       description: 새로 생성된 사용자 ID
- *                     email:
- *                       type: string
- *                       description: 사용자 이메일
- *                     username:
- *                       type: string
- *                       description: 사용자명
- *                     profileImage:
- *                       type: string
- *                       description: 프로필 이미지 URL
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       description: 계정 생성일
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   examples:
- *                     missing_fields:
- *                       value: "이메일과 인증 코드를 입력해주세요."
- *                     no_user_data:
- *                       value: "사용자 데이터가 없습니다. 다시 회원가입을 시도해주세요."
- *                     email_exists:
- *                       value: "이미 사용 중인 이메일입니다."
- *       401:
- *         description: 인증 코드 불일치
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "인증 코드가 일치하지 않습니다."
- *       410:
- *         description: 인증 코드 만료
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "인증 코드가 만료되었거나 존재하지 않습니다."
- *       500:
- *         description: 서버 에러
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "서버 에러로 회원가입 실패"
- */
-router.post(
-  '/verify-register',
-  signupLimiter,
-  requireNoAuth,
-  (req, res) => void registrationController.verifyRegister(req, res),
-);
-
 // 사용자명 관련
 /**
  * @swagger
@@ -408,15 +154,11 @@ router.post(
   (req, res) => void registrationController.checkUsername(req, res),
 );
 
-// ============================================================
-// 새로운 회원가입 플로우: 이메일 인증 먼저, 회원정보 입력은 나중에
-// ============================================================
-
 /**
  * @swagger
  * /auth/send-verification-email:
  *   post:
- *     summary: 이메일 인증 코드 발송 (새로운 플로우)
+ *     summary: 이메일 인증 코드 발송
  *     description: 회원가입을 위한 이메일 인증 코드를 발송합니다. 이메일만 입력하면 인증 코드가 전송됩니다.
  *     tags: [Registration]
  *     requestBody:
@@ -473,7 +215,7 @@ router.post(
  * @swagger
  * /auth/verify-email:
  *   post:
- *     summary: 이메일 인증 확인 (새로운 플로우)
+ *     summary: 이메일 인증 확인
  *     description: 이메일로 받은 인증 코드를 확인하고, 인증 완료 토큰을 발급합니다. 이 토큰은 회원가입 완료 시 사용됩니다.
  *     tags: [Registration]
  *     requestBody:
@@ -539,7 +281,7 @@ router.post(
  * @swagger
  * /auth/complete-registration:
  *   post:
- *     summary: 회원가입 완료 (새로운 플로우)
+ *     summary: 회원가입 완료
  *     description: 이메일 인증 완료 토큰과 나머지 회원 정보를 받아서 회원가입을 완료합니다.
  *     tags: [Registration]
  *     requestBody:

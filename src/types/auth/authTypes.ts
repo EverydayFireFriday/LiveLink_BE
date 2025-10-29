@@ -61,13 +61,6 @@ export interface VerificationData {
   };
 }
 
-export interface RegisterRequest {
-  email: string;
-  username?: string;
-  password: string;
-  profileImage?: string;
-}
-
 export interface LoginRequest {
   email: string;
   password: string;
