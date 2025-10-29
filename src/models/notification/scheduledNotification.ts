@@ -285,6 +285,75 @@ export class ScheduledNotificationModel {
 
     return counts;
   }
+
+  /**
+   * Bulk create scheduled notifications
+   * 예약 알림 일괄 생성 (N+1 문제 해결)
+   */
+  public async bulkCreate(
+    notificationsData: Omit<
+      IScheduledNotification,
+      '_id' | 'createdAt' | 'updatedAt'
+    >[],
+  ): Promise<IScheduledNotification[]> {
+    if (notificationsData.length === 0) {
+      return [];
+    }
+
+    const now = new Date();
+    const notifications: IScheduledNotification[] = notificationsData.map(
+      (data) => ({
+        ...data,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+
+    const result = await this.collection.insertMany(notifications);
+
+    // Return with inserted IDs
+    return notifications.map((notification, index) => ({
+      ...notification,
+      _id: result.insertedIds[index],
+    }));
+  }
+
+  /**
+   * Bulk find notifications by IDs (for ownership verification)
+   * ID 목록으로 알림 일괄 조회 (권한 검증용)
+   */
+  public async findByIds(ids: ObjectId[]): Promise<IScheduledNotification[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.collection.find({ _id: { $in: ids } }).toArray();
+  }
+
+  /**
+   * Bulk cancel scheduled notifications
+   * 예약 알림 일괄 취소 (N+1 문제 해결)
+   */
+  public async bulkCancel(ids: ObjectId[]): Promise<number> {
+    if (ids.length === 0) {
+      return 0;
+    }
+
+    const result = await this.collection.updateMany(
+      {
+        _id: { $in: ids },
+        status: NotificationStatus.PENDING,
+      },
+      {
+        $set: {
+          status: NotificationStatus.CANCELLED,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    return result.modifiedCount;
+  }
 }
 
 /**

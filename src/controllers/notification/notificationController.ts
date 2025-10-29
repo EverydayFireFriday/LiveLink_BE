@@ -285,3 +285,139 @@ export const getNotificationStats = async (
     );
   }
 };
+
+/**
+ * Bulk create scheduled notifications
+ * 예약 알림 일괄 생성
+ */
+export const bulkCreateScheduledNotifications = async (
+  req: express.Request,
+  res: express.Response,
+) => {
+  try {
+    const userId = req.session?.user?.userId;
+
+    if (!userId) {
+      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
+    }
+
+    const { notifications } = req.body;
+
+    // Validation
+    if (
+      !notifications ||
+      !Array.isArray(notifications) ||
+      notifications.length === 0
+    ) {
+      return ResponseBuilder.badRequest(res, 'notifications 배열이 필요합니다');
+    }
+
+    // Add userId to each notification
+    const notificationsWithUserId = notifications.map((notification) => ({
+      ...notification,
+      userId,
+    }));
+
+    const result =
+      await ScheduledNotificationService.bulkCreateScheduledNotifications(
+        notificationsWithUserId,
+      );
+
+    if (result.success) {
+      logger.info(
+        `✅ Bulk notifications created by user ${userId}: ${result.data.summary.succeeded}/${result.data.summary.total}`,
+      );
+      return ResponseBuilder.created(
+        res,
+        '예약 알림 일괄 생성이 완료되었습니다',
+        result.data,
+      );
+    } else {
+      const statusCode = result.statusCode || 500;
+      if (statusCode === 400) {
+        return ResponseBuilder.badRequest(
+          res,
+          result.error || '예약 알림 일괄 생성 실패',
+        );
+      } else {
+        return ResponseBuilder.internalError(
+          res,
+          result.error || '예약 알림 일괄 생성 실패',
+        );
+      }
+    }
+  } catch (error: any) {
+    logger.error('❌ Failed to bulk create scheduled notifications:', error);
+    return ResponseBuilder.internalError(
+      res,
+      '예약 알림 일괄 생성 중 오류가 발생했습니다',
+    );
+  }
+};
+
+/**
+ * Bulk cancel scheduled notifications
+ * 예약 알림 일괄 취소
+ */
+export const bulkCancelScheduledNotifications = async (
+  req: express.Request,
+  res: express.Response,
+) => {
+  try {
+    const userId = req.session?.user?.userId;
+
+    if (!userId) {
+      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
+    }
+
+    const { notificationIds } = req.body;
+
+    // Validation
+    if (
+      !notificationIds ||
+      !Array.isArray(notificationIds) ||
+      notificationIds.length === 0
+    ) {
+      return ResponseBuilder.badRequest(
+        res,
+        'notificationIds 배열이 필요합니다',
+      );
+    }
+
+    const result =
+      await ScheduledNotificationService.bulkCancelScheduledNotifications(
+        notificationIds,
+        userId,
+      );
+
+    if (result.success) {
+      logger.info(
+        `✅ Bulk notifications cancelled by user ${userId}: ${result.data.summary.succeeded}/${result.data.summary.total}`,
+      );
+      return ResponseBuilder.success(
+        res,
+        '예약 알림 일괄 취소가 완료되었습니다',
+        result.data,
+      );
+    } else {
+      const statusCode = result.statusCode || 500;
+      if (statusCode === 400) {
+        return ResponseBuilder.badRequest(
+          res,
+          result.error || '예약 알림 일괄 취소 실패',
+        );
+      } else {
+        return ResponseBuilder.internalError(
+          res,
+          result.error || '예약 알림 일괄 취소 실패',
+        );
+      }
+    }
+  } catch (error: any) {
+    logger.error('❌ Failed to bulk cancel scheduled notifications:', error);
+    return ResponseBuilder.internalError(
+      res,
+      '예약 알림 일괄 취소 중 오류가 발생했습니다',
+    );
+  }
+};

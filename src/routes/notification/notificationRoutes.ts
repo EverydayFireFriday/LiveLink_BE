@@ -5,6 +5,8 @@ import {
   getScheduledNotificationById,
   cancelScheduledNotification,
   getNotificationStats,
+  bulkCreateScheduledNotifications,
+  bulkCancelScheduledNotifications,
 } from '../../controllers/notification/notificationController.js';
 import { requireAuth } from '../../middlewares/auth/authMiddleware.js';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware.js';
@@ -289,5 +291,329 @@ router.delete('/scheduled/:id', requireAuth, cancelScheduledNotification);
  *         description: 인증 필요
  */
 router.get('/stats', requireAuth, getNotificationStats);
+
+/**
+ * @swagger
+ * /notifications/scheduled/bulk:
+ *   post:
+ *     summary: 예약 알림 일괄 생성
+ *     description: |
+ *       여러 개의 예약 알림을 한 번에 생성합니다.
+ *
+ *       **data 필드 사용 시나리오:**
+ *       - data 포함: FCM 푸시 알림 클릭 시 특정 동작이 필요한 경우 (예: 특정 화면 이동)
+ *       - data 미포함: 단순 알림 표시만 필요한 경우
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - notifications
+ *             properties:
+ *               notifications:
+ *                 type: array
+ *                 description: 생성할 알림 목록
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - title
+ *                     - message
+ *                     - scheduledAt
+ *                   properties:
+ *                     title:
+ *                       type: string
+ *                       description: 알림 제목
+ *                     message:
+ *                       type: string
+ *                       description: 알림 메시지
+ *                     concertId:
+ *                       type: string
+ *                       description: 공연 ID (선택사항)
+ *                     scheduledAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: 예약 전송 시간
+ *                     data:
+ *                       type: object
+ *                       description: |
+ *                         FCM 푸시 알림의 추가 데이터 (선택사항)
+ *                         - 알림 클릭 시 앱에서 사용할 커스텀 데이터
+ *                         - 예: 특정 화면으로 이동, 추가 정보 표시 등
+ *                       additionalProperties:
+ *                         type: string
+ *           examples:
+ *             withData:
+ *               summary: data 필드 포함 (알림 클릭 시 동작 정의)
+ *               description: FCM data payload를 활용하여 알림 클릭 시 특정 화면으로 이동하거나 추가 동작을 수행해야 하는 경우
+ *               value:
+ *                 notifications:
+ *                   - title: "공연 1시간 전"
+ *                     message: "1시간 후 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:00:00Z"
+ *                     data:
+ *                       type: "concert_reminder"
+ *                       action: "open_concert_detail"
+ *                       screen: "ConcertDetailScreen"
+ *                   - title: "공연 30분 전"
+ *                     message: "30분 후 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:30:00Z"
+ *                     data:
+ *                       type: "concert_reminder"
+ *                       action: "open_concert_detail"
+ *                       urgency: "high"
+ *                   - title: "공연 10분 전"
+ *                     message: "곧 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:50:00Z"
+ *                     data:
+ *                       type: "concert_reminder"
+ *                       action: "open_concert_detail"
+ *                       urgency: "critical"
+ *             withoutData:
+ *               summary: data 필드 미포함 (단순 알림만)
+ *               description: 단순히 알림 메시지만 표시하면 되는 경우 (추가 동작 불필요)
+ *               value:
+ *                 notifications:
+ *                   - title: "공연 1시간 전"
+ *                     message: "1시간 후 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:00:00Z"
+ *                   - title: "공연 30분 전"
+ *                     message: "30분 후 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:30:00Z"
+ *                   - title: "공연 10분 전"
+ *                     message: "곧 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:50:00Z"
+ *             mixed:
+ *               summary: data 필드 혼합 사용
+ *               description: 일부 알림은 data 포함, 일부는 미포함 (각 알림별로 필요에 따라 선택)
+ *               value:
+ *                 notifications:
+ *                   - title: "공연 1시간 전"
+ *                     message: "1시간 후 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:00:00Z"
+ *                     data:
+ *                       type: "concert_reminder"
+ *                       action: "open_concert_detail"
+ *                   - title: "공연 30분 전"
+ *                     message: "30분 후 공연이 시작됩니다!"
+ *                     concertId: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                     scheduledAt: "2025-10-28T10:30:00Z"
+ *                   - title: "일반 알림"
+ *                     message: "단순 알림 메시지입니다"
+ *                     scheduledAt: "2025-10-28T11:00:00Z"
+ *     responses:
+ *       201:
+ *         description: 일괄 생성 완료
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "예약 알림 일괄 생성이 완료되었습니다"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     created:
+ *                       type: array
+ *                       description: 성공적으로 생성된 알림 목록
+ *                     failed:
+ *                       type: array
+ *                       description: 생성 실패한 알림 목록
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           title:
+ *                             type: string
+ *                           error:
+ *                             type: string
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: number
+ *                           description: 전체 요청 수
+ *                         succeeded:
+ *                           type: number
+ *                           description: 성공 수
+ *                         failed:
+ *                           type: number
+ *                           description: 실패 수
+ *             examples:
+ *               withData:
+ *                 summary: data 필드 포함된 알림 생성 성공
+ *                 value:
+ *                   success: true
+ *                   message: "예약 알림 일괄 생성이 완료되었습니다"
+ *                   data:
+ *                     created:
+ *                       - _id: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                         userId: "60d5ec49f1b2c8b1f8e4c1a2"
+ *                         concertId: "60d5ec49f1b2c8b1f8e4c1a3"
+ *                         title: "공연 1시간 전"
+ *                         message: "1시간 후 공연이 시작됩니다!"
+ *                         scheduledAt: "2025-10-28T10:00:00Z"
+ *                         status: "pending"
+ *                         data:
+ *                           type: "concert_reminder"
+ *                           action: "open_concert_detail"
+ *                           screen: "ConcertDetailScreen"
+ *                         createdAt: "2025-10-27T09:00:00Z"
+ *                         updatedAt: "2025-10-27T09:00:00Z"
+ *                       - _id: "60d5ec49f1b2c8b1f8e4c1b1"
+ *                         userId: "60d5ec49f1b2c8b1f8e4c1a2"
+ *                         concertId: "60d5ec49f1b2c8b1f8e4c1a3"
+ *                         title: "공연 30분 전"
+ *                         message: "30분 후 공연이 시작됩니다!"
+ *                         scheduledAt: "2025-10-28T10:30:00Z"
+ *                         status: "pending"
+ *                         data:
+ *                           type: "concert_reminder"
+ *                           action: "open_concert_detail"
+ *                           urgency: "high"
+ *                         createdAt: "2025-10-27T09:00:00Z"
+ *                         updatedAt: "2025-10-27T09:00:00Z"
+ *                     failed: []
+ *                     summary:
+ *                       total: 2
+ *                       succeeded: 2
+ *                       failed: 0
+ *               withoutData:
+ *                 summary: data 필드 없는 알림 생성 성공
+ *                 value:
+ *                   success: true
+ *                   message: "예약 알림 일괄 생성이 완료되었습니다"
+ *                   data:
+ *                     created:
+ *                       - _id: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                         userId: "60d5ec49f1b2c8b1f8e4c1a2"
+ *                         concertId: "60d5ec49f1b2c8b1f8e4c1a3"
+ *                         title: "공연 1시간 전"
+ *                         message: "1시간 후 공연이 시작됩니다!"
+ *                         scheduledAt: "2025-10-28T10:00:00Z"
+ *                         status: "pending"
+ *                         createdAt: "2025-10-27T09:00:00Z"
+ *                         updatedAt: "2025-10-27T09:00:00Z"
+ *                       - _id: "60d5ec49f1b2c8b1f8e4c1b1"
+ *                         userId: "60d5ec49f1b2c8b1f8e4c1a2"
+ *                         concertId: "60d5ec49f1b2c8b1f8e4c1a3"
+ *                         title: "공연 30분 전"
+ *                         message: "30분 후 공연이 시작됩니다!"
+ *                         scheduledAt: "2025-10-28T10:30:00Z"
+ *                         status: "pending"
+ *                         createdAt: "2025-10-27T09:00:00Z"
+ *                         updatedAt: "2025-10-27T09:00:00Z"
+ *                     failed: []
+ *                     summary:
+ *                       total: 2
+ *                       succeeded: 2
+ *                       failed: 0
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요
+ */
+router.post('/scheduled/bulk', requireAuth, bulkCreateScheduledNotifications);
+
+/**
+ * @swagger
+ * /notifications/scheduled/bulk:
+ *   delete:
+ *     summary: 예약 알림 일괄 취소
+ *     description: 여러 개의 예약 알림을 한 번에 취소합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - notificationIds
+ *             properties:
+ *               notificationIds:
+ *                 type: array
+ *                 description: 취소할 알림 ID 목록
+ *                 items:
+ *                   type: string
+ *           example:
+ *             notificationIds:
+ *               - "60d5ec49f1b2c8b1f8e4c1a1"
+ *               - "60d5ec49f1b2c8b1f8e4c1a2"
+ *               - "60d5ec49f1b2c8b1f8e4c1a3"
+ *     responses:
+ *       200:
+ *         description: 일괄 취소 완료
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "예약 알림 일괄 취소가 완료되었습니다"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     cancelled:
+ *                       type: array
+ *                       description: 성공적으로 취소된 알림 목록
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                     failed:
+ *                       type: array
+ *                       description: 취소 실패한 알림 목록
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           error:
+ *                             type: string
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: number
+ *                           description: 전체 요청 수
+ *                         succeeded:
+ *                           type: number
+ *                           description: 성공 수
+ *                         failed:
+ *                           type: number
+ *                           description: 실패 수
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요
+ */
+router.delete('/scheduled/bulk', requireAuth, bulkCancelScheduledNotifications);
 
 export default router;
