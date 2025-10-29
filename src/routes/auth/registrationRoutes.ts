@@ -408,4 +408,238 @@ router.post(
   (req, res) => void registrationController.checkUsername(req, res),
 );
 
+// ============================================================
+// 새로운 회원가입 플로우: 이메일 인증 먼저, 회원정보 입력은 나중에
+// ============================================================
+
+/**
+ * @swagger
+ * /auth/send-verification-email:
+ *   post:
+ *     summary: 이메일 인증 코드 발송 (새로운 플로우)
+ *     description: 회원가입을 위한 이메일 인증 코드를 발송합니다. 이메일만 입력하면 인증 코드가 전송됩니다.
+ *     tags: [Registration]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: 인증받을 이메일 주소
+ *                 example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: 인증 코드 전송 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "인증 코드가 이메일로 전송되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     email:
+ *                       type: string
+ *                       example: "user@example.com"
+ *                     expiresIn:
+ *                       type: string
+ *                       example: "3분"
+ *       400:
+ *         description: 잘못된 요청
+ *       409:
+ *         description: 이미 사용 중인 이메일
+ *       429:
+ *         description: 요청 제한 초과
+ *       500:
+ *         description: 서버 에러
+ */
+router.post(
+  '/send-verification-email',
+  signupLimiter,
+  requireNoAuth,
+  (req, res) => void registrationController.sendVerificationEmail(req, res),
+);
+
+/**
+ * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: 이메일 인증 확인 (새로운 플로우)
+ *     description: 이메일로 받은 인증 코드를 확인하고, 인증 완료 토큰을 발급합니다. 이 토큰은 회원가입 완료 시 사용됩니다.
+ *     tags: [Registration]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - verificationCode
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: 인증받을 이메일 주소
+ *                 example: "user@example.com"
+ *               verificationCode:
+ *                 type: string
+ *                 description: 이메일로 받은 인증 코드
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: 이메일 인증 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "이메일 인증이 완료되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     verificationToken:
+ *                       type: string
+ *                       description: 회원가입 완료 시 사용할 인증 토큰
+ *                       example: "a1b2c3d4..."
+ *                     email:
+ *                       type: string
+ *                       example: "user@example.com"
+ *                     expiresIn:
+ *                       type: string
+ *                       example: "10분"
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 코드 불일치
+ *       410:
+ *         description: 인증 코드 만료
+ *       500:
+ *         description: 서버 에러
+ */
+router.post(
+  '/verify-email',
+  signupLimiter,
+  requireNoAuth,
+  (req, res) => void registrationController.verifyEmail(req, res),
+);
+
+/**
+ * @swagger
+ * /auth/complete-registration:
+ *   post:
+ *     summary: 회원가입 완료 (새로운 플로우)
+ *     description: 이메일 인증 완료 토큰과 나머지 회원 정보를 받아서 회원가입을 완료합니다.
+ *     tags: [Registration]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - verificationToken
+ *               - password
+ *               - name
+ *               - birthDate
+ *               - isTermsAgreed
+ *             properties:
+ *               verificationToken:
+ *                 type: string
+ *                 description: 이메일 인증 완료 후 받은 토큰
+ *                 example: "a1b2c3d4..."
+ *               password:
+ *                 type: string
+ *                 description: 비밀번호
+ *                 example: "password123!"
+ *                 minLength: 8
+ *               name:
+ *                 type: string
+ *                 description: 실명 (한글 또는 영문)
+ *                 example: "홍길동"
+ *                 minLength: 2
+ *                 maxLength: 50
+ *               birthDate:
+ *                 type: string
+ *                 format: date
+ *                 description: 생년월일 (YYYY-MM-DD 형식)
+ *                 example: "1990-01-01"
+ *               username:
+ *                 type: string
+ *                 description: 사용자명 (선택사항, 비어있으면 자동 생성)
+ *                 example: "내별명"
+ *                 minLength: 2
+ *                 maxLength: 20
+ *               profileImage:
+ *                 type: string
+ *                 description: 프로필 이미지 URL (선택사항)
+ *                 example: "https://example.com/profile.jpg"
+ *               isTermsAgreed:
+ *                 type: boolean
+ *                 description: 서비스 이용약관 동의 여부 (필수)
+ *                 example: true
+ *               termsVersion:
+ *                 type: string
+ *                 description: 약관 버전 (선택사항, 없으면 현재 버전 사용)
+ *                 example: "1.0.0"
+ *     responses:
+ *       201:
+ *         description: 회원가입 완료
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "회원가입이 완료되었습니다!"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           description: 새로 생성된 사용자 ID
+ *                         email:
+ *                           type: string
+ *                           description: 사용자 이메일
+ *                         username:
+ *                           type: string
+ *                           description: 사용자명
+ *                         profileImage:
+ *                           type: string
+ *                           description: 프로필 이미지 URL
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: 계정 생성일
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 유효하지 않거나 만료된 인증 토큰
+ *       409:
+ *         description: 이미 사용 중인 이메일 또는 사용자명
+ *       500:
+ *         description: 서버 에러
+ */
+router.post(
+  '/complete-registration',
+  signupLimiter,
+  requireNoAuth,
+  (req, res) => void registrationController.completeRegistration(req, res),
+);
+
 export default router;
