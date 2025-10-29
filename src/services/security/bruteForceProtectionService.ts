@@ -56,7 +56,15 @@ export class BruteForceProtectionService {
         await this.redisClient.set(blockKey, 'blocked', {
           EX: BLOCK_DURATION_SECONDS,
         });
-        logger.warn(`[BruteForce] Key ${key} has been blocked for 30 minutes.`);
+        const blockMinutes = Math.floor(BLOCK_DURATION_SECONDS / 60);
+        logger.warn(
+          `[BruteForce] 🚨 Account/IP "${key}" has been BLOCKED for ${blockMinutes} minutes after ${attempts} failed attempts.`,
+        );
+      } else if (attempts > 1) {
+        const remainingAttempts = MAX_ATTEMPTS - attempts;
+        logger.info(
+          `[BruteForce] ⚠️ Account/IP "${key}" has ${attempts} failed attempt(s). ${remainingAttempts} attempt(s) remaining before block.`,
+        );
       }
 
       return attempts;

@@ -63,7 +63,23 @@ export class FCMService {
       );
       return true;
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string };
+      const firebaseError = error as {
+        code?: string;
+        message?: string;
+        errorInfo?: {
+          code?: string;
+          message?: string;
+        };
+      };
+
+      // 에러 코드 및 메시지 상세 로깅
+      logger.error('❌ FCM notification error details:', {
+        code: firebaseError.code,
+        message: firebaseError.message,
+        errorInfo: firebaseError.errorInfo,
+        token: token.substring(0, 20) + '...',
+      });
+
       if (
         firebaseError.code === 'messaging/invalid-registration-token' ||
         firebaseError.code === 'messaging/registration-token-not-registered'
@@ -74,6 +90,16 @@ export class FCMService {
         // 이 경우 DB에서 토큰을 제거해야 함
         return false;
       }
+
+      if (
+        firebaseError.code === 'messaging/third-party-auth-error' ||
+        (firebaseError.message && firebaseError.message.includes('APNS'))
+      ) {
+        logger.error(
+          '❌ APNS authentication error - check Firebase Console APNs settings',
+        );
+      }
+
       logger.error('❌ Failed to send FCM notification:', error);
       throw error;
     }

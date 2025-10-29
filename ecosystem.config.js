@@ -16,25 +16,27 @@ module.exports = {
       max_restarts: 10, // 최대 재시작 횟수
       min_uptime: 10000, // 정상 실행으로 간주하는 최소 실행 시간 (10초)
 
-      // 로그 설정
+      // 로그 설정 (개발 환경: 일반 텍스트, 프로덕션: JSON)
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true, // 모든 인스턴스의 로그를 하나로 병합
-      log_type: 'json', // JSON 형식으로 로그 출력
 
       // 환경 변수
       env: {
         NODE_ENV: 'development',
         PORT: 3000,
+        PM2_LOG_TYPE: 'raw', // 개발 환경: 일반 텍스트
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 3000,
+        PM2_LOG_TYPE: 'json', // 프로덕션: JSON (로그 수집 시스템용)
       },
       env_staging: {
         NODE_ENV: 'staging',
         PORT: 3000,
+        PM2_LOG_TYPE: 'raw',
       },
 
       // 크론 재시작 (매일 새벽 4시에 재시작 - 선택사항)

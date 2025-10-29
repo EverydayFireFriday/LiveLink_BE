@@ -1,5 +1,5 @@
 import express from 'express';
-import { maskEmails } from '../../utils/email/emailMask';
+import { maskEmail, maskEmails } from '../../utils/email/emailMask';
 import logger, { maskIpAddress } from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { AuthValidator } from '../../utils/validation/auth/authValidator';
@@ -34,12 +34,15 @@ export class AuthController {
     try {
       if (await bruteForceService.isBlocked(loginKey)) {
         const blockTime = await bruteForceService.getBlockTime(loginKey);
-        logger.warn(`[Auth] Blocked login attempt for account: ${loginKey}`);
+        const maskedEmailAddr = maskEmail(email);
+        const maskedIp = maskIpAddress(ip);
+        const remainingMinutes = Math.ceil(blockTime / 60);
+        logger.warn(
+          `[Auth] 🚫 BLOCKED login attempt for account: ${maskedEmailAddr} from IP: ${maskedIp} (${remainingMinutes} minutes remaining)`,
+        );
         return ResponseBuilder.tooManyRequests(
           res,
-          `너무 많은 로그인 시도를 하셨습니다. ${Math.ceil(
-            blockTime / 60,
-          )}분 후에 다시 시도해주세요.`,
+          `너무 많은 로그인 시도를 하셨습니다. ${remainingMinutes}분 후에 다시 시도해주세요.`,
         );
       }
 
@@ -56,8 +59,9 @@ export class AuthController {
       if (!user) {
         const attempts = await bruteForceService.increment(loginKey);
         const maskedIp = maskIpAddress(ip);
+        const maskedEmailAddr = maskEmail(email);
         logger.warn(
-          `[Auth] Failed login attempt #${attempts} for account: ${email} from IP: ${maskedIp} (user not found)`,
+          `[Auth] Failed login attempt #${attempts} for account: ${maskedEmailAddr} from IP: ${maskedIp} (user not found)`,
         );
         return ResponseBuilder.unauthorized(
           res,
@@ -99,8 +103,9 @@ export class AuthController {
       if (!isPasswordValid) {
         const attempts = await bruteForceService.increment(loginKey);
         const maskedIp = maskIpAddress(ip);
+        const maskedEmailAddr = maskEmail(user.email);
         logger.warn(
-          `[Auth] Failed login attempt #${attempts} for account: ${user.email} from IP: ${maskedIp} (incorrect password)`,
+          `[Auth] Failed login attempt #${attempts} for account: ${maskedEmailAddr} from IP: ${maskedIp} (incorrect password)`,
         );
         return ResponseBuilder.unauthorized(
           res,
