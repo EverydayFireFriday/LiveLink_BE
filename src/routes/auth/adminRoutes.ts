@@ -4,9 +4,13 @@ import {
   requireAdmin,
   checkAdminStatus,
 } from '../../middlewares/auth/adminMiddleware';
+import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const adminController = new AdminController();
+
+// 모든 관리자 API에 strictLimiter 적용
+router.use(strictLimiter);
 
 // 관리자 권한 확인
 router.get('/check', checkAdminStatus);

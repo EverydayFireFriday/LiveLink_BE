@@ -100,6 +100,13 @@ import { ReportService } from './report/reportService';
 import { setupApolloServer } from './report/apolloServer';
 import { ConcertStatusScheduler } from './services/concert/concertStatusScheduler';
 import { SessionCleanupScheduler } from './services/auth/sessionCleanupScheduler';
+import {
+  createNotificationWorker,
+  closeNotificationWorker,
+} from './services/notification/notificationWorker';
+import { closeNotificationQueue } from './config/queue/notificationQueue';
+import { NotificationRecoveryService } from './services/notification/notificationRecovery';
+import type { Worker } from 'bullmq';
 
 // 라우터 import
 import authRouter from './routes/auth/index';
@@ -108,6 +115,7 @@ import testRouter from './routes/test/testRoutes';
 import healthRouter from './routes/health/healthRoutes';
 import swaggerRouter from './routes/swagger/swaggerRoutes';
 import termsRouter from './routes/terms/index';
+import notificationRouter from './routes/notification/index';
 import { createReportRouterWithService } from './routes/report/index';
 import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
 import {
@@ -404,6 +412,7 @@ let isChatDBConnected = false;
 let reportService: ReportService;
 let concertStatusScheduler: ConcertStatusScheduler | null = null;
 let sessionCleanupScheduler: SessionCleanupScheduler | null = null;
+let notificationWorker: Worker | null = null;
 
 // Graceful shutdown 상태 추적
 let isShuttingDown = false;
@@ -546,6 +555,7 @@ app.use(defaultLimiter);
 app.use('/auth', authRouter);
 app.use('/concert', concertRouter);
 app.use('/test', testRouter);
+app.use('/', notificationRouter);
 
 // CSP Violation Report Endpoint
 app.post(
@@ -606,6 +616,16 @@ const initializeDatabases = async (): Promise<void> => {
     sessionCleanupScheduler = new SessionCleanupScheduler();
     sessionCleanupScheduler.start();
     logger.info('✅ Session Cleanup Scheduler started');
+
+    // Initialize Notification Worker (BullMQ)
+    logger.info('🔌 Initializing Notification Worker (BullMQ)...');
+    notificationWorker = createNotificationWorker();
+    logger.info('✅ Notification Worker started');
+
+    // Run notification recovery (restore lost jobs from MongoDB)
+    logger.info('🔄 Running notification job recovery...');
+    await NotificationRecoveryService.runFullRecovery(concertDB);
+    logger.info('✅ Notification recovery completed');
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
     // Set all database connection gauges to 0 on failure
@@ -728,6 +748,19 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
       sessionCleanupScheduler = null;
       logger.info('✅ Session Cleanup Scheduler stopped');
     }
+
+    // 6️⃣-3 Notification Worker 종료 (BullMQ)
+    if (notificationWorker) {
+      logger.info('6️⃣-3 Stopping Notification Worker...');
+      await closeNotificationWorker(notificationWorker);
+      notificationWorker = null;
+      logger.info('✅ Notification Worker stopped');
+    }
+
+    // 6️⃣-4 Notification Queue 종료
+    logger.info('6️⃣-4 Closing Notification Queue...');
+    await closeNotificationQueue();
+    logger.info('✅ Notification Queue closed');
 
     // 7️⃣ Socket.IO Redis 연결 종료
     logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');

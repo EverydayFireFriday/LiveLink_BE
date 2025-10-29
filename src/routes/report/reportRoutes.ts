@@ -2,6 +2,7 @@
 
 import express from 'express';
 import { ReportController } from '../../report/reportController';
+import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 /**
  * Report Routes
@@ -17,6 +18,9 @@ export const createReportRouter = (
   reportController: ReportController,
 ): express.Router => {
   const router = express.Router();
+
+  // 모든 신고 API에 defaultLimiter 적용
+  router.use(defaultLimiter);
 
   /**
    * @swagger

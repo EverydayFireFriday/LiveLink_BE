@@ -4,6 +4,11 @@ import {
   requireAuth,
   requireAdmin,
 } from '../../middlewares/auth/authMiddleware';
+import {
+  relaxedLimiter,
+  defaultLimiter,
+  strictLimiter,
+} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const profileController = new ProfileController();
@@ -86,7 +91,12 @@ const profileController = new ProfileController();
  *                   type: string
  *                   example: "프로필 조회 실패"
  */
-router.get('/profile', requireAuth, profileController.getProfile);
+router.get(
+  '/profile',
+  relaxedLimiter,
+  requireAuth,
+  profileController.getProfile,
+);
 /**
  * @swagger
  * /auth/profile:
@@ -159,7 +169,12 @@ router.get('/profile', requireAuth, profileController.getProfile);
  *                   type: string
  *                   example: "프로필 업데이트 실패"
  */
-router.put('/profile', requireAuth, profileController.updateProfile);
+router.put(
+  '/profile',
+  strictLimiter,
+  requireAuth,
+  profileController.updateProfile,
+);
 /**
  * @swagger
  * /auth/username:
@@ -259,7 +274,12 @@ router.put('/profile', requireAuth, profileController.updateProfile);
  *                   type: string
  *                   example: "별명 변경 실패"
  */
-router.put('/username', requireAuth, profileController.updateUsername);
+router.put(
+  '/username',
+  strictLimiter,
+  requireAuth,
+  profileController.updateUsername,
+);
 
 /**
  * @swagger
@@ -267,7 +287,7 @@ router.put('/username', requireAuth, profileController.updateUsername);
  *   put:
  *     summary: FCM 토큰 등록
  *     description: 푸시 알림을 위한 FCM 토큰을 등록합니다.
- *     tags: [Profile]
+ *     tags: [Notifications]
  *     security:
  *       - sessionAuth: []
  *     requestBody:
@@ -332,7 +352,12 @@ router.put('/username', requireAuth, profileController.updateUsername);
  *                   type: string
  *                   example: "FCM 토큰 등록 실패"
  */
-router.put('/fcm-token', requireAuth, profileController.updateFCMToken);
+router.put(
+  '/fcm-token',
+  defaultLimiter,
+  requireAuth,
+  profileController.updateFCMToken,
+);
 
 // 관리자 전용
 /**
@@ -420,6 +445,11 @@ router.put('/fcm-token', requireAuth, profileController.updateFCMToken);
  *                   type: string
  *                   example: "사용자 목록 조회 실패"
  */
-router.get('/users', requireAdmin, profileController.getAllUsers);
+router.get(
+  '/users',
+  strictLimiter,
+  requireAdmin,
+  profileController.getAllUsers,
+);
 
 export default router;

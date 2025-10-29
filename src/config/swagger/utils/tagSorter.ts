@@ -21,6 +21,12 @@ export const swaggerTags = [
   { name: 'Concerts - Search', description: '콘서트 검색 및 필터링' },
   { name: 'Concerts - Batch', description: '콘서트 배치 작업' },
 
+  // Notification 관련 tags
+  {
+    name: 'Notifications',
+    description: 'BullMQ 기반 예약 알림 관리',
+  },
+
   // Article 관련 tags
   { name: 'Article', description: '게시글 관리' },
   { name: 'Article Bookmark', description: '게시글 북마크 관리' },

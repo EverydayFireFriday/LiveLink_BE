@@ -175,3 +175,59 @@ export const getLikedConcerts = async (
     );
   }
 };
+
+export const getLikedConcertsByMonth = async (
+  req: express.Request,
+  res: express.Response,
+) => {
+  try {
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
+    }
+
+    const { year, month, page, limit, sortBy } = req.query;
+
+    // year와 month 유효성 검증
+    if (!year || !month) {
+      return ResponseBuilder.badRequest(
+        res,
+        'year와 month 파라미터가 필요합니다',
+      );
+    }
+
+    const yearNum = safeParseInt(year, new Date().getFullYear());
+    const monthNum = safeParseInt(month, new Date().getMonth() + 1);
+
+    const result = await ConcertLikeService.getLikedConcertsByMonth(userId, {
+      year: yearNum,
+      month: monthNum,
+      page: safeParseInt(page, 1),
+      limit: safeParseInt(limit, 20),
+      sortBy: sortBy as string,
+    });
+
+    if (result.success) {
+      return ResponseBuilder.success(
+        res,
+        `${yearNum}년 ${monthNum}월 좋아요한 콘서트 목록 조회 성공`,
+        result.data,
+      );
+    } else {
+      if (result.statusCode === 400) {
+        return ResponseBuilder.badRequest(res, result.error || '잘못된 요청');
+      }
+      return ResponseBuilder.badRequest(
+        res,
+        result.error || '월별 좋아요한 콘서트 목록 조회 실패',
+      );
+    }
+  } catch (error) {
+    logger.error('월별 좋아요한 콘서트 목록 조회 컨트롤러 에러:', error);
+    return ResponseBuilder.internalError(
+      res,
+      '월별 좋아요한 콘서트 목록 조회 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
+  }
+};

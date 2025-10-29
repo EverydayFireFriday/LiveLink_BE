@@ -3,18 +3,33 @@ node_modules
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+pnpm-debug.log
+yarn.lock
+pnpm-lock.yaml
 
 # Build outputs
 dist
 build
+out
+.next
+.nuxt
 
 # Version control
 .git
 .gitignore
+.gitattributes
+.gitmodules
 
-# IDE
+# IDE and editors
 .vscode
 .idea
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings
+.editorconfig
 
 # Environment files
 .env
@@ -22,26 +37,44 @@ build
 .env.*.local
 .env.example
 .env.production
+.env.development
+.env.test
 
 # Logs
 *.log
 logs
+*.log.*
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+*.tmp
+*.temp
 
 # Documentation
 README.md
 CHANGELOG.md
 LICENSE
+LICENSE.txt
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+*.md
+docs/
 
 # CI/CD
 .github
+.gitlab-ci.yml
+.travis.yml
+circle.yml
+.circleci
+.jenkins
+Jenkinsfile
 
 # Docker files themselves
 Dockerfile
-docker-compose.yml
+Dockerfile.*
+docker-compose*.yml
 .dockerignore
 
 # Testing
@@ -49,4 +82,40 @@ coverage
 .nyc_output
 __tests__
 *.test.ts
+*.test.js
 *.spec.ts
+*.spec.js
+jest.config.js
+jest.config.ts
+.jest
+
+# Temporary files
+tmp/
+temp/
+*.bak
+*.cache
+
+# Security and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+serviceAccountKey.json
+
+# Monitoring and profiling
+.vscode-test
+.benchmark
+*.cpuprofile
+*.heapsnapshot
+
+# Misc
+.eslintcache
+.prettierignore
+.stylelintignore
+.huskyrc
+.lintstagedrc
+.commitlintrc
+.releaserc
+
+# package-lock.json is needed for npm ci

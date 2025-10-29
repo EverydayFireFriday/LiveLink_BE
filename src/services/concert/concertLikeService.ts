@@ -424,4 +424,118 @@ export class ConcertLikeService {
       };
     }
   }
+
+  /**
+   * 사용자가 특정 월에 좋아요한 콘서트 목록 조회
+   * 해당 월에 공연이 있는 좋아요한 콘서트를 조회합니다
+   */
+  static async getLikedConcertsByMonth(
+    userId: string,
+    params: {
+      year: number;
+      month: number; // 1-12
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+    },
+  ): Promise<ConcertServiceResponse> {
+    try {
+      if (!userId) {
+        return {
+          success: false,
+          error: '로그인이 필요합니다.',
+          statusCode: 401,
+        };
+      }
+
+      const { year, month, page = 1, limit = 20, sortBy } = params;
+
+      // 월 유효성 검증
+      if (month < 1 || month > 12) {
+        return {
+          success: false,
+          error: '올바른 월을 입력해주세요 (1-12)',
+          statusCode: 400,
+        };
+      }
+
+      const userModel = new UserModel();
+      const user = await userModel.findById(userId);
+
+      if (!user || !user.likedConcerts || user.likedConcerts.length === 0) {
+        return {
+          success: true,
+          data: {
+            concerts: [],
+            pagination: {
+              currentPage: page,
+              totalPages: 0,
+              totalConcerts: 0,
+              limit,
+            },
+          },
+          statusCode: 200,
+        };
+      }
+
+      const likedConcertIds = user.likedConcerts;
+      const Concert = getConcertModel();
+
+      // 해당 월의 시작일과 종료일 계산
+      const startDate = new Date(year, month - 1, 1); // month는 0-based
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999); // 해당 월의 마지막 날
+
+      // 해당 월에 공연이 있는 좋아요한 콘서트 조회
+      const allConcerts = await Concert.collection
+        .find({
+          _id: { $in: likedConcertIds },
+          datetime: {
+            $elemMatch: {
+              $gte: startDate,
+              $lte: endDate,
+            },
+          },
+        })
+        .toArray();
+
+      // 정렬 적용
+      const sortedConcerts = sortConcerts(allConcerts as IConcert[], sortBy);
+
+      const total = sortedConcerts.length;
+      const totalPages = Math.ceil(total / limit);
+
+      // 페이지네이션 적용
+      const paginatedConcerts = sortedConcerts.slice(
+        (page - 1) * limit,
+        page * limit,
+      );
+
+      return {
+        success: true,
+        data: {
+          concerts: paginatedConcerts.map((concert: IConcert) => ({
+            ...concert,
+            isLiked: true,
+          })),
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalConcerts: total,
+            limit,
+          },
+        },
+        statusCode: 200,
+      };
+    } catch (error) {
+      logger.error('월별 좋아요한 콘서트 목록 조회 서비스 에러:', error);
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : '월별 좋아요한 콘서트 목록 조회 실패',
+        statusCode: 500,
+      };
+    }
+  }
 }
