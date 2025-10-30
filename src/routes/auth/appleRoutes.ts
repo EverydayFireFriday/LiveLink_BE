@@ -77,6 +77,56 @@ router.post(
       const authService = new AuthService();
       const sessionData = authService.createSessionData(req.user as any);
       req.session.user = sessionData;
+
+      // UserSession 생성 (멀티 디바이스 지원)
+      try {
+        const { UserSessionModel } = await import(
+          '../../models/auth/userSession'
+        );
+        const { DeviceDetector } = await import(
+          '../../utils/device/deviceDetector'
+        );
+        const { getSessionMaxAge } = await import('../../config/env/env');
+        const { redisClient } = await import('../../app');
+
+        const userSessionModel = new UserSessionModel();
+        const deviceInfo = DeviceDetector.detectDevice(req);
+        const user = req.user as any;
+
+        // 같은 플랫폼의 기존 세션 삭제 (웹 1개 + 앱 1개 = 총 2개만 유지)
+        const existingSessions = await userSessionModel.findByUserId(user._id);
+        const samePlatformSessions = existingSessions.filter(
+          (session) => session.deviceInfo.platform === deviceInfo.platform,
+        );
+
+        if (samePlatformSessions.length > 0) {
+          // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
+          for (const session of samePlatformSessions) {
+            await userSessionModel.deleteSession(session.sessionId);
+            if (redisClient.isOpen) {
+              await redisClient.del(`app:sess:${session.sessionId}`);
+            }
+          }
+        }
+
+        // 디바이스 타입에 따른 세션 만료 시간 계산
+        const sessionMaxAge = getSessionMaxAge(deviceInfo.type);
+        const expiresAt = new Date(Date.now() + sessionMaxAge);
+
+        // Express 세션 쿠키의 maxAge도 디바이스 타입에 맞게 설정
+        req.session.cookie.maxAge = sessionMaxAge;
+
+        // UserSession 생성
+        await userSessionModel.createSession(
+          user._id,
+          req.sessionID,
+          deviceInfo,
+          expiresAt,
+        );
+      } catch (sessionError) {
+        // UserSession 생성 실패는 로그만 남기고 로그인은 계속 진행
+        console.error('[Session] Failed to create UserSession:', sessionError);
+      }
     }
     // 프론트엔드 홈으로 리디렉션
     res.redirect(env.FRONTEND_URL);

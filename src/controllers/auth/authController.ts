@@ -142,37 +142,32 @@ export class AuthController {
           const { DeviceDetector } = await import(
             '../../utils/device/deviceDetector'
           );
-          const { getSessionMaxAge, env } = await import(
-            '../../config/env/env'
-          );
+          const { getSessionMaxAge } = await import('../../config/env/env');
           const { redisClient } = await import('../../app');
 
           const userSessionModel = new UserSessionModel();
           const deviceInfo = DeviceDetector.detectDevice(req);
 
-          // 세션 개수 제한 체크
-          const maxSessionCount = parseInt(env.SESSION_MAX_COUNT);
-          const currentSessions = await userSessionModel.findByUserId(
+          // 같은 플랫폼의 기존 세션 삭제 (웹 1개 + 앱 1개 = 총 2개만 유지)
+          const existingSessions = await userSessionModel.findByUserId(
             user._id!,
           );
+          const samePlatformSessions = existingSessions.filter(
+            (session) => session.deviceInfo.platform === deviceInfo.platform,
+          );
 
-          if (currentSessions.length >= maxSessionCount) {
-            // 최대 개수 초과 - 가장 오래된 세션 삭제
-            const oldestSession = currentSessions.sort(
-              (a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime(),
-            )[0];
-
-            // MongoDB에서 삭제
-            await userSessionModel.deleteSession(oldestSession.sessionId);
-
-            // Redis에서도 삭제
-            if (redisClient.isOpen) {
-              await redisClient.del(`app:sess:${oldestSession.sessionId}`);
-            }
-
+          if (samePlatformSessions.length > 0) {
             logger.info(
-              `[Session] Max session limit (${maxSessionCount}) reached for user: ${user.email}. Deleted oldest session: ${oldestSession.sessionId}`,
+              `[Session] Deleting ${samePlatformSessions.length} existing ${deviceInfo.platform} session(s) for user: ${user.email}`,
             );
+
+            // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
+            for (const session of samePlatformSessions) {
+              await userSessionModel.deleteSession(session.sessionId);
+              if (redisClient.isOpen) {
+                await redisClient.del(`app:sess:${session.sessionId}`);
+              }
+            }
           }
 
           // 디바이스 타입에 따른 세션 만료 시간 계산
@@ -196,7 +191,7 @@ export class AuthController {
             expiresInDays > 0 ? `${expiresInDays}일` : `${expiresInHours}시간`;
 
           logger.info(
-            `[Session] Created session for user: ${user.email}, device: ${deviceInfo.type}, expires in: ${expiryDisplay}`,
+            `[Session] Created session for user: ${user.email}, platform: ${deviceInfo.platform}, device: ${deviceInfo.type}, expires in: ${expiryDisplay}`,
           );
         } catch (sessionError) {
           // UserSession 생성 실패는 로그만 남기고 로그인은 계속 진행

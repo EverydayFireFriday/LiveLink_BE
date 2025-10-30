@@ -1,4 +1,4 @@
-import { DeviceInfo, DeviceType } from '../../types/auth/authTypes';
+import { DeviceInfo, DeviceType, Platform } from '../../types/auth/authTypes';
 import { Request } from 'express';
 
 /**
@@ -11,13 +11,56 @@ export class DeviceDetector {
   static detectDevice(req: Request): DeviceInfo {
     const userAgent = req.get('user-agent') || 'Unknown';
     const ipAddress = this.extractIpAddress(req);
+    const platform = this.extractPlatform(req);
 
     return {
       name: this.getDeviceName(userAgent),
       type: this.getDeviceType(userAgent),
+      platform,
       userAgent,
       ipAddress,
     };
+  }
+
+  /**
+   * Request에서 플랫폼 정보 추출
+   * 1. X-Platform 헤더 확인
+   * 2. body의 platform 필드 확인
+   * 3. User-Agent 기반 추론 (fallback)
+   */
+  static extractPlatform(req: Request): Platform {
+    // 1. X-Platform 헤더 확인 (우선순위 높음)
+    const platformHeader = req.get('x-platform')?.toLowerCase();
+    if (platformHeader === 'web') return Platform.WEB;
+    if (platformHeader === 'app') return Platform.APP;
+
+    // 2. body의 platform 필드 확인
+    const platformBody = req.body?.platform?.toLowerCase();
+    if (platformBody === 'web') return Platform.WEB;
+    if (platformBody === 'app') return Platform.APP;
+
+    // 3. User-Agent 기반 추론 (fallback)
+    const userAgent = req.get('user-agent') || '';
+
+    // 모바일 앱의 일반적인 패턴
+    if (
+      /LiveLink-iOS/i.test(userAgent) ||
+      /LiveLink-Android/i.test(userAgent) ||
+      /LiveLinkApp/i.test(userAgent)
+    ) {
+      return Platform.APP;
+    }
+
+    // 웹 브라우저의 일반적인 패턴
+    if (
+      /mozilla|chrome|safari|firefox|edge|opera/i.test(userAgent) &&
+      !/LiveLink/i.test(userAgent)
+    ) {
+      return Platform.WEB;
+    }
+
+    // 기본값은 웹
+    return Platform.WEB;
   }
 
   /**

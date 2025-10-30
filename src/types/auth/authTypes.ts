@@ -64,6 +64,7 @@ export interface VerificationData {
 export interface LoginRequest {
   email: string;
   password: string;
+  platform?: Platform; // 로그인 플랫폼 (선택적)
 }
 
 export interface PasswordResetRequest {
@@ -105,6 +106,12 @@ export interface EmailVerificationToken {
   createdAt: string;
 }
 
+// 플랫폼 타입 정의 (웹 vs 앱)
+export enum Platform {
+  WEB = 'web',
+  APP = 'app',
+}
+
 // 디바이스 타입 정의
 export enum DeviceType {
   MOBILE = 'mobile',
@@ -118,6 +125,7 @@ export enum DeviceType {
 export interface DeviceInfo {
   name: string; // "iPhone 14", "Chrome on Windows"
   type: DeviceType;
+  platform: Platform; // 웹 or 앱
   userAgent: string;
   ipAddress: string;
 }

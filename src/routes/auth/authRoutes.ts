@@ -26,8 +26,27 @@ const getAuthController = async () => {
  * /auth/login:
  *   post:
  *     summary: 사용자 로그인
- *     description: 이메일과 비밀번호를 사용하여 사용자 인증을 수행하고 세션을 생성합니다.
+ *     description: |
+ *       이메일과 비밀번호를 사용하여 사용자 인증을 수행하고 세션을 생성합니다.
+ *
+ *       **플랫폼별 세션 관리:**
+ *       - 웹(web)과 앱(app)에서 각각 1개씩 총 2개의 세션을 동시에 유지할 수 있습니다.
+ *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
+ *
+ *       **플랫폼 구분 방법 (우선순위 순):**
+ *       1. X-Platform 헤더 값 (권장)
+ *       2. 요청 body의 platform 필드
+ *       3. User-Agent 기반 자동 추론 (fallback)
  *     tags: [Auth]
+ *     parameters:
+ *       - in: header
+ *         name: X-Platform
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [web, app]
+ *         description: 로그인 플랫폼 (web 또는 app). 설정하지 않으면 User-Agent로 추론합니다.
+ *         example: "app"
  *     requestBody:
  *       required: true
  *       content:
@@ -47,6 +66,11 @@ const getAuthController = async () => {
  *                 type: string
  *                 description: 사용자 비밀번호
  *                 example: "password123"
+ *               platform:
+ *                 type: string
+ *                 enum: [web, app]
+ *                 description: 로그인 플랫폼 (선택적). X-Platform 헤더를 사용하는 것을 권장합니다.
+ *                 example: "app"
  *     responses:
  *       200:
  *         description: 로그인 성공
@@ -394,7 +418,22 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  * /auth/sessions:
  *   get:
  *     summary: 활성 세션 목록 조회
- *     description: 현재 사용자의 모든 활성 세션 목록을 가져옵니다. 멀티 디바이스 지원을 위해 각 세션의 디바이스 정보를 포함합니다.
+ *     description: |
+ *       현재 로그인한 사용자의 모든 활성 세션 목록을 조회합니다.
+ *
+ *       **멀티 플랫폼 세션 관리:**
+ *       - 웹(web)과 앱(app)에서 각각 최대 1개씩 총 2개의 세션을 동시에 유지할 수 있습니다.
+ *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
+ *
+ *       **반환되는 정보:**
+ *       - 각 세션의 디바이스 정보 (브라우저/OS 또는 앱 정보)
+ *       - 세션 생성 시간, 마지막 활동 시간, 만료 시간
+ *       - 현재 요청한 세션인지 여부 (isCurrent)
+ *       - IP 주소, User-Agent 등
+ *
+ *       **사용 예시:**
+ *       - 사용자가 "내 디바이스 관리" 화면에서 로그인된 기기 목록을 확인할 때
+ *       - 의심스러운 로그인을 발견하고 특정 세션을 강제 종료할 때
  *     tags: [Auth]
  *     security:
  *       - sessionAuth: []
@@ -406,6 +445,9 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 message:
  *                   type: string
  *                   example: "활성 세션 목록을 가져왔습니다."
@@ -414,50 +456,163 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *                   properties:
  *                     totalSessions:
  *                       type: number
- *                       description: 활성 세션 총 개수
- *                       example: 3
+ *                       description: 활성 세션 총 개수 (최대 2개)
+ *                       example: 2
  *                     sessions:
  *                       type: array
+ *                       description: 활성 세션 목록
  *                       items:
  *                         type: object
  *                         properties:
  *                           sessionId:
  *                             type: string
- *                             description: 세션 ID
+ *                             description: 세션 고유 ID (Express 세션 ID)
+ *                             example: "DNBjfhvSCu_Kj-IvwHDkoWoG_VXnsmTn"
  *                           deviceInfo:
  *                             type: object
+ *                             description: 디바이스 상세 정보
  *                             properties:
  *                               name:
  *                                 type: string
- *                                 description: 디바이스 이름
+ *                                 description: 읽기 쉬운 디바이스 이름 (브라우저 + OS 조합)
  *                                 example: "Chrome on Windows 10"
  *                               type:
  *                                 type: string
- *                                 description: 디바이스 타입
- *                                 enum: [mobile, web, tablet, desktop, unknown]
+ *                                 description: |
+ *                                   디바이스 타입 (User-Agent 기반 감지)
+ *                                   - mobile: 스마트폰
+ *                                   - tablet: 태블릿
+ *                                   - web: 데스크톱 브라우저
+ *                                   - unknown: 식별 불가
+ *                                 enum: [mobile, web, tablet, unknown]
  *                                 example: "web"
+ *                               platform:
+ *                                 type: string
+ *                                 description: |
+ *                                   로그인 플랫폼 (X-Platform 헤더 또는 자동 추론)
+ *                                   - web: 웹 브라우저에서 로그인
+ *                                   - app: 모바일 앱에서 로그인
+ *                                 enum: [web, app]
+ *                                 example: "web"
+ *                               userAgent:
+ *                                 type: string
+ *                                 description: 원본 User-Agent 문자열
+ *                                 example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
  *                               ipAddress:
  *                                 type: string
- *                                 description: IP 주소
+ *                                 description: 클라이언트 IP 주소 (프록시 고려)
+ *                                 example: "192.168.1.100"
  *                           createdAt:
  *                             type: string
  *                             format: date-time
- *                             description: 세션 생성 시간
+ *                             description: 세션 생성 시간 (ISO 8601 형식)
+ *                             example: "2025-10-30T12:53:33.381Z"
  *                           lastActivityAt:
  *                             type: string
  *                             format: date-time
- *                             description: 마지막 활동 시간
+ *                             description: 마지막 활동(요청) 시간
+ *                             example: "2025-10-30T12:53:33.381Z"
  *                           expiresAt:
  *                             type: string
  *                             format: date-time
- *                             description: 세션 만료 시간
+ *                             description: |
+ *                               세션 만료 예정 시간
+ *                               - 웹: 7일 (rolling session - 활동 시 갱신)
+ *                               - 앱: 30일 (rolling session - 활동 시 갱신)
+ *                             example: "2025-11-06T12:53:33.381Z"
  *                           isCurrent:
  *                             type: boolean
- *                             description: 현재 요청의 세션 여부
+ *                             description: 이 API를 호출한 현재 세션인지 여부 (true면 현재 세션)
+ *                             example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   description: 응답 생성 시간
+ *                   example: "2025-10-30T12:53:37.334Z"
+ *             examples:
+ *               single_session:
+ *                 summary: 웹 세션 1개만 있는 경우
+ *                 value:
+ *                   success: true
+ *                   message: "활성 세션 목록을 가져왔습니다."
+ *                   data:
+ *                     totalSessions: 1
+ *                     sessions:
+ *                       - sessionId: "DNBjfhvSCu_Kj-IvwHDkoWoG_VXnsmTn"
+ *                         deviceInfo:
+ *                           name: "Chrome on Windows 10"
+ *                           type: "web"
+ *                           platform: "web"
+ *                           userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+ *                           ipAddress: "192.168.1.100"
+ *                         createdAt: "2025-10-30T12:00:00.000Z"
+ *                         lastActivityAt: "2025-10-30T12:53:33.381Z"
+ *                         expiresAt: "2025-11-06T12:00:00.000Z"
+ *                         isCurrent: true
+ *                   timestamp: "2025-10-30T12:53:37.334Z"
+ *               two_sessions:
+ *                 summary: 웹과 앱 세션이 모두 있는 경우
+ *                 value:
+ *                   success: true
+ *                   message: "활성 세션 목록을 가져왔습니다."
+ *                   data:
+ *                     totalSessions: 2
+ *                     sessions:
+ *                       - sessionId: "web_session_id_123"
+ *                         deviceInfo:
+ *                           name: "Chrome on macOS 10.15"
+ *                           type: "web"
+ *                           platform: "web"
+ *                           userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+ *                           ipAddress: "192.168.1.100"
+ *                         createdAt: "2025-10-30T10:00:00.000Z"
+ *                         lastActivityAt: "2025-10-30T12:53:33.381Z"
+ *                         expiresAt: "2025-11-06T10:00:00.000Z"
+ *                         isCurrent: true
+ *                       - sessionId: "app_session_id_456"
+ *                         deviceInfo:
+ *                           name: "iPhone (iOS 17.5)"
+ *                           type: "mobile"
+ *                           platform: "app"
+ *                           userAgent: "LiveLink-iOS/1.0.0"
+ *                           ipAddress: "203.0.113.50"
+ *                         createdAt: "2025-10-29T08:00:00.000Z"
+ *                         lastActivityAt: "2025-10-30T11:30:00.000Z"
+ *                         expiresAt: "2025-11-28T08:00:00.000Z"
+ *                         isCurrent: false
+ *                   timestamp: "2025-10-30T12:53:37.334Z"
  *       401:
- *         description: 인증 필요
+ *         description: 인증 필요 (로그인하지 않은 경우)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "인증이 필요합니다."
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  *       500:
  *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "서버 에러로 세션 목록 조회에 실패했습니다."
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  */
 router.get('/sessions', defaultLimiter, requireAuth, async (req, res) => {
   const authController = await getAuthController();
