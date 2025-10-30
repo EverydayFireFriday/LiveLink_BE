@@ -102,7 +102,7 @@ router.get(
           '../../utils/device/deviceDetector'
         );
         const { getSessionMaxAge } = await import('../../config/env/env');
-        const { redisClient } = await import('../../app');
+        const { redisClient } = (await import('../../app')) as any;
 
         const userSessionModel = new UserSessionModel();
         const deviceInfo = DeviceDetector.detectDevice(req);
@@ -124,11 +124,11 @@ router.get(
           }
         }
 
-        // 디바이스 타입에 따른 세션 만료 시간 계산
-        const sessionMaxAge = getSessionMaxAge(deviceInfo.type);
+        // 플랫폼에 따른 세션 만료 시간 계산 (APP=30일, WEB=1일)
+        const sessionMaxAge = getSessionMaxAge(deviceInfo.platform);
         const expiresAt = new Date(Date.now() + sessionMaxAge);
 
-        // Express 세션 쿠키의 maxAge도 디바이스 타입에 맞게 설정
+        // Express 세션 쿠키의 maxAge도 플랫폼에 맞게 설정
         req.session.cookie.maxAge = sessionMaxAge;
 
         // UserSession 생성

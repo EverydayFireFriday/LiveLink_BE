@@ -485,9 +485,9 @@ REDIS_PASSWORD=secure_pass       # Docker Compose용
 #### 보안
 ```env
 SESSION_SECRET=minimum-32-characters-random-string
-SESSION_MAX_AGE_MOBILE=2592000000   # 30일 (모바일)
-SESSION_MAX_AGE_WEB=86400000        # 1일 (웹)
-SESSION_MAX_COUNT=10                # 최대 세션 수
+SESSION_MAX_AGE_APP=2592000000      # 30일 (앱 플랫폼)
+SESSION_MAX_AGE_WEB=86400000        # 1일 (웹 플랫폼)
+# 세션 정책: 플랫폼별 1개씩 유지 (총 최대 2개)
 BRUTE_FORCE_MAX_ATTEMPTS=10         # 로그인 시도 제한
 BRUTE_FORCE_BLOCK_DURATION=1800     # 차단 시간(초)
 ```

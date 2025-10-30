@@ -23,7 +23,7 @@ export class AuthController {
       return ResponseBuilder.badRequest(res, '비밀번호를 입력해주세요.');
     }
 
-    const { redisClient } = await import('../../app');
+    const { redisClient } = (await import('../../app')) as any;
     const { BruteForceProtectionService } = await import(
       '../../services/security'
     );
@@ -143,7 +143,7 @@ export class AuthController {
             '../../utils/device/deviceDetector'
           );
           const { getSessionMaxAge } = await import('../../config/env/env');
-          const { redisClient } = await import('../../app');
+          const { redisClient } = (await import('../../app')) as any;
 
           const userSessionModel = new UserSessionModel();
           const deviceInfo = DeviceDetector.detectDevice(req);
@@ -170,11 +170,11 @@ export class AuthController {
             }
           }
 
-          // 디바이스 타입에 따른 세션 만료 시간 계산
-          const sessionMaxAge = getSessionMaxAge(deviceInfo.type);
+          // 플랫폼에 따른 세션 만료 시간 계산 (APP=30일, WEB=1일)
+          const sessionMaxAge = getSessionMaxAge(deviceInfo.platform);
           const expiresAt = new Date(Date.now() + sessionMaxAge);
 
-          // Express 세션 쿠키의 maxAge도 디바이스 타입에 맞게 설정
+          // Express 세션 쿠키의 maxAge도 플랫폼에 맞게 설정
           req.session.cookie.maxAge = sessionMaxAge;
 
           // UserSession 생성
@@ -191,7 +191,7 @@ export class AuthController {
             expiresInDays > 0 ? `${expiresInDays}일` : `${expiresInHours}시간`;
 
           logger.info(
-            `[Session] Created session for user: ${user.email}, platform: ${deviceInfo.platform}, device: ${deviceInfo.type}, expires in: ${expiryDisplay}`,
+            `[Session] Created session for user: ${user.email}, platform: ${deviceInfo.platform}, expires in: ${expiryDisplay}`,
           );
         } catch (sessionError) {
           // UserSession 생성 실패는 로그만 남기고 로그인은 계속 진행
@@ -508,7 +508,7 @@ export class AuthController {
       const { UserSessionModel } = await import(
         '../../models/auth/userSession'
       );
-      const { redisClient } = await import('../../app');
+      const { redisClient } = (await import('../../app')) as any;
       const userSessionModel = new UserSessionModel();
 
       // 해당 세션이 현재 사용자의 것인지 확인
@@ -563,7 +563,7 @@ export class AuthController {
       const { UserSessionModel } = await import(
         '../../models/auth/userSession'
       );
-      const { redisClient } = await import('../../app');
+      const { redisClient } = (await import('../../app')) as any;
       const userSessionModel = new UserSessionModel();
 
       // 현재 세션을 제외한 모든 활성 세션 조회

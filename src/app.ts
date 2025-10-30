@@ -370,6 +370,7 @@ app.use(maintenanceMiddleware);
 
 // 세션 미들웨어 - Redis 연결 전에 먼저 등록 (초기에는 메모리 스토어)
 // Redis 연결 성공 시 세션 스토어가 자동으로 Redis로 전환됨
+// 쿠키 maxAge는 로그인 시 플랫폼별로 동적으로 설정됨 (기본값: WEB 플랫폼 기준)
 const sessionConfig: session.SessionOptions = {
   secret: env.SESSION_SECRET,
   resave: false,
@@ -378,7 +379,7 @@ const sessionConfig: session.SessionOptions = {
   cookie: {
     secure: isProduction() || env.COOKIE_SAMESITE === 'none',
     httpOnly: true,
-    maxAge: parseInt(env.SESSION_MAX_AGE),
+    maxAge: parseInt(env.SESSION_MAX_AGE_WEB), // 기본값: 1일 (WEB 플랫폼 기준)
     sameSite: env.COOKIE_SAMESITE,
     domain: env.COOKIE_DOMAIN || undefined,
   },

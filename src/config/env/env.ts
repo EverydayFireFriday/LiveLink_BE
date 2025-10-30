@@ -11,43 +11,19 @@ const envSchema = z.object({
   SESSION_SECRET: z
     .string()
     .min(32, '세션 시크릿은 최소 32자 이상이어야 합니다'),
-  SESSION_MAX_AGE: z
+  // 플랫폼별 세션 만료 시간 (밀리초)
+  // APP 플랫폼 (X-Platform: app) → 30일
+  // WEB 플랫폼 (X-Platform: web) → 1일
+  SESSION_MAX_AGE_APP: z
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
     .optional()
-    .default('86400000'), // 호환성을 위해 유지 (deprecated)
-  // 디바이스별 세션 만료 시간 (밀리초)
-  SESSION_MAX_AGE_MOBILE: z
-    .string()
-    .regex(/^\d+$/, '숫자만 입력 가능합니다')
-    .optional()
-    .default('2592000000'), // 30일
+    .default('2592000000'), // 30일 (30 * 24 * 60 * 60 * 1000)
   SESSION_MAX_AGE_WEB: z
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
     .optional()
-    .default('86400000'), // 1일
-  SESSION_MAX_AGE_TABLET: z
-    .string()
-    .regex(/^\d+$/, '숫자만 입력 가능합니다')
-    .optional()
-    .default('2592000000'), // 30일
-  SESSION_MAX_AGE_DESKTOP: z
-    .string()
-    .regex(/^\d+$/, '숫자만 입력 가능합니다')
-    .optional()
-    .default('86400000'), // 1일
-  SESSION_MAX_AGE_DEFAULT: z
-    .string()
-    .regex(/^\d+$/, '숫자만 입력 가능합니다')
-    .optional()
-    .default('86400000'), // 1일 (fallback)
-  // 최대 세션 개수 제한
-  SESSION_MAX_COUNT: z
-    .string()
-    .regex(/^\d+$/, '숫자만 입력 가능합니다')
-    .optional()
-    .default('10'), // 기본값: 10개
+    .default('86400000'), // 1일 (24 * 60 * 60 * 1000)
   BRUTE_FORCE_MAX_ATTEMPTS: z
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
@@ -224,23 +200,14 @@ const validateEnv = () => {
     logger.info(`🌍 환경: ${parsed.NODE_ENV}`);
     logger.info(`🚪 포트: ${parsed.PORT}`);
     logger.info(`📊 로그 레벨: ${parsed.LOG_LEVEL}`);
-    logger.info('\n🔐 디바이스별 세션 만료시간:');
+    logger.info('\n🔐 플랫폼별 세션 만료시간:');
     logger.info(
-      `  📱 모바일: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_MOBILE) / 1000 / 60 / 60 / 24)}일`,
+      `  📱 APP (X-Platform: app): ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_APP) / 1000 / 60 / 60 / 24)}일`,
     );
     logger.info(
-      `  💻 웹: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_WEB) / 1000 / 60 / 60)}시간`,
+      `  💻 WEB (X-Platform: web): ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_WEB) / 1000 / 60 / 60)}시간`,
     );
-    logger.info(
-      `  📲 태블릿: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_TABLET) / 1000 / 60 / 60 / 24)}일`,
-    );
-    logger.info(
-      `  🖥️  데스크톱: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_DESKTOP) / 1000 / 60 / 60)}시간`,
-    );
-    logger.info(
-      `  🔧 기본값: ${Math.floor(parseInt(parsed.SESSION_MAX_AGE_DEFAULT) / 1000 / 60 / 60)}시간`,
-    );
-    logger.info(`🔢 최대 세션 개수: ${parsed.SESSION_MAX_COUNT}개`);
+    logger.info(`  🔢 세션 정책: 플랫폼별 1개씩 유지 (총 최대 2개)`);
     logger.info(
       `🛡️ 브루트포스 보호 - 최대 시도 횟수: ${parsed.BRUTE_FORCE_MAX_ATTEMPTS}`,
     );
@@ -316,18 +283,13 @@ export const shouldSkipAuth = (): boolean => {
   return isDevelopment() || env.SKIP_AUTH;
 };
 
-// 📱 디바이스 타입별 세션 만료 시간 가져오기
-export const getSessionMaxAge = (deviceType: string): number => {
-  switch (deviceType.toLowerCase()) {
-    case 'mobile':
-      return parseInt(env.SESSION_MAX_AGE_MOBILE);
+// 📱 플랫폼별 세션 만료 시간 가져오기
+export const getSessionMaxAge = (platform: string): number => {
+  switch (platform.toLowerCase()) {
+    case 'app':
+      return parseInt(env.SESSION_MAX_AGE_APP); // 30일
     case 'web':
-      return parseInt(env.SESSION_MAX_AGE_WEB);
-    case 'tablet':
-      return parseInt(env.SESSION_MAX_AGE_TABLET);
-    case 'desktop':
-      return parseInt(env.SESSION_MAX_AGE_DESKTOP);
     default:
-      return parseInt(env.SESSION_MAX_AGE_DEFAULT);
+      return parseInt(env.SESSION_MAX_AGE_WEB); // 1일
   }
 };
