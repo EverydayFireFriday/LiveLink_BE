@@ -1,16 +1,16 @@
 import express from 'express';
-import session from 'express-session';
+import session, { Store } from 'express-session';
 import crypto from 'crypto';
-import connectRedis from 'connect-redis';
+import RedisStore from 'connect-redis';
 import { redisClient } from '../../config/redis/redisClient';
 
-// connect-redis v6.1.3 방식
-const RedisStore = connectRedis(session);
-
+// connect-redis v7.1.1 방식 (named export)
 export const sessionMiddleware = (app: express.Application) => {
+  const store = new (RedisStore as any)({ client: redisClient }) as Store;
+
   app.use(
     session({
-      store: new RedisStore({ client: redisClient }),
+      store: store,
       secret:
         process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex'),
       resave: false,

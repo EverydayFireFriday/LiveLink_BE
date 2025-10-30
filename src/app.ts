@@ -134,9 +134,9 @@ import {
   disconnectSocketRedis,
 } from './config/redis/socketRedisClient';
 
-// connect-redis v6.1.3 방식
-import connectRedis from 'connect-redis';
-const RedisStore = connectRedis(session);
+// connect-redis v7.1.1 방식 (named export)
+import RedisStore from 'connect-redis';
+import { Store } from 'express-session';
 
 const app = express();
 import * as http from 'http';
@@ -395,7 +395,7 @@ app.use(passport.session());
 
 // Redis 연결 확인 및 로깅 함수
 const logSessionStoreStatus = (useRedis: boolean): void => {
-  if (useRedis && redisClient.isOpen) {
+  if (useRedis && redisClient.status === 'ready') {
     logger.info('✅ Session store: Redis (reconnection will use Redis)');
   } else {
     logger.warn(
@@ -442,7 +442,7 @@ app.get('/health/readiness', (req: express.Request, res: express.Response) => {
     concertDB: isConcertDBConnected,
     articleDB: isArticleDBConnected,
     chatDB: isChatDBConnected,
-    redis: redisClient?.isOpen || false, // 정보성 - 필수 아님
+    redis: redisClient?.status === 'ready' || false, // 정보성 - 필수 아님
   };
 
   if (allServicesReady) {
@@ -473,7 +473,7 @@ app.get('/health', (req: express.Request, res: express.Response) => {
       concertDB: isConcertDBConnected,
       articleDB: isArticleDBConnected,
       chatDB: isChatDBConnected,
-      redis: redisClient?.isOpen || false,
+      redis: redisClient?.status === 'ready' || false,
     },
   });
 });
@@ -811,11 +811,12 @@ const startServer = async (): Promise<void> => {
     const isRedisConnected = await connectRedisClient();
 
     // Redis 연결 성공 시 세션 설정 업데이트
-    if (isRedisConnected && redisClient.isOpen) {
-      sessionConfig.store = new RedisStore({
+    if (isRedisConnected && redisClient.status === 'ready') {
+      const store = new (RedisStore as any)({
         client: redisClient,
         prefix: 'app:sess:',
-      });
+      }) as Store;
+      sessionConfig.store = store;
     }
 
     logSessionStoreStatus(isRedisConnected);

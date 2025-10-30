@@ -111,7 +111,7 @@ export const detailedHealthCheck = async (
 
     // 2. Redis 상태 확인
     try {
-      const redisConnected = redisClient?.isOpen || false;
+      const redisConnected = redisClient?.status === 'ready' || false;
       if (redisConnected) {
         const pingStart = Date.now();
         await redisClient.ping();
@@ -186,7 +186,7 @@ export const redisHealthCheck = async (
   const startTime = Date.now();
 
   try {
-    if (!redisClient?.isOpen) {
+    if (redisClient?.status !== 'ready') {
       throw new Error('Redis client not connected');
     }
 
@@ -280,7 +280,7 @@ export const readinessCheck = async (
     const checks = [];
 
     // Redis 체크
-    if (redisClient?.isOpen) {
+    if (redisClient?.status === 'ready') {
       await redisClient.ping();
       checks.push({ service: 'redis', status: 'ready' });
     } else {

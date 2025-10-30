@@ -103,7 +103,7 @@ router.post(
           // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
           for (const session of samePlatformSessions) {
             await userSessionModel.deleteSession(session.sessionId);
-            if (redisClient.isOpen) {
+            if (redisClient.status === 'ready') {
               await redisClient.del(`app:sess:${session.sessionId}`);
             }
           }

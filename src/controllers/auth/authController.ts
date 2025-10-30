@@ -164,7 +164,7 @@ export class AuthController {
             // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
             for (const session of samePlatformSessions) {
               await userSessionModel.deleteSession(session.sessionId);
-              if (redisClient.isOpen) {
+              if (redisClient.status === 'ready') {
                 await redisClient.del(`app:sess:${session.sessionId}`);
               }
             }
@@ -528,7 +528,7 @@ export class AuthController {
       await userSessionModel.deleteSession(sessionId);
 
       // Redis에서도 세션 삭제
-      if (redisClient.isOpen) {
+      if (redisClient.status === 'ready') {
         const sessionKey = `app:sess:${sessionId}`;
         await redisClient.del(sessionKey);
       }
@@ -577,7 +577,7 @@ export class AuthController {
       );
 
       // Redis에서 각 세션 삭제
-      if (redisClient.isOpen) {
+      if (redisClient.status === 'ready') {
         const deleteResults = await Promise.all(
           otherSessions.map(async (session) => {
             const key = `app:sess:${session.sessionId}`;

@@ -1,11 +1,12 @@
 import { redisClient } from '../../config/redis/redisClient';
 import { logger } from '../index';
+import Redis from 'ioredis';
 
 class CacheManager {
-  private client: typeof redisClient;
+  private client: Redis;
   private isRedisAvailable: boolean = true;
 
-  constructor(client: typeof redisClient) {
+  constructor(client: Redis) {
     this.client = client;
   }
 
@@ -13,7 +14,7 @@ class CacheManager {
    * Redis 연결 상태 확인
    */
   private checkRedisAvailability(): boolean {
-    if (!this.client.isOpen) {
+    if (this.client.status !== 'ready') {
       if (this.isRedisAvailable) {
         logger.warn(
           '⚠️ Redis is not connected. Cache operations will be skipped.',
@@ -34,11 +35,9 @@ class CacheManager {
       if (!this.checkRedisAvailability()) {
         return null;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-      const data = await this.client.v4.get(key);
+      const data = await this.client.get(key);
       if (data) {
         logger.info(`✅ Cache HIT for key: ${key}`);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         return JSON.parse(data) as T;
       }
       logger.info(`❌ Cache MISS for key: ${key}`);
@@ -56,8 +55,7 @@ class CacheManager {
         return;
       }
       const data = JSON.stringify(value);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await this.client.v4.set(key, data, { EX: ttlInSeconds });
+      await this.client.set(key, data, 'EX', ttlInSeconds);
       logger.info(`✅ Cache SET for key: ${key} with TTL: ${ttlInSeconds}s`);
     } catch (error) {
       logger.error(`❌ Error setting cache for key ${key}:`, { error });
@@ -70,8 +68,7 @@ class CacheManager {
       if (!this.checkRedisAvailability()) {
         return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await this.client.v4.del(key);
+      await this.client.del(key);
       logger.info(`✅ Cache DELETED for key: ${key}`);
     } catch (error) {
       logger.error(`❌ Error deleting cache for key ${key}:`, { error });
@@ -84,14 +81,10 @@ class CacheManager {
       if (!this.checkRedisAvailability()) {
         return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-      const keys = await this.client.v4.keys(pattern);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const keys = await this.client.keys(pattern);
       if (keys.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        await this.client.v4.del(keys);
+        await this.client.del(...keys);
         logger.info(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
           `✅ Cache DELETED for pattern: ${pattern}, keys: ${keys.join(', ')}`,
         );
       }

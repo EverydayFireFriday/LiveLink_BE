@@ -1,4 +1,4 @@
-import { RedisClientType } from 'redis';
+import Redis from 'ioredis';
 import logger from '../../utils/logger/logger';
 import { env } from '../../config/env/env';
 
@@ -6,10 +6,10 @@ const MAX_ATTEMPTS = parseInt(env.BRUTE_FORCE_MAX_ATTEMPTS);
 const BLOCK_DURATION_SECONDS = parseInt(env.BRUTE_FORCE_BLOCK_DURATION);
 
 export class BruteForceProtectionService {
-  private redisClient: RedisClientType;
+  private redisClient: Redis;
   private isRedisAvailable: boolean = true; // Redis 가용성 플래그
 
-  constructor(redisClient: any) {
+  constructor(redisClient: Redis) {
     this.redisClient = redisClient;
     void this.checkRedisConnection();
   }
@@ -53,9 +53,12 @@ export class BruteForceProtectionService {
 
       if (attempts >= MAX_ATTEMPTS) {
         const blockKey = this.getBlockKey(key);
-        await this.redisClient.set(blockKey, 'blocked', {
-          EX: BLOCK_DURATION_SECONDS,
-        });
+        await this.redisClient.set(
+          blockKey,
+          'blocked',
+          'EX',
+          BLOCK_DURATION_SECONDS,
+        );
         const blockMinutes = Math.floor(BLOCK_DURATION_SECONDS / 60);
         logger.warn(
           `[BruteForce] 🚨 Account/IP "${key}" has been BLOCKED for ${blockMinutes} minutes after ${attempts} failed attempts.`,

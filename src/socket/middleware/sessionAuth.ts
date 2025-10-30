@@ -75,7 +75,7 @@ export async function getSessionFromRedis(
   sessionId: string,
 ): Promise<Record<string, unknown> | null> {
   try {
-    if (!redisClient.isOpen) {
+    if (redisClient.status !== 'ready') {
       logger.warn('[Socket.IO] Redis client is not connected');
       return null;
     }
