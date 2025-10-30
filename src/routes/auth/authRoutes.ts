@@ -35,8 +35,7 @@ const getAuthController = async () => {
  *
  *       **플랫폼 구분 방법 (우선순위 순):**
  *       1. X-Platform 헤더 값 (권장)
- *       2. 요청 body의 platform 필드
- *       3. User-Agent 기반 자동 추론 (fallback)
+ *       2. User-Agent 기반 자동 추론 (fallback)
  *     tags: [Auth]
  *     parameters:
  *       - in: header
@@ -45,7 +44,11 @@ const getAuthController = async () => {
  *         schema:
  *           type: string
  *           enum: [web, app]
- *         description: 로그인 플랫폼 (web 또는 app). 설정하지 않으면 User-Agent로 추론합니다.
+ *         description: |
+ *           로그인 플랫폼 지정 (선택)
+ *           - `web`: 웹 플랫폼 (세션 유지: 1일)
+ *           - `app`: 앱 플랫폼 (세션 유지: 30일)
+ *           - 미지정 시: User-Agent로 자동 추론
  *         example: "app"
  *     requestBody:
  *       required: true
@@ -66,11 +69,6 @@ const getAuthController = async () => {
  *                 type: string
  *                 description: 사용자 비밀번호
  *                 example: "password123"
- *               platform:
- *                 type: string
- *                 enum: [web, app]
- *                 description: 로그인 플랫폼 (선택적). X-Platform 헤더를 사용하는 것을 권장합니다.
- *                 example: "app"
  *     responses:
  *       200:
  *         description: 로그인 성공

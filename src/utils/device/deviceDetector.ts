@@ -24,9 +24,8 @@ export class DeviceDetector {
 
   /**
    * Request에서 플랫폼 정보 추출
-   * 1. X-Platform 헤더 확인
-   * 2. body의 platform 필드 확인
-   * 3. User-Agent 기반 추론 (fallback)
+   * 1. X-Platform 헤더 확인 (필수)
+   * 2. User-Agent 기반 추론 (fallback)
    */
   static extractPlatform(req: Request): Platform {
     // 1. X-Platform 헤더 확인 (우선순위 높음)
@@ -34,12 +33,7 @@ export class DeviceDetector {
     if (platformHeader === 'web') return Platform.WEB;
     if (platformHeader === 'app') return Platform.APP;
 
-    // 2. body의 platform 필드 확인
-    const platformBody = req.body?.platform?.toLowerCase();
-    if (platformBody === 'web') return Platform.WEB;
-    if (platformBody === 'app') return Platform.APP;
-
-    // 3. User-Agent 기반 추론 (fallback)
+    // 2. User-Agent 기반 추론 (fallback)
     const userAgent = req.get('user-agent') || '';
 
     // 모바일 앱의 일반적인 패턴

@@ -64,7 +64,6 @@ export interface VerificationData {
 export interface LoginRequest {
   email: string;
   password: string;
-  platform?: Platform; // 로그인 플랫폼 (선택적)
 }
 
 export interface PasswordResetRequest {

@@ -40,8 +40,24 @@ router.use(defaultLimiter);
  *       Google이 사용자를 인증한 후 리디렉션하는 엔드포인트입니다.
  *       **이 엔드포인트는 클라이언트가 직접 호출해서는 안 됩니다.**
  *       인증 코드를 받아 사용자의 세션을 설정하고, 최종적으로 프론트엔드 애플리케이션으로 리디렉션합니다.
+ *
+ *       **플랫폼별 세션 관리:**
+ *       - X-Platform 헤더로 플랫폼을 지정할 수 있습니다 (web: 1일, app: 30일)
+ *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
  *     tags: [Auth]
  *     parameters:
+ *       - in: header
+ *         name: X-Platform
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [web, app]
+ *         description: |
+ *           로그인 플랫폼 지정 (선택)
+ *           - `web`: 웹 플랫폼 (세션 유지: 1일)
+ *           - `app`: 앱 플랫폼 (세션 유지: 30일)
+ *           - 미지정 시: User-Agent로 자동 추론
+ *         example: "app"
  *       - in: query
  *         name: code
  *         schema:
