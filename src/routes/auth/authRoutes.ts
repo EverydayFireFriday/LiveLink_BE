@@ -32,23 +32,25 @@ const getAuthController = async () => {
  *       **플랫폼별 세션 관리:**
  *       - 웹(web)과 앱(app)에서 각각 1개씩 총 2개의 세션을 동시에 유지할 수 있습니다.
  *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
+ *       - ⚠️ **중요**: 이전 기기에는 로그아웃 알림이 전송되지 않습니다.
  *
- *       **플랫폼 구분 방법 (우선순위 순):**
- *       1. X-Platform 헤더 값 (권장)
- *       2. User-Agent 기반 자동 추론 (fallback)
+ *       **플랫폼 구분 방법:**
+ *       - X-Platform 헤더로 플랫폼을 지정합니다 (필수 권장)
+ *       - 헤더가 없으면 WEB 플랫폼으로 기본 설정됩니다 (세션 1일)
  *     tags: [Auth]
  *     parameters:
  *       - in: header
  *         name: X-Platform
- *         required: false
+ *         required: true
  *         schema:
  *           type: string
  *           enum: [web, app]
+ *           default: web
  *         description: |
- *           로그인 플랫폼 지정 (선택)
+ *           로그인 플랫폼 지정 (필수 권장)
  *           - `web`: 웹 플랫폼 (세션 유지: 1일)
  *           - `app`: 앱 플랫폼 (세션 유지: 30일)
- *           - 미지정 시: User-Agent로 자동 추론
+ *           - 미지정 시: WEB 플랫폼으로 기본 설정
  *         example: "app"
  *     requestBody:
  *       required: true
@@ -98,6 +100,22 @@ const getAuthController = async () => {
  *                 sessionId:
  *                   type: string
  *                   description: 세션 ID
+ *                 warning:
+ *                   type: object
+ *                   description: 이전 세션이 로그아웃된 경우 표시되는 경고 (선택적)
+ *                   properties:
+ *                     previousSessionTerminated:
+ *                       type: boolean
+ *                       description: 이전 세션이 종료되었는지 여부
+ *                       example: true
+ *                     message:
+ *                       type: string
+ *                       description: 사용자에게 표시할 경고 메시지
+ *                       example: "이전에 로그인된 웹 세션이 로그아웃되었습니다."
+ *                     terminatedDevice:
+ *                       type: string
+ *                       description: 로그아웃된 이전 기기명
+ *                       example: "Chrome on Windows 10"
  *       400:
  *         description: 잘못된 요청 (유효성 검증 실패)
  *         content:
@@ -422,12 +440,13 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *       **멀티 플랫폼 세션 관리:**
  *       - 웹(web)과 앱(app)에서 각각 최대 1개씩 총 2개의 세션을 동시에 유지할 수 있습니다.
  *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
+ *       - ⚠️ **중요**: 이전 기기에는 로그아웃 알림이 전송되지 않습니다.
  *
  *       **반환되는 정보:**
- *       - 각 세션의 디바이스 정보 (브라우저/OS 또는 앱 정보)
+ *       - 디바이스 이름 (예: "Chrome on Windows", "iPhone (iOS 15.0)")
+ *       - 플랫폼 (web 또는 app)
  *       - 세션 생성 시간, 마지막 활동 시간, 만료 시간
  *       - 현재 요청한 세션인지 여부 (isCurrent)
- *       - IP 주소, User-Agent 등
  *
  *       **사용 예시:**
  *       - 사용자가 "내 디바이스 관리" 화면에서 로그인된 기기 목록을 확인할 때
@@ -466,40 +485,18 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *                             type: string
  *                             description: 세션 고유 ID (Express 세션 ID)
  *                             example: "DNBjfhvSCu_Kj-IvwHDkoWoG_VXnsmTn"
- *                           deviceInfo:
- *                             type: object
- *                             description: 디바이스 상세 정보
- *                             properties:
- *                               name:
- *                                 type: string
- *                                 description: 읽기 쉬운 디바이스 이름 (브라우저 + OS 조합)
- *                                 example: "Chrome on Windows 10"
- *                               type:
- *                                 type: string
- *                                 description: |
- *                                   디바이스 타입 (User-Agent 기반 감지)
- *                                   - mobile: 스마트폰
- *                                   - tablet: 태블릿
- *                                   - web: 데스크톱 브라우저
- *                                   - unknown: 식별 불가
- *                                 enum: [mobile, web, tablet, unknown]
- *                                 example: "web"
- *                               platform:
- *                                 type: string
- *                                 description: |
- *                                   로그인 플랫폼 (X-Platform 헤더 또는 자동 추론)
- *                                   - web: 웹 브라우저에서 로그인
- *                                   - app: 모바일 앱에서 로그인
- *                                 enum: [web, app]
- *                                 example: "web"
- *                               userAgent:
- *                                 type: string
- *                                 description: 원본 User-Agent 문자열
- *                                 example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
- *                               ipAddress:
- *                                 type: string
- *                                 description: 클라이언트 IP 주소 (프록시 고려)
- *                                 example: "192.168.1.100"
+ *                           deviceName:
+ *                             type: string
+ *                             description: 디바이스 이름 (브라우저 + OS 조합)
+ *                             example: "Chrome on Windows 10"
+ *                           platform:
+ *                             type: string
+ *                             description: |
+ *                               로그인 플랫폼 (X-Platform 헤더 기반)
+ *                               - web: 웹 플랫폼 (세션 1일)
+ *                               - app: 앱 플랫폼 (세션 30일)
+ *                             enum: [web, app]
+ *                             example: "web"
  *                           createdAt:
  *                             type: string
  *                             format: date-time
@@ -537,12 +534,8 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *                     totalSessions: 1
  *                     sessions:
  *                       - sessionId: "DNBjfhvSCu_Kj-IvwHDkoWoG_VXnsmTn"
- *                         deviceInfo:
- *                           name: "Chrome on Windows 10"
- *                           type: "web"
- *                           platform: "web"
- *                           userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
- *                           ipAddress: "192.168.1.100"
+ *                         deviceName: "Chrome on Windows 10"
+ *                         platform: "web"
  *                         createdAt: "2025-10-30T12:00:00.000Z"
  *                         lastActivityAt: "2025-10-30T12:53:33.381Z"
  *                         expiresAt: "2025-11-06T12:00:00.000Z"
@@ -557,23 +550,15 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *                     totalSessions: 2
  *                     sessions:
  *                       - sessionId: "web_session_id_123"
- *                         deviceInfo:
- *                           name: "Chrome on macOS 10.15"
- *                           type: "web"
- *                           platform: "web"
- *                           userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
- *                           ipAddress: "192.168.1.100"
+ *                         deviceName: "Chrome on macOS 10.15"
+ *                         platform: "web"
  *                         createdAt: "2025-10-30T10:00:00.000Z"
  *                         lastActivityAt: "2025-10-30T12:53:33.381Z"
  *                         expiresAt: "2025-11-06T10:00:00.000Z"
  *                         isCurrent: true
  *                       - sessionId: "app_session_id_456"
- *                         deviceInfo:
- *                           name: "iPhone (iOS 17.5)"
- *                           type: "mobile"
- *                           platform: "app"
- *                           userAgent: "LiveLink-iOS/1.0.0"
- *                           ipAddress: "203.0.113.50"
+ *                         deviceName: "iPhone (iOS 17.5)"
+ *                         platform: "app"
  *                         createdAt: "2025-10-29T08:00:00.000Z"
  *                         lastActivityAt: "2025-10-30T11:30:00.000Z"
  *                         expiresAt: "2025-11-28T08:00:00.000Z"

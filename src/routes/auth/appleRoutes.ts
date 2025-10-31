@@ -44,19 +44,21 @@ router.use(defaultLimiter);
  *       **플랫폼별 세션 관리:**
  *       - X-Platform 헤더로 플랫폼을 지정할 수 있습니다 (web: 1일, app: 30일)
  *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
+ *       - ⚠️ **중요**: 이전 기기에는 로그아웃 알림이 전송되지 않습니다.
  *     tags: [Auth]
  *     parameters:
  *       - in: header
  *         name: X-Platform
- *         required: false
+ *         required: true
  *         schema:
  *           type: string
  *           enum: [web, app]
+ *           default: web
  *         description: |
- *           로그인 플랫폼 지정 (선택)
+ *           로그인 플랫폼 지정 (필수 권장)
  *           - `web`: 웹 플랫폼 (세션 유지: 1일)
  *           - `app`: 앱 플랫폼 (세션 유지: 30일)
- *           - 미지정 시: User-Agent로 자동 추론
+ *           - 미지정 시: WEB 플랫폼으로 기본 설정
  *         example: "app"
  *     responses:
  *       302:
@@ -88,6 +90,11 @@ router.post(
     failureMessage: true,
   }),
   async (req, res) => {
+    // 이전 세션 종료 여부를 저장할 변수 (쿼리 파라미터로 전달)
+    let previousSessionTerminated = false;
+    let terminatedDeviceName = '';
+    let terminatedPlatform = '';
+
     // 인증 성공 시, 세션에 사용자 정보 저장
     if (req.user) {
       const { AuthService } = await import('../../services/auth/authService');
@@ -117,11 +124,34 @@ router.post(
         );
 
         if (samePlatformSessions.length > 0) {
+          // 이전 세션 정보 저장 (쿼리 파라미터로 전달)
+          previousSessionTerminated = true;
+          terminatedDeviceName =
+            samePlatformSessions[0].deviceInfo.name || '알 수 없는 기기';
+          terminatedPlatform = deviceInfo.platform;
+
           // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
           for (const session of samePlatformSessions) {
+            // MongoDB 삭제
             await userSessionModel.deleteSession(session.sessionId);
+
+            // Redis 삭제
             if (redisClient.status === 'ready') {
-              await redisClient.del(`app:sess:${session.sessionId}`);
+              const redisKey = `app:sess:${session.sessionId}`;
+              const deleteResult = await redisClient.del(redisKey);
+              if (deleteResult === 1) {
+                console.log(
+                  `✅ [Apple OAuth] Redis session deleted: ${redisKey}`,
+                );
+              } else {
+                console.warn(
+                  `⚠️ [Apple OAuth] Redis session not found: ${redisKey}`,
+                );
+              }
+            } else {
+              console.warn(
+                `⚠️ [Apple OAuth] Redis client not ready, session: ${session.sessionId}`,
+              );
             }
           }
         }
@@ -145,8 +175,19 @@ router.post(
         console.error('[Session] Failed to create UserSession:', sessionError);
       }
     }
-    // 프론트엔드 홈으로 리디렉션
-    res.redirect(env.FRONTEND_URL);
+
+    // 프론트엔드 홈으로 리디렉션 (이전 세션 경고 포함)
+    let redirectUrl = env.FRONTEND_URL;
+    if (previousSessionTerminated) {
+      const platformName = terminatedPlatform === 'web' ? '웹' : '앱';
+      const params = new URLSearchParams({
+        sessionWarning: 'true',
+        message: `이전에 로그인된 ${platformName} 세션이 로그아웃되었습니다.`,
+        terminatedDevice: terminatedDeviceName,
+      });
+      redirectUrl = `${env.FRONTEND_URL}?${params.toString()}`;
+    }
+    res.redirect(redirectUrl);
   },
 );
 

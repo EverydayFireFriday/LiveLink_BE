@@ -133,6 +133,11 @@ export class AuthController {
         // 재생성된 세션에 사용자 정보 저장
         req.session.user = sessionData;
 
+        // 이전 세션 종료 여부를 저장할 변수 (응답에 포함)
+        let previousSessionTerminated = false;
+        let terminatedDeviceName = '';
+        let terminatedPlatform = '';
+
         // 디바이스별 세션 쿠키 만료 시간 설정 (UserSession과 동기화)
         // UserSession에 세션 정보 저장 (멀티 디바이스 지원)
         try {
@@ -157,15 +162,36 @@ export class AuthController {
           );
 
           if (samePlatformSessions.length > 0) {
+            // 이전 세션 정보 저장 (로그인 응답에 포함)
+            previousSessionTerminated = true;
+            terminatedDeviceName =
+              samePlatformSessions[0].deviceInfo.name || '알 수 없는 기기';
+            terminatedPlatform = deviceInfo.platform;
+
             logger.info(
               `[Session] Deleting ${samePlatformSessions.length} existing ${deviceInfo.platform} session(s) for user: ${user.email}`,
             );
 
             // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
             for (const session of samePlatformSessions) {
+              // MongoDB 삭제
               await userSessionModel.deleteSession(session.sessionId);
+
+              // Redis 삭제
               if (redisClient.status === 'ready') {
-                await redisClient.del(`app:sess:${session.sessionId}`);
+                const redisKey = `app:sess:${session.sessionId}`;
+                const deleteResult = await redisClient.del(redisKey);
+                if (deleteResult === 1) {
+                  logger.info(`✅ Redis session deleted: ${redisKey}`);
+                } else {
+                  logger.warn(
+                    `⚠️ Redis session not found or already deleted: ${redisKey}`,
+                  );
+                }
+              } else {
+                logger.warn(
+                  `⚠️ Redis client not ready, skipping Redis deletion for session: ${session.sessionId}`,
+                );
               }
             }
           }
@@ -198,7 +224,8 @@ export class AuthController {
           logger.error('[Session] Failed to create UserSession:', sessionError);
         }
 
-        return ResponseBuilder.success(res, '로그인 성공', {
+        // 로그인 응답 데이터 구성
+        const responseData: any = {
           user: {
             userId: user._id!.toString(), // ObjectId를 string으로 변환
             email: user.email,
@@ -218,7 +245,19 @@ export class AuthController {
             likedArticles: user.likedArticles,
           },
           sessionId: req.sessionID,
-        });
+        };
+
+        // 이전 세션이 로그아웃된 경우 경고 메시지 추가
+        if (previousSessionTerminated) {
+          const platformName = terminatedPlatform === 'web' ? '웹' : '앱';
+          responseData.warning = {
+            previousSessionTerminated: true,
+            message: `이전에 로그인된 ${platformName} 세션이 로그아웃되었습니다.`,
+            terminatedDevice: terminatedDeviceName,
+          };
+        }
+
+        return ResponseBuilder.success(res, '로그인 성공', responseData);
       });
     } catch (error) {
       logger.error('로그인 에러:', error);

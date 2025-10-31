@@ -24,36 +24,16 @@ export class DeviceDetector {
 
   /**
    * Request에서 플랫폼 정보 추출
-   * 1. X-Platform 헤더 확인 (필수)
-   * 2. User-Agent 기반 추론 (fallback)
+   * X-Platform 헤더로 플랫폼을 지정합니다.
+   * 헤더가 없거나 잘못된 값이면 WEB 플랫폼이 기본값입니다.
    */
   static extractPlatform(req: Request): Platform {
-    // 1. X-Platform 헤더 확인 (우선순위 높음)
     const platformHeader = req.get('x-platform')?.toLowerCase();
-    if (platformHeader === 'web') return Platform.WEB;
+
     if (platformHeader === 'app') return Platform.APP;
+    if (platformHeader === 'web') return Platform.WEB;
 
-    // 2. User-Agent 기반 추론 (fallback)
-    const userAgent = req.get('user-agent') || '';
-
-    // 모바일 앱의 일반적인 패턴
-    if (
-      /LiveLink-iOS/i.test(userAgent) ||
-      /LiveLink-Android/i.test(userAgent) ||
-      /LiveLinkApp/i.test(userAgent)
-    ) {
-      return Platform.APP;
-    }
-
-    // 웹 브라우저의 일반적인 패턴
-    if (
-      /mozilla|chrome|safari|firefox|edge|opera/i.test(userAgent) &&
-      !/LiveLink/i.test(userAgent)
-    ) {
-      return Platform.WEB;
-    }
-
-    // 기본값은 웹
+    // 기본값: WEB 플랫폼 (세션 유지: 1일)
     return Platform.WEB;
   }
 

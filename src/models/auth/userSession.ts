@@ -226,7 +226,8 @@ export class UserSessionModel {
   ): SessionResponse {
     return {
       sessionId: session.sessionId,
-      deviceInfo: session.deviceInfo,
+      deviceName: session.deviceInfo.name,
+      platform: session.deviceInfo.platform,
       createdAt: session.createdAt.toISOString(),
       lastActivityAt: session.lastActivityAt.toISOString(),
       expiresAt: session.expiresAt.toISOString(),

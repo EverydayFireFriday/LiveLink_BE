@@ -143,7 +143,8 @@ export interface UserSession {
 // 세션 조회 응답
 export interface SessionResponse {
   sessionId: string;
-  deviceInfo: DeviceInfo;
+  deviceName: string; // 예: "Chrome on macOS", "iPhone (iOS 15.0)"
+  platform: Platform; // web 또는 app
   createdAt: string;
   lastActivityAt: string;
   expiresAt: string;
