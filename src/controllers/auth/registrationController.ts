@@ -251,16 +251,19 @@ export class RegistrationController {
     } = req.body as CompleteRegistrationRequest;
 
     // 요청 본문 로그 (민감한 정보는 마스킹)
-    logger.info('[Registration] Complete registration request received:', {
-      hasVerificationToken: !!verificationToken,
-      hasPassword: !!password,
-      name: name || 'missing',
-      birthDate: birthDate || 'missing',
-      username: username || 'not provided',
-      hasProfileImage: !!profileImage,
-      isTermsAgreed: isTermsAgreed,
-      termsVersion: termsVersion || 'not provided',
-    });
+    logger.info(
+      '[Registration] Complete registration request received: ' +
+        JSON.stringify({
+          hasVerificationToken: !!verificationToken,
+          hasPassword: !!password,
+          name: name || 'missing',
+          birthDate: birthDate || 'missing',
+          username: username || 'not provided',
+          hasProfileImage: !!profileImage,
+          isTermsAgreed: isTermsAgreed,
+          termsVersion: termsVersion || 'not provided',
+        }),
+    );
 
     // 필수 필드 검증
     if (
@@ -277,16 +280,22 @@ export class RegistrationController {
       if (!birthDate) missingFields.push('birthDate');
       if (!isTermsAgreed) missingFields.push('isTermsAgreed');
 
-      logger.warn('[Registration] Missing required fields:', { missingFields });
+      logger.warn(
+        '[Registration] Missing required fields: ' +
+          JSON.stringify({ missingFields }),
+      );
       return ResponseBuilder.badRequest(res, '필수 정보가 누락되었습니다.');
     }
 
     // 유효성 검증
     const passwordValidation = AuthValidator.validatePassword(password);
     if (!passwordValidation.isValid) {
-      logger.warn('[Registration] Password validation failed:', {
-        message: passwordValidation.message,
-      });
+      logger.warn(
+        '[Registration] Password validation failed: ' +
+          JSON.stringify({
+            message: passwordValidation.message,
+          }),
+      );
       return ResponseBuilder.badRequest(
         res,
         passwordValidation.message || '유효성 검사 실패',
@@ -295,10 +304,13 @@ export class RegistrationController {
 
     const nameValidation = UserValidator.validateName(name);
     if (!nameValidation.isValid) {
-      logger.warn('[Registration] Name validation failed:', {
-        name,
-        message: nameValidation.message,
-      });
+      logger.warn(
+        '[Registration] Name validation failed: ' +
+          JSON.stringify({
+            name,
+            message: nameValidation.message,
+          }),
+      );
       return ResponseBuilder.badRequest(
         res,
         nameValidation.message || '이름 형식이 올바르지 않습니다.',
@@ -307,10 +319,13 @@ export class RegistrationController {
 
     const birthDateValidation = UserValidator.validateBirthDate(birthDate);
     if (!birthDateValidation.isValid) {
-      logger.warn('[Registration] BirthDate validation failed:', {
-        birthDate,
-        message: birthDateValidation.message,
-      });
+      logger.warn(
+        '[Registration] BirthDate validation failed: ' +
+          JSON.stringify({
+            birthDate,
+            message: birthDateValidation.message,
+          }),
+      );
       return ResponseBuilder.badRequest(
         res,
         birthDateValidation.message || '생년월일 형식이 올바르지 않습니다.',
@@ -322,11 +337,14 @@ export class RegistrationController {
       'isTermsAgreed',
     );
     if (!termsValidation.isValid || !isTermsAgreed) {
-      logger.warn('[Registration] Terms validation failed:', {
-        isTermsAgreed,
-        termsValidation: termsValidation.isValid,
-        message: termsValidation.message,
-      });
+      logger.warn(
+        '[Registration] Terms validation failed: ' +
+          JSON.stringify({
+            isTermsAgreed,
+            termsValidation: termsValidation.isValid,
+            message: termsValidation.message,
+          }),
+      );
       return ResponseBuilder.badRequest(
         res,
         '서비스 이용약관에 동의해야 합니다.',
@@ -349,7 +367,10 @@ export class RegistrationController {
       }
 
       const email = tokenData.email;
-      logger.info('[Registration] Email from verification token:', { email });
+      logger.info(
+        '[Registration] Email from verification token: ' +
+          JSON.stringify({ email }),
+      );
 
       // 이메일 중복 재확인 (race condition 방지)
       const existingEmail = await this.userService.findByEmail(email);
@@ -357,7 +378,9 @@ export class RegistrationController {
         await this.verificationService.deleteEmailVerificationToken(
           verificationToken,
         );
-        logger.warn('[Registration] Email already in use:', { email });
+        logger.warn(
+          '[Registration] Email already in use: ' + JSON.stringify({ email }),
+        );
         return ResponseBuilder.conflict(res, '이미 사용 중인 이메일입니다.');
       }
 
@@ -365,14 +388,20 @@ export class RegistrationController {
       let finalUsername: string;
       if (!username || username.trim() === '') {
         finalUsername = await this.userService.generateUsername(email);
-        logger.info('[Registration] Generated username:', { finalUsername });
+        logger.info(
+          '[Registration] Generated username: ' +
+            JSON.stringify({ finalUsername }),
+        );
       } else {
         const usernameValidation = UserValidator.validateUsername(username);
         if (!usernameValidation.isValid) {
-          logger.warn('[Registration] Username validation failed:', {
-            username,
-            message: usernameValidation.message,
-          });
+          logger.warn(
+            '[Registration] Username validation failed: ' +
+              JSON.stringify({
+                username,
+                message: usernameValidation.message,
+              }),
+          );
           return ResponseBuilder.badRequest(
             res,
             usernameValidation.message || '별명 형식이 올바르지 않습니다.',
@@ -382,7 +411,10 @@ export class RegistrationController {
         const existingUsername =
           await this.userService.findByUsername(username);
         if (existingUsername) {
-          logger.warn('[Registration] Username already in use:', { username });
+          logger.warn(
+            '[Registration] Username already in use: ' +
+              JSON.stringify({ username }),
+          );
           return ResponseBuilder.conflict(
             res,
             '이미 사용 중인 별명입니다. 자동 생성을 원하시면 별명을 비워두세요.',
@@ -420,11 +452,14 @@ export class RegistrationController {
         verificationToken,
       );
 
-      logger.info('[Registration] User successfully registered:', {
-        email,
-        username: finalUsername,
-        userId: (updatedUser || newUser)._id,
-      });
+      logger.info(
+        '[Registration] User successfully registered: ' +
+          JSON.stringify({
+            email,
+            username: finalUsername,
+            userId: (updatedUser || newUser)._id,
+          }),
+      );
 
       // 환영 이메일 전송 (비동기)
       setImmediate(() => {
@@ -450,10 +485,13 @@ export class RegistrationController {
         },
       });
     } catch (error: unknown) {
-      logger.error('[Registration] Complete registration error:', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      logger.error(
+        '[Registration] Complete registration error: ' +
+          JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          }),
+      );
       return ResponseBuilder.internalError(res, '서버 에러로 회원가입 실패');
     }
   };
