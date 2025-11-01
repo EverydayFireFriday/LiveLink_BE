@@ -1,6 +1,10 @@
 import express from 'express';
 import { ProfileController } from '../../controllers/auth/profileController';
 import {
+  getMyTermsConsent,
+  updateTermsConsent,
+} from '../../controllers/terms/termsConsentController';
+import {
   requireAuth,
   requireAdmin,
 } from '../../middlewares/auth/authMiddleware';
@@ -358,6 +362,177 @@ router.put(
   requireAuth,
   profileController.updateFCMToken,
 );
+
+// 약관 동의 관련
+/**
+ * @swagger
+ * /auth/terms-consent:
+ *   get:
+ *     summary: 약관 동의 상태 조회
+ *     description: 현재 로그인된 사용자의 약관 동의 상태를 조회합니다.
+ *     tags: [Profile]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 약관 동의 상태 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "약관 동의 상태 조회 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     terms:
+ *                       type: object
+ *                       properties:
+ *                         isAgreed:
+ *                           type: boolean
+ *                           description: 이용약관 동의 여부
+ *                         version:
+ *                           type: string
+ *                           description: 동의한 이용약관 버전
+ *                         agreedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: 동의 시각
+ *                         needsUpdate:
+ *                           type: boolean
+ *                           description: 약관 업데이트 필요 여부
+ *                         currentVersion:
+ *                           type: string
+ *                           description: 현재 최신 약관 버전
+ *                     privacy:
+ *                       type: object
+ *                       properties:
+ *                         isAgreed:
+ *                           type: boolean
+ *                           description: 개인정보처리방침 동의 여부
+ *                         version:
+ *                           type: string
+ *                           description: 동의한 개인정보처리방침 버전
+ *                         agreedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: 동의 시각
+ *                         needsUpdate:
+ *                           type: boolean
+ *                           description: 약관 업데이트 필요 여부
+ *                         currentVersion:
+ *                           type: string
+ *                           description: 현재 최신 약관 버전
+ *                     marketing:
+ *                       type: object
+ *                       properties:
+ *                         isConsented:
+ *                           type: boolean
+ *                           description: 마케팅 수신 동의 여부
+ *                         consentedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: 동의 시각
+ *                     requiresAction:
+ *                       type: boolean
+ *                       description: 사용자 액션 필요 여부 (약관 재동의)
+ *       401:
+ *         description: 인증 필요
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
+
+/**
+ * @swagger
+ * /auth/terms-consent:
+ *   put:
+ *     summary: 약관 재동의 (업데이트)
+ *     description: 약관이 변경되었을 때 사용자가 재동의하거나, 선택적 동의를 업데이트합니다.
+ *     tags: [Profile]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isTermsAgreed:
+ *                 type: boolean
+ *                 description: 이용약관 동의 (필수, false 불가)
+ *                 example: true
+ *               isPrivacyAgreed:
+ *                 type: boolean
+ *                 description: 개인정보처리방침 동의 (필수, false 불가)
+ *                 example: true
+ *               marketingConsent:
+ *                 type: boolean
+ *                 description: 마케팅 수신 동의 (선택)
+ *                 example: false
+ *     responses:
+ *       200:
+ *         description: 약관 동의 업데이트 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "약관 동의가 업데이트되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     terms:
+ *                       type: object
+ *                       properties:
+ *                         isAgreed:
+ *                           type: boolean
+ *                         version:
+ *                           type: string
+ *                         agreedAt:
+ *                           type: string
+ *                           format: date-time
+ *                     privacy:
+ *                       type: object
+ *                       properties:
+ *                         isAgreed:
+ *                           type: boolean
+ *                         version:
+ *                           type: string
+ *                         agreedAt:
+ *                           type: string
+ *                           format: date-time
+ *                     marketing:
+ *                       type: object
+ *                       properties:
+ *                         isConsented:
+ *                           type: boolean
+ *                         consentedAt:
+ *                           type: string
+ *                           format: date-time
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
+router.put('/terms-consent', strictLimiter, requireAuth, updateTermsConsent);
 
 // 관리자 전용
 /**

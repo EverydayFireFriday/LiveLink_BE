@@ -7,7 +7,10 @@ import { AuthValidator } from '../../utils/validation/auth/authValidator';
 import { UserValidator } from '../../utils/validation/auth/userValidator';
 import logger from '../../utils/logger/logger';
 import { UserStatus } from '../../models/auth/user';
-import { CURRENT_TERMS_VERSION } from '../../config/terms/termsAndConditions';
+import {
+  CURRENT_TERMS_VERSION,
+  CURRENT_PRIVACY_VERSION,
+} from '../../config/terms';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import crypto from 'crypto';
 import {
@@ -248,6 +251,9 @@ export class RegistrationController {
       profileImage,
       isTermsAgreed,
       termsVersion,
+      isPrivacyAgreed,
+      privacyVersion,
+      marketingConsent,
     } = req.body as CompleteRegistrationRequest;
 
     // 요청 본문 로그 (민감한 정보는 마스킹)
@@ -262,6 +268,9 @@ export class RegistrationController {
           hasProfileImage: !!profileImage,
           isTermsAgreed: isTermsAgreed,
           termsVersion: termsVersion || 'not provided',
+          isPrivacyAgreed: isPrivacyAgreed,
+          privacyVersion: privacyVersion || 'not provided',
+          marketingConsent: marketingConsent || false,
         }),
     );
 
@@ -271,7 +280,8 @@ export class RegistrationController {
       !password ||
       !name ||
       !birthDate ||
-      !isTermsAgreed
+      !isTermsAgreed ||
+      !isPrivacyAgreed
     ) {
       const missingFields = [];
       if (!verificationToken) missingFields.push('verificationToken');
@@ -279,6 +289,7 @@ export class RegistrationController {
       if (!name) missingFields.push('name');
       if (!birthDate) missingFields.push('birthDate');
       if (!isTermsAgreed) missingFields.push('isTermsAgreed');
+      if (!isPrivacyAgreed) missingFields.push('isPrivacyAgreed');
 
       logger.warn(
         '[Registration] Missing required fields: ' +
@@ -348,6 +359,25 @@ export class RegistrationController {
       return ResponseBuilder.badRequest(
         res,
         '서비스 이용약관에 동의해야 합니다.',
+      );
+    }
+
+    const privacyValidation = AuthValidator.validateBoolean(
+      isPrivacyAgreed,
+      'isPrivacyAgreed',
+    );
+    if (!privacyValidation.isValid || !isPrivacyAgreed) {
+      logger.warn(
+        '[Registration] Privacy policy validation failed: ' +
+          JSON.stringify({
+            isPrivacyAgreed,
+            privacyValidation: privacyValidation.isValid,
+            message: privacyValidation.message,
+          }),
+      );
+      return ResponseBuilder.badRequest(
+        res,
+        '개인정보처리방침에 동의해야 합니다.',
       );
     }
 
@@ -427,6 +457,9 @@ export class RegistrationController {
       // 비밀번호 해시화
       const hashedPassword = await this.authService.hashPassword(password);
 
+      // 동의 시각 기록
+      const now = new Date();
+
       // 실제 사용자 생성
       const newUser = await this.userService.createUser({
         email,
@@ -437,6 +470,12 @@ export class RegistrationController {
         profileImage: profileImage || undefined,
         isTermsAgreed: isTermsAgreed,
         termsVersion: termsVersion || CURRENT_TERMS_VERSION,
+        termsAgreedAt: now,
+        isPrivacyAgreed: isPrivacyAgreed,
+        privacyVersion: privacyVersion || CURRENT_PRIVACY_VERSION,
+        privacyAgreedAt: now,
+        marketingConsent: marketingConsent || false,
+        marketingConsentAt: marketingConsent ? now : undefined,
       });
 
       // 사용자 상태를 'active'로 변경

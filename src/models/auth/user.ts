@@ -16,6 +16,13 @@ export enum UserStatus {
   PENDING_VERIFICATION = 'pending_verification',
 }
 
+// 약관 동의 정보 인터페이스
+export interface TermsConsent {
+  isAgreed: boolean;
+  version: string;
+  agreedAt?: Date;
+}
+
 // User 인터페이스 정의 - 이메일 필드 추가
 export interface User {
   _id?: ObjectId;
@@ -27,8 +34,21 @@ export interface User {
   status: UserStatus;
   statusReason?: string; // 상태 변경 사유 추가
   profileImage?: string; // S3 URL 또는 파일 경로
-  isTermsAgreed: boolean; // 약관 동의 여부 추가
-  termsVersion: string; // 약관 버전 추가
+
+  // 약관 동의 관련 (하위 호환성 유지)
+  isTermsAgreed: boolean; // 이용약관 동의 여부
+  termsVersion: string; // 이용약관 버전
+  termsAgreedAt?: Date; // 이용약관 동의 시각
+
+  // 개인정보처리방침 동의
+  isPrivacyAgreed?: boolean; // 개인정보처리방침 동의 여부
+  privacyVersion?: string; // 개인정보처리방침 버전
+  privacyAgreedAt?: Date; // 개인정보처리방침 동의 시각
+
+  // 선택적 동의 항목
+  marketingConsent?: boolean; // 마케팅 수신 동의 여부
+  marketingConsentAt?: Date; // 마케팅 수신 동의 시각
+
   createdAt: Date;
   updatedAt: Date;
   provider?: string; // ex: 'google', 'apple'
@@ -145,10 +165,7 @@ export class UserModel {
 
   // 사용자 생성
   async createUser(
-    userData: Omit<
-      User,
-      '_id' | 'createdAt' | 'updatedAt' | 'status' | 'termsVersion'
-    > & { isTermsAgreed: boolean; termsVersion: string },
+    userData: Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>,
   ): Promise<User> {
     const now = new Date();
     const user: Omit<User, '_id'> = {

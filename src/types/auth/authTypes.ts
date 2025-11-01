@@ -13,8 +13,21 @@ export interface User {
   status: UserStatus;
   statusReason?: string;
   profileImage?: string;
+
+  // 약관 동의 관련
   isTermsAgreed: boolean;
   termsVersion: string;
+  termsAgreedAt?: Date;
+
+  // 개인정보처리방침 동의
+  isPrivacyAgreed?: boolean;
+  privacyVersion?: string;
+  privacyAgreedAt?: Date;
+
+  // 선택적 동의
+  marketingConsent?: boolean;
+  marketingConsentAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
   provider?: string;
@@ -94,8 +107,15 @@ export interface CompleteRegistrationRequest {
   birthDate: string; // YYYY-MM-DD 형식
   username?: string;
   profileImage?: string;
+
+  // 필수 약관 동의
   isTermsAgreed: boolean;
-  termsVersion: string;
+  termsVersion?: string;
+  isPrivacyAgreed: boolean;
+  privacyVersion?: string;
+
+  // 선택적 동의
+  marketingConsent?: boolean;
 }
 
 // Redis에 저장될 이메일 인증 완료 토큰 데이터

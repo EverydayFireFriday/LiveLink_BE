@@ -296,6 +296,7 @@ router.post(
  *               - name
  *               - birthDate
  *               - isTermsAgreed
+ *               - isPrivacyAgreed
  *             properties:
  *               verificationToken:
  *                 type: string
@@ -303,7 +304,7 @@ router.post(
  *                 example: "a1b2c3d4..."
  *               password:
  *                 type: string
- *                 description: 비밀번호
+ *                 description: 비밀번호 (8자 이상, 영문/숫자/특수문자 조합)
  *                 example: "password123!"
  *                 minLength: 8
  *               name:
@@ -329,12 +330,36 @@ router.post(
  *                 example: "https://example.com/profile.jpg"
  *               isTermsAgreed:
  *                 type: boolean
- *                 description: 서비스 이용약관 동의 여부 (필수)
+ *                 description: "[필수] 서비스 이용약관 동의"
  *                 example: true
  *               termsVersion:
  *                 type: string
- *                 description: 약관 버전 (선택사항, 없으면 현재 버전 사용)
- *                 example: "1.0.0"
+ *                 description: 이용약관 버전 (선택, 없으면 현재 버전 사용)
+ *                 example: "1.00"
+ *               isPrivacyAgreed:
+ *                 type: boolean
+ *                 description: "[필수] 개인정보 수집 및 이용 동의"
+ *                 example: true
+ *               privacyVersion:
+ *                 type: string
+ *                 description: 개인정보처리방침 버전 (선택, 없으면 현재 버전 사용)
+ *                 example: "1.00"
+ *               marketingConsent:
+ *                 type: boolean
+ *                 description: "[선택] 마케팅 정보 수신 동의"
+ *                 example: false
+ *           example:
+ *             verificationToken: "a1b2c3d4..."
+ *             password: "password123!"
+ *             name: "홍길동"
+ *             birthDate: "1990-01-01"
+ *             username: "내별명"
+ *             profileImage: "https://example.com/profile.jpg"
+ *             isTermsAgreed: true
+ *             termsVersion: "1.00"
+ *             isPrivacyAgreed: true
+ *             privacyVersion: "1.00"
+ *             marketingConsent: false
  *     responses:
  *       201:
  *         description: 회원가입 완료
@@ -369,7 +394,21 @@ router.post(
  *                           format: date-time
  *                           description: 계정 생성일
  *       400:
- *         description: 잘못된 요청
+ *         description: 잘못된 요청 (필수 필드 누락, 유효성 검증 실패 등)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     missing_fields:
+ *                       value: "필수 정보가 누락되었습니다."
+ *                     terms_required:
+ *                       value: "서비스 이용약관에 동의해야 합니다."
+ *                     privacy_required:
+ *                       value: "개인정보처리방침에 동의해야 합니다."
  *       401:
  *         description: 유효하지 않거나 만료된 인증 토큰
  *       409:

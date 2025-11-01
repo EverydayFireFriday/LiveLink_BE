@@ -51,6 +51,12 @@ export class UserService {
     profileImage?: string;
     isTermsAgreed: boolean;
     termsVersion: string;
+    termsAgreedAt?: Date;
+    isPrivacyAgreed?: boolean;
+    privacyVersion?: string;
+    privacyAgreedAt?: Date;
+    marketingConsent?: boolean;
+    marketingConsentAt?: Date;
   }): Promise<User> {
     return (await this.getUserModel().createUser(userData)) as User;
   }
