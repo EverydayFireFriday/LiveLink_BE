@@ -438,6 +438,9 @@ router.put(
  *                           type: string
  *                           format: date-time
  *                           description: 동의 시각
+ *                         currentVersion:
+ *                           type: string
+ *                           description: 현재 최신 마케팅 약관 버전
  *                     requiresAction:
  *                       type: boolean
  *                       description: 사용자 액션 필요 여부 (약관 재동의)

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import {
   CURRENT_TERMS_VERSION,
   CURRENT_PRIVACY_VERSION,
+  CURRENT_MARKETING_VERSION,
 } from '../../config/terms';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import logger from '../../utils/logger/logger';
@@ -47,6 +48,7 @@ export const getMyTermsConsent = async (req: Request, res: Response) => {
       marketing: {
         isConsented: user.marketingConsent || false,
         consentedAt: user.marketingConsentAt,
+        currentVersion: CURRENT_MARKETING_VERSION,
       },
       requiresAction: needsTermsUpdate || needsPrivacyUpdate,
     });

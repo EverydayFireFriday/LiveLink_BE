@@ -41,7 +41,7 @@ const router = express.Router();
  *                     properties:
  *                       type:
  *                         type: string
- *                         enum: [terms, privacy]
+ *                         enum: [terms, privacy, marketing]
  *                         description: 약관 타입
  *                       version:
  *                         type: string
@@ -77,8 +77,8 @@ router.get('/', getAllPolicies);
  *         required: true
  *         schema:
  *           type: string
- *           enum: [terms, privacy]
- *         description: 약관 타입 (terms=이용약관, privacy=개인정보처리방침)
+ *           enum: [terms, privacy, marketing]
+ *         description: 약관 타입 (terms=이용약관, privacy=개인정보처리방침, marketing=마케팅)
  *     responses:
  *       200:
  *         description: 약관 조회 성공

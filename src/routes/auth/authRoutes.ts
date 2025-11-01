@@ -48,8 +48,8 @@ const getAuthController = async () => {
  *           default: web
  *         description: |
  *           로그인 플랫폼 지정 (필수 권장)
- *           - `web`: 웹 플랫폼 (세션 유지: 1일)
- *           - `app`: 앱 플랫폼 (세션 유지: 30일)
+ *           - web : 웹 플랫폼 (세션 유지: 1일)
+ *           - app : 앱 플랫폼 (세션 유지: 30일)
  *           - 미지정 시: WEB 플랫폼으로 기본 설정
  *         example: "app"
  *     requestBody:
