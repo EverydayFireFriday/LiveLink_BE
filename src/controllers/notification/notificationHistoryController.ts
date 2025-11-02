@@ -318,3 +318,60 @@ export const getNotificationPreferences = async (
     res.status(500).json({ error: 'Failed to fetch notification preferences' });
   }
 };
+
+/**
+ * Delete notification history
+ * 알림 히스토리 삭제
+ */
+export const deleteNotificationHistory = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      res.status(400).json({ error: 'Invalid notification ID' });
+      return;
+    }
+
+    const db = getDB();
+    const notificationHistoryModel = getNotificationHistoryModel(db);
+
+    // 알림이 해당 사용자의 것인지 확인
+    const notification = await notificationHistoryModel.findById(
+      new ObjectId(id),
+    );
+
+    if (!notification) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+
+    if (notification.userId.toString() !== userId) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    // 알림 삭제
+    const success = await notificationHistoryModel.deleteById(new ObjectId(id));
+
+    if (success) {
+      res.status(200).json({
+        success: true,
+        message: 'Notification deleted successfully',
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to delete notification' });
+    }
+  } catch (error) {
+    logger.error('Error deleting notification:', error);
+    res.status(500).json({ error: 'Failed to delete notification' });
+  }
+};

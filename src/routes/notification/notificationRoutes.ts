@@ -15,6 +15,7 @@ import {
   markAllNotificationsAsRead,
   updateNotificationPreferences,
   getNotificationPreferences,
+  deleteNotificationHistory,
 } from '../../controllers/notification/notificationHistoryController.js';
 import { requireAuth } from '../../middlewares/auth/authMiddleware.js';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware.js';
@@ -708,6 +709,50 @@ router.get('/unread-count', requireAuth, getUnreadCount);
  *         description: 알림을 찾을 수 없음
  */
 router.put('/history/:id/read', requireAuth, markNotificationAsRead);
+
+/**
+ * @swagger
+ * /notifications/history/{id}:
+ *   delete:
+ *     summary: 알림 히스토리 삭제
+ *     description: 특정 알림 히스토리를 삭제합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 알림 ID
+ *     responses:
+ *       200:
+ *         description: 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Notification deleted successfully"
+ *       400:
+ *         description: 잘못된 알림 ID
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 권한 없음
+ *       404:
+ *         description: 알림을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
+router.delete('/history/:id', requireAuth, deleteNotificationHistory);
 
 /**
  * @swagger
