@@ -8,6 +8,14 @@ import {
   bulkCreateScheduledNotifications,
   bulkCancelScheduledNotifications,
 } from '../../controllers/notification/notificationController.js';
+import {
+  getNotificationHistory,
+  getUnreadCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  updateNotificationPreferences,
+  getNotificationPreferences,
+} from '../../controllers/notification/notificationHistoryController.js';
 import { requireAuth } from '../../middlewares/auth/authMiddleware.js';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware.js';
 
@@ -615,5 +623,168 @@ router.post('/scheduled/bulk', requireAuth, bulkCreateScheduledNotifications);
  *         description: 인증 필요
  */
 router.delete('/scheduled/bulk', requireAuth, bulkCancelScheduledNotifications);
+
+/**
+ * @swagger
+ * /notifications/history:
+ *   get:
+ *     summary: 알림 이력 조회
+ *     description: 사용자의 알림 이력을 조회합니다 (티켓 오픈 알림 등)
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: isRead
+ *         schema:
+ *           type: boolean
+ *         description: 읽음 상태 필터 (true=읽음, false=안읽음)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: 페이지당 항목 수
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *       401:
+ *         description: 인증 필요
+ */
+router.get('/history', requireAuth, getNotificationHistory);
+
+/**
+ * @swagger
+ * /notifications/unread-count:
+ *   get:
+ *     summary: 읽지 않은 알림 개수 조회
+ *     description: 사용자의 읽지 않은 알림 개수를 조회합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *       401:
+ *         description: 인증 필요
+ */
+router.get('/unread-count', requireAuth, getUnreadCount);
+
+/**
+ * @swagger
+ * /notifications/history/{id}/read:
+ *   put:
+ *     summary: 알림을 읽음으로 표시
+ *     description: 특정 알림을 읽음으로 표시합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 알림 ID
+ *     responses:
+ *       200:
+ *         description: 읽음 처리 성공
+ *       400:
+ *         description: 이미 읽은 알림
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 권한 없음
+ *       404:
+ *         description: 알림을 찾을 수 없음
+ */
+router.put('/history/:id/read', requireAuth, markNotificationAsRead);
+
+/**
+ * @swagger
+ * /notifications/history/read-all:
+ *   put:
+ *     summary: 모든 알림을 읽음으로 표시
+ *     description: 사용자의 모든 알림을 읽음으로 표시합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 모든 알림 읽음 처리 성공
+ *       401:
+ *         description: 인증 필요
+ */
+router.put('/history/read-all', requireAuth, markAllNotificationsAsRead);
+
+/**
+ * @swagger
+ * /notifications/preferences:
+ *   get:
+ *     summary: 알림 설정 조회
+ *     description: 사용자의 알림 설정을 조회합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *       401:
+ *         description: 인증 필요
+ */
+router.get('/preferences', requireAuth, getNotificationPreferences);
+
+/**
+ * @swagger
+ * /notifications/preferences:
+ *   put:
+ *     summary: 알림 설정 업데이트
+ *     description: 사용자의 알림 설정을 업데이트합니다
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ticketOpenNotification
+ *               - notifyBefore
+ *             properties:
+ *               ticketOpenNotification:
+ *                 type: boolean
+ *                 description: 티켓 오픈 알림 수신 여부
+ *               notifyBefore:
+ *                 type: array
+ *                 description: 알림 받을 시간 (분 단위, 10/30/60만 가능)
+ *                 items:
+ *                   type: integer
+ *                   enum: [10, 30, 60]
+ *           example:
+ *             ticketOpenNotification: true
+ *             notifyBefore: [10, 30, 60]
+ *     responses:
+ *       200:
+ *         description: 업데이트 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요
+ */
+router.put('/preferences', requireAuth, updateNotificationPreferences);
 
 export default router;

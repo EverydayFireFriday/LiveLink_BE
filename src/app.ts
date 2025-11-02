@@ -106,6 +106,16 @@ import {
 } from './services/notification/notificationWorker';
 import { closeNotificationQueue } from './config/queue/notificationQueue';
 import { NotificationRecoveryService } from './services/notification/notificationRecovery';
+import { getNotificationHistoryModel } from './models/notification/notificationHistory';
+import {
+  startTicketNotificationScheduler,
+  stopTicketNotificationScheduler,
+} from './services/notification/ticketNotificationScheduler';
+import {
+  createTicketNotificationWorker,
+  closeTicketNotificationWorker,
+} from './services/notification/ticketNotificationWorker';
+import { closeTicketNotificationQueue } from './config/queue/ticketNotificationQueue';
 import type { Worker } from 'bullmq';
 
 // 라우터 import
@@ -414,6 +424,7 @@ let reportService: ReportService;
 let concertStatusScheduler: ConcertStatusScheduler | null = null;
 let sessionCleanupScheduler: SessionCleanupScheduler | null = null;
 let notificationWorker: Worker | null = null;
+let ticketNotificationWorker: Worker | null = null;
 
 // Graceful shutdown 상태 추적
 let isShuttingDown = false;
@@ -618,6 +629,12 @@ const initializeDatabases = async (): Promise<void> => {
     sessionCleanupScheduler.start();
     logger.info('✅ Session Cleanup Scheduler started');
 
+    // Initialize Notification History Model
+    logger.info('🔌 Initializing Notification History Model...');
+    const userDB = await import('./utils/database/db').then((m) => m.getDB());
+    getNotificationHistoryModel(userDB);
+    logger.info('✅ Notification History Model initialized');
+
     // Initialize Notification Worker (BullMQ)
     logger.info('🔌 Initializing Notification Worker (BullMQ)...');
     notificationWorker = createNotificationWorker();
@@ -627,6 +644,16 @@ const initializeDatabases = async (): Promise<void> => {
     logger.info('🔄 Running notification job recovery...');
     await NotificationRecoveryService.runFullRecovery(concertDB);
     logger.info('✅ Notification recovery completed');
+
+    // Initialize Ticket Notification Worker (BullMQ)
+    logger.info('🔌 Initializing Ticket Notification Worker (BullMQ)...');
+    ticketNotificationWorker = createTicketNotificationWorker();
+    logger.info('✅ Ticket Notification Worker started');
+
+    // Start Ticket Notification Scheduler (D-2 scheduler)
+    logger.info('🔌 Starting Ticket Notification Scheduler (D-2)...');
+    startTicketNotificationScheduler();
+    logger.info('✅ Ticket Notification Scheduler started');
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
     // Set all database connection gauges to 0 on failure
@@ -762,6 +789,24 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     logger.info('6️⃣-4 Closing Notification Queue...');
     await closeNotificationQueue();
     logger.info('✅ Notification Queue closed');
+
+    // 6️⃣-5 Ticket Notification Scheduler 종료
+    logger.info('6️⃣-5 Stopping Ticket Notification Scheduler...');
+    stopTicketNotificationScheduler();
+    logger.info('✅ Ticket Notification Scheduler stopped');
+
+    // 6️⃣-6 Ticket Notification Worker 종료 (BullMQ)
+    if (ticketNotificationWorker) {
+      logger.info('6️⃣-6 Stopping Ticket Notification Worker...');
+      await closeTicketNotificationWorker();
+      ticketNotificationWorker = null;
+      logger.info('✅ Ticket Notification Worker stopped');
+    }
+
+    // 6️⃣-7 Ticket Notification Queue 종료
+    logger.info('6️⃣-7 Closing Ticket Notification Queue...');
+    await closeTicketNotificationQueue();
+    logger.info('✅ Ticket Notification Queue closed');
 
     // 7️⃣ Socket.IO Redis 연결 종료
     logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');

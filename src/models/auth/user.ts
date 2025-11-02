@@ -23,6 +23,12 @@ export interface TermsConsent {
   agreedAt?: Date;
 }
 
+// 알림 설정 인터페이스
+export interface NotificationPreference {
+  ticketOpenNotification: boolean; // 티켓 오픈 알림 수신 여부
+  notifyBefore: number[]; // 알림을 받을 시간 (분 단위) - 예: [10, 30, 60]
+}
+
 // User 인터페이스 정의 - 이메일 필드 추가
 export interface User {
   _id?: ObjectId;
@@ -57,6 +63,9 @@ export interface User {
   likedArticles?: ObjectId[]; // 좋아요한 게시글
   fcmToken?: string; // FCM 푸시 알림 토큰
   fcmTokenUpdatedAt?: Date; // FCM 토큰 업데이트 시간
+
+  // 알림 설정
+  notificationPreference?: NotificationPreference; // 알림 설정 (기본값: ticketOpenNotification=true, notifyBefore=[10, 30, 60])
 }
 
 // MongoDB 에러 타입 정의
