@@ -1,6 +1,19 @@
 import { Queue } from 'bullmq';
-import { redisClient } from '../redis/redisClient.js';
+import { env } from '../env/env.js';
 import logger from '../../utils/logger/logger.js';
+
+/**
+ * Redis connection configuration for Queue
+ */
+const connection = {
+  host: env.REDIS_URL.includes('redis://')
+    ? new URL(env.REDIS_URL).hostname
+    : env.REDIS_URL.split(':')[0] || 'localhost',
+  port: env.REDIS_URL.includes('redis://')
+    ? parseInt(new URL(env.REDIS_URL).port)
+    : parseInt(env.REDIS_URL.split(':')[1]) || 6379,
+  maxRetriesPerRequest: null,
+};
 
 /**
  * Ticket Notification Queue
@@ -29,12 +42,6 @@ export const getTicketNotificationQueue = ():
   | Queue<TicketNotificationJobData>
   | undefined => {
   try {
-    // Redis 클라이언트가 없으면 undefined 반환
-    if (!redisClient || redisClient.status !== 'ready') {
-      logger.warn('Redis client not available, queue disabled');
-      return undefined;
-    }
-
     // 이미 생성된 큐가 있으면 반환
     if (ticketNotificationQueue) {
       return ticketNotificationQueue;
@@ -44,7 +51,7 @@ export const getTicketNotificationQueue = ():
     ticketNotificationQueue = new Queue<TicketNotificationJobData>(
       TICKET_NOTIFICATION_QUEUE_NAME,
       {
-        connection: redisClient.duplicate(),
+        connection,
         defaultJobOptions: {
           attempts: 3, // 최대 3번 재시도
           backoff: {

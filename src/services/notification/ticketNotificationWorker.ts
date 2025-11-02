@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { ObjectId } from 'mongodb';
 import logger from '../../utils/logger/logger.js';
-import { redisClient } from '../../config/redis/redisClient.js';
+import { env } from '../../config/env/env.js';
 import {
   TICKET_NOTIFICATION_QUEUE_NAME,
   TicketNotificationJobData,
@@ -12,6 +12,19 @@ import { IConcert } from '../../models/concert/base/ConcertTypes.js';
 import fcmService from './fcmService.js';
 import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
 import { TicketNotificationType } from '../../models/notification/notificationHistory.js';
+
+/**
+ * Redis connection configuration for Worker
+ */
+const connection = {
+  host: env.REDIS_URL.includes('redis://')
+    ? new URL(env.REDIS_URL).hostname
+    : env.REDIS_URL.split(':')[0] || 'localhost',
+  port: env.REDIS_URL.includes('redis://')
+    ? parseInt(new URL(env.REDIS_URL).port)
+    : parseInt(env.REDIS_URL.split(':')[1]) || 6379,
+  maxRetriesPerRequest: null,
+};
 
 /**
  * Ticket Notification Worker
@@ -254,16 +267,11 @@ async function processTicketNotification(
  */
 export function createTicketNotificationWorker(): Worker<TicketNotificationJobData> | null {
   try {
-    if (!redisClient || redisClient.status !== 'ready') {
-      logger.warn('Redis client not available, worker not created');
-      return null;
-    }
-
     worker = new Worker<TicketNotificationJobData>(
       TICKET_NOTIFICATION_QUEUE_NAME,
       processTicketNotification,
       {
-        connection: redisClient.duplicate(),
+        connection,
         concurrency: 5, // 동시에 5개의 Job 처리
         limiter: {
           max: 10, // 최대 10개의 Job
