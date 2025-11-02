@@ -2,6 +2,10 @@ import { Router } from 'express';
 import passport from 'passport';
 import { env } from '../../config/env/env';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
+import {
+  handleGoogleCallback,
+  authenticateWithGoogle,
+} from '../../controllers/auth/googleAuthController';
 
 const router = Router();
 
@@ -94,115 +98,197 @@ router.use(defaultLimiter);
  */
 router.get(
   '/google',
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   passport.authenticate('google', { scope: ['profile', 'email'] }),
 );
 
 router.get(
   '/google/callback',
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   passport.authenticate('google', {
     failureRedirect: `${env.FRONTEND_URL}/login/error`,
     failureMessage: true,
   }),
-  async (req, res) => {
-    // 이전 세션 종료 여부를 저장할 변수 (쿼리 파라미터로 전달)
-    let previousSessionTerminated = false;
-    let terminatedDeviceName = '';
-    let terminatedPlatform = '';
-
-    // 인증 성공 시, 세션에 사용자 정보 저장
-    if (req.user) {
-      const { AuthService } = await import('../../services/auth/authService');
-      const authService = new AuthService();
-      const sessionData = authService.createSessionData(req.user as any);
-      req.session.user = sessionData;
-
-      // UserSession 생성 (멀티 디바이스 지원)
-      try {
-        const { UserSessionModel } = await import(
-          '../../models/auth/userSession'
-        );
-        const { DeviceDetector } = await import(
-          '../../utils/device/deviceDetector'
-        );
-        const { getSessionMaxAge } = await import('../../config/env/env');
-        const { redisClient } = (await import('../../app')) as any;
-
-        const userSessionModel = new UserSessionModel();
-        const deviceInfo = DeviceDetector.detectDevice(req);
-        const user = req.user as any;
-
-        // 같은 플랫폼의 기존 세션 삭제 (웹 1개 + 앱 1개 = 총 2개만 유지)
-        const existingSessions = await userSessionModel.findByUserId(user._id);
-        const samePlatformSessions = existingSessions.filter(
-          (session) => session.deviceInfo.platform === deviceInfo.platform,
-        );
-
-        if (samePlatformSessions.length > 0) {
-          // 이전 세션 정보 저장 (쿼리 파라미터로 전달)
-          previousSessionTerminated = true;
-          terminatedDeviceName =
-            samePlatformSessions[0].deviceInfo.name || '알 수 없는 기기';
-          terminatedPlatform = deviceInfo.platform;
-
-          // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
-          for (const session of samePlatformSessions) {
-            // MongoDB 삭제
-            await userSessionModel.deleteSession(session.sessionId);
-
-            // Redis 삭제
-            if (redisClient.status === 'ready') {
-              const redisKey = `app:sess:${session.sessionId}`;
-              const deleteResult = await redisClient.del(redisKey);
-              if (deleteResult === 1) {
-                console.log(
-                  `✅ [Google OAuth] Redis session deleted: ${redisKey}`,
-                );
-              } else {
-                console.warn(
-                  `⚠️ [Google OAuth] Redis session not found: ${redisKey}`,
-                );
-              }
-            } else {
-              console.warn(
-                `⚠️ [Google OAuth] Redis client not ready, session: ${session.sessionId}`,
-              );
-            }
-          }
-        }
-
-        // 플랫폼에 따른 세션 만료 시간 계산 (APP=30일, WEB=1일)
-        const sessionMaxAge = getSessionMaxAge(deviceInfo.platform);
-        const expiresAt = new Date(Date.now() + sessionMaxAge);
-
-        // Express 세션 쿠키의 maxAge도 플랫폼에 맞게 설정
-        req.session.cookie.maxAge = sessionMaxAge;
-
-        // UserSession 생성
-        await userSessionModel.createSession(
-          user._id,
-          req.sessionID,
-          deviceInfo,
-          expiresAt,
-        );
-      } catch (sessionError) {
-        // UserSession 생성 실패는 로그만 남기고 로그인은 계속 진행
-        console.error('[Session] Failed to create UserSession:', sessionError);
-      }
-    }
-
-    // 프론트엔드 홈으로 리디렉션 (이전 세션 경고 포함)
-    let redirectUrl = env.FRONTEND_URL;
-    if (previousSessionTerminated) {
-      const platformName = terminatedPlatform === 'web' ? '웹' : '앱';
-      const params = new URLSearchParams({
-        sessionWarning: 'true',
-        message: `이전에 로그인된 ${platformName} 세션이 로그아웃되었습니다.`,
-        terminatedDevice: terminatedDeviceName,
-      });
-      redirectUrl = `${env.FRONTEND_URL}?${params.toString()}`;
-    }
-    res.redirect(redirectUrl);
-  },
+  handleGoogleCallback,
 );
+
+/**
+ * @swagger
+ * /auth/google/app:
+ *   post:
+ *     summary: Google OAuth 앱 로그인
+ *     description: |
+ *       모바일 앱용 Google OAuth 인증 엔드포인트입니다.
+ *       앱에서 Google Sign-In SDK로 획득한 ID 토큰을 서버로 전송하여 인증합니다.
+ *
+ *       **인증 플로우:**
+ *       1. 앱에서 Google Sign-In SDK를 사용하여 ID 토큰 획득
+ *       2. 획득한 ID 토큰을 이 API로 전송
+ *       3. 서버에서 ID 토큰 검증
+ *       4. 세션 생성 및 사용자 정보 반환
+ *
+ *       **플랫폼별 세션 관리:**
+ *       - X-Platform 헤더로 플랫폼을 지정할 수 있습니다 (web: 1일, app: 30일)
+ *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
+ *       - ⚠️ **중요**: 이전 기기에는 로그아웃 알림이 전송되지 않습니다.
+ *     tags:
+ *       - Auth
+ *     parameters:
+ *       - in: header
+ *         name: X-Platform
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [web, app]
+ *           default: app
+ *         description: |
+ *           로그인 플랫폼 지정 (필수 권장)
+ *           - web: 웹 플랫폼 (세션 유지: 1일)
+ *           - app: 앱 플랫폼 (세션 유지: 30일)
+ *           - 미지정 시: APP 플랫폼으로 기본 설정
+ *         example: "app"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 description: |
+ *                   Google Sign-In SDK로 획득한 ID 토큰
+ *                   - iOS: GIDSignIn.sharedInstance.currentUser.authentication.idToken
+ *                   - Android: GoogleSignInAccount.idToken
+ *                 example: "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+ *           example:
+ *             idToken: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE4MmU0NTBhMzVhMjA4MWZhYTFkOWFlMjE4MjgzMDIyMmY5NTRiZWUiLCJ0eXAiOiJKV1QifQ..."
+ *     responses:
+ *       200:
+ *         description: 인증 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Google authentication successful"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                         email:
+ *                           type: string
+ *                           example: "user@example.com"
+ *                         username:
+ *                           type: string
+ *                           example: "John Doe"
+ *                         profileImage:
+ *                           type: string
+ *                           example: "https://lh3.googleusercontent.com/..."
+ *                         provider:
+ *                           type: string
+ *                           example: "google"
+ *                     session:
+ *                       type: object
+ *                       properties:
+ *                         expiresAt:
+ *                           type: string
+ *                           format: date-time
+ *                           example: "2025-12-02T00:00:00.000Z"
+ *                     warning:
+ *                       type: object
+ *                       description: 이전 세션이 종료된 경우에만 포함됨
+ *                       properties:
+ *                         message:
+ *                           type: string
+ *                           example: "이전에 로그인된 세션이 로그아웃되었습니다."
+ *                         terminatedDevice:
+ *                           type: string
+ *                           example: "iPhone 15 Pro"
+ *             examples:
+ *               newLogin:
+ *                 summary: 첫 로그인 (이전 세션 없음)
+ *                 value:
+ *                   success: true
+ *                   message: "Google authentication successful"
+ *                   data:
+ *                     user:
+ *                       id: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                       email: "user@example.com"
+ *                       username: "John Doe"
+ *                       profileImage: "https://lh3.googleusercontent.com/..."
+ *                       provider: "google"
+ *                     session:
+ *                       expiresAt: "2025-12-02T00:00:00.000Z"
+ *               withWarning:
+ *                 summary: 이전 세션 종료 경고 포함
+ *                 value:
+ *                   success: true
+ *                   message: "Google authentication successful"
+ *                   data:
+ *                     user:
+ *                       id: "60d5ec49f1b2c8b1f8e4c1a1"
+ *                       email: "user@example.com"
+ *                       username: "John Doe"
+ *                       profileImage: "https://lh3.googleusercontent.com/..."
+ *                       provider: "google"
+ *                     session:
+ *                       expiresAt: "2025-12-02T00:00:00.000Z"
+ *                     warning:
+ *                       message: "이전에 로그인된 세션이 로그아웃되었습니다."
+ *                       terminatedDevice: "iPhone 15 Pro"
+ *       400:
+ *         description: 잘못된 요청 (ID 토큰 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "ID token is required"
+ *       401:
+ *         description: 인증 실패 (유효하지 않은 ID 토큰)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid Google ID token"
+ *       500:
+ *         description: 서버 내부 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Internal server error"
+ */
+router.post('/google/app', authenticateWithGoogle);
 
 export default router;

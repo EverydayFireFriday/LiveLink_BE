@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { User } from '../../types/auth/authTypes';
+import { User } from '../../models/auth/user';
 
 export class AuthService {
   private readonly SALT_ROUNDS = 12;
@@ -20,9 +20,48 @@ export class AuthService {
     return crypto.randomInt(100000, 999999).toString();
   }
 
-  createSessionData(user: User): any {
+  createSessionData(
+    user: Pick<
+      User,
+      | 'email'
+      | 'username'
+      | 'name'
+      | 'birthDate'
+      | 'status'
+      | 'statusReason'
+      | 'profileImage'
+      | 'isTermsAgreed'
+      | 'termsVersion'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'provider'
+      | 'socialId'
+    > & {
+      _id?: { toHexString(): string };
+      likedConcerts?: unknown;
+      likedArticles?: unknown;
+    },
+  ): {
+    userId: string;
+    email: string;
+    username: string;
+    name: string;
+    birthDate: Date;
+    status: string;
+    statusReason?: string;
+    profileImage?: string;
+    isTermsAgreed: boolean;
+    termsVersion: string;
+    createdAt: Date;
+    updatedAt: Date;
+    provider?: string;
+    socialId?: string;
+    likedConcerts?: unknown;
+    likedArticles?: unknown;
+    loginTime: string;
+  } {
     return {
-      userId: user._id!.toString(), // ObjectId를 string으로 변환
+      userId: user._id!.toHexString(), // ObjectId를 string으로 변환
       email: user.email,
       username: user.username,
       name: user.name,
