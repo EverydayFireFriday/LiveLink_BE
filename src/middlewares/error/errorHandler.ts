@@ -5,11 +5,13 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../utils/errors/customErrors';
+import { ErrorCode } from '../../utils/errors/errorCodes';
 import logger from '../../utils/logger/logger';
 import { isDevelopment } from '../../config/env/env';
 
 interface ErrorResponse {
   status: 'error' | 'fail';
+  errorCode?: ErrorCode;
   message: string;
   error?: string;
   stack?: string;
@@ -36,11 +38,13 @@ export const errorHandler = (
   const isAppError = err instanceof AppError;
   const statusCode = isAppError ? err.statusCode : 500;
   const isOperational = isAppError ? err.isOperational : false;
+  const errorCode = isAppError ? err.errorCode : undefined;
 
   // 에러 로깅
   const errorLog = {
     message: err.message,
     statusCode,
+    errorCode,
     isOperational,
     method: req.method,
     url: req.url,
@@ -59,6 +63,7 @@ export const errorHandler = (
   // 에러 응답 구성
   const errorResponse: ErrorResponse = {
     status: statusCode >= 500 ? 'error' : 'fail',
+    errorCode,
     message: err.message || '서버 내부 에러가 발생했습니다.',
     timestamp: new Date().toISOString(),
   };
