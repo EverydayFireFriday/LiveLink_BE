@@ -2,7 +2,7 @@
 #------------------- 빌더 단계 -------------------#
 # Using a LTS version of Node.js for stability and security
 # 안정성과 보안을 위해 Node.js LTS 버전 사용
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 
 # Set the working directory
 # 작업 디렉토리 설정
@@ -32,7 +32,7 @@ RUN npm prune --production
 #------------------- 프로덕션 단계 -------------------#
 # Use a slim, secure base image for the final stage
 # 최종 단계를 위해 슬림하고 안전한 베이스 이미지 사용
-FROM node:20-alpine
+FROM node:25-alpine
 
 # Set NODE_ENV to production
 # NODE_ENV를 production으로 설정
