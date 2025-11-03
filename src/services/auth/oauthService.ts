@@ -84,8 +84,7 @@ export class OAuthService {
         provider,
         socialId,
         profileImage,
-        isTermsAgreed: false,
-        termsVersion: '1.0',
+        termsConsents: [], // OAuth 사용자는 초기에 약관 동의가 없음 (나중에 동의 필요)
       };
 
       // username 중복 체크

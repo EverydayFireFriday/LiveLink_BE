@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { User } from '../../models/auth/user';
+import { User, TermsConsent } from '../../models/auth/user';
 
 export class AuthService {
   private readonly SALT_ROUNDS = 12;
@@ -30,8 +30,7 @@ export class AuthService {
       | 'status'
       | 'statusReason'
       | 'profileImage'
-      | 'isTermsAgreed'
-      | 'termsVersion'
+      | 'termsConsents'
       | 'createdAt'
       | 'updatedAt'
       | 'provider'
@@ -45,13 +44,12 @@ export class AuthService {
     userId: string;
     email: string;
     username: string;
-    name: string;
-    birthDate: Date;
+    name?: string;
+    birthDate?: Date;
     status: string;
     statusReason?: string;
     profileImage?: string;
-    isTermsAgreed: boolean;
-    termsVersion: string;
+    termsConsents: TermsConsent[];
     createdAt: Date;
     updatedAt: Date;
     provider?: string;
@@ -69,8 +67,7 @@ export class AuthService {
       status: user.status,
       statusReason: user.statusReason,
       profileImage: user.profileImage,
-      isTermsAgreed: user.isTermsAgreed,
-      termsVersion: user.termsVersion,
+      termsConsents: user.termsConsents || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       provider: user.provider,

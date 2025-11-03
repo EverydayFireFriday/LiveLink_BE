@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { UserStatus } from '../../models/auth/user';
+import { UserStatus, TermsConsent } from '../../models/auth/user';
 import { IConcert } from '../../models/concert/base/ConcertTypes';
 import { Article } from '../article/articleTypes';
 
@@ -7,26 +7,15 @@ export interface User {
   _id?: ObjectId;
   email: string;
   username: string;
-  name: string;
-  birthDate: Date;
+  name?: string; // OAuth 사용자의 경우 선택적
+  birthDate?: Date; // OAuth 사용자의 경우 선택적
   passwordHash?: string;
   status: UserStatus;
   statusReason?: string;
   profileImage?: string;
 
-  // 약관 동의 관련
-  isTermsAgreed: boolean;
-  termsVersion: string;
-  termsAgreedAt?: Date;
-
-  // 개인정보처리방침 동의
-  isPrivacyAgreed?: boolean;
-  privacyVersion?: string;
-  privacyAgreedAt?: Date;
-
-  // 선택적 동의
-  marketingConsent?: boolean;
-  marketingConsentAt?: Date;
+  // 약관 동의 관련 (배열 구조)
+  termsConsents: TermsConsent[];
 
   createdAt: Date;
   updatedAt: Date;
@@ -42,13 +31,12 @@ export interface SessionUser {
   email: string;
   userId: string; // 세션에서는 문자열로 저장
   username: string;
-  name: string;
-  birthDate: Date;
+  name?: string; // OAuth 사용자의 경우 선택적
+  birthDate?: Date; // OAuth 사용자의 경우 선택적
   status: string;
   statusReason?: string;
   profileImage?: string;
-  isTermsAgreed: boolean;
-  termsVersion?: string;
+  termsConsents: TermsConsent[]; // 약관 동의 배열
   createdAt: Date;
   updatedAt: Date;
   provider?: string;
@@ -69,8 +57,7 @@ export interface VerificationData {
     name: string;
     birthDate: Date;
     profileImage?: string;
-    isTermsAgreed: boolean; // 약관 동의 여부 추가
-    termsVersion: string; // 약관 버전 추가
+    termsConsents: TermsConsent[]; // 약관 동의 배열
   };
 }
 
@@ -108,14 +95,12 @@ export interface CompleteRegistrationRequest {
   username?: string;
   profileImage?: string;
 
-  // 필수 약관 동의
-  isTermsAgreed: boolean;
-  termsVersion?: string;
-  isPrivacyAgreed: boolean;
-  privacyVersion?: string;
-
-  // 선택적 동의
-  marketingConsent?: boolean;
+  // 약관 동의 배열
+  termsConsents: Array<{
+    type: string; // 'terms' | 'privacy' | 'marketing'
+    isAgreed: boolean;
+    version?: string;
+  }>;
 }
 
 // Redis에 저장될 이메일 인증 완료 토큰 데이터

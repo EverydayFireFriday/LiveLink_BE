@@ -1,4 +1,4 @@
-import { UserModel } from '../../models/auth/user';
+import { UserModel, TermsConsent } from '../../models/auth/user';
 import { User } from '../../types/auth/authTypes';
 import { cacheManager } from '../../utils/cache/cacheManager';
 import logger from '../../utils/logger/logger';
@@ -45,18 +45,13 @@ export class UserService {
   async createUser(userData: {
     email: string;
     username: string;
-    passwordHash: string;
-    name: string;
-    birthDate: Date;
+    passwordHash?: string;
+    name?: string;
+    birthDate?: Date;
     profileImage?: string;
-    isTermsAgreed: boolean;
-    termsVersion: string;
-    termsAgreedAt?: Date;
-    isPrivacyAgreed?: boolean;
-    privacyVersion?: string;
-    privacyAgreedAt?: Date;
-    marketingConsent?: boolean;
-    marketingConsentAt?: Date;
+    termsConsents: TermsConsent[];
+    provider?: string;
+    socialId?: string;
   }): Promise<User> {
     return (await this.getUserModel().createUser(userData)) as User;
   }

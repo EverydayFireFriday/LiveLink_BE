@@ -2,9 +2,21 @@ import { Request, Response, NextFunction } from 'express';
 import {
   CURRENT_TERMS_VERSION,
   CURRENT_PRIVACY_VERSION,
+  PolicyType,
 } from '../../config/terms';
 import logger from '../../utils/logger/logger';
 import { UserService } from '../../services/auth/userService';
+import { TermsConsent } from '../../models/auth/user';
+
+/**
+ * 약관 동의 조회 헬퍼 함수
+ */
+const findConsent = (
+  consents: TermsConsent[],
+  type: string,
+): TermsConsent | undefined => {
+  return consents.find((c) => c.type === type);
+};
 
 /**
  * 약관 버전 체크 미들웨어
@@ -29,10 +41,17 @@ export const checkTermsVersion = async (
       return next();
     }
 
+    const consents = user.termsConsents || [];
+
+    // 각 약관 타입별 동의 정보 조회
+    const termsConsent = findConsent(consents, PolicyType.TERMS);
+    const privacyConsent = findConsent(consents, PolicyType.PRIVACY);
+
     // 약관 버전 체크
-    const needsTermsUpdate = user.termsVersion !== CURRENT_TERMS_VERSION;
+    const needsTermsUpdate =
+      !termsConsent || termsConsent.version !== CURRENT_TERMS_VERSION;
     const needsPrivacyUpdate =
-      !user.privacyVersion || user.privacyVersion !== CURRENT_PRIVACY_VERSION;
+      !privacyConsent || privacyConsent.version !== CURRENT_PRIVACY_VERSION;
 
     // 업데이트가 필요하면 응답 헤더에 표시
     if (needsTermsUpdate || needsPrivacyUpdate) {
@@ -44,8 +63,8 @@ export const checkTermsVersion = async (
           needsPrivacyUpdate,
           currentTermsVersion: CURRENT_TERMS_VERSION,
           currentPrivacyVersion: CURRENT_PRIVACY_VERSION,
-          userTermsVersion: user.termsVersion,
-          userPrivacyVersion: user.privacyVersion || null,
+          userTermsVersion: termsConsent?.version || null,
+          userPrivacyVersion: privacyConsent?.version || null,
         }),
       );
 
@@ -92,10 +111,17 @@ export const requireLatestTerms = async (
       });
     }
 
+    const consents = user.termsConsents || [];
+
+    // 각 약관 타입별 동의 정보 조회
+    const termsConsent = findConsent(consents, PolicyType.TERMS);
+    const privacyConsent = findConsent(consents, PolicyType.PRIVACY);
+
     // 약관 버전 체크
-    const needsTermsUpdate = user.termsVersion !== CURRENT_TERMS_VERSION;
+    const needsTermsUpdate =
+      !termsConsent || termsConsent.version !== CURRENT_TERMS_VERSION;
     const needsPrivacyUpdate =
-      !user.privacyVersion || user.privacyVersion !== CURRENT_PRIVACY_VERSION;
+      !privacyConsent || privacyConsent.version !== CURRENT_PRIVACY_VERSION;
 
     if (needsTermsUpdate || needsPrivacyUpdate) {
       logger.warn(

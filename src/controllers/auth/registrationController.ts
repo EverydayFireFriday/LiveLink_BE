@@ -6,10 +6,11 @@ import { EmailService } from '../../utils/email/emailService';
 import { AuthValidator } from '../../utils/validation/auth/authValidator';
 import { UserValidator } from '../../utils/validation/auth/userValidator';
 import logger from '../../utils/logger/logger';
-import { UserStatus } from '../../models/auth/user';
+import { UserStatus, TermsConsent } from '../../models/auth/user';
 import {
   CURRENT_TERMS_VERSION,
   CURRENT_PRIVACY_VERSION,
+  CURRENT_MARKETING_VERSION,
 } from '../../config/terms';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import crypto from 'crypto';
@@ -249,11 +250,7 @@ export class RegistrationController {
       birthDate,
       username,
       profileImage,
-      isTermsAgreed,
-      termsVersion,
-      isPrivacyAgreed,
-      privacyVersion,
-      marketingConsent,
+      termsConsents,
     } = req.body as CompleteRegistrationRequest;
 
     // 요청 본문 로그 (민감한 정보는 마스킹)
@@ -266,11 +263,7 @@ export class RegistrationController {
           birthDate: birthDate || 'missing',
           username: username || 'not provided',
           hasProfileImage: !!profileImage,
-          isTermsAgreed: isTermsAgreed,
-          termsVersion: termsVersion || 'not provided',
-          isPrivacyAgreed: isPrivacyAgreed,
-          privacyVersion: privacyVersion || 'not provided',
-          marketingConsent: marketingConsent || false,
+          termsConsents: termsConsents || 'missing',
         }),
     );
 
@@ -280,16 +273,17 @@ export class RegistrationController {
       !password ||
       !name ||
       !birthDate ||
-      !isTermsAgreed ||
-      !isPrivacyAgreed
+      !termsConsents ||
+      !Array.isArray(termsConsents)
     ) {
       const missingFields = [];
       if (!verificationToken) missingFields.push('verificationToken');
       if (!password) missingFields.push('password');
       if (!name) missingFields.push('name');
       if (!birthDate) missingFields.push('birthDate');
-      if (!isTermsAgreed) missingFields.push('isTermsAgreed');
-      if (!isPrivacyAgreed) missingFields.push('isPrivacyAgreed');
+      if (!termsConsents) missingFields.push('termsConsents');
+      if (termsConsents && !Array.isArray(termsConsents))
+        missingFields.push('termsConsents must be array');
 
       logger.warn(
         '[Registration] Missing required fields: ' +
@@ -343,38 +337,20 @@ export class RegistrationController {
       );
     }
 
-    const termsValidation = AuthValidator.validateBoolean(
-      isTermsAgreed,
-      'isTermsAgreed',
-    );
-    if (!termsValidation.isValid || !isTermsAgreed) {
-      logger.warn(
-        '[Registration] Terms validation failed: ' +
-          JSON.stringify({
-            isTermsAgreed,
-            termsValidation: termsValidation.isValid,
-            message: termsValidation.message,
-          }),
-      );
+    // 약관 동의 검증
+    const termsConsent = termsConsents.find((c) => c.type === 'terms');
+    const privacyConsent = termsConsents.find((c) => c.type === 'privacy');
+
+    if (!termsConsent || !termsConsent.isAgreed) {
+      logger.warn('[Registration] Terms consent not agreed');
       return ResponseBuilder.badRequest(
         res,
         '서비스 이용약관에 동의해야 합니다.',
       );
     }
 
-    const privacyValidation = AuthValidator.validateBoolean(
-      isPrivacyAgreed,
-      'isPrivacyAgreed',
-    );
-    if (!privacyValidation.isValid || !isPrivacyAgreed) {
-      logger.warn(
-        '[Registration] Privacy policy validation failed: ' +
-          JSON.stringify({
-            isPrivacyAgreed,
-            privacyValidation: privacyValidation.isValid,
-            message: privacyValidation.message,
-          }),
-      );
+    if (!privacyConsent || !privacyConsent.isAgreed) {
+      logger.warn('[Registration] Privacy policy consent not agreed');
       return ResponseBuilder.badRequest(
         res,
         '개인정보처리방침에 동의해야 합니다.',
@@ -460,6 +436,30 @@ export class RegistrationController {
       // 동의 시각 기록
       const now = new Date();
 
+      // 약관 동의 배열 처리 - 버전 및 동의 시각 추가
+      const processedTermsConsents: TermsConsent[] = termsConsents.map((c) => {
+        let version = c.version;
+        if (!version) {
+          // 버전이 없으면 현재 버전 사용
+          if (c.type === 'terms') {
+            version = CURRENT_TERMS_VERSION;
+          } else if (c.type === 'privacy') {
+            version = CURRENT_PRIVACY_VERSION;
+          } else if (c.type === 'marketing') {
+            version = CURRENT_MARKETING_VERSION;
+          } else {
+            version = '1.0'; // 기본값
+          }
+        }
+
+        return {
+          type: c.type,
+          isAgreed: c.isAgreed,
+          version,
+          agreedAt: c.isAgreed ? now : undefined,
+        };
+      });
+
       // 실제 사용자 생성
       const newUser = await this.userService.createUser({
         email,
@@ -468,14 +468,7 @@ export class RegistrationController {
         name: name.trim(),
         birthDate: new Date(birthDate),
         profileImage: profileImage || undefined,
-        isTermsAgreed: isTermsAgreed,
-        termsVersion: termsVersion || CURRENT_TERMS_VERSION,
-        termsAgreedAt: now,
-        isPrivacyAgreed: isPrivacyAgreed,
-        privacyVersion: privacyVersion || CURRENT_PRIVACY_VERSION,
-        privacyAgreedAt: now,
-        marketingConsent: marketingConsent || false,
-        marketingConsentAt: marketingConsent ? now : undefined,
+        termsConsents: processedTermsConsents,
       });
 
       // 사용자 상태를 'active'로 변경
@@ -519,7 +512,10 @@ export class RegistrationController {
           id: (updatedUser || newUser)._id,
           email: (updatedUser || newUser).email,
           username: (updatedUser || newUser).username,
+          name: (updatedUser || newUser).name,
+          birthDate: (updatedUser || newUser).birthDate,
           profileImage: (updatedUser || newUser).profileImage,
+          termsConsents: (updatedUser || newUser).termsConsents,
           createdAt: (updatedUser || newUser).createdAt,
         },
       });

@@ -18,20 +18,18 @@ export const authSchemas = {
 
   RegisterRequest: {
     type: 'object',
-    required: ['email', 'password', 'name', 'birthDate', 'isTermsAgreed'],
+    required: [
+      'verificationToken',
+      'password',
+      'name',
+      'birthDate',
+      'termsConsents',
+    ],
     properties: {
-      email: {
+      verificationToken: {
         type: 'string',
-        format: 'email',
-        example: 'user@example.com',
-        description: '사용자 이메일 주소',
-      },
-      username: {
-        type: 'string',
-        minLength: 2,
-        maxLength: 20,
-        example: 'johndoe',
-        description: '사용자명 (선택사항, 입력하지 않으면 자동 생성)',
+        example: 'abc123def456',
+        description: '이메일 인증 완료 토큰',
       },
       password: {
         type: 'string',
@@ -52,16 +50,78 @@ export const authSchemas = {
         example: '1990-01-01',
         description: '생년월일 (YYYY-MM-DD 형식)',
       },
+      username: {
+        type: 'string',
+        minLength: 2,
+        maxLength: 20,
+        example: 'johndoe',
+        description: '사용자명 (선택사항, 입력하지 않으면 자동 생성)',
+      },
       profileImage: {
         type: 'string',
         format: 'uri',
         example: 'https://example.com/avatar.jpg',
         description: '프로필 이미지 URL (선택사항)',
       },
-      isTermsAgreed: {
+      termsConsents: {
+        type: 'array',
+        description: '약관 동의 목록 (필수: terms, privacy / 선택: marketing)',
+        items: {
+          type: 'object',
+          required: ['type', 'isAgreed'],
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['terms', 'privacy', 'marketing'],
+              example: 'terms',
+              description: '약관 타입',
+            },
+            isAgreed: {
+              type: 'boolean',
+              example: true,
+              description: '동의 여부',
+            },
+            version: {
+              type: 'string',
+              example: '1.0',
+              description: '약관 버전 (선택사항, 없으면 현재 버전 사용)',
+            },
+          },
+        },
+        example: [
+          { type: 'terms', isAgreed: true, version: '1.0' },
+          { type: 'privacy', isAgreed: true, version: '1.0' },
+          { type: 'marketing', isAgreed: false, version: '1.0' },
+        ],
+      },
+    },
+  },
+
+  TermsConsent: {
+    type: 'object',
+    required: ['type', 'isAgreed', 'version'],
+    properties: {
+      type: {
+        type: 'string',
+        enum: ['terms', 'privacy', 'marketing'],
+        example: 'terms',
+        description: '약관 타입',
+      },
+      isAgreed: {
         type: 'boolean',
         example: true,
-        description: '서비스 이용약관 동의 여부 (필수)',
+        description: '동의 여부',
+      },
+      version: {
+        type: 'string',
+        example: '1.0',
+        description: '약관 버전',
+      },
+      agreedAt: {
+        type: 'string',
+        format: 'date-time',
+        example: '2025-01-15T12:00:00Z',
+        description: '동의 시각',
       },
     },
   },
@@ -72,11 +132,8 @@ export const authSchemas = {
       '_id',
       'email',
       'username',
-      'name',
-      'birthDate',
-      'isEmailVerified',
       'status',
-      'role',
+      'termsConsents',
       'createdAt',
       'updatedAt',
     ],
@@ -84,32 +141,157 @@ export const authSchemas = {
       _id: { type: 'string' },
       email: { type: 'string', format: 'email' },
       username: { type: 'string' },
-      name: { type: 'string', description: '실명' },
-      birthDate: { type: 'string', format: 'date', description: '생년월일' },
+      name: { type: 'string', description: '실명 (선택사항)' },
+      birthDate: {
+        type: 'string',
+        format: 'date',
+        description: '생년월일 (선택사항)',
+      },
       profileImage: {
         type: 'string',
         format: 'uri',
         description: '프로필 이미지 URL (선택사항)',
       },
-      isEmailVerified: { type: 'boolean' },
-      verificationCode: {
-        type: 'string',
-        description: '이메일 인증 코드 (선택사항)',
-      },
-      verificationCodeExpires: {
-        type: 'string',
-        format: 'date-time',
-        description: '인증 코드 만료 시간 (선택사항)',
-      },
       status: {
         type: 'string',
-        enum: ['active', 'inactive', 'suspended', 'banned'],
+        enum: [
+          'active',
+          'inactive',
+          'suspended',
+          'deleted',
+          'pending_verification',
+        ],
       },
-      role: { type: 'string', enum: ['user', 'admin', 'moderator'] },
+      statusReason: {
+        type: 'string',
+        description: '상태 변경 사유 (선택사항)',
+      },
+      termsConsents: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/TermsConsent' },
+        description: '약관 동의 목록',
+      },
+      provider: {
+        type: 'string',
+        description: '소셜 로그인 제공자 (google, apple 등)',
+      },
+      socialId: {
+        type: 'string',
+        description: '소셜 로그인 ID',
+      },
+      likedConcerts: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '좋아요한 콘서트 ID 목록',
+      },
+      likedArticles: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '좋아요한 게시글 ID 목록',
+      },
+      fcmToken: {
+        type: 'string',
+        description: 'FCM 푸시 알림 토큰',
+      },
+      fcmTokenUpdatedAt: {
+        type: 'string',
+        format: 'date-time',
+        description: 'FCM 토큰 업데이트 시간',
+      },
       createdAt: { type: 'string', format: 'date-time' },
       updatedAt: { type: 'string', format: 'date-time' },
     },
   },
+
+  TermsConsentResponse: {
+    type: 'object',
+    properties: {
+      terms: {
+        type: 'object',
+        properties: {
+          isAgreed: { type: 'boolean', example: true },
+          version: { type: 'string', example: '1.0' },
+          agreedAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2025-01-15T12:00:00Z',
+          },
+          needsUpdate: { type: 'boolean', example: false },
+          currentVersion: { type: 'string', example: '1.0' },
+        },
+      },
+      privacy: {
+        type: 'object',
+        properties: {
+          isAgreed: { type: 'boolean', example: true },
+          version: { type: 'string', example: '1.0' },
+          agreedAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2025-01-15T12:00:00Z',
+          },
+          needsUpdate: { type: 'boolean', example: false },
+          currentVersion: { type: 'string', example: '1.0' },
+        },
+      },
+      marketing: {
+        type: 'object',
+        properties: {
+          isConsented: { type: 'boolean', example: false },
+          consentedAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2025-01-15T12:00:00Z',
+          },
+          currentVersion: { type: 'string', example: '1.0' },
+        },
+      },
+      requiresAction: {
+        type: 'boolean',
+        example: false,
+        description: '약관 업데이트가 필요한지 여부',
+      },
+    },
+  },
+
+  UpdateTermsConsentRequest: {
+    type: 'object',
+    required: ['termsConsents'],
+    properties: {
+      termsConsents: {
+        type: 'array',
+        description: '업데이트할 약관 동의 목록',
+        items: {
+          type: 'object',
+          required: ['type', 'isAgreed'],
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['terms', 'privacy', 'marketing'],
+              example: 'terms',
+              description: '약관 타입',
+            },
+            isAgreed: {
+              type: 'boolean',
+              example: true,
+              description: '동의 여부 (terms, privacy는 false 불가)',
+            },
+            version: {
+              type: 'string',
+              example: '1.0',
+              description: '약관 버전 (선택사항, 없으면 현재 버전 사용)',
+            },
+          },
+        },
+        example: [
+          { type: 'terms', isAgreed: true, version: '1.0' },
+          { type: 'privacy', isAgreed: true, version: '1.0' },
+          { type: 'marketing', isAgreed: false, version: '1.0' },
+        ],
+      },
+    },
+  },
+
   AdminStats: {
     type: 'object',
     required: [

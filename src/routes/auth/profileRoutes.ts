@@ -468,19 +468,38 @@ router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - termsConsents
  *             properties:
- *               isTermsAgreed:
- *                 type: boolean
- *                 description: 이용약관 동의 (필수, false 불가)
- *                 example: true
- *               isPrivacyAgreed:
- *                 type: boolean
- *                 description: 개인정보처리방침 동의 (필수, false 불가)
- *                 example: true
- *               marketingConsent:
- *                 type: boolean
- *                 description: 마케팅 수신 동의 (선택)
- *                 example: false
+ *               termsConsents:
+ *                 type: array
+ *                 description: 업데이트할 약관 동의 목록
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - type
+ *                     - isAgreed
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: [terms, privacy, marketing]
+ *                       description: 약관 타입
+ *                     isAgreed:
+ *                       type: boolean
+ *                       description: 동의 여부 (terms, privacy는 false 불가)
+ *                     version:
+ *                       type: string
+ *                       description: 약관 버전 (선택, 없으면 현재 버전 사용)
+ *                 example:
+ *                   - type: terms
+ *                     isAgreed: true
+ *                     version: "1.0"
+ *                   - type: privacy
+ *                     isAgreed: true
+ *                     version: "1.0"
+ *                   - type: marketing
+ *                     isAgreed: false
+ *                     version: "1.0"
  *     responses:
  *       200:
  *         description: 약관 동의 업데이트 성공
@@ -527,7 +546,7 @@ router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
  *                           type: string
  *                           format: date-time
  *       400:
- *         description: 잘못된 요청
+ *         description: 잘못된 요청 (필수 약관 미동의, termsConsents 배열 누락)
  *       401:
  *         description: 인증 필요
  *       404:

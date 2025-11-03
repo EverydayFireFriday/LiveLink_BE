@@ -295,8 +295,7 @@ router.post(
  *               - password
  *               - name
  *               - birthDate
- *               - isTermsAgreed
- *               - isPrivacyAgreed
+ *               - termsConsents
  *             properties:
  *               verificationToken:
  *                 type: string
@@ -328,26 +327,25 @@ router.post(
  *                 type: string
  *                 description: 프로필 이미지 URL (선택사항)
  *                 example: "https://example.com/profile.jpg"
- *               isTermsAgreed:
- *                 type: boolean
- *                 description: "[필수] 서비스 이용약관 동의"
- *                 example: true
- *               termsVersion:
- *                 type: string
- *                 description: 이용약관 버전 (선택, 없으면 현재 버전 사용)
- *                 example: "1.00"
- *               isPrivacyAgreed:
- *                 type: boolean
- *                 description: "[필수] 개인정보 수집 및 이용 동의"
- *                 example: true
- *               privacyVersion:
- *                 type: string
- *                 description: 개인정보처리방침 버전 (선택, 없으면 현재 버전 사용)
- *                 example: "1.00"
- *               marketingConsent:
- *                 type: boolean
- *                 description: "[선택] 마케팅 정보 수신 동의"
- *                 example: false
+ *               termsConsents:
+ *                 type: array
+ *                 description: 약관 동의 목록 (필수 terms, privacy / 선택 marketing)
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - type
+ *                     - isAgreed
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: [terms, privacy, marketing]
+ *                       description: 약관 타입
+ *                     isAgreed:
+ *                       type: boolean
+ *                       description: 동의 여부
+ *                     version:
+ *                       type: string
+ *                       description: 약관 버전 (선택, 없으면 현재 버전 사용)
  *           example:
  *             verificationToken: "a1b2c3d4..."
  *             password: "password123!"
@@ -355,11 +353,16 @@ router.post(
  *             birthDate: "1990-01-01"
  *             username: "내별명"
  *             profileImage: "https://example.com/profile.jpg"
- *             isTermsAgreed: true
- *             termsVersion: "1.00"
- *             isPrivacyAgreed: true
- *             privacyVersion: "1.00"
- *             marketingConsent: false
+ *             termsConsents:
+ *               - type: "terms"
+ *                 isAgreed: true
+ *                 version: "1.0"
+ *               - type: "privacy"
+ *                 isAgreed: true
+ *                 version: "1.0"
+ *               - type: "marketing"
+ *                 isAgreed: false
+ *                 version: "1.0"
  *     responses:
  *       201:
  *         description: 회원가입 완료

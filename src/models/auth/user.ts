@@ -16,8 +16,9 @@ export enum UserStatus {
   PENDING_VERIFICATION = 'pending_verification',
 }
 
-// 약관 동의 정보 인터페이스
+// 약관 동의 정보 인터페이스 (배열 구조)
 export interface TermsConsent {
+  type: string; // 'terms' | 'privacy' | 'marketing'
   isAgreed: boolean;
   version: string;
   agreedAt?: Date;
@@ -34,26 +35,15 @@ export interface User {
   _id?: ObjectId;
   username: string;
   email: string;
-  name: string; // 실명
-  birthDate: Date; // 생년월일
+  name?: string; // 실명 (OAuth 사용자의 경우 선택적)
+  birthDate?: Date; // 생년월일 (OAuth 사용자의 경우 선택적)
   passwordHash?: string; // 소셜 로그인을 위해 선택적으로 변경
   status: UserStatus;
   statusReason?: string; // 상태 변경 사유 추가
   profileImage?: string; // S3 URL 또는 파일 경로
 
-  // 약관 동의 관련 (하위 호환성 유지)
-  isTermsAgreed: boolean; // 이용약관 동의 여부
-  termsVersion: string; // 이용약관 버전
-  termsAgreedAt?: Date; // 이용약관 동의 시각
-
-  // 개인정보처리방침 동의
-  isPrivacyAgreed?: boolean; // 개인정보처리방침 동의 여부
-  privacyVersion?: string; // 개인정보처리방침 버전
-  privacyAgreedAt?: Date; // 개인정보처리방침 동의 시각
-
-  // 선택적 동의 항목
-  marketingConsent?: boolean; // 마케팅 수신 동의 여부
-  marketingConsentAt?: Date; // 마케팅 수신 동의 시각
+  // 약관 동의 관련 (배열 구조)
+  termsConsents: TermsConsent[]; // 모든 약관 동의 정보를 배열로 관리
 
   createdAt: Date;
   updatedAt: Date;
@@ -182,6 +172,7 @@ export class UserModel {
       status: UserStatus.PENDING_VERIFICATION,
       likedConcerts: [],
       likedArticles: [],
+      termsConsents: userData.termsConsents || [], // 배열 초기화
       createdAt: now,
       updatedAt: now,
     };

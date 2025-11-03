@@ -235,8 +235,7 @@ export class AuthController {
             status: user.status,
             statusReason: user.statusReason,
             profileImage: user.profileImage,
-            isTermsAgreed: user.isTermsAgreed,
-            termsVersion: user.termsVersion,
+            termsConsents: user.termsConsents || [], // 약관 동의 배열
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
             provider: user.provider,
