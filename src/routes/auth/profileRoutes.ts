@@ -493,13 +493,13 @@ router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
  *                 example:
  *                   - type: terms
  *                     isAgreed: true
- *                     version: "1.0"
+ *                     version: "1.0.0"
  *                   - type: privacy
  *                     isAgreed: true
- *                     version: "1.0"
+ *                     version: "1.0.0"
  *                   - type: marketing
  *                     isAgreed: false
- *                     version: "1.0"
+ *                     version: "1.0.0"
  *     responses:
  *       200:
  *         description: 약관 동의 업데이트 성공

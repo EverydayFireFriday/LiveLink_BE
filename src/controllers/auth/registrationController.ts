@@ -448,7 +448,7 @@ export class RegistrationController {
           } else if (c.type === 'marketing') {
             version = CURRENT_MARKETING_VERSION;
           } else {
-            version = '1.0'; // 기본값
+            version = '1.0.0'; // 기본값
           }
         }
 

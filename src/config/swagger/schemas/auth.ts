@@ -83,15 +83,15 @@ export const authSchemas = {
             },
             version: {
               type: 'string',
-              example: '1.0',
+              example: '1.0.0',
               description: '약관 버전 (선택사항, 없으면 현재 버전 사용)',
             },
           },
         },
         example: [
-          { type: 'terms', isAgreed: true, version: '1.0' },
-          { type: 'privacy', isAgreed: true, version: '1.0' },
-          { type: 'marketing', isAgreed: false, version: '1.0' },
+          { type: 'terms', isAgreed: true, version: '1.0.0' },
+          { type: 'privacy', isAgreed: true, version: '1.0.0' },
+          { type: 'marketing', isAgreed: false, version: '1.0.0' },
         ],
       },
     },
@@ -114,7 +114,7 @@ export const authSchemas = {
       },
       version: {
         type: 'string',
-        example: '1.0',
+        example: '1.0.0',
         description: '약관 버전',
       },
       agreedAt: {
@@ -210,28 +210,28 @@ export const authSchemas = {
         type: 'object',
         properties: {
           isAgreed: { type: 'boolean', example: true },
-          version: { type: 'string', example: '1.0' },
+          version: { type: 'string', example: '1.0.0' },
           agreedAt: {
             type: 'string',
             format: 'date-time',
             example: '2025-01-15T12:00:00Z',
           },
           needsUpdate: { type: 'boolean', example: false },
-          currentVersion: { type: 'string', example: '1.0' },
+          currentVersion: { type: 'string', example: '1.0.0' },
         },
       },
       privacy: {
         type: 'object',
         properties: {
           isAgreed: { type: 'boolean', example: true },
-          version: { type: 'string', example: '1.0' },
+          version: { type: 'string', example: '1.0.0' },
           agreedAt: {
             type: 'string',
             format: 'date-time',
             example: '2025-01-15T12:00:00Z',
           },
           needsUpdate: { type: 'boolean', example: false },
-          currentVersion: { type: 'string', example: '1.0' },
+          currentVersion: { type: 'string', example: '1.0.0' },
         },
       },
       marketing: {
@@ -243,7 +243,7 @@ export const authSchemas = {
             format: 'date-time',
             example: '2025-01-15T12:00:00Z',
           },
-          currentVersion: { type: 'string', example: '1.0' },
+          currentVersion: { type: 'string', example: '1.0.0' },
         },
       },
       requiresAction: {
@@ -278,15 +278,15 @@ export const authSchemas = {
             },
             version: {
               type: 'string',
-              example: '1.0',
+              example: '1.0.0',
               description: '약관 버전 (선택사항, 없으면 현재 버전 사용)',
             },
           },
         },
         example: [
-          { type: 'terms', isAgreed: true, version: '1.0' },
-          { type: 'privacy', isAgreed: true, version: '1.0' },
-          { type: 'marketing', isAgreed: false, version: '1.0' },
+          { type: 'terms', isAgreed: true, version: '1.0.0' },
+          { type: 'privacy', isAgreed: true, version: '1.0.0' },
+          { type: 'marketing', isAgreed: false, version: '1.0.0' },
         ],
       },
     },

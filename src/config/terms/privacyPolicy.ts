@@ -1,4 +1,4 @@
-export const CURRENT_PRIVACY_VERSION = '1.00';
+export const CURRENT_PRIVACY_VERSION = '1.0.0';
 
 export const PRIVACY_POLICY = `
 ## Stagelives 개인정보 수집 및 이용 동의

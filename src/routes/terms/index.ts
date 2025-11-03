@@ -45,7 +45,7 @@ const router = express.Router();
  *                         description: 약관 타입
  *                       version:
  *                         type: string
- *                         example: "1.00"
+ *                         example: "1.0.0"
  *                       title:
  *                         type: string
  *                         example: "stagelives 서비스 이용약관"
@@ -101,7 +101,7 @@ router.get('/', getAllPolicies);
  *                       example: "terms"
  *                     version:
  *                       type: string
- *                       example: "1.00"
+ *                       example: "1.0.0"
  *                     title:
  *                       type: string
  *                       example: "stagelives 서비스 이용약관"

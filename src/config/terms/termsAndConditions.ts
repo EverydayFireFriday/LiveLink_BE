@@ -1,4 +1,4 @@
-export const CURRENT_TERMS_VERSION = '1.00';
+export const CURRENT_TERMS_VERSION = '1.0.0';
 
 export const TERMS_AND_CONDITIONS = `
 ## Stagelives 서비스 이용약관

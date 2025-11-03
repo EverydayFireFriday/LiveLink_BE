@@ -142,7 +142,7 @@ export const updateTermsConsent = async (req: Request, res: Response) => {
         } else if (requestConsent.type === 'marketing') {
           version = CURRENT_MARKETING_VERSION;
         } else {
-          version = '1.0';
+          version = '1.0.0';
         }
       }
 

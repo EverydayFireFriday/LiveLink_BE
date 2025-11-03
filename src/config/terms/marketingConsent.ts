@@ -1,4 +1,4 @@
-export const CURRENT_MARKETING_VERSION = '1.00';
+export const CURRENT_MARKETING_VERSION = '1.0.0';
 
 export const MARKETING_CONSENT = `
 ## Stagelives 마케팅 정보 수신 동의
