@@ -45,11 +45,15 @@ export class PasswordController {
     }
   };
 
-  verifyResetPassword = async (req: express.Request, res: express.Response) => {
-    const { email, verificationCode, newPassword } = req.body;
+  // 1단계: 인증 코드 검증
+  verifyResetCode = async (req: express.Request, res: express.Response) => {
+    const { email, verificationCode } = req.body;
 
-    if (!email || !verificationCode || !newPassword) {
-      return ResponseBuilder.badRequest(res, '모든 필드를 입력해주세요.');
+    if (!email || !verificationCode) {
+      return ResponseBuilder.badRequest(
+        res,
+        '이메일과 인증 코드를 입력해주세요.',
+      );
     }
 
     const emailValidation = AuthValidator.validateEmail(email);
@@ -69,6 +73,48 @@ export class PasswordController {
       );
     }
 
+    try {
+      const result = await this.passwordService.verifyResetCode(
+        email,
+        verificationCode,
+      );
+
+      if (result.success) {
+        return ResponseBuilder.success(res, result.message, result.data);
+      } else {
+        if (result.message.includes('만료')) {
+          return ResponseBuilder.gone(res, result.message);
+        } else if (result.message.includes('일치하지')) {
+          return ResponseBuilder.unauthorized(res, result.message);
+        } else {
+          return ResponseBuilder.badRequest(res, result.message);
+        }
+      }
+    } catch (error) {
+      logger.error('인증 코드 검증 에러:', error);
+      return ResponseBuilder.internalError(res, '서버 에러가 발생했습니다.');
+    }
+  };
+
+  // 2단계: 새 비밀번호 설정
+  resetPasswordWithToken = async (
+    req: express.Request,
+    res: express.Response,
+  ) => {
+    const { email, resetToken, newPassword } = req.body;
+
+    if (!email || !resetToken || !newPassword) {
+      return ResponseBuilder.badRequest(res, '모든 필드를 입력해주세요.');
+    }
+
+    const emailValidation = AuthValidator.validateEmail(email);
+    if (!emailValidation.isValid) {
+      return ResponseBuilder.badRequest(
+        res,
+        emailValidation.message || '유효성 검사 실패',
+      );
+    }
+
     const passwordValidation = AuthValidator.validatePassword(newPassword);
     if (!passwordValidation.isValid) {
       return ResponseBuilder.badRequest(
@@ -78,9 +124,9 @@ export class PasswordController {
     }
 
     try {
-      const result = await this.passwordService.verifyAndResetPassword(
+      const result = await this.passwordService.resetPasswordWithToken(
         email,
-        verificationCode,
+        resetToken,
         newPassword,
       );
 
@@ -89,7 +135,7 @@ export class PasswordController {
       } else {
         if (result.message.includes('만료')) {
           return ResponseBuilder.gone(res, result.message);
-        } else if (result.message.includes('일치하지')) {
+        } else if (result.message.includes('유효하지')) {
           return ResponseBuilder.unauthorized(res, result.message);
         } else {
           return ResponseBuilder.badRequest(res, result.message);

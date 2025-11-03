@@ -78,11 +78,15 @@ export class PasswordService {
     }
   }
 
-  async verifyAndResetPassword(
+  // 1단계: 인증 코드 검증 및 임시 토큰 발급
+  async verifyResetCode(
     email: string,
     verificationCode: string,
-    newPassword: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data?: { resetToken: string };
+  }> {
     try {
       const { AuthService } = await import('./authService');
       const { UserService } = await import('./userService');
@@ -119,6 +123,76 @@ export class PasswordService {
         };
       }
 
+      // 인증 성공: 임시 리셋 토큰 생성 및 저장 (3분 유효)
+      const resetToken =
+        authService.generateVerificationCode() +
+        authService.generateVerificationCode(); // 12자리
+      await verificationService.saveVerificationCode(
+        'password_reset_token',
+        email,
+        resetToken,
+      );
+
+      // 기존 인증 코드는 삭제
+      await verificationService.deleteVerificationCode(redisKey);
+
+      return {
+        success: true,
+        message: '인증 코드가 확인되었습니다. 새 비밀번호를 설정해주세요.',
+        data: { resetToken },
+      };
+    } catch (error) {
+      logger.error('인증 코드 검증 에러:', error);
+      return {
+        success: false,
+        message: '인증 코드 검증에 실패했습니다.',
+      };
+    }
+  }
+
+  // 2단계: 임시 토큰으로 비밀번호 재설정
+  async resetPasswordWithToken(
+    email: string,
+    resetToken: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const { AuthService } = await import('./authService');
+      const { UserService } = await import('./userService');
+      const { VerificationService } = await import('./verificationService');
+
+      const authService = new AuthService();
+      const userService = new UserService();
+      const verificationService = new VerificationService();
+
+      const redisKey = `verification:password_reset_token:${email}`;
+      const storedToken =
+        await verificationService.getVerificationCode(redisKey);
+
+      if (!storedToken) {
+        return {
+          success: false,
+          message:
+            '리셋 토큰이 만료되었거나 존재하지 않습니다. 처음부터 다시 시도해주세요.',
+        };
+      }
+
+      if (storedToken.code !== resetToken) {
+        return {
+          success: false,
+          message: '유효하지 않은 리셋 토큰입니다.',
+        };
+      }
+
+      // 사용자 확인
+      const user = await userService.findByEmail(email);
+      if (!user) {
+        return {
+          success: false,
+          message: '사용자를 찾을 수 없습니다.',
+        };
+      }
+
       // 새 비밀번호 해시화 및 업데이트
       const hashedNewPassword = await authService.hashPassword(newPassword);
       await userService.updateUser(user._id!.toString(), {
@@ -126,7 +200,7 @@ export class PasswordService {
         updatedAt: new Date(),
       });
 
-      // 인증 코드 삭제
+      // 리셋 토큰 삭제
       await verificationService.deleteVerificationCode(redisKey);
 
       return {
