@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Redis } from 'ioredis';
 import { maskEmail, maskEmails } from '../../utils/email/emailMask';
 import logger, { maskIpAddress } from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
@@ -23,7 +24,9 @@ export class AuthController {
       return ResponseBuilder.badRequest(res, '비밀번호를 입력해주세요.');
     }
 
-    const { redisClient } = (await import('../../app')) as any;
+    const { redisClient } = (await import('../../app')) as {
+      redisClient: Redis;
+    };
     const { BruteForceProtectionService } = await import(
       '../../services/security'
     );
@@ -148,7 +151,9 @@ export class AuthController {
             '../../utils/device/deviceDetector'
           );
           const { getSessionMaxAge } = await import('../../config/env/env');
-          const { redisClient } = (await import('../../app')) as any;
+          const { redisClient } = (await import('../../app')) as {
+            redisClient: Redis;
+          };
 
           const userSessionModel = new UserSessionModel();
           const deviceInfo = DeviceDetector.detectDevice(req);
@@ -225,7 +230,7 @@ export class AuthController {
         }
 
         // 로그인 응답 데이터 구성
-        const responseData: any = {
+        const responseData: Record<string, unknown> = {
           user: {
             userId: user._id!.toString(), // ObjectId를 string으로 변환
             email: user.email,
@@ -242,6 +247,9 @@ export class AuthController {
             socialId: user.socialId,
             likedConcerts: user.likedConcerts,
             likedArticles: user.likedArticles,
+            fcmToken: user.fcmToken,
+            fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
+            notificationPreference: user.notificationPreference,
           },
           sessionId: req.sessionID,
         };
@@ -546,7 +554,9 @@ export class AuthController {
       const { UserSessionModel } = await import(
         '../../models/auth/userSession'
       );
-      const { redisClient } = (await import('../../app')) as any;
+      const { redisClient } = (await import('../../app')) as {
+        redisClient: Redis;
+      };
       const userSessionModel = new UserSessionModel();
 
       // 해당 세션이 현재 사용자의 것인지 확인
@@ -601,7 +611,9 @@ export class AuthController {
       const { UserSessionModel } = await import(
         '../../models/auth/userSession'
       );
-      const { redisClient } = (await import('../../app')) as any;
+      const { redisClient } = (await import('../../app')) as {
+        redisClient: Redis;
+      };
       const userSessionModel = new UserSessionModel();
 
       // 현재 세션을 제외한 모든 활성 세션 조회

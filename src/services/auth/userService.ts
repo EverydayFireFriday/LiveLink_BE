@@ -1,4 +1,8 @@
-import { UserModel, TermsConsent } from '../../models/auth/user';
+import {
+  UserModel,
+  TermsConsent,
+  NotificationPreference,
+} from '../../models/auth/user';
 import { User } from '../../types/auth/authTypes';
 import { cacheManager } from '../../utils/cache/cacheManager';
 import logger from '../../utils/logger/logger';
@@ -52,6 +56,7 @@ export class UserService {
     termsConsents: TermsConsent[];
     provider?: string;
     socialId?: string;
+    notificationPreference?: NotificationPreference;
   }): Promise<User> {
     return (await this.getUserModel().createUser(userData)) as User;
   }

@@ -12,7 +12,8 @@ import { IConcert } from '../../models/concert/base/ConcertTypes.js';
  *
  * 매일 자정(00:00)에 실행되어:
  * 1. 2~3일 후 티켓이 오픈되는 콘서트 조회
- * 2. 각 콘서트의 티켓 오픈 정보마다 3개의 Job 생성
+ * 2. 각 콘서트의 티켓 오픈 정보마다 4개의 Job 생성
+ *    - 하루 전 알림 (1440분)
  *    - 1시간 전 알림
  *    - 30분 전 알림
  *    - 10분 전 알림
@@ -22,7 +23,7 @@ import { IConcert } from '../../models/concert/base/ConcertTypes.js';
 let schedulerIntervalId: NodeJS.Timeout | null = null;
 
 // 알림 시간 설정 (분 단위)
-const NOTIFICATION_TIMES = [60, 30, 10]; // 1시간 전, 30분 전, 10분 전
+const NOTIFICATION_TIMES = [1440, 60, 30, 10]; // 하루 전(1440분), 1시간 전, 30분 전, 10분 전
 
 /**
  * Create notification jobs for upcoming ticket openings
@@ -76,7 +77,7 @@ async function createTicketNotificationJobs(): Promise<void> {
 
         // 2~3일 범위에 있는지 확인
         if (ticketOpenDate >= twoDaysLater && ticketOpenDate < threeDaysLater) {
-          // 각 알림 시간(10분, 30분, 1시간 전)에 대해 Job 생성
+          // 각 알림 시간(하루 전, 1시간 전, 30분 전, 10분 전)에 대해 Job 생성
           for (const notifyBeforeMinutes of NOTIFICATION_TIMES) {
             const notificationTime = new Date(
               ticketOpenDate.getTime() - notifyBeforeMinutes * 60 * 1000,

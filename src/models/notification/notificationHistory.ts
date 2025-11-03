@@ -9,7 +9,26 @@ export enum TicketNotificationType {
   TICKET_OPEN_10MIN = 'ticket_open_10min', // 10분 전
   TICKET_OPEN_30MIN = 'ticket_open_30min', // 30분 전
   TICKET_OPEN_1HOUR = 'ticket_open_1hour', // 1시간 전
+  TICKET_OPEN_1DAY = 'ticket_open_1day', // 하루 전
 }
+
+/**
+ * Notification Type for Concert Start
+ * 공연 시작 알림 타입
+ */
+export enum ConcertStartNotificationType {
+  CONCERT_START_1HOUR = 'concert_start_1hour', // 1시간 전
+  CONCERT_START_3HOUR = 'concert_start_3hour', // 3시간 전
+  CONCERT_START_1DAY = 'concert_start_1day', // 하루 전
+}
+
+/**
+ * Combined Notification Type
+ * 통합 알림 타입
+ */
+export type NotificationType =
+  | TicketNotificationType
+  | ConcertStartNotificationType;
 
 /**
  * Notification History Interface
@@ -21,7 +40,7 @@ export interface INotificationHistory {
   concertId: ObjectId; // 콘서트 ID
   title: string; // 알림 제목
   message: string; // 알림 메시지
-  type: TicketNotificationType; // 알림 타입
+  type: NotificationType; // 알림 타입 (티켓 오픈 또는 공연 시작)
   isRead: boolean; // 읽음 여부
   readAt?: Date; // 읽은 시간
   sentAt: Date; // 전송 시간
@@ -185,7 +204,7 @@ export class NotificationHistoryModel {
       limit?: number;
     },
   ): Promise<INotificationHistory[]> {
-    const query: any = { userId };
+    const query: { userId: ObjectId; isRead?: boolean } = { userId };
     if (options?.isRead !== undefined) {
       query.isRead = options.isRead;
     }
@@ -296,7 +315,7 @@ export class NotificationHistoryModel {
     userId: ObjectId,
   ): Promise<{ read: number; unread: number }> {
     const result = await this.collection
-      .aggregate([
+      .aggregate<{ _id: boolean; count: number }>([
         { $match: { userId } },
         {
           $group: {

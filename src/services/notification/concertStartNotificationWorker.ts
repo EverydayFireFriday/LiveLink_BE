@@ -3,15 +3,15 @@ import { ObjectId } from 'mongodb';
 import logger from '../../utils/logger/logger.js';
 import { env } from '../../config/env/env.js';
 import {
-  TICKET_NOTIFICATION_QUEUE_NAME,
-  TicketNotificationJobData,
-} from '../../config/queue/ticketNotificationQueue.js';
+  CONCERT_START_NOTIFICATION_QUEUE_NAME,
+  ConcertStartNotificationJobData,
+} from '../../config/queue/concertStartNotificationQueue.js';
 import { getDB } from '../../utils/database/db.js';
 import { User, UserStatus } from '../../models/auth/user.js';
 import { IConcert } from '../../models/concert/base/ConcertTypes.js';
 import fcmService from './fcmService.js';
 import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
-import { TicketNotificationType } from '../../models/notification/notificationHistory.js';
+import { ConcertStartNotificationType } from '../../models/notification/notificationHistory.js';
 
 /**
  * Redis connection configuration for Worker
@@ -27,8 +27,8 @@ const connection = {
 };
 
 /**
- * Ticket Notification Worker
- * 티켓 오픈 알림 Worker
+ * Concert Start Notification Worker
+ * 공연 시작 알림 Worker
  *
  * BullMQ에서 Job을 받아서:
  * 1. 콘서트를 좋아요한 사용자 조회
@@ -37,7 +37,7 @@ const connection = {
  * 4. NotificationHistory에 저장
  */
 
-let worker: Worker<TicketNotificationJobData> | null = null;
+let worker: Worker<ConcertStartNotificationJobData> | null = null;
 
 // FCM 배치 크기 (Firebase 권장: 500)
 const FCM_BATCH_SIZE = 500;
@@ -48,38 +48,31 @@ const FCM_BATCH_SIZE = 500;
  */
 function getNotificationType(
   notifyBeforeMinutes: number,
-): TicketNotificationType {
+): ConcertStartNotificationType {
   switch (notifyBeforeMinutes) {
-    case 10:
-      return TicketNotificationType.TICKET_OPEN_10MIN;
-    case 30:
-      return TicketNotificationType.TICKET_OPEN_30MIN;
     case 60:
-      return TicketNotificationType.TICKET_OPEN_1HOUR;
+      return ConcertStartNotificationType.CONCERT_START_1HOUR;
+    case 180:
+      return ConcertStartNotificationType.CONCERT_START_3HOUR;
     case 1440:
-      return TicketNotificationType.TICKET_OPEN_1DAY;
+      return ConcertStartNotificationType.CONCERT_START_1DAY;
     default:
-      return TicketNotificationType.TICKET_OPEN_1HOUR;
+      return ConcertStartNotificationType.CONCERT_START_1HOUR;
   }
 }
 
 /**
- * Process ticket notification job
- * 티켓 알림 Job 처리
+ * Process concert start notification job
+ * 공연 시작 알림 Job 처리
  */
-async function processTicketNotification(
-  job: Job<TicketNotificationJobData>,
+async function processConcertStartNotification(
+  job: Job<ConcertStartNotificationJobData>,
 ): Promise<void> {
-  const {
-    concertId,
-    concertTitle,
-    ticketOpenTitle,
-    ticketOpenDate,
-    notifyBeforeMinutes,
-  } = job.data;
+  const { concertId, concertTitle, performanceDate, notifyBeforeMinutes } =
+    job.data;
 
   logger.info(
-    `📬 Processing ticket notification job: ${concertTitle} - ${notifyBeforeMinutes}min before`,
+    `📬 Processing concert start notification job: ${concertTitle} - ${notifyBeforeMinutes}min before`,
   );
 
   try {
@@ -108,9 +101,9 @@ async function processTicketNotification(
         $or: [
           // notificationPreference가 없는 경우 (기본값으로 알림 받음)
           { notificationPreference: { $exists: false } },
-          // ticketOpenNotification 배열에 해당 시간이 포함된 경우
+          // concertStartNotification 배열에 해당 시간이 포함된 경우
           {
-            'notificationPreference.ticketOpenNotification':
+            'notificationPreference.concertStartNotification':
               notifyBeforeMinutes,
           },
         ],
@@ -130,14 +123,12 @@ async function processTicketNotification(
     const timeText =
       notifyBeforeMinutes === 1440
         ? '하루'
-        : notifyBeforeMinutes === 60
-          ? '1시간'
-          : notifyBeforeMinutes === 30
-            ? '30분'
-            : '10분';
+        : notifyBeforeMinutes === 180
+          ? '3시간'
+          : '1시간';
 
-    const notificationTitle = `${concertTitle} 티켓 오픈 ${timeText} 전!`;
-    const notificationMessage = `${ticketOpenTitle} 티켓 오픈까지 ${timeText} 남았습니다. 놓치지 마세요!`;
+    const notificationTitle = `${concertTitle} 공연 시작 ${timeText} 전!`;
+    const notificationMessage = `공연 시작까지 ${timeText} 남았습니다. 곧 시작됩니다!`;
 
     // 4. 500명씩 배치로 FCM 전송
     const totalUsers = users.length;
@@ -165,11 +156,10 @@ async function processTicketNotification(
         title: notificationTitle,
         body: notificationMessage,
         data: {
-          type: 'ticket_opening',
+          type: 'concert_start',
           concertId: concertId,
           concertTitle: concertTitle,
-          ticketOpenTitle: ticketOpenTitle,
-          ticketOpenDate: ticketOpenDate.toISOString(),
+          performanceDate: performanceDate.toISOString(),
           notifyBeforeMinutes: notifyBeforeMinutes.toString(),
         },
       });
@@ -195,7 +185,7 @@ async function processTicketNotification(
       `📊 Notification sending completed: ${successCount} success, ${failureCount} failed`,
     );
 
-    // 6. 잘못된 FCM 토큰 제거
+    // 5. 잘못된 FCM 토큰 제거
     if (allInvalidTokens.length > 0) {
       await userCollection.updateMany(
         { fcmToken: { $in: allInvalidTokens } },
@@ -204,7 +194,7 @@ async function processTicketNotification(
       logger.info(`🗑️  Removed ${allInvalidTokens.length} invalid FCM tokens`);
     }
 
-    // 5. NotificationHistory에 저장 (성공한 알림만)
+    // 6. NotificationHistory에 저장 (성공한 알림만)
     if (successfulUserIds.length > 0) {
       const notificationHistoryModel = getNotificationHistoryModel(userDB);
       const notificationType = getNotificationType(notifyBeforeMinutes);
@@ -218,8 +208,7 @@ async function processTicketNotification(
         data: {
           concertId: concertId,
           concertTitle: concertTitle,
-          ticketOpenTitle: ticketOpenTitle,
-          ticketOpenDate: ticketOpenDate.toISOString(),
+          performanceDate: performanceDate.toISOString(),
         },
       }));
 
@@ -230,23 +219,23 @@ async function processTicketNotification(
     }
 
     logger.info(
-      `✅ Ticket notification job completed: ${concertTitle} - ${notifyBeforeMinutes}min before`,
+      `✅ Concert start notification job completed: ${concertTitle} - ${notifyBeforeMinutes}min before`,
     );
   } catch (error) {
-    logger.error('❌ Error processing ticket notification job:', error);
+    logger.error('❌ Error processing concert start notification job:', error);
     throw error; // Job 재시도를 위해 에러를 throw
   }
 }
 
 /**
- * Create and start the ticket notification worker
- * 티켓 알림 Worker 생성 및 시작
+ * Create and start the concert start notification worker
+ * 공연 시작 알림 Worker 생성 및 시작
  */
-export function createTicketNotificationWorker(): Worker<TicketNotificationJobData> | null {
+export function createConcertStartNotificationWorker(): Worker<ConcertStartNotificationJobData> | null {
   try {
-    worker = new Worker<TicketNotificationJobData>(
-      TICKET_NOTIFICATION_QUEUE_NAME,
-      processTicketNotification,
+    worker = new Worker<ConcertStartNotificationJobData>(
+      CONCERT_START_NOTIFICATION_QUEUE_NAME,
+      processConcertStartNotification,
       {
         connection,
         concurrency: 5, // 동시에 5개의 Job 처리
@@ -271,23 +260,26 @@ export function createTicketNotificationWorker(): Worker<TicketNotificationJobDa
     });
 
     logger.info(
-      `✅ Ticket Notification Worker created: ${TICKET_NOTIFICATION_QUEUE_NAME}`,
+      `✅ Concert Start Notification Worker created: ${CONCERT_START_NOTIFICATION_QUEUE_NAME}`,
     );
     return worker;
   } catch (error) {
-    logger.error('❌ Failed to create Ticket Notification Worker:', error);
+    logger.error(
+      '❌ Failed to create Concert Start Notification Worker:',
+      error,
+    );
     return null;
   }
 }
 
 /**
- * Close the ticket notification worker
- * 티켓 알림 Worker 종료
+ * Close the concert start notification worker
+ * 공연 시작 알림 Worker 종료
  */
-export async function closeTicketNotificationWorker(): Promise<void> {
+export async function closeConcertStartNotificationWorker(): Promise<void> {
   if (worker) {
     await worker.close();
     worker = null;
-    logger.info('Ticket Notification Worker closed');
+    logger.info('Concert Start Notification Worker closed');
   }
 }

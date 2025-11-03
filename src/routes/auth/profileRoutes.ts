@@ -54,6 +54,17 @@ const profileController = new ProfileController();
  *                     profileImage:
  *                       type: string
  *                       description: 프로필 이미지 URL
+ *                     fcmToken:
+ *                       type: string
+ *                       description: FCM 푸시 알림 토큰
+ *                       example: "dGVzdF90b2tlbl8xMjM0NTY3ODkw"
+ *                     fcmTokenUpdatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: FCM 토큰 업데이트 시간
+ *                       example: "2025-01-15T10:30:00Z"
+ *                     notificationPreference:
+ *                       $ref: '#/components/schemas/NotificationPreference'
  *                     createdAt:
  *                       type: string
  *                       format: date-time

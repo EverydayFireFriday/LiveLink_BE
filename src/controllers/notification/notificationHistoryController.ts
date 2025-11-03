@@ -38,7 +38,11 @@ export const getNotificationHistory = async (
     const notificationHistoryModel = getNotificationHistoryModel(db);
 
     // 읽음/안읽음 필터
-    const options: any = {
+    const options: {
+      skip: number;
+      limit: number;
+      isRead?: boolean;
+    } = {
       skip,
       limit: limitNum,
     };
@@ -194,8 +198,53 @@ export const markAllNotificationsAsRead = async (
 };
 
 /**
- * Update notification preferences
- * 알림 설정 업데이트
+ * @swagger
+ * /api/notifications/preferences:
+ *   put:
+ *     summary: 알림 설정 업데이트
+ *     description: 사용자의 티켓 오픈 알림 및 공연 시작 알림 설정을 업데이트합니다.
+ *     tags: [Notification]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateNotificationPreferenceRequest'
+ *     responses:
+ *       200:
+ *         description: 알림 설정 업데이트 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Notification preferences updated
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     ticketOpenNotification:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                       example: [10, 30, 60, 1440]
+ *                     concertStartNotification:
+ *                       type: array
+ *                       items:
+ *                         type: number
+ *                       example: [60, 180, 1440]
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요
+ *       500:
+ *         description: 서버 에러
  */
 export const updateNotificationPreferences = async (
   req: Request,
@@ -208,36 +257,56 @@ export const updateNotificationPreferences = async (
       return;
     }
 
-    const { ticketOpenNotification, notifyBefore } = req.body;
+    const { ticketOpenNotification, concertStartNotification } = req.body;
 
     // 유효성 검사
-    if (typeof ticketOpenNotification !== 'boolean') {
+    if (!Array.isArray(ticketOpenNotification)) {
       res
         .status(400)
-        .json({ error: 'ticketOpenNotification must be a boolean' });
+        .json({ error: 'ticketOpenNotification must be an array' });
       return;
     }
 
-    if (!Array.isArray(notifyBefore)) {
-      res.status(400).json({ error: 'notifyBefore must be an array' });
+    if (!Array.isArray(concertStartNotification)) {
+      res
+        .status(400)
+        .json({ error: 'concertStartNotification must be an array' });
       return;
     }
 
-    // notifyBefore 배열의 모든 값이 10, 30, 60 중 하나인지 확인
-    const validValues = [10, 30, 60];
-    const isValidNotifyBefore = notifyBefore.every((value) =>
-      validValues.includes(value),
+    // ticketOpenNotification 배열의 모든 값이 10, 30, 60, 1440 중 하나인지 확인
+    const validTicketValues = [10, 30, 60, 1440];
+    const isValidTicketNotification = ticketOpenNotification.every(
+      (value: number) => validTicketValues.includes(value),
     );
 
-    if (!isValidNotifyBefore) {
-      res
-        .status(400)
-        .json({ error: 'notifyBefore values must be 10, 30, or 60' });
+    if (!isValidTicketNotification) {
+      res.status(400).json({
+        error: 'ticketOpenNotification values must be 10, 30, 60, or 1440',
+      });
+      return;
+    }
+
+    // concertStartNotification 배열의 모든 값이 60, 180, 1440 중 하나인지 확인
+    const validConcertValues = [60, 180, 1440];
+    const isValidConcertNotification = concertStartNotification.every(
+      (value: number) => validConcertValues.includes(value),
+    );
+
+    if (!isValidConcertNotification) {
+      res.status(400).json({
+        error: 'concertStartNotification values must be 60, 180, or 1440',
+      });
       return;
     }
 
     // 중복 제거
-    const uniqueNotifyBefore = [...new Set(notifyBefore)];
+    const uniqueTicketNotification: number[] = [
+      ...new Set(ticketOpenNotification),
+    ];
+    const uniqueConcertNotification: number[] = [
+      ...new Set(concertStartNotification),
+    ];
 
     const database = Database.getInstance();
     const userCollection = database.getUserCollection();
@@ -247,8 +316,8 @@ export const updateNotificationPreferences = async (
       {
         $set: {
           notificationPreference: {
-            ticketOpenNotification,
-            notifyBefore: uniqueNotifyBefore,
+            ticketOpenNotification: uniqueTicketNotification,
+            concertStartNotification: uniqueConcertNotification,
           },
           updatedAt: new Date(),
         },
@@ -260,8 +329,8 @@ export const updateNotificationPreferences = async (
         success: true,
         message: 'Notification preferences updated',
         data: {
-          ticketOpenNotification,
-          notifyBefore: uniqueNotifyBefore,
+          ticketOpenNotification: uniqueTicketNotification,
+          concertStartNotification: uniqueConcertNotification,
         },
       });
     } else {

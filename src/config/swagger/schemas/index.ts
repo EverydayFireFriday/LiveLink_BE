@@ -5,6 +5,7 @@ import { errorSchema } from './errorSchema';
 import { commentSchema } from './commentSchema';
 import { authSchemas } from './auth';
 import { responseSchema } from './responseSchema';
+import { notificationSchemas } from './notification';
 
 export const swaggerSchemas = {
   ...articleSchema,
@@ -14,4 +15,5 @@ export const swaggerSchemas = {
   ...commentSchema,
   ...authSchemas,
   ...responseSchema,
+  ...notificationSchemas,
 };

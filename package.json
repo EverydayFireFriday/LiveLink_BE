@@ -30,6 +30,7 @@
     "migrate:up": "ts-node src/scripts/migrate.ts up",
     "migrate:down": "ts-node src/scripts/migrate.ts down",
     "migrate:status": "ts-node src/scripts/migrate.ts status",
+    "migrate:notification-preference": "ts-node scripts/migration/updateNotificationPreference.ts",
     "db:seed": "ts-node src/scripts/seed.ts"
   },
   "lint-staged": {

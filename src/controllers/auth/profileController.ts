@@ -32,6 +32,9 @@ export class ProfileController {
           updatedAt: user.updatedAt,
           likedConcerts: user.likedConcerts || [],
           likedArticles: user.likedArticles || [],
+          fcmToken: user.fcmToken,
+          fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
+          notificationPreference: user.notificationPreference,
         },
         session: req.session.user,
       });

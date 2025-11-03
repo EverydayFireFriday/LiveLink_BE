@@ -392,6 +392,12 @@ router.post(
  *                         profileImage:
  *                           type: string
  *                           description: 프로필 이미지 URL
+ *                         notificationPreference:
+ *                           $ref: '#/components/schemas/NotificationPreference'
+ *                           description: |
+ *                             알림 설정 (자동 설정됨)
+ *                             - 티켓 오픈 알림: 10분, 30분, 1시간, 하루 전
+ *                             - 공연 시작 알림: 1시간, 3시간, 하루 전
  *                         createdAt:
  *                           type: string
  *                           format: date-time

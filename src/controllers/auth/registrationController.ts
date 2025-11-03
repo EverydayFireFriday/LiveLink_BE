@@ -469,6 +469,10 @@ export class RegistrationController {
         birthDate: new Date(birthDate),
         profileImage: profileImage || undefined,
         termsConsents: processedTermsConsents,
+        notificationPreference: {
+          ticketOpenNotification: [10, 30, 60, 1440],
+          concertStartNotification: [60, 180, 1440],
+        },
       });
 
       // 사용자 상태를 'active'로 변경

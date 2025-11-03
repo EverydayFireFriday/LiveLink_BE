@@ -1,5 +1,9 @@
 import { ObjectId } from 'mongodb';
-import { UserStatus, TermsConsent } from '../../models/auth/user';
+import {
+  UserStatus,
+  TermsConsent,
+  NotificationPreference,
+} from '../../models/auth/user';
 import { IConcert } from '../../models/concert/base/ConcertTypes';
 import { Article } from '../article/articleTypes';
 
@@ -25,6 +29,7 @@ export interface User {
   likedArticles?: Array<string | Article>; // Can be string ID or populated Article
   fcmToken?: string; // FCM 푸시 알림 토큰
   fcmTokenUpdatedAt?: Date; // FCM 토큰 업데이트 시간
+  notificationPreference?: NotificationPreference; // 알림 설정
 }
 
 export interface SessionUser {

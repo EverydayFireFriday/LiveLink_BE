@@ -198,8 +198,36 @@ export const authSchemas = {
         format: 'date-time',
         description: 'FCM 토큰 업데이트 시간',
       },
+      notificationPreference: {
+        $ref: '#/components/schemas/NotificationPreference',
+      },
       createdAt: { type: 'string', format: 'date-time' },
       updatedAt: { type: 'string', format: 'date-time' },
+    },
+  },
+
+  NotificationPreference: {
+    type: 'object',
+    properties: {
+      ticketOpenNotification: {
+        type: 'array',
+        items: {
+          type: 'number',
+          enum: [10, 30, 60, 1440],
+        },
+        description:
+          '티켓 오픈 알림 시간 (분 단위) - 10분, 30분, 1시간, 하루 전',
+        example: [10, 30, 60, 1440],
+      },
+      concertStartNotification: {
+        type: 'array',
+        items: {
+          type: 'number',
+          enum: [60, 180, 1440],
+        },
+        description: '공연 시작 알림 시간 (분 단위) - 1시간, 3시간, 하루 전',
+        example: [60, 180, 1440],
+      },
     },
   },
 
