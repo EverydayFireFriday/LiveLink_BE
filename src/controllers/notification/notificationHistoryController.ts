@@ -198,59 +198,37 @@ export const markAllNotificationsAsRead = async (
 };
 
 /**
- * @swagger
- * /api/notifications/preferences:
- *   put:
- *     summary: 알림 설정 업데이트
- *     description: 사용자의 티켓 오픈 알림 및 공연 시작 알림 설정을 업데이트합니다.
- *     tags: [Notification]
- *     security:
- *       - sessionAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/UpdateNotificationPreferenceRequest'
- *     responses:
- *       200:
- *         description: 알림 설정 업데이트 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Notification preferences updated
- *                 data:
- *                   type: object
- *                   properties:
- *                     ticketOpenNotification:
- *                       type: array
- *                       items:
- *                         type: number
- *                       example: [10, 30, 60, 1440]
- *                     concertStartNotification:
- *                       type: array
- *                       items:
- *                         type: number
- *                       example: [60, 180, 1440]
- *       400:
- *         description: 잘못된 요청
- *       401:
- *         description: 인증 필요
- *       500:
- *         description: 서버 에러
+ * Update notification preferences
+ * 알림 설정 업데이트
+ *
+ * 사용자의 알림 수신 설정을 업데이트합니다.
+ *
+ * @description
+ * 알림 설정 구조:
+ * - ticketOpenNotification: 티켓 오픈 알림을 받을 시간(분 단위) 배열
+ *   - 가능한 값: 10, 30, 60, 1440 (10분, 30분, 1시간, 1일 전)
+ *   - 빈 배열([])인 경우: 티켓 오픈 알림을 받지 않음
+ *
+ * - concertStartNotification: 공연 시작 알림을 받을 시간(분 단위) 배열
+ *   - 가능한 값: 60, 180, 1440 (1시간, 3시간, 1일 전)
+ *   - 빈 배열([])인 경우: 공연 시작 알림을 받지 않음
+ *
+ * @example
+ * // 모든 알림 활성화
+ * { ticketOpenNotification: [10, 30, 60, 1440], concertStartNotification: [60, 180, 1440] }
+ *
+ * // 티켓 오픈 알림만 활성화 (1일 전에만)
+ * { ticketOpenNotification: [1440], concertStartNotification: [] }
+ *
+ * // 모든 알림 비활성화
+ * { ticketOpenNotification: [], concertStartNotification: [] }
  */
 export const updateNotificationPreferences = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
+    // 1. 인증 확인
     const userId = req.session?.user?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -259,7 +237,7 @@ export const updateNotificationPreferences = async (
 
     const { ticketOpenNotification, concertStartNotification } = req.body;
 
-    // 유효성 검사
+    // 2. 타입 유효성 검사 - 배열인지 확인
     if (!Array.isArray(ticketOpenNotification)) {
       res
         .status(400)
@@ -274,7 +252,8 @@ export const updateNotificationPreferences = async (
       return;
     }
 
-    // ticketOpenNotification 배열의 모든 값이 10, 30, 60, 1440 중 하나인지 확인
+    // 3. 티켓 오픈 알림 시간 유효성 검사
+    // 허용된 값: 10분, 30분, 1시간(60분), 1일(1440분) 전
     const validTicketValues = [10, 30, 60, 1440];
     const isValidTicketNotification = ticketOpenNotification.every(
       (value: number) => validTicketValues.includes(value),
@@ -287,7 +266,8 @@ export const updateNotificationPreferences = async (
       return;
     }
 
-    // concertStartNotification 배열의 모든 값이 60, 180, 1440 중 하나인지 확인
+    // 4. 공연 시작 알림 시간 유효성 검사
+    // 허용된 값: 1시간(60분), 3시간(180분), 1일(1440분) 전
     const validConcertValues = [60, 180, 1440];
     const isValidConcertNotification = concertStartNotification.every(
       (value: number) => validConcertValues.includes(value),
@@ -300,7 +280,9 @@ export const updateNotificationPreferences = async (
       return;
     }
 
-    // 중복 제거
+    // 5. 중복 제거
+    // 사용자가 같은 시간을 중복으로 선택한 경우 중복 제거
+    // 예: [10, 30, 10, 60] -> [10, 30, 60]
     const uniqueTicketNotification: number[] = [
       ...new Set(ticketOpenNotification),
     ];
@@ -308,6 +290,7 @@ export const updateNotificationPreferences = async (
       ...new Set(concertStartNotification),
     ];
 
+    // 6. 데이터베이스 업데이트
     const database = Database.getInstance();
     const userCollection = database.getUserCollection();
 
@@ -324,6 +307,7 @@ export const updateNotificationPreferences = async (
       },
     );
 
+    // 7. 응답 처리
     if (result.modifiedCount > 0) {
       res.status(200).json({
         success: true,
@@ -347,18 +331,40 @@ export const updateNotificationPreferences = async (
 /**
  * Get notification preferences
  * 알림 설정 조회
+ *
+ * 사용자의 현재 알림 수신 설정을 조회합니다.
+ *
+ * @description
+ * 사용자의 notificationPreference가 없는 경우 기본값을 반환합니다.
+ *
+ * 기본값:
+ * - ticketOpenNotification: [10, 30, 60, 1440]
+ *   (티켓 오픈 10분, 30분, 1시간, 1일 전에 모두 알림)
+ * - concertStartNotification: [60, 180, 1440]
+ *   (공연 시작 1시간, 3시간, 1일 전에 모두 알림)
+ *
+ * @returns
+ * {
+ *   success: true,
+ *   data: {
+ *     ticketOpenNotification: number[],
+ *     concertStartNotification: number[]
+ *   }
+ * }
  */
 export const getNotificationPreferences = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
+    // 1. 인증 확인
     const userId = req.session?.user?.userId;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
+    // 2. 사용자 조회 (notificationPreference 필드만)
     const database = Database.getInstance();
     const userCollection = database.getUserCollection();
 
@@ -372,12 +378,15 @@ export const getNotificationPreferences = async (
       return;
     }
 
-    // 기본값 설정
+    // 3. 기본값 설정
+    // 사용자의 notificationPreference가 없는 경우(신규 사용자 또는 마이그레이션 전 사용자)
+    // 모든 알림을 활성화한 상태로 기본값 반환
     const defaultPreference = {
-      ticketOpenNotification: true,
-      notifyBefore: [10, 30, 60],
+      ticketOpenNotification: [10, 30, 60, 1440], // 모든 시간대 활성화
+      concertStartNotification: [60, 180, 1440], // 모든 시간대 활성화
     };
 
+    // 4. 응답 반환
     res.status(200).json({
       success: true,
       data: user.notificationPreference || defaultPreference,

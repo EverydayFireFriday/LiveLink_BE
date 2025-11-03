@@ -66,6 +66,26 @@ function getNotificationType(
 /**
  * Process ticket notification job
  * 티켓 알림 Job 처리
+ *
+ * @description
+ * 티켓 오픈 알림을 처리하는 Worker 함수입니다.
+ * 스케줄러가 등록한 Job을 받아서 다음 작업을 수행합니다:
+ *
+ * 1. 콘서트 정보 확인
+ * 2. 알림 받을 사용자 필터링
+ *    - 콘서트를 좋아요한 사용자
+ *    - FCM 토큰이 있는 사용자 (푸시 알림 가능)
+ *    - 활성 상태인 사용자
+ *    - 해당 시간대 알림을 설정한 사용자
+ * 3. FCM 푸시 알림 전송
+ * 4. 알림 히스토리 저장
+ *
+ * @param job - BullMQ Job 객체
+ * @param job.data.concertId - 콘서트 ID
+ * @param job.data.concertTitle - 콘서트 제목
+ * @param job.data.ticketOpenTitle - 티켓 오픈 제목
+ * @param job.data.ticketOpenDate - 티켓 오픈 일시
+ * @param job.data.notifyBeforeMinutes - 알림 시간 (10, 30, 60, 1440분 전)
  */
 async function processTicketNotification(
   job: Job<TicketNotificationJobData>,
@@ -84,6 +104,7 @@ async function processTicketNotification(
 
   try {
     // 1. 콘서트 정보 확인
+    // 삭제되거나 존재하지 않는 콘서트는 알림 전송하지 않음
     const concertDB = getDB();
     const concertCollection = concertDB.collection<IConcert>('concerts');
     const concert = await concertCollection.findOne({
@@ -95,20 +116,30 @@ async function processTicketNotification(
       return;
     }
 
-    // 2. 콘서트를 좋아요한 사용자 조회 (런타임 필터링)
+    // 2. 알림을 받을 사용자 조회
+    // 다음 조건을 모두 만족하는 사용자만 알림 전송:
     const userDB = getDB();
     const userCollection = userDB.collection<User>('users');
 
     const users = await userCollection
       .find({
+        // 조건 1: 해당 콘서트를 좋아요한 사용자
         likedConcerts: new ObjectId(concertId),
-        fcmToken: { $exists: true, $ne: '' }, // FCM 토큰이 있는 사용자만
-        status: UserStatus.ACTIVE, // 활성 사용자만
-        // 알림 설정 필터링
+
+        // 조건 2: FCM 토큰이 있는 사용자 (푸시 알림 전송 가능)
+        fcmToken: { $exists: true, $ne: '' },
+
+        // 조건 3: 활성 상태인 사용자 (탈퇴/정지 제외)
+        status: UserStatus.ACTIVE,
+
+        // 조건 4: 알림 설정 확인
         $or: [
-          // notificationPreference가 없는 경우 (기본값으로 알림 받음)
+          // 4-1. notificationPreference가 없는 경우
+          //      (신규 사용자 또는 마이그레이션 전 사용자 -> 기본값으로 알림 받음)
           { notificationPreference: { $exists: false } },
-          // ticketOpenNotification 배열에 해당 시간이 포함된 경우
+
+          // 4-2. ticketOpenNotification 배열에 해당 시간(notifyBeforeMinutes)이 포함된 경우
+          //      예: notifyBeforeMinutes=60이고, ticketOpenNotification=[10, 60, 1440]이면 알림 받음
           {
             'notificationPreference.ticketOpenNotification':
               notifyBeforeMinutes,

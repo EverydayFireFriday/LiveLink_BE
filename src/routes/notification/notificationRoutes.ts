@@ -13,8 +13,6 @@ import {
   getUnreadCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  updateNotificationPreferences,
-  getNotificationPreferences,
   deleteNotificationHistory,
 } from '../../controllers/notification/notificationHistoryController.js';
 import { requireAuth } from '../../middlewares/auth/authMiddleware.js';
@@ -771,65 +769,5 @@ router.delete('/history/:id', requireAuth, deleteNotificationHistory);
  *         description: 인증 필요
  */
 router.put('/history/read-all', requireAuth, markAllNotificationsAsRead);
-
-/**
- * @swagger
- * /notifications/preferences:
- *   get:
- *     summary: 알림 설정 조회
- *     description: 사용자의 알림 설정을 조회합니다
- *     tags:
- *       - Notifications
- *     security:
- *       - sessionAuth: []
- *     responses:
- *       200:
- *         description: 조회 성공
- *       401:
- *         description: 인증 필요
- */
-router.get('/preferences', requireAuth, getNotificationPreferences);
-
-/**
- * @swagger
- * /notifications/preferences:
- *   put:
- *     summary: 알림 설정 업데이트
- *     description: 사용자의 알림 설정을 업데이트합니다
- *     tags:
- *       - Notifications
- *     security:
- *       - sessionAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - ticketOpenNotification
- *               - notifyBefore
- *             properties:
- *               ticketOpenNotification:
- *                 type: boolean
- *                 description: 티켓 오픈 알림 수신 여부
- *               notifyBefore:
- *                 type: array
- *                 description: 알림 받을 시간 (분 단위, 10/30/60만 가능)
- *                 items:
- *                   type: integer
- *                   enum: [10, 30, 60]
- *           example:
- *             ticketOpenNotification: true
- *             notifyBefore: [10, 30, 60]
- *     responses:
- *       200:
- *         description: 업데이트 성공
- *       400:
- *         description: 잘못된 요청
- *       401:
- *         description: 인증 필요
- */
-router.put('/preferences', requireAuth, updateNotificationPreferences);
 
 export default router;

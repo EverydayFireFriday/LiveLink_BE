@@ -5,6 +5,10 @@ import {
   updateTermsConsent,
 } from '../../controllers/terms/termsConsentController';
 import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from '../../controllers/notification/notificationHistoryController';
+import {
   requireAuth,
   requireAdmin,
 } from '../../middlewares/auth/authMiddleware';
@@ -566,6 +570,126 @@ router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
  *         description: 서버 에러
  */
 router.put('/terms-consent', strictLimiter, requireAuth, updateTermsConsent);
+
+// 알림 설정 관련
+/**
+ * @swagger
+ * /auth/notification-preferences:
+ *   get:
+ *     summary: 알림 설정 조회
+ *     description: 사용자의 알림 설정을 조회합니다
+ *     tags: [Profile]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/NotificationPreference'
+ *       401:
+ *         description: 인증 필요
+ */
+router.get(
+  '/notification-preferences',
+  relaxedLimiter,
+  requireAuth,
+  getNotificationPreferences,
+);
+
+/**
+ * @swagger
+ * /auth/notification-preferences:
+ *   put:
+ *     summary: 알림 설정 업데이트
+ *     description: 사용자의 알림 설정을 업데이트합니다
+ *     tags: [Profile]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ticketOpenNotification
+ *               - concertStartNotification
+ *             properties:
+ *               ticketOpenNotification:
+ *                 type: array
+ *                 description: 티켓 오픈 알림 시간 (분 단위, 빈 배열 가능)
+ *                 items:
+ *                   type: integer
+ *                   enum: [10, 30, 60, 1440]
+ *                 example: [10, 30, 60, 1440]
+ *               concertStartNotification:
+ *                 type: array
+ *                 description: 공연 시작 알림 시간 (분 단위, 빈 배열 가능)
+ *                 items:
+ *                   type: integer
+ *                   enum: [60, 180, 1440]
+ *                 example: [60, 180, 1440]
+ *           examples:
+ *             allEnabled:
+ *               summary: 모든 알림 활성화
+ *               value:
+ *                 ticketOpenNotification: [10, 30, 60, 1440]
+ *                 concertStartNotification: [60, 180, 1440]
+ *             allDisabled:
+ *               summary: 모든 알림 비활성화
+ *               value:
+ *                 ticketOpenNotification: []
+ *                 concertStartNotification: []
+ *             partial:
+ *               summary: 일부만 활성화
+ *               value:
+ *                 ticketOpenNotification: [60, 1440]
+ *                 concertStartNotification: [1440]
+ *     responses:
+ *       200:
+ *         description: 업데이트 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "알림 설정이 업데이트되었습니다"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   examples:
+ *                     invalid_array:
+ *                       value: "ticketOpenNotification must be an array"
+ *                     invalid_values:
+ *                       value: "ticketOpenNotification values must be 10, 30, 60, or 1440"
+ *       401:
+ *         description: 인증 필요
+ */
+router.put(
+  '/notification-preferences',
+  defaultLimiter,
+  requireAuth,
+  updateNotificationPreferences,
+);
 
 // 관리자 전용
 /**
