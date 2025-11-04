@@ -32,15 +32,21 @@ export class UserService {
     return (await this.getUserModel().findByUsername(username)) as User | null;
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string, skipCache: boolean = false): Promise<User | null> {
     const cacheKey = `user:${id}`;
-    const cachedUser = await cacheManager.get<User>(cacheKey);
-    if (cachedUser) {
-      return cachedUser;
+
+    // 캐시 우회 옵션이 false이고 캐시에 데이터가 있으면 캐시 반환
+    if (!skipCache) {
+      const cachedUser = await cacheManager.get<User>(cacheKey);
+      if (cachedUser) {
+        return cachedUser;
+      }
     }
 
+    // DB에서 최신 데이터 조회
     const user = (await this.getUserModel().findById(id)) as User | null;
     if (user) {
+      // 캐시 갱신 (약관/알림 설정 변경 시에도 최신 데이터로 갱신)
       await cacheManager.set(cacheKey, user, 3600); // 1시간 캐시
     }
     return user;

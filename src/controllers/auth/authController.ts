@@ -307,13 +307,59 @@ export class AuthController {
     });
   };
 
-  checkSession = (req: express.Request, res: express.Response) => {
+  checkSession = async (req: express.Request, res: express.Response) => {
     if (req.session.user) {
-      return ResponseBuilder.success(res, '세션 확인 성공', {
-        loggedIn: true,
-        user: req.session.user,
-        sessionId: req.sessionID,
-      });
+      try {
+        // 캐시가 아닌 DB에서 최신 사용자 정보 가져오기 (약관/알림 설정 실시간 반영)
+        const { UserService } = await import('../../services/auth/userService');
+        const userService = new UserService();
+        const userId = req.session.user.userId;
+
+        // DB에서 최신 사용자 정보 조회 (캐시 우회하여 약관/알림 설정 실시간 반영)
+        const user = await userService.findById(userId, true);
+
+        if (!user) {
+          // 사용자가 삭제되었거나 찾을 수 없는 경우
+          return ResponseBuilder.success(res, '세션 확인 성공', {
+            loggedIn: false,
+            sessionId: req.sessionID,
+          });
+        }
+
+        // 로그인 API와 동일한 형식으로 사용자 데이터 반환
+        return ResponseBuilder.success(res, '세션 확인 성공', {
+          loggedIn: true,
+          user: {
+            userId: user._id!.toString(),
+            email: user.email,
+            username: user.username,
+            name: user.name,
+            birthDate: user.birthDate,
+            status: user.status,
+            statusReason: user.statusReason,
+            profileImage: user.profileImage,
+            termsConsents: user.termsConsents || [],
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            provider: user.provider,
+            socialId: user.socialId,
+            likedConcerts: user.likedConcerts,
+            likedArticles: user.likedArticles,
+            fcmToken: user.fcmToken,
+            fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
+            notificationPreference: user.notificationPreference,
+          },
+          sessionId: req.sessionID,
+        });
+      } catch (error) {
+        logger.error('[Session] Failed to fetch user data:', error);
+        // 에러 발생 시 세션 데이터만 반환
+        return ResponseBuilder.success(res, '세션 확인 성공', {
+          loggedIn: true,
+          user: req.session.user,
+          sessionId: req.sessionID,
+        });
+      }
     } else {
       return ResponseBuilder.success(res, '세션 확인 성공', {
         loggedIn: false,
