@@ -8,12 +8,6 @@ interface TermsConsent {
   agreedAt?: Date;
 }
 
-// 알림 설정 타입
-interface NotificationPreference {
-  ticketOpenNotification: number[]; // [10, 30, 60, 1440]
-  concertStartNotification: number[]; // [60, 180, 1440]
-}
-
 declare module 'express-session' {
   interface SessionData {
     user?: {
@@ -32,9 +26,6 @@ declare module 'express-session' {
       socialId?: string;
       likedConcerts: string[];
       likedArticles: string[];
-      fcmToken?: string;
-      fcmTokenUpdatedAt?: Date;
-      notificationPreference?: NotificationPreference; // ✅ 알림 설정 추가
       loginTime: string;
     };
   }

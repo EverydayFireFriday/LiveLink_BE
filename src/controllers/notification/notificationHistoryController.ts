@@ -4,7 +4,6 @@ import logger from '../../utils/logger/logger.js';
 import { getDB } from '../../utils/database/db.js';
 import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
 import { Database } from '../../models/auth/user.js';
-import '../../types/express-session-extension.js'; // 세션 타입 확장 import
 
 /**
  * Get user's notification history
@@ -308,15 +307,7 @@ export const updateNotificationPreferences = async (
       },
     );
 
-    // 7. 세션 정보도 즉시 업데이트
-    if (req.session?.user) {
-      req.session.user.notificationPreference = {
-        ticketOpenNotification: uniqueTicketNotification,
-        concertStartNotification: uniqueConcertNotification,
-      };
-    }
-
-    // 8. 응답 처리
+    // 7. 응답 처리
     if (result.modifiedCount > 0) {
       res.status(200).json({
         success: true,

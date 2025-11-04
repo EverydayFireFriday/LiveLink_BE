@@ -1,7 +1,19 @@
 import express from 'express';
 import { requireAuth } from './authMiddleware';
 import logger from '../../utils/logger/logger';
-import '../../types/express-session-extension'; // 중앙 타입 정의 사용
+
+// SessionData 인터페이스 참조
+declare module 'express-session' {
+  interface SessionData {
+    user?: {
+      email: string; // 아이디로 사용되는 이메일
+      userId: string;
+      username: string; // 이름(수정 가능)
+      profileImage?: string;
+      loginTime: string;
+    };
+  }
+}
 
 /**
  * 개발환경에서만 인증을 스킵하는 미들웨어
@@ -101,7 +113,7 @@ export const createDevSessionIfNeeded = (
   } = {},
 ) => {
   if (process.env.NODE_ENV === 'development' && !req.session?.user) {
-    const timestamp = new Date();
+    const timestamp = new Date().toISOString();
     const randomId = Math.random().toString(36).substring(2, 8);
 
     const {
@@ -116,22 +128,15 @@ export const createDevSessionIfNeeded = (
       email,
       userId,
       username,
-      name: username,
-      status: 'ACTIVE',
       profileImage,
-      termsConsents: [],
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      likedConcerts: [],
-      likedArticles: [],
-      loginTime: timestamp.toISOString(),
+      loginTime: timestamp,
     };
 
     logger.info(`👤 개발환경 임시 세션 생성:`);
     logger.info(`   - 이메일: ${email}`);
     logger.info(`   - 사용자ID: ${userId}`);
     logger.info(`   - 사용자명: ${username}`);
-    logger.info(`   - 로그인시간: ${timestamp.toISOString()}`);
+    logger.info(`   - 로그인시간: ${timestamp}`);
   }
 };
 

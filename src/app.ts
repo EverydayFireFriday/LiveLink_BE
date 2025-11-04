@@ -858,22 +858,14 @@ const startServer = async (): Promise<void> => {
 
     // Redis 연결 성공 시 세션 설정 업데이트
     if (isRedisConnected && redisClient.status === 'ready') {
-      try {
-        logger.info('🔌 Creating Redis store for sessions...');
-        const store = new (RedisStore as any)({
-          client: redisClient,
-          prefix: 'app:sess:',
-        }) as Store;
-        sessionConfig.store = store;
-        logger.info('✅ Redis store created successfully');
-      } catch (storeError) {
-        logger.error('❌ Failed to create Redis store:', storeError);
-        throw storeError;
-      }
+      const store = new (RedisStore as any)({
+        client: redisClient,
+        prefix: 'app:sess:',
+      }) as Store;
+      sessionConfig.store = store;
     }
 
     logSessionStoreStatus(isRedisConnected);
-    logger.info('✅ Session store status logged');
 
     // Socket.IO Redis adapter용 Redis 연결
     logger.info('🔌 Connecting to Socket.IO Redis clients...');
