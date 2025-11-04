@@ -757,4 +757,41 @@ export class AuthController {
       );
     }
   };
+
+  /**
+   * Get user statistics
+   * 사용자 통계 조회
+   *
+   * @description
+   * 로그인한 사용자의 통계 정보를 반환합니다:
+   * - upcomingLikedConcertsCount: 좋아요한 콘서트 중 다가오는 콘서트 개수
+   * - totalLikedConcertsCount: 전체 좋아요한 콘서트 개수
+   */
+  getUserStats = async (req: express.Request, res: express.Response) => {
+    try {
+      // 세션 확인
+      const userId = req.session?.user?.userId;
+      if (!userId) {
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+      }
+
+      // 사용자 통계 조회
+      const { UserService } = await import('../../services/auth/userService');
+      const userService = new UserService();
+
+      const stats = await userService.getUserStats(userId);
+
+      if (!stats) {
+        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+      }
+
+      return ResponseBuilder.success(res, '사용자 통계 조회 성공', stats);
+    } catch (error) {
+      logger.error('[Auth] Failed to get user stats:', error);
+      return ResponseBuilder.internalError(
+        res,
+        '서버 에러로 통계 조회에 실패했습니다.',
+      );
+    }
+  };
 }

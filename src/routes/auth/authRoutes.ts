@@ -763,4 +763,137 @@ router.delete(
   },
 );
 
+// 사용자 통계
+/**
+ * @swagger
+ * /auth/stats:
+ *   get:
+ *     summary: 사용자 통계 조회
+ *     description: |
+ *       로그인한 사용자의 통계 정보를 조회합니다.
+ *
+ *       **제공되는 통계:**
+ *       - upcomingLikedConcertsCount: 좋아요한 콘서트 중 다가오는 콘서트 개수
+ *         - 현재 시간 이후의 공연만 포함
+ *         - 공연 날짜가 없는 콘서트는 제외
+ *       - totalLikedConcertsCount: 전체 좋아요한 콘서트 개수
+ *         - 과거, 현재, 미래의 모든 좋아요한 콘서트 포함
+ *
+ *       **사용 예시:**
+ *       - 마이페이지에서 "다가오는 공연 N개" 표시
+ *       - 대시보드에서 사용자 활동 통계 표시
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 통계 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "사용자 통계 조회 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     upcomingLikedConcertsCount:
+ *                       type: number
+ *                       description: 좋아요한 콘서트 중 다가오는 콘서트 개수
+ *                       example: 5
+ *                     totalLikedConcertsCount:
+ *                       type: number
+ *                       description: 전체 좋아요한 콘서트 개수
+ *                       example: 12
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-01-15T10:30:00Z"
+ *             examples:
+ *               with_upcoming_concerts:
+ *                 summary: 다가오는 공연이 있는 경우
+ *                 value:
+ *                   success: true
+ *                   message: "사용자 통계 조회 성공"
+ *                   data:
+ *                     upcomingLikedConcertsCount: 5
+ *                     totalLikedConcertsCount: 12
+ *                   timestamp: "2025-01-15T10:30:00Z"
+ *               no_upcoming_concerts:
+ *                 summary: 다가오는 공연이 없는 경우
+ *                 value:
+ *                   success: true
+ *                   message: "사용자 통계 조회 성공"
+ *                   data:
+ *                     upcomingLikedConcertsCount: 0
+ *                     totalLikedConcertsCount: 8
+ *                   timestamp: "2025-01-15T10:30:00Z"
+ *               no_liked_concerts:
+ *                 summary: 좋아요한 콘서트가 없는 경우
+ *                 value:
+ *                   success: true
+ *                   message: "사용자 통계 조회 성공"
+ *                   data:
+ *                     upcomingLikedConcertsCount: 0
+ *                     totalLikedConcertsCount: 0
+ *                   timestamp: "2025-01-15T10:30:00Z"
+ *       401:
+ *         description: 인증 필요 (로그인하지 않은 경우)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "로그인이 필요합니다."
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "사용자를 찾을 수 없습니다."
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "서버 에러로 통계 조회에 실패했습니다."
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
+router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.getUserStats(req, res);
+});
+
 export default router;

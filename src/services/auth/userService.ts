@@ -212,4 +212,94 @@ export class UserService {
   async countUsers(): Promise<number> {
     return await this.getUserModel().countUsers();
   }
+
+  /**
+   * Get user statistics including upcoming liked concerts count
+   * 사용자 통계 조회 - 좋아요한 다가오는 콘서트 개수 포함
+   */
+  async getUserStats(userId: string): Promise<{
+    upcomingLikedConcertsCount: number;
+    totalLikedConcertsCount: number;
+  } | null> {
+    try {
+      const { ObjectId } = await import('mongodb');
+      const { getDB } = await import('../../utils/database/db');
+
+      const db = getDB();
+      const usersCollection = db.collection('users');
+
+      // 집계 결과 타입 정의
+      interface AggregationResult {
+        upcomingLikedConcertsCount: number;
+        totalLikedConcertsCount: number;
+      }
+
+      // MongoDB Aggregation을 사용하여 효율적으로 계산
+      const result = await usersCollection
+        .aggregate<AggregationResult>([
+          // 1. 특정 사용자 찾기
+          {
+            $match: {
+              _id: new ObjectId(userId),
+            },
+          },
+          // 2. likedConcerts 배열 펼치기
+          {
+            $project: {
+              likedConcerts: { $ifNull: ['$likedConcerts', []] },
+            },
+          },
+          // 3. concerts 컬렉션과 조인
+          {
+            $lookup: {
+              from: 'concerts',
+              localField: 'likedConcerts',
+              foreignField: '_id',
+              as: 'likedConcertDetails',
+            },
+          },
+          // 4. 전체 좋아요한 콘서트 개수와 다가오는 콘서트 개수 계산
+          {
+            $project: {
+              totalLikedConcertsCount: { $size: '$likedConcertDetails' },
+              upcomingLikedConcertsCount: {
+                $size: {
+                  $filter: {
+                    input: '$likedConcertDetails',
+                    as: 'concert',
+                    cond: {
+                      $and: [
+                        // datetime 배열이 존재하고 비어있지 않은지 확인
+                        { $isArray: '$$concert.datetime' },
+                        { $gt: [{ $size: '$$concert.datetime' }, 0] },
+                        // 첫 번째 datetime이 현재 시간보다 미래인지 확인
+                        {
+                          $gte: [
+                            { $arrayElemAt: ['$$concert.datetime', 0] },
+                            new Date(),
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ])
+        .toArray();
+
+      if (result.length === 0) {
+        return null;
+      }
+
+      return {
+        upcomingLikedConcertsCount: result[0].upcomingLikedConcertsCount || 0,
+        totalLikedConcertsCount: result[0].totalLikedConcertsCount || 0,
+      };
+    } catch (error) {
+      logger.error('Error fetching user stats:', error);
+      throw error;
+    }
+  }
 }
