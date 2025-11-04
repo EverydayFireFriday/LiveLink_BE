@@ -66,6 +66,26 @@ redisClient.on('reconnecting', () => {
 // Redis 클라이언트 연결 함수
 export const connectRedis = async (): Promise<boolean> => {
   try {
+    // Redis 클라이언트가 이미 ready 상태인지 확인
+    if (redisClient.status === 'ready') {
+      logger.info('✅ Redis client already connected');
+      return true;
+    }
+
+    // 연결 대기 (최대 5초)
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        if (redisClient.status === 'ready') {
+          resolve();
+        } else {
+          redisClient.once('ready', () => resolve());
+        }
+      }),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('Connection timeout')), 5000),
+      ),
+    ]);
+
     await redisClient.ping();
     logger.info('✅ Redis ping successful');
     return true;

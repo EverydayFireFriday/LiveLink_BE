@@ -35,10 +35,13 @@ export class AuthService {
       | 'updatedAt'
       | 'provider'
       | 'socialId'
+      | 'fcmToken'
+      | 'fcmTokenUpdatedAt'
+      | 'notificationPreference'
     > & {
       _id?: { toHexString(): string };
-      likedConcerts?: unknown;
-      likedArticles?: unknown;
+      likedConcerts?: any;
+      likedArticles?: any;
     },
   ): {
     userId: string;
@@ -54,8 +57,14 @@ export class AuthService {
     updatedAt: Date;
     provider?: string;
     socialId?: string;
-    likedConcerts?: unknown;
-    likedArticles?: unknown;
+    likedConcerts: string[];
+    likedArticles: string[];
+    fcmToken?: string;
+    fcmTokenUpdatedAt?: Date;
+    notificationPreference?: {
+      ticketOpenNotification: number[];
+      concertStartNotification: number[];
+    };
     loginTime: string;
   } {
     return {
@@ -72,8 +81,15 @@ export class AuthService {
       updatedAt: user.updatedAt,
       provider: user.provider,
       socialId: user.socialId,
-      likedConcerts: user.likedConcerts,
-      likedArticles: user.likedArticles,
+      likedConcerts: (user.likedConcerts || []).map((id: any) =>
+        typeof id === 'string' ? id : id.toHexString(),
+      ),
+      likedArticles: (user.likedArticles || []).map((id: any) =>
+        typeof id === 'string' ? id : id.toHexString(),
+      ),
+      fcmToken: user.fcmToken,
+      fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
+      notificationPreference: user.notificationPreference,
       loginTime: new Date().toISOString(),
     };
   }

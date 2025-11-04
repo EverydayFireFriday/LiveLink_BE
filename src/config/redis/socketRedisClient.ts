@@ -86,6 +86,35 @@ subClient.on('close', () => {
 // Redis 연결 확인 함수
 export const connectSocketRedis = async (): Promise<boolean> => {
   try {
+    // Redis 클라이언트가 이미 ready 상태인지 확인
+    if (pubClient.status === 'ready' && subClient.status === 'ready') {
+      logger.info('✅ Socket.IO Redis clients already connected');
+      return true;
+    }
+
+    // 연결 대기 (최대 5초)
+    await Promise.race([
+      Promise.all([
+        new Promise<void>((resolve) => {
+          if (pubClient.status === 'ready') {
+            resolve();
+          } else {
+            pubClient.once('ready', () => resolve());
+          }
+        }),
+        new Promise<void>((resolve) => {
+          if (subClient.status === 'ready') {
+            resolve();
+          } else {
+            subClient.once('ready', () => resolve());
+          }
+        }),
+      ]),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('Connection timeout')), 5000),
+      ),
+    ]);
+
     await pubClient.ping();
     await subClient.ping();
     logger.info('✅ Socket.IO Redis clients ping successful');

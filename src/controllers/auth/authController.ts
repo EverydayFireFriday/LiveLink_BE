@@ -307,13 +307,46 @@ export class AuthController {
     });
   };
 
-  checkSession = (req: express.Request, res: express.Response) => {
+  checkSession = async (req: express.Request, res: express.Response) => {
     if (req.session.user) {
-      return ResponseBuilder.success(res, '세션 확인 성공', {
-        loggedIn: true,
-        user: req.session.user,
-        sessionId: req.sessionID,
-      });
+      try {
+        // 로그인 API와 동일한 전체 사용자 정보 반환
+        const { UserService } = await import('../../services/auth/userService');
+        const userService = new UserService();
+        const user = await userService.findById(req.session.user.userId);
+
+        if (!user) {
+          return ResponseBuilder.unauthorized(res, '세션이 만료되었습니다.');
+        }
+
+        return ResponseBuilder.success(res, '세션 확인 성공', {
+          loggedIn: true,
+          user: {
+            userId: user._id!.toString(),
+            email: user.email,
+            username: user.username,
+            name: user.name,
+            birthDate: user.birthDate,
+            status: user.status,
+            statusReason: user.statusReason,
+            profileImage: user.profileImage,
+            termsConsents: user.termsConsents || [],
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            provider: user.provider,
+            socialId: user.socialId,
+            likedConcerts: user.likedConcerts,
+            likedArticles: user.likedArticles,
+            fcmToken: user.fcmToken,
+            fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
+            notificationPreference: user.notificationPreference,
+          },
+          sessionId: req.sessionID,
+        });
+      } catch (error) {
+        logger.error('세션 확인 에러:', error);
+        return ResponseBuilder.internalError(res, '세션 확인 실패');
+      }
     } else {
       return ResponseBuilder.success(res, '세션 확인 성공', {
         loggedIn: false,
