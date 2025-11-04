@@ -290,25 +290,23 @@ export const updateNotificationPreferences = async (
       ...new Set(concertStartNotification),
     ];
 
-    // 6. 데이터베이스 업데이트
-    const database = Database.getInstance();
-    const userCollection = database.getUserCollection();
+    // 6. 데이터베이스 업데이트 (userService 사용하여 캐시 자동 삭제)
+    const { UserService } = await import('../../services/auth/userService');
+    const userService = new UserService();
 
-    const result = await userCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      {
-        $set: {
-          notificationPreference: {
-            ticketOpenNotification: uniqueTicketNotification,
-            concertStartNotification: uniqueConcertNotification,
-          },
-          updatedAt: new Date(),
-        },
+    const updatedUser = await userService.updateUser(userId, {
+      notificationPreference: {
+        ticketOpenNotification: uniqueTicketNotification,
+        concertStartNotification: uniqueConcertNotification,
       },
-    );
+      updatedAt: new Date(),
+    });
 
     // 7. 응답 처리
-    if (result.modifiedCount > 0) {
+    if (updatedUser) {
+      logger.info(
+        `[Notification] Updated preferences for user: ${userId}, cache invalidated`,
+      );
       res.status(200).json({
         success: true,
         message: 'Notification preferences updated',
