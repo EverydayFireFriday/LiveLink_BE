@@ -8,8 +8,13 @@ import { AuthValidator } from '../../utils/validation/auth/authValidator';
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
   login = async (req: express.Request, res: express.Response) => {
-    const { email, password } = req.body;
+    const { email, password, force } = req.body as {
+      email: string;
+      password: string;
+      force?: boolean;
+    };
     const ip = req.ip ?? '';
+    const forceLogin = force === true; // force 파라미터 (기본값: false)
 
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
@@ -119,6 +124,46 @@ export class AuthController {
       // 로그인 성공 시, 실패 카운터 리셋
       await bruteForceService.reset(loginKey);
 
+      // 기존 세션 확인 (force 파라미터 검증)
+      const { UserSessionModel } = await import(
+        '../../models/auth/userSession'
+      );
+      const { DeviceDetector } = await import(
+        '../../utils/device/deviceDetector'
+      );
+      const userSessionModel = new UserSessionModel();
+      const deviceInfo = DeviceDetector.detectDevice(req);
+
+      const existingSessions = await userSessionModel.findByUserId(user._id!);
+      const samePlatformSessions = existingSessions.filter(
+        (session) => session.deviceInfo.platform === deviceInfo.platform,
+      );
+
+      // force=false이고 같은 플랫폼의 기존 세션이 있으면 409 Conflict 반환
+      if (!forceLogin && samePlatformSessions.length > 0) {
+        const existingSession = samePlatformSessions[0];
+        const platformName =
+          String(deviceInfo.platform) === 'web' ? '웹' : '앱';
+
+        logger.info(
+          `[Auth] Login attempt blocked - existing ${deviceInfo.platform} session found for user: ${user.email}`,
+        );
+
+        return res.status(409).json({
+          success: false,
+          message: `이미 다른 기기에서 ${platformName} 로그인이 되어 있습니다.`,
+          data: {
+            existingSession: {
+              deviceName: existingSession.deviceInfo.name,
+              platform: existingSession.deviceInfo.platform,
+              createdAt: existingSession.createdAt,
+              lastActivityAt: existingSession.lastActivityAt,
+            },
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       // 마지막 로그인 시간 업데이트
       await userService.updateUser(user._id!.toString(), {
         updatedAt: new Date(),
@@ -144,28 +189,13 @@ export class AuthController {
         // 디바이스별 세션 쿠키 만료 시간 설정 (UserSession과 동기화)
         // UserSession에 세션 정보 저장 (멀티 디바이스 지원)
         try {
-          const { UserSessionModel } = await import(
-            '../../models/auth/userSession'
-          );
-          const { DeviceDetector } = await import(
-            '../../utils/device/deviceDetector'
-          );
           const { getSessionMaxAge } = await import('../../config/env/env');
           const { redisClient } = (await import('../../app')) as {
             redisClient: Redis;
           };
 
-          const userSessionModel = new UserSessionModel();
-          const deviceInfo = DeviceDetector.detectDevice(req);
-
+          // force=true이거나 기존 세션이 없는 경우 세션 생성
           // 같은 플랫폼의 기존 세션 삭제 (웹 1개 + 앱 1개 = 총 2개만 유지)
-          const existingSessions = await userSessionModel.findByUserId(
-            user._id!,
-          );
-          const samePlatformSessions = existingSessions.filter(
-            (session) => session.deviceInfo.platform === deviceInfo.platform,
-          );
-
           if (samePlatformSessions.length > 0) {
             // 이전 세션 정보 저장 (로그인 응답에 포함)
             previousSessionTerminated = true;
@@ -174,7 +204,7 @@ export class AuthController {
             terminatedPlatform = deviceInfo.platform;
 
             logger.info(
-              `[Session] Deleting ${samePlatformSessions.length} existing ${deviceInfo.platform} session(s) for user: ${user.email}`,
+              `[Session] Force login - Deleting ${samePlatformSessions.length} existing ${deviceInfo.platform} session(s) for user: ${user.email}`,
             );
 
             // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
@@ -369,7 +399,7 @@ export class AuthController {
   };
 
   deleteAccount = async (req: express.Request, res: express.Response) => {
-    const { password } = req.body;
+    const { password } = req.body as { password?: string };
     const userId = req.session.user?.userId;
 
     if (!userId) {
@@ -438,7 +468,10 @@ export class AuthController {
 
   // 이메일 찾기 (이름과 생년월일로)
   findEmail = async (req: express.Request, res: express.Response) => {
-    const { name, birthDate } = req.body;
+    const { name, birthDate } = req.body as {
+      name?: string;
+      birthDate?: string;
+    };
 
     // 유효성 검증
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -464,20 +497,25 @@ export class AuthController {
 
       if (usersByName.length > 0) {
         usersByName.forEach((user, index) => {
+          const userBirthDate = user.birthDate;
+          const birthDateStr =
+            userBirthDate instanceof Date
+              ? userBirthDate.toISOString()
+              : 'NOT A DATE';
           logger.info(
-            `[Auth DEBUG] User ${index + 1}: name="${user.name}", birthDate=${user.birthDate} (type: ${typeof user.birthDate}), birthDate ISO: ${user.birthDate instanceof Date ? user.birthDate.toISOString() : 'NOT A DATE'}`,
+            `[Auth DEBUG] User ${index + 1}: name="${user.name}", birthDate=${String(userBirthDate)} (type: ${typeof userBirthDate}), birthDate ISO: ${birthDateStr}`,
           );
         });
       }
 
       // 생년월일을 Date 객체로 변환 (UTC 기준)
       let birthDateObj: Date;
-      if (birthDate.includes('T')) {
+      if (typeof birthDate === 'string' && birthDate.includes('T')) {
         // 이미 ISO 형식인 경우
         birthDateObj = new Date(birthDate);
       } else {
         // YYYY-MM-DD 형식인 경우
-        birthDateObj = new Date(birthDate + 'T00:00:00.000Z');
+        birthDateObj = new Date(String(birthDate) + 'T00:00:00.000Z');
       }
 
       if (isNaN(birthDateObj.getTime())) {

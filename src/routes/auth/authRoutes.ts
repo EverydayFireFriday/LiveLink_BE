@@ -31,8 +31,14 @@ const getAuthController = async () => {
  *
  *       **플랫폼별 세션 관리:**
  *       - 웹(web)과 앱(app)에서 각각 1개씩 총 2개의 세션을 동시에 유지할 수 있습니다.
- *       - 같은 플랫폼에서 새로 로그인하면 이전 세션이 자동으로 로그아웃됩니다.
- *       - ⚠️ **중요**: 이전 기기에는 로그아웃 알림이 전송되지 않습니다.
+ *       - 같은 플랫폼에 기존 세션이 있을 때:
+ *         - force=false (기본값): 409 Conflict 반환 (기존 세션 정보 포함)
+ *         - force=true: 기존 세션을 로그아웃하고 새로 로그인
+ *
+ *       **로그인 플로우:**
+ *       1. 1차 시도 (force 없음 또는 false): 기존 세션이 있으면 409 반환
+ *       2. 사용자가 "로그인 진행" 선택
+ *       3. 2차 시도 (force=true): 기존 세션을 삭제하고 로그인 진행
  *
  *       **플랫폼 구분 방법:**
  *       - X-Platform 헤더로 플랫폼을 지정합니다 (필수 권장)
@@ -71,6 +77,14 @@ const getAuthController = async () => {
  *                 type: string
  *                 description: 사용자 비밀번호
  *                 example: "password123"
+ *               force:
+ *                 type: boolean
+ *                 description: |
+ *                   기존 세션 강제 로그아웃 여부 (기본값: false)
+ *                   - false: 기존 세션이 있으면 409 Conflict 반환
+ *                   - true: 기존 세션을 삭제하고 새로 로그인
+ *                 default: false
+ *                 example: false
  *     responses:
  *       200:
  *         description: 로그인 성공
@@ -151,6 +165,49 @@ const getAuthController = async () => {
  *                 message:
  *                   type: string
  *                   example: "이메일 또는 비밀번호가 일치하지 않습니다."
+ *       409:
+ *         description: 기존 세션 존재 (force=false인 경우)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "이미 다른 기기에서 웹 로그인이 되어 있습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     existingSession:
+ *                       type: object
+ *                       description: 기존 세션 정보
+ *                       properties:
+ *                         deviceName:
+ *                           type: string
+ *                           description: 로그인된 기기명
+ *                           example: "Chrome on Windows 10"
+ *                         platform:
+ *                           type: string
+ *                           description: 플랫폼
+ *                           enum: [web, app]
+ *                           example: "web"
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: 세션 생성 시간
+ *                           example: "2025-01-15T10:00:00Z"
+ *                         lastActivityAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: 마지막 활동 시간
+ *                           example: "2025-01-15T12:30:00Z"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-01-15T12:35:00Z"
  *       500:
  *         description: 서버 에러
  *         content:
@@ -257,7 +314,7 @@ router.post('/logout', strictLimiter, requireAuth, async (req, res) => {
  */
 router.get('/session', relaxedLimiter, async (req, res) => {
   const authController = await getAuthController();
-  authController.checkSession(req, res);
+  await authController.checkSession(req, res);
 });
 
 // 회원탈퇴
