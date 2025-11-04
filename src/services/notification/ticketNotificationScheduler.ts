@@ -11,12 +11,13 @@ import { IConcert } from '../../models/concert/base/ConcertTypes.js';
  * 티켓 오픈 알림 스케줄러
  *
  * 매일 자정(00:00)에 실행되어:
- * 1. 2~3일 후 티켓이 오픈되는 콘서트 조회
- * 2. 각 콘서트의 티켓 오픈 정보마다 4개의 Job 생성
+ * 1. 현재~3일 후 티켓이 오픈되는 콘서트 조회
+ * 2. 각 콘서트의 티켓 오픈 정보마다 4개의 Job 생성 시도
  *    - 하루 전 알림 (1440분)
- *    - 1시간 전 알림
- *    - 30분 전 알림
- *    - 10분 전 알림
+ *    - 1시간 전 알림 (60분)
+ *    - 30분 전 알림 (30분)
+ *    - 10분 전 알림 (10분)
+ * 3. 과거 시간은 자동으로 스킵하여 미래 알림만 등록
  */
 
 // 스케줄러 인스턴스
@@ -40,9 +41,8 @@ async function createTicketNotificationJobs(): Promise<void> {
       return;
     }
 
-    // 2~3일 후 범위 계산
+    // 현재~3일 후 범위 계산 (2일 이내 미등록 알림도 포함)
     const now = new Date();
-    const twoDaysLater = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
     const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
     // 콘서트 DB에서 해당 기간에 티켓이 오픈되는 콘서트 조회
@@ -53,14 +53,14 @@ async function createTicketNotificationJobs(): Promise<void> {
       .find({
         status: { $in: ['upcoming', 'ongoing'] }, // 진행 예정 또는 진행 중인 콘서트
         'ticketOpenDate.openDate': {
-          $gte: twoDaysLater, // 2일 후 이상
+          $gte: now, // 현재 시간 이후
           $lt: threeDaysLater, // 3일 후 미만
         },
       })
       .toArray();
 
     logger.info(
-      `📋 Found ${concerts.length} concerts with ticket openings in 2-3 days`,
+      `📋 Found ${concerts.length} concerts with ticket openings in next 3 days`,
     );
 
     let totalJobsCreated = 0;
@@ -75,15 +75,15 @@ async function createTicketNotificationJobs(): Promise<void> {
       for (const ticketOpen of concert.ticketOpenDate) {
         const ticketOpenDate = new Date(ticketOpen.openDate);
 
-        // 2~3일 범위에 있는지 확인
-        if (ticketOpenDate >= twoDaysLater && ticketOpenDate < threeDaysLater) {
+        // 현재~3일 범위에 있는지 확인
+        if (ticketOpenDate >= now && ticketOpenDate < threeDaysLater) {
           // 각 알림 시간(하루 전, 1시간 전, 30분 전, 10분 전)에 대해 Job 생성
           for (const notifyBeforeMinutes of NOTIFICATION_TIMES) {
             const notificationTime = new Date(
               ticketOpenDate.getTime() - notifyBeforeMinutes * 60 * 1000,
             );
 
-            // 알림 시간이 과거인 경우 스킵
+            // 알림 시간이 과거인 경우 스킵 (이미 지나간 알림)
             if (notificationTime <= now) {
               logger.debug(
                 `Skipping past notification for concert ${concert.uid} (${notifyBeforeMinutes} min before)`,
