@@ -14,6 +14,27 @@ export const requireAuth = async (
     return;
   }
 
+  // 🔒 PRIORITY CHECK: Verify session is not in invalidation list
+  // This prevents race condition where session is deleted during an active request
+  try {
+    const { redisClient } = await import('../../app');
+    if (redisClient.status === 'ready') {
+      const invalidationKey = `invalidated:${req.sessionID}`;
+      const isInvalidated = await redisClient.get(invalidationKey);
+      
+      if (isInvalidated) {
+        // Session is marked for deletion - destroy immediately without saving
+        req.session.destroy(() => {});
+        res.status(401).json({
+          message: '세션이 만료되었거나 다른 기기에서 로그인되었습니다.',
+        });
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('[Auth] Failed to check invalidation list:', error);
+  }
+
   // MongoDB UserSession 존재 여부 확인 (세션이 무효화되었는지 체크)
   try {
     const { UserSessionModel } = await import('../../models/auth/userSession');
@@ -22,18 +43,9 @@ export const requireAuth = async (
 
     if (!sessionExists) {
       // MongoDB에 세션이 없으면 로그아웃 처리
-      const sessionToDestroy = req.session;
+      req.session.destroy(() => {});
       res.status(401).json({
         message: '세션이 만료되었거나 다른 기기에서 로그인되었습니다.',
-      });
-
-      // 응답 후 세션 삭제 (비동기로 처리)
-      setImmediate(() => {
-        sessionToDestroy.destroy((err) => {
-          if (err) {
-            console.error('[Auth] Session destroy error:', err);
-          }
-        });
       });
       return;
     }
