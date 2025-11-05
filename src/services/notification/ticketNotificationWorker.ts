@@ -94,9 +94,12 @@ async function processTicketNotification(
     concertId,
     concertTitle,
     ticketOpenTitle,
-    ticketOpenDate,
+    ticketOpenDate: ticketOpenDateRaw, // raw로 받기
     notifyBeforeMinutes,
   } = job.data;
+
+  // ✅ Date 객체로 변환
+  const ticketOpenDate = new Date(ticketOpenDateRaw);
 
   logger.info(
     `📬 Processing ticket notification job: ${concertTitle} - ${notifyBeforeMinutes}min before`,

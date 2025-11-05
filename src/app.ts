@@ -116,6 +116,15 @@ import {
   closeTicketNotificationWorker,
 } from './services/notification/ticketNotificationWorker';
 import { closeTicketNotificationQueue } from './config/queue/ticketNotificationQueue';
+import {
+  startConcertStartNotificationScheduler,
+  stopConcertStartNotificationScheduler,
+} from './services/notification/concertStartNotificationScheduler';
+import {
+  createConcertStartNotificationWorker,
+  closeConcertStartNotificationWorker,
+} from './services/notification/concertStartNotificationWorker';
+import { closeConcertStartNotificationQueue } from './config/queue/concertStartNotificationQueue';
 import type { Worker } from 'bullmq';
 
 // 라우터 import
@@ -425,6 +434,7 @@ let concertStatusScheduler: ConcertStatusScheduler | null = null;
 let sessionCleanupScheduler: SessionCleanupScheduler | null = null;
 let notificationWorker: Worker | null = null;
 let ticketNotificationWorker: Worker | null = null;
+let concertStartNotificationWorker: Worker | null = null;
 
 // Graceful shutdown 상태 추적
 let isShuttingDown = false;
@@ -654,6 +664,18 @@ const initializeDatabases = async (): Promise<void> => {
     logger.info('🔌 Starting Ticket Notification Scheduler (D-2)...');
     startTicketNotificationScheduler();
     logger.info('✅ Ticket Notification Scheduler started');
+
+    // Initialize Concert Start Notification Worker (BullMQ)
+    logger.info(
+      '🔌 Initializing Concert Start Notification Worker (BullMQ)...',
+    );
+    concertStartNotificationWorker = createConcertStartNotificationWorker();
+    logger.info('✅ Concert Start Notification Worker started');
+
+    // Start Concert Notification Scheduler
+    logger.info('🔌 Starting Concert Notification Scheduler...');
+    startConcertStartNotificationScheduler();
+    logger.info('✅ Concert Notification Scheduler started');
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
     // Set all database connection gauges to 0 on failure
@@ -807,6 +829,24 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     logger.info('6️⃣-7 Closing Ticket Notification Queue...');
     await closeTicketNotificationQueue();
     logger.info('✅ Ticket Notification Queue closed');
+
+    // 6️⃣-8 Concert Notification Scheduler 종료
+    logger.info('6️⃣-8 Stopping Concert Notification Scheduler...');
+    stopConcertStartNotificationScheduler();
+    logger.info('✅ Concert Notification Scheduler stopped');
+
+    // 6️⃣-9 Concert Start Notification Worker 종료
+    if (concertStartNotificationWorker) {
+      logger.info('6️⃣-9 Stopping Concert Start Notification Worker...');
+      await closeConcertStartNotificationWorker();
+      concertStartNotificationWorker = null;
+      logger.info('✅ Concert Start Notification Worker stopped');
+    }
+
+    // 6️⃣-10 Concert Start Notification Queue 종료
+    logger.info('6️⃣-10 Closing Concert Start Notification Queue...');
+    await closeConcertStartNotificationQueue();
+    logger.info('✅ Concert Start Notification Queue closed');
 
     // 7️⃣ Socket.IO Redis 연결 종료
     logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');

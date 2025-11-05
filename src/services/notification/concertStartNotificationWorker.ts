@@ -87,8 +87,14 @@ function getNotificationType(
 async function processConcertStartNotification(
   job: Job<ConcertStartNotificationJobData>,
 ): Promise<void> {
-  const { concertId, concertTitle, performanceDate, notifyBeforeMinutes } =
-    job.data;
+  const {
+    concertId,
+    concertTitle,
+    performanceDate: performanceDateRaw,
+    notifyBeforeMinutes,
+  } = job.data;
+
+  const performanceDate = new Date(performanceDateRaw);
 
   logger.info(
     `📬 Processing concert start notification job: ${concertTitle} - ${notifyBeforeMinutes}min before`,
