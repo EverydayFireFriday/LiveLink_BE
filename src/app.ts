@@ -387,42 +387,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMiddleware';
 app.use(maintenanceMiddleware);
 
-// 세션 미들웨어 - Redis 연결 전에 먼저 등록 (초기에는 메모리 스토어)
-// Redis 연결 성공 시 세션 스토어가 자동으로 Redis로 전환됨
-// 쿠키 maxAge는 로그인 시 플랫폼별로 동적으로 설정됨 (기본값: WEB 플랫폼 기준)
-const sessionConfig: session.SessionOptions = {
-  secret: env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  rolling: true,
-  cookie: {
-    secure: isProduction() || env.COOKIE_SAMESITE === 'none',
-    httpOnly: true,
-    maxAge: parseInt(env.SESSION_MAX_AGE_WEB), // 기본값: 1일 (WEB 플랫폼 기준)
-    sameSite: env.COOKIE_SAMESITE,
-    domain: env.COOKIE_DOMAIN || undefined,
-  },
-  name: 'app.session.id',
-};
-
-// 세션 미들웨어 인스턴스 생성 (Socket.IO에서도 사용)
-const sessionMiddleware = session(sessionConfig);
-app.use(sessionMiddleware);
-
-// PASSPORT 초기화 (세션 설정 후)
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Redis 연결 확인 및 로깅 함수
-const logSessionStoreStatus = (useRedis: boolean): void => {
-  if (useRedis && redisClient.status === 'ready') {
-    logger.info('✅ Session store: Redis (reconnection will use Redis)');
-  } else {
-    logger.warn(
-      '⚠️ Session store: Memory (sessions will not persist across restarts)',
-    );
-  }
-};
+// 세션, Passport, 라우터 등은 startServer() 내부에서 초기화됩니다.
 
 // 데이터베이스 연결 상태 추적
 let isUserDBConnected = false;
@@ -572,12 +537,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
 app.use('/health', healthRouter);
 app.use('/swagger-json', swaggerRouter);
 app.use('/terms', termsRouter);
-// 기본 Rate Limiter 적용
-app.use(defaultLimiter);
-app.use('/auth', authRouter);
-app.use('/concert', concertRouter);
-app.use('/test', testRouter);
-app.use('/', notificationRouter);
+// (라우터는 startServer()에서 연결)
 
 // CSP Violation Report Endpoint
 app.post(
@@ -896,16 +856,40 @@ const startServer = async (): Promise<void> => {
     // Redis 연결 시도 (세션 스토어용)
     const isRedisConnected = await connectRedisClient();
 
-    // Redis 연결 성공 시 세션 설정 업데이트
+    // 세션 미들웨어 설정
+    const sessionConfig: session.SessionOptions = {
+      secret: env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      rolling: true,
+      cookie: {
+        secure: isProduction() || env.COOKIE_SAMESITE === 'none',
+        httpOnly: true,
+        maxAge: parseInt(env.SESSION_MAX_AGE_WEB), // 기본값: 1일 (WEB 플랫폼 기준)
+        sameSite: env.COOKIE_SAMESITE,
+        domain: env.COOKIE_DOMAIN || undefined,
+      },
+      name: 'app.session.id',
+    };
+
     if (isRedisConnected && redisClient.status === 'ready') {
-      const store = new (RedisStore as any)({
+      logger.info('✅ Session store: Redis');
+      sessionConfig.store = new (RedisStore as any)({
         client: redisClient,
         prefix: 'app:sess:',
       }) as Store;
-      sessionConfig.store = store;
+    } else {
+      logger.warn(
+        '⚠️ Session store: Memory (sessions will not persist across restarts)',
+      );
     }
 
-    logSessionStoreStatus(isRedisConnected);
+    const sessionMiddleware = session(sessionConfig);
+    app.use(sessionMiddleware);
+
+    // PASSPORT 초기화 (세션 설정 후)
+    app.use(passport.initialize());
+    app.use(passport.session());
 
     // Socket.IO Redis adapter용 Redis 연결
     logger.info('🔌 Connecting to Socket.IO Redis clients...');
@@ -919,6 +903,15 @@ const startServer = async (): Promise<void> => {
     logger.info('🔌 Configuring Passport...');
     configurePassport(passport);
     logger.info('✅ Passport configured');
+
+    // 라우터 연결 (세션 및 Passport 미들웨어 설정 이후)
+    logger.info('🔌 Connecting main routes...');
+    app.use(defaultLimiter);
+    app.use('/auth', authRouter);
+    app.use('/concert', concertRouter);
+    app.use('/test', testRouter);
+    app.use('/', notificationRouter);
+    logger.info('✅ Main routes connected');
 
     // 동적 라우터 로드
     logger.info('🔌 Loading Article routes...');
