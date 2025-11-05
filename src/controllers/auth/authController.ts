@@ -207,12 +207,24 @@ export class AuthController {
               `[Session] Force login - Deleting ${samePlatformSessions.length} existing ${deviceInfo.platform} session(s) for user: ${user.email}`,
             );
 
+
             // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
             for (const session of samePlatformSessions) {
-              // MongoDB 삭제
+              // 🔒 STEP 1: Mark session as invalidated FIRST (race condition prevention)
+              // This prevents express-session from auto-saving deleted sessions
+              if (redisClient.status === 'ready') {
+                const invalidationKey = `invalidated:${session.sessionId}`;
+                // TTL: 24 hours (longer than max session lifetime)
+                await redisClient.setex(invalidationKey, 86400, '1');
+                logger.info(
+                  `🔒 Session marked as invalidated: ${session.sessionId}`,
+                );
+              }
+
+              // 🗑️ STEP 2: Delete from MongoDB
               await userSessionModel.deleteSession(session.sessionId);
 
-              // Redis 삭제
+              // 🗑️ STEP 3: Delete from Redis
               if (redisClient.status === 'ready') {
                 const redisKey = `app:sess:${session.sessionId}`;
                 const deleteResult = await redisClient.del(redisKey);
