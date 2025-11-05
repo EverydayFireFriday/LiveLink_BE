@@ -303,10 +303,12 @@ export class ConcertService {
           break;
         case 'upcoming_soon':
           // 공연 임박순 (공연 날짜가 가까운 순)
+          filter.datetime = { $gte: new Date() }; // 현재 시간 이후의 공연만
           sort = { datetime: 1 };
           break;
         case 'ticket_soon':
           // 예매 임박순 (티켓 오픈 날짜가 가까운 순)
+          filter['ticketOpenDate.0.openDate'] = { $gte: new Date() }; // 현재 시간 이후의 티켓 오픈만
           sort = { 'ticketOpenDate.0.openDate': 1 };
           break;
         case 'date':
