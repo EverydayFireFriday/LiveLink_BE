@@ -33,14 +33,16 @@ const connection = {
  * BullMQ에서 Job을 받아서:
  * 1. 콘서트를 좋아요한 사용자 조회
  * 2. 런타임 필터링 (알림 설정 확인)
- * 3. FCM 배치 전송 (500명씩)
- * 4. NotificationHistory에 저장
+ * 3. ObjectId 사전 생성 (historyId)
+ * 4. FCM 개별 전송 (각 사용자의 badge count와 historyId 포함)
+ * 5. 성공한 알림만 NotificationHistory에 저장
  */
 
 let worker: Worker<TicketNotificationJobData> | null = null;
 
-// FCM 배치 크기 (Firebase 권장: 500)
-const FCM_BATCH_SIZE = 500;
+// 한 번에 처리할 사용자 수 (메모리 관리 및 로깅을 위한 그룹 단위)
+// 각 사용자에게는 개별적으로 FCM 전송 (badge count와 historyId 포함)
+const PROCESSING_BATCH_SIZE = 500;
 
 /**
  * Get notification type based on minutes before
@@ -77,8 +79,10 @@ function getNotificationType(
  *    - FCM 토큰이 있는 사용자 (푸시 알림 가능)
  *    - 활성 상태인 사용자
  *    - 해당 시간대 알림을 설정한 사용자
- * 3. FCM 푸시 알림 전송
- * 4. 알림 히스토리 저장
+ * 3. 각 사용자에 대해 ObjectId 사전 생성 (historyId)
+ * 4. FCM 푸시 알림 개별 전송 (badge count와 historyId 포함)
+ * 5. 성공한 알림만 히스토리 저장 (사전 생성된 historyId 사용)
+ * 6. 잘못된 FCM 토큰 제거
  *
  * @param job - BullMQ Job 객체
  * @param job.data.concertId - 콘서트 ID
@@ -173,94 +177,112 @@ async function processTicketNotification(
     const notificationTitle = `${concertTitle} 티켓 오픈 ${timeText} 전!`;
     const notificationMessage = `${ticketOpenTitle} 티켓 오픈까지 ${timeText} 남았습니다. 놓치지 마세요!`;
 
-    // 4. 500명씩 배치로 FCM 전송
+    // 4. 각 사용자에 대해 ObjectId 미리 생성 및 매핑
+    const userHistoryMap = new Map<string, ObjectId>(); // userId -> historyId
+    users.forEach((user) => {
+      if (user._id) {
+        userHistoryMap.set(user._id.toString(), new ObjectId());
+      }
+    });
+
+    // 5. FCM 개별 전송 (각 사용자의 badge count와 historyId 포함)
     const totalUsers = users.length;
     let successCount = 0;
     let failureCount = 0;
     const allInvalidTokens: string[] = [];
-    const successfulUserIds: ObjectId[] = [];
+    const successfulHistories: any[] = [];
+    const notificationHistoryModel = getNotificationHistoryModel(userDB);
+    const notificationType = getNotificationType(notifyBeforeMinutes);
 
-    for (let i = 0; i < totalUsers; i += FCM_BATCH_SIZE) {
-      const batch = users.slice(i, i + FCM_BATCH_SIZE);
-      const batchTokens = batch
-        .map((user) => user.fcmToken)
-        .filter((token): token is string => !!token);
-
-      if (batchTokens.length === 0) {
-        continue;
-      }
+    for (let i = 0; i < totalUsers; i += PROCESSING_BATCH_SIZE) {
+      const batch = users.slice(i, i + PROCESSING_BATCH_SIZE);
 
       logger.info(
-        `Sending batch ${Math.floor(i / FCM_BATCH_SIZE) + 1}/${Math.ceil(totalUsers / FCM_BATCH_SIZE)} (${batchTokens.length} tokens)`,
+        `Processing batch ${Math.floor(i / PROCESSING_BATCH_SIZE) + 1}/${Math.ceil(totalUsers / PROCESSING_BATCH_SIZE)} (${batch.length} users)`,
       );
 
-      // FCM 배치 전송
-      const result = await fcmService.sendBatchNotifications(batchTokens, {
-        title: notificationTitle,
-        body: notificationMessage,
-        data: {
-          type: 'ticket_opening',
-          concertId: concertId,
-          concertTitle: concertTitle,
-          ticketOpenTitle: ticketOpenTitle,
-          ticketOpenDate: ticketOpenDate.toISOString(),
-          notifyBeforeMinutes: notifyBeforeMinutes.toString(),
-        },
-      });
+      // 각 사용자에게 개별 전송 (badge count와 historyId 포함)
+      for (const user of batch) {
+        if (!user.fcmToken || !user._id) continue;
 
-      successCount += result.successCount;
-      failureCount += result.failureCount;
-      allInvalidTokens.push(...result.invalidTokens);
+        const historyId = userHistoryMap.get(user._id.toString());
+        if (!historyId) continue;
 
-      // 성공한 사용자 ID 저장 (NotificationHistory 저장용)
-      batch.forEach((user, index) => {
-        const tokenIndex =
-          batch.slice(0, index + 1).filter((u) => u.fcmToken).length - 1;
-        const isSuccess =
-          tokenIndex >= 0 &&
-          !allInvalidTokens.includes(user.fcmToken as string);
-        if (isSuccess && user._id) {
-          successfulUserIds.push(user._id);
+        try {
+          const unreadCount = await notificationHistoryModel.countUnread(
+            user._id,
+          );
+
+          const success = await fcmService.sendNotification(user.fcmToken, {
+            title: notificationTitle,
+            body: notificationMessage,
+            badge: unreadCount + 1,
+            data: {
+              type: 'ticket_opening',
+              concertId: concertId,
+              concertTitle: concertTitle,
+              ticketOpenTitle: ticketOpenTitle,
+              ticketOpenDate: ticketOpenDate.toISOString(),
+              notifyBeforeMinutes: notifyBeforeMinutes.toString(),
+              historyId: historyId.toString(), // ✅ historyId 포함!
+            },
+          });
+
+          if (success) {
+            successCount++;
+            // 성공한 경우에만 history 데이터 준비
+            successfulHistories.push({
+              _id: historyId, // 사전 생성한 ObjectId 사용
+              userId: user._id,
+              concertId: new ObjectId(concertId),
+              title: notificationTitle,
+              message: notificationMessage,
+              type: notificationType,
+              isRead: false,
+              sentAt: new Date(),
+              createdAt: new Date(),
+              expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
+              data: {
+                concertId: concertId,
+                concertTitle: concertTitle,
+                ticketOpenTitle: ticketOpenTitle,
+                ticketOpenDate: ticketOpenDate.toISOString(),
+              },
+            });
+          } else {
+            failureCount++;
+            allInvalidTokens.push(user.fcmToken);
+          }
+        } catch (error) {
+          logger.error(
+            `Failed to send to ${user.fcmToken.substring(0, 20)}...`,
+            error,
+          );
+          failureCount++;
+          allInvalidTokens.push(user.fcmToken);
         }
-      });
+      }
     }
 
     logger.info(
       `📊 Notification sending completed: ${successCount} success, ${failureCount} failed`,
     );
 
-    // 6. 잘못된 FCM 토큰 제거
+    // 6. 성공한 알림만 DB에 일괄 저장
+    if (successfulHistories.length > 0) {
+      await notificationHistoryModel.bulkInsertWithIds(successfulHistories);
+      logger.info(
+        `💾 Saved ${successfulHistories.length} notification histories`,
+      );
+    }
+
+    // 7. 잘못된 FCM 토큰 제거
     if (allInvalidTokens.length > 0) {
       await userCollection.updateMany(
         { fcmToken: { $in: allInvalidTokens } },
         { $unset: { fcmToken: '', fcmTokenUpdatedAt: '' } },
       );
       logger.info(`🗑️  Removed ${allInvalidTokens.length} invalid FCM tokens`);
-    }
-
-    // 5. NotificationHistory에 저장 (성공한 알림만)
-    if (successfulUserIds.length > 0) {
-      const notificationHistoryModel = getNotificationHistoryModel(userDB);
-      const notificationType = getNotificationType(notifyBeforeMinutes);
-
-      const historyData = successfulUserIds.map((userId) => ({
-        userId,
-        concertId: new ObjectId(concertId),
-        title: notificationTitle,
-        message: notificationMessage,
-        type: notificationType,
-        data: {
-          concertId: concertId,
-          concertTitle: concertTitle,
-          ticketOpenTitle: ticketOpenTitle,
-          ticketOpenDate: ticketOpenDate.toISOString(),
-        },
-      }));
-
-      await notificationHistoryModel.bulkCreate(historyData);
-      logger.info(
-        `💾 Saved ${successfulUserIds.length} notification histories`,
-      );
     }
 
     logger.info(

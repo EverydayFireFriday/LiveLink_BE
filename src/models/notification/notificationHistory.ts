@@ -23,12 +23,21 @@ export enum ConcertStartNotificationType {
 }
 
 /**
+ * Notification Type for Scheduled Notifications
+ * 스케줄된 알림 타입
+ */
+export enum ScheduledNotificationType {
+  SCHEDULED = 'scheduled', // 스케줄된 일반 알림
+}
+
+/**
  * Combined Notification Type
  * 통합 알림 타입
  */
 export type NotificationType =
   | TicketNotificationType
-  | ConcertStartNotificationType;
+  | ConcertStartNotificationType
+  | ScheduledNotificationType;
 
 /**
  * Notification History Interface
@@ -37,7 +46,7 @@ export type NotificationType =
 export interface INotificationHistory {
   _id?: ObjectId;
   userId: ObjectId; // 알림을 받은 사용자 ID
-  concertId: ObjectId; // 콘서트 ID
+  concertId?: ObjectId; // 콘서트 ID (스케줄된 알림의 경우 optional)
   title: string; // 알림 제목
   message: string; // 알림 메시지
   type: NotificationType; // 알림 타입 (티켓 오픈 또는 공연 시작)
@@ -190,6 +199,21 @@ export class NotificationHistoryModel {
       ...notification,
       _id: result.insertedIds[index],
     }));
+  }
+
+  /**
+   * Bulk insert notification histories with pre-generated IDs
+   * 사전 생성된 ID로 알림 이력 일괄 삽입
+   * (FCM 전송 후 historyId를 포함시키기 위해 사용)
+   */
+  public async bulkInsertWithIds(
+    notifications: INotificationHistory[],
+  ): Promise<void> {
+    if (notifications.length === 0) {
+      return;
+    }
+
+    await this.collection.insertMany(notifications);
   }
 
   /**

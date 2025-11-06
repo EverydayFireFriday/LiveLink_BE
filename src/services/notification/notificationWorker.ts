@@ -4,7 +4,10 @@ import {
   getScheduledNotificationModel,
   NotificationStatus,
 } from '../../models/notification/index.js';
-import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
+import {
+  getNotificationHistoryModel,
+  ScheduledNotificationType,
+} from '../../models/notification/notificationHistory.js';
 import FCMService, { NotificationPayload } from './fcmService.js';
 import { UserModel } from '../../models/auth/user.js';
 import logger from '../../utils/logger/logger.js';
@@ -34,6 +37,17 @@ const connection = {
 /**
  * Process notification job
  * Job을 처리하여 실제로 알림을 전송
+ *
+ * @description
+ * 스케줄된 알림을 처리하는 Worker 함수입니다.
+ * 다음 작업을 수행합니다:
+ *
+ * 1. 스케줄된 알림 정보 조회
+ * 2. 사용자 및 FCM 토큰 확인
+ * 3. ObjectId 사전 생성 (historyId)
+ * 4. FCM 푸시 알림 전송 (historyId 포함)
+ * 5. 성공 시 NotificationHistory 저장 (사전 생성된 historyId 사용)
+ * 6. 실패 시 잘못된 FCM 토큰 제거
  */
 async function processNotification(
   job: Job<NotificationJobData>,
@@ -87,6 +101,9 @@ async function processNotification(
       notification.userId,
     );
 
+    // ✅ ObjectId 미리 생성 (historyId)
+    const historyId = new ObjectId();
+
     // Prepare FCM payload
     const payload: NotificationPayload = {
       title: notification.title,
@@ -101,6 +118,7 @@ async function processNotification(
     }
     payload.data.notificationId = notificationId;
     payload.data.scheduledAt = notification.scheduledAt.toISOString();
+    payload.data.historyId = historyId.toString(); // ✅ historyId 포함!
     if (notification.concertId) {
       payload.data.concertId = notification.concertId.toString();
     }
@@ -111,6 +129,24 @@ async function processNotification(
     if (success) {
       // Mark as sent
       await model.markAsSent(new ObjectId(notificationId));
+
+      // ✅ NotificationHistory 저장 (사전 생성한 historyId 사용)
+      await notificationHistoryModel.bulkInsertWithIds([
+        {
+          _id: historyId,
+          userId: notification.userId,
+          concertId: notification.concertId,
+          title: notification.title,
+          message: notification.message,
+          type: ScheduledNotificationType.SCHEDULED, // 스케줄된 알림
+          isRead: false,
+          sentAt: new Date(),
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
+          data: notification.data || {},
+        },
+      ]);
+
       logger.info(
         `✅ Notification sent successfully: ${notificationId} to user ${notification.userId}`,
       );
