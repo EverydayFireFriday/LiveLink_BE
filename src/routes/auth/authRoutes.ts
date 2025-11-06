@@ -899,7 +899,7 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
 // OAuth 가입 완료
 /**
  * @swagger
- * /auth/complete-registration:
+ * /auth/oauth/complete-registration:
  *   post:
  *     summary: OAuth 가입 완료 - 추가 정보 입력
  *     description: |
@@ -986,7 +986,7 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
  *         description: 서버 에러
  */
 router.post(
-  '/complete-registration',
+  '/oauth/complete-registration',
   defaultLimiter,
   requireAuth,
   async (req, res) => {
