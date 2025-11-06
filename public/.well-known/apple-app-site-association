@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "8PRV428ULN.com.J-Min.stagelives",
+        "paths": [
+          "/concerts/*",
+          "/articles/*",
+          "/events/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "8PRV428ULN.com.J-Min.stagelives"
+    ]
+  }
+}

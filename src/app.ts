@@ -383,6 +383,14 @@ app.use(hpp());
 import * as path from 'path';
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Apple App Site Association 파일 제공 (Universal Links용)
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.sendFile(
+    path.join(__dirname, '../public/.well-known/apple-app-site-association'),
+  );
+});
+
 // 유지보수 모드 미들웨어 (정적 파일 서빙 후, 라우터 전에 위치)
 import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMiddleware';
 app.use(maintenanceMiddleware);
