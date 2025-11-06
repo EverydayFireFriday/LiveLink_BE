@@ -2,6 +2,7 @@ import express from 'express';
 import { TestService } from '../../services/test/testService';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ObjectId } from 'mongodb';
 
 export const uploadTestConcert = async (
   req: express.Request,
@@ -81,6 +82,60 @@ export const uploadTestConcert = async (
     return ResponseBuilder.internalError(
       res,
       '서버 에러로 테스트 콘서트 업로드 실패',
+      error instanceof Error ? error.message : '알 수 없는 에러',
+    );
+  }
+};
+
+export const sendTestNotification = async (
+  req: express.Request,
+  res: express.Response,
+) => {
+  try {
+    const { userId, fcmToken, count } = req.body;
+
+    // userId나 fcmToken 중 하나는 필수
+    if (!userId && !fcmToken) {
+      return ResponseBuilder.badRequest(
+        res,
+        'userId 또는 fcmToken 중 하나는 필수입니다.',
+      );
+    }
+
+    // count 유효성 검사
+    const notificationCount = count || 30;
+    if (notificationCount < 1 || notificationCount > 100) {
+      return ResponseBuilder.badRequest(
+        res,
+        '알림 개수는 1~100 사이여야 합니다.',
+      );
+    }
+
+    // userId 유효성 검사
+    if (userId && !ObjectId.isValid(userId)) {
+      return ResponseBuilder.badRequest(res, '유효하지 않은 userId입니다.');
+    }
+
+    const result = await TestService.sendTestNotifications({
+      userId,
+      fcmToken,
+      count: notificationCount,
+    });
+
+    if (result.success) {
+      logger.info(`✅ 테스트 알림 전송 완료: ${JSON.stringify(result.data)}`);
+      return ResponseBuilder.success(res, '테스트 알림 전송 성공', result.data);
+    } else {
+      return ResponseBuilder.badRequest(
+        res,
+        result.error || '테스트 알림 전송 실패',
+      );
+    }
+  } catch (error) {
+    logger.error('❌ 테스트 알림 전송 컨트롤러 에러:', error);
+    return ResponseBuilder.internalError(
+      res,
+      '서버 에러로 테스트 알림 전송 실패',
       error instanceof Error ? error.message : '알 수 없는 에러',
     );
   }

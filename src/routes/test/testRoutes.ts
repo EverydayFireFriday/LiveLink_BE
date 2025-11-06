@@ -1,5 +1,8 @@
 import express from 'express';
-import { uploadTestConcert } from '../../controllers/test/testController';
+import {
+  uploadTestConcert,
+  sendTestNotification,
+} from '../../controllers/test/testController';
 import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
@@ -207,5 +210,100 @@ router.use(strictLimiter);
  *         description: 서버 에러
  */
 router.post('/', uploadTestConcert);
+
+/**
+ * @swagger
+ * /test/notification:
+ *   post:
+ *     summary: 테스트 알림 전송
+ *     description: |
+ *       테스트 알림을 특정 사용자에게 전송합니다.
+ *       userId 또는 fcmToken 중 하나는 필수입니다.
+ *       DB에 알림 히스토리를 저장하고, FCM 토큰이 있으면 실제 푸시 알림도 전송합니다.
+ *     tags: [Test]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: "사용자 ID (userId 또는 fcmToken 중 하나 필수)"
+ *                 example: "68e6d04de5218ca0cee76d8b"
+ *               fcmToken:
+ *                 type: string
+ *                 description: "FCM 토큰 (userId 또는 fcmToken 중 하나 필수)"
+ *                 example: "co_jtsAcQEYfnL89aUvIHH:APA91bEM..."
+ *               count:
+ *                 type: number
+ *                 description: "생성할 알림 개수 (기본값 30, 최대 100)"
+ *                 minimum: 1
+ *                 maximum: 100
+ *                 default: 30
+ *                 example: 30
+ *           examples:
+ *             userIdExample:
+ *               summary: userId로 전송
+ *               value:
+ *                 userId: "68e6d04de5218ca0cee76d8b"
+ *                 count: 30
+ *             fcmTokenExample:
+ *               summary: FCM 토큰으로 전송
+ *               value:
+ *                 fcmToken: "co_jtsAcQEYfnL89aUvIHH:APA91bEM-UPhMLxPMOpeAwmEUrzOJP6sx9EIJst5f2o7UG9r9uzjUDM_-_-Hi67_id6yosQQa5BMA6aKBbuAl_k_AOnoq4pMil9JeVWrHkcqI1cAyWz10F8"
+ *                 count: 10
+ *     responses:
+ *       200:
+ *         description: 테스트 알림 전송 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "테스트 알림 전송 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                       example: "68e6d04de5218ca0cee76d8b"
+ *                     username:
+ *                       type: string
+ *                       example: "jm"
+ *                     email:
+ *                       type: string
+ *                       example: "user@example.com"
+ *                     notificationsCreated:
+ *                       type: number
+ *                       description: DB에 생성된 알림 개수
+ *                       example: 30
+ *                     fcmSent:
+ *                       type: number
+ *                       description: FCM 전송 성공 개수
+ *                       example: 30
+ *                     fcmFailed:
+ *                       type: number
+ *                       description: FCM 전송 실패 개수
+ *                       example: 0
+ *                     hasFcmToken:
+ *                       type: boolean
+ *                       description: FCM 토큰 보유 여부
+ *                       example: true
+ *                     unreadCount:
+ *                       type: number
+ *                       description: 현재 읽지 않은 알림 개수
+ *                       example: 30
+ *       400:
+ *         description: 잘못된 요청 (userId/fcmToken 누락, 유효하지 않은 count 등)
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       500:
+ *         description: 서버 에러
+ */
+router.post('/notification', sendTestNotification);
 
 export default router;

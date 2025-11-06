@@ -10,6 +10,15 @@ import {
 
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
 import type { IConcert } from '../../models/concert/base/ConcertTypes';
+import { UserModel } from '../../models/auth/user';
+import { getDB } from '../../utils/database/db';
+import {
+  getNotificationHistoryModel,
+  ConcertUpdateNotificationType,
+} from '../../models/notification/notificationHistory';
+import * as admin from 'firebase-admin';
+import { getFirebaseApp } from '../../config/firebase/firebaseConfig';
+import { getConcertModel } from '../../models/concert/concert';
 
 export interface CreateConcertRequest {
   uid: string;
@@ -184,6 +193,150 @@ export class TestService {
         success: false,
         error:
           error instanceof Error ? error.message : '테스트 콘서트 생성 실패',
+        statusCode: 500,
+      };
+    }
+  }
+
+  /**
+   * 테스트 알림 전송
+   */
+  static async sendTestNotifications(params: {
+    userId?: string;
+    fcmToken?: string;
+    count: number;
+  }): Promise<ConcertServiceResponse> {
+    try {
+      const { userId, fcmToken, count } = params;
+      const userModel = new UserModel();
+      const db = getDB();
+      const notificationHistoryModel = getNotificationHistoryModel(db);
+
+      // 사용자 찾기
+      let user;
+      if (userId) {
+        user = await userModel.findById(userId);
+      } else if (fcmToken) {
+        user = await userModel.findByFcmToken(fcmToken);
+      }
+
+      if (!user || !user._id) {
+        return {
+          success: false,
+          error: '사용자를 찾을 수 없습니다.',
+          statusCode: 404,
+        };
+      }
+
+      // 콘서트 하나 찾기
+      const Concert = getConcertModel();
+      const concert = await Concert.collection.findOne({});
+      const concertId = concert ? concert._id : new ObjectId();
+
+      // 알림 생성
+      const notifications = [];
+      const now = new Date();
+
+      for (let i = 1; i <= count; i++) {
+        notifications.push({
+          _id: new ObjectId(),
+          userId: user._id,
+          concertId: concertId,
+          type: ConcertUpdateNotificationType.CONCERT_UPDATE,
+          title: `테스트 알림 ${i}`,
+          message: `이것은 ${i}번째 테스트 알림입니다.`,
+          data: {
+            type: 'test',
+            index: i.toString(),
+            concertId: concertId.toString(),
+          },
+          isRead: false,
+          sentAt: new Date(now.getTime() - (count - i) * 60000),
+          createdAt: new Date(now.getTime() - (count - i) * 60000),
+          expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+        });
+      }
+
+      // DB에 저장
+      await notificationHistoryModel.bulkInsertWithIds(notifications);
+
+      const unreadCount = await notificationHistoryModel.countUnread(user._id);
+
+      let fcmSuccessCount = 0;
+      let fcmFailureCount = 0;
+
+      // FCM 전송
+      if (user.fcmToken) {
+        const app = getFirebaseApp();
+        const messaging = admin.messaging(app);
+
+        for (let i = 0; i < notifications.length; i++) {
+          const notification = notifications[i];
+
+          try {
+            const message: admin.messaging.Message = {
+              token: user.fcmToken,
+              notification: {
+                title: notification.title,
+                body: notification.message,
+              },
+              data: {
+                type: 'test',
+                historyId: notification._id.toString(),
+                concertId: concertId.toString(),
+                index: (i + 1).toString(),
+                timestamp: new Date().toISOString(),
+              },
+              android: {
+                priority: 'high',
+                notification: {
+                  sound: 'default',
+                  clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                },
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: 'default',
+                    badge: unreadCount - i,
+                  },
+                },
+              },
+            };
+
+            await messaging.send(message);
+            fcmSuccessCount++;
+
+            // 딜레이
+            if (i < notifications.length - 1) {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+          } catch (error) {
+            logger.error(`FCM 전송 실패 (알림 ${i + 1}):`, error);
+            fcmFailureCount++;
+          }
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          userId: user._id.toString(),
+          username: user.username,
+          email: user.email,
+          notificationsCreated: count,
+          fcmSent: fcmSuccessCount,
+          fcmFailed: fcmFailureCount,
+          hasFcmToken: !!user.fcmToken,
+          unreadCount,
+        },
+        statusCode: 200,
+      };
+    } catch (error) {
+      logger.error('테스트 알림 전송 서비스 에러:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '테스트 알림 전송 실패',
         statusCode: 500,
       };
     }
