@@ -3,7 +3,10 @@ import { getFirebaseApp } from '../../config/firebase/firebaseConfig';
 import logger from '../../utils/logger/logger';
 import { UserModel } from '../../models/auth/user.js';
 import { getDB } from '../../utils/database/db.js';
-import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
+import {
+  getNotificationHistoryModel,
+  ConcertUpdateNotificationType,
+} from '../../models/notification/notificationHistory.js';
 
 export interface NotificationPayload {
   title: string;
@@ -204,6 +207,10 @@ export class FCMService {
     failureCount: number;
     invalidTokens: string[];
   }> {
+    if (userTokens.length === 0) {
+      return { successCount: 0, failureCount: 0, invalidTokens: [] };
+    }
+
     const updateTypeMessages = {
       info_updated: '공연 정보가 업데이트되었습니다',
       date_changed: '공연 일정이 변경되었습니다',
@@ -211,18 +218,81 @@ export class FCMService {
       cancelled: '공연이 취소되었습니다',
     };
 
-    const payload: NotificationPayload = {
-      title: notification.concertTitle,
-      body: notification.message || updateTypeMessages[notification.updateType],
-      data: {
-        type: 'concert_update',
-        concertId: notification.concertId,
-        updateType: notification.updateType,
-        timestamp: new Date().toISOString(),
-      },
-    };
+    let successCount = 0;
+    let failureCount = 0;
+    const invalidTokens: string[] = [];
 
-    return await this.sendBatchNotifications(userTokens, payload);
+    const userModel = new UserModel();
+    const db = getDB();
+    const notificationHistoryModel = getNotificationHistoryModel(db);
+
+    for (const token of userTokens) {
+      try {
+        const user = await userModel.findByFcmToken(token);
+        if (user && user._id) {
+          // 알림 히스토리에 저장
+          const history = await notificationHistoryModel.create({
+            userId: user._id,
+            type: ConcertUpdateNotificationType.CONCERT_UPDATE,
+            title: notification.concertTitle,
+            message:
+              notification.message ||
+              updateTypeMessages[notification.updateType],
+            data: {
+              concertId: notification.concertId,
+              updateType: notification.updateType,
+            },
+          });
+
+          const unreadCount = await notificationHistoryModel.countUnread(
+            user._id,
+          );
+
+          const payload: NotificationPayload = {
+            title: notification.concertTitle,
+            body:
+              notification.message ||
+              updateTypeMessages[notification.updateType],
+            data: {
+              type: 'concert_update',
+              concertId: notification.concertId,
+              updateType: notification.updateType,
+              timestamp: new Date().toISOString(),
+              historyId: history._id!.toString(),
+            },
+            badge: unreadCount,
+          };
+
+          const success = await this.sendNotification(token, payload);
+          if (success) {
+            successCount++;
+          } else {
+            failureCount++;
+            invalidTokens.push(token);
+          }
+        } else {
+          // 사용자를 찾을 수 없는 경우 토큰을 무효 처리
+          logger.warn(
+            `User not found for FCM token: ${token.substring(0, 20)}...`,
+          );
+          failureCount++;
+          invalidTokens.push(token);
+        }
+      } catch (error) {
+        logger.error(
+          `Failed to send concert update notification to token ${token.substring(0, 20)}...:`,
+          error,
+        );
+        failureCount++;
+        invalidTokens.push(token);
+      }
+    }
+
+    logger.info(
+      `📊 Concert update notification results: ${successCount} success, ${failureCount} failed, ${invalidTokens.length} invalid tokens`,
+    );
+
+    return { successCount, failureCount, invalidTokens };
   }
 }
 

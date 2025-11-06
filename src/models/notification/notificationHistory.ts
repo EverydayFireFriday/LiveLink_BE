@@ -31,13 +31,22 @@ export enum ScheduledNotificationType {
 }
 
 /**
+ * Notification Type for Concert Update
+ * 콘서트 업데이트 알림 타입
+ */
+export enum ConcertUpdateNotificationType {
+  CONCERT_UPDATE = 'concert_update', // 콘서트 업데이트 알림
+}
+
+/**
  * Combined Notification Type
  * 통합 알림 타입
  */
 export type NotificationType =
   | TicketNotificationType
   | ConcertStartNotificationType
-  | ScheduledNotificationType;
+  | ScheduledNotificationType
+  | ConcertUpdateNotificationType;
 
 /**
  * Notification History Interface
