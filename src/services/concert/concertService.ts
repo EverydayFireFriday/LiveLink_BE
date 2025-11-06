@@ -262,7 +262,7 @@ export class ConcertService {
         artist,
         location,
         status,
-        sortBy = 'date',
+        sortBy = 'upcoming_soon',
         title,
         search,
       } = params;
@@ -298,56 +298,92 @@ export class ConcertService {
       const pageInt = parseInt(page.toString());
       const limitInt = parseInt(limit.toString());
 
-      if (sortBy === 'date' || !sortBy) {
-        const now = new Date();
+      switch (sortBy) {
+        case 'upcoming_soon': {
+          const now = new Date();
 
-        // 1. 미래 공연 조회 (임박순)
-        const futureFilter = { ...filter, datetime: { $gte: now } };
-        const { concerts: futureConcerts, total: futureTotal } = await ConcertModel.findMany(futureFilter, {
-          sort: { datetime: 1 },
-          page: 1, // 페이지네이션은 나중에 수동으로 처리
-          limit: 0, // 모든 결과 가져오기
-        });
+          // 1. 미래 공연 조회 (임박순)
+          const futureFilter = { ...filter, datetime: { $gte: now } };
+          const { concerts: futureConcerts, total: futureTotal } =
+            await ConcertModel.findMany(futureFilter, {
+              sort: { datetime: 1 },
+              page: 1, // 페이지네이션은 나중에 수동으로 처리
+              limit: 0, // 모든 결과 가져오기
+            });
 
-        // 2. 과거 공연 조회 (최신순)
-        const pastFilter = { ...filter, datetime: { $lt: now } };
-        const { concerts: pastConcerts, total: pastTotal } = await ConcertModel.findMany(pastFilter, {
-          sort: { datetime: -1 },
-          page: 1,
-          limit: 0,
-        });
+          // 2. 과거 공연 조회 (최신순)
+          const pastFilter = { ...filter, datetime: { $lt: now } };
+          const { concerts: pastConcerts, total: pastTotal } =
+            await ConcertModel.findMany(pastFilter, {
+              sort: { datetime: -1 },
+              page: 1,
+              limit: 0,
+            });
 
-        total = futureTotal + pastTotal;
-        const allConcerts = [...futureConcerts, ...pastConcerts];
-        
-        // 수동 페이지네이션
-        const skip = (pageInt - 1) * limitInt;
-        concerts = allConcerts.slice(skip, skip + limitInt);
+          total = futureTotal + pastTotal;
+          const allConcerts = [...futureConcerts, ...pastConcerts];
 
-      } else {
-        switch (sortBy) {
-          case 'likes':
-            sort = { likesCount: -1, datetime: 1 };
-            break;
-          case 'created':
-            sort = { createdAt: -1 };
-            break;
-          case 'upcoming_soon':
-            filter.datetime = { $gte: new Date() };
-            sort = { datetime: 1 };
-            break;
-          case 'ticket_soon':
-            filter['ticketOpenDate.0.openDate'] = { $gte: new Date() };
-            sort = { 'ticketOpenDate.0.openDate': 1 };
-            break;
+          // 수동 페이지네이션
+          const skip = (pageInt - 1) * limitInt;
+          concerts = allConcerts.slice(skip, skip + limitInt);
+          break;
         }
-        const result = await ConcertModel.findMany(filter, {
-          page: pageInt,
-          limit: limitInt,
-          sort,
-        });
-        concerts = result.concerts;
-        total = result.total;
+        case 'likes': {
+          sort = { likesCount: -1, datetime: 1 };
+          const result = await ConcertModel.findMany(filter, {
+            page: pageInt,
+            limit: limitInt,
+            sort,
+          });
+          concerts = result.concerts;
+          total = result.total;
+          break;
+        }
+        case 'created': {
+          sort = { createdAt: -1 };
+          const result = await ConcertModel.findMany(filter, {
+            page: pageInt,
+            limit: limitInt,
+            sort,
+          });
+          concerts = result.concerts;
+          total = result.total;
+          break;
+        }
+        case 'ticket_soon': {
+          filter['ticketOpenDate.0.openDate'] = { $gte: new Date() };
+          sort = { 'ticketOpenDate.0.openDate': 1 };
+          const result = await ConcertModel.findMany(filter, {
+            page: pageInt,
+            limit: limitInt,
+            sort,
+          });
+          concerts = result.concerts;
+          total = result.total;
+          break;
+        }
+        default: {
+          const now = new Date();
+          const futureFilter = { ...filter, datetime: { $gte: now } };
+          const { concerts: futureConcerts, total: futureTotal } =
+            await ConcertModel.findMany(futureFilter, {
+              sort: { datetime: 1 },
+              page: 1,
+              limit: 0,
+            });
+          const pastFilter = { ...filter, datetime: { $lt: now } };
+          const { concerts: pastConcerts, total: pastTotal } =
+            await ConcertModel.findMany(pastFilter, {
+              sort: { datetime: -1 },
+              page: 1,
+              limit: 0,
+            });
+          total = futureTotal + pastTotal;
+          const allConcerts = [...futureConcerts, ...pastConcerts];
+          const skip = (pageInt - 1) * limitInt;
+          concerts = allConcerts.slice(skip, skip + limitInt);
+          break;
+        }
       }
 
       // 로그인한 사용자의 경우 각 콘서트의 좋아요 상태 확인

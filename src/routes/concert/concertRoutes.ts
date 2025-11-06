@@ -293,10 +293,9 @@ router.post(
  *       인증 없이 접근 가능합니다.
  *
  *       **정렬 옵션**:
- *       - date: 공연 날짜순 (기본값)
+ *       - upcoming_soon: 공연 임박순 (기본값)
  *       - likes: 좋아요 많은 순
  *       - created: 최근 등록순
- *       - upcoming_soon: 공연 임박순 (공연이 가장 가까운 순)
  *       - ticket_soon: 예매 임박순 (티켓 오픈이 가장 가까운 순)
  *
  *       **업데이트된 스키마**:
@@ -353,14 +352,13 @@ router.post(
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [date, likes, created, upcoming_soon, ticket_soon]
- *           default: date
+ *           enum: [upcoming_soon, likes, created, ticket_soon]
+ *           default: upcoming_soon
  *         description: |
  *           정렬 기준
- *           - date: 날짜순 (공연 날짜 빠른 순)
+ *           - upcoming_soon: 공연 임박순 (기본값)
  *           - likes: 좋아요순 (좋아요 많은 순)
  *           - created: 생성순 (최근 등록순)
- *           - upcoming_soon: 공연 임박순 (공연 날짜가 가장 가까운 순)
  *           - ticket_soon: 예매 임박순 (티켓 오픈 날짜가 가장 가까운 순)
  *         example: upcoming_soon
  *       - in: query

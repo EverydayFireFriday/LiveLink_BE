@@ -236,7 +236,7 @@ export const getAllConcerts = async (
               },
           query: {
             appliedFilters: activeFilters,
-            sortBy: req.query.sortBy || 'date',
+            sortBy: req.query.sortBy || 'upcoming_soon',
             searchTerm: req.query.search || null,
           },
           statistics: {

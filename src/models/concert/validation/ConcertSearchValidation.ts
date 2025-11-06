@@ -30,7 +30,14 @@ export const validateAndNormalizePagination = (
  * 정렬 파라미터 유효성 검증 함수
  */
 export const isValidSortBy = (sortBy: string): boolean => {
-  const validSortOptions = ['date', 'likes', 'created', 'title', 'artist'];
+  const validSortOptions = [
+    'upcoming_soon',
+    'likes',
+    'created',
+    'ticket_soon',
+    'title',
+    'artist',
+  ];
   return validSortOptions.includes(sortBy);
 };
 
