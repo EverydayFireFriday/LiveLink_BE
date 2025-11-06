@@ -35,6 +35,20 @@ export class FCMService {
     token: string,
     payload: NotificationPayload,
   ): Promise<boolean> {
+    // 개발 환경에서 FCM 비활성화
+    if (process.env.ENABLE_FCM === 'false') {
+      logger.info(
+        `[DEV MODE] FCM notification skipped - would send to: ${token.substring(0, 20)}...`,
+        {
+          title: payload.title,
+          body: payload.body,
+          data: payload.data,
+          badge: payload.badge,
+        },
+      );
+      return true; // 성공으로 처리하여 로직은 정상 진행
+    }
+
     try {
       const message: admin.messaging.Message = {
         token,
