@@ -16,11 +16,10 @@ if (!fs.existsSync(outputDir)) {
 
 // Convert Swagger to Postman Collection
 const options = {
-  defaultAuth: 'bearer',
   requestNameSource: 'url',
   indentCharacter: ' ',
   collapseFolders: true,
-  includeAuthInfoInExample: true,
+  includeAuthInfoInExample: false, // Session-based auth uses cookies
 };
 
 Converter.convert(
