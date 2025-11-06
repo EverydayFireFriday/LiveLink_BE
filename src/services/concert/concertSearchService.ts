@@ -41,23 +41,6 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
-    case 'upcoming_soon':
-      // 공연 임박순 (공연 날짜가 가까운 순)
-      return sorted
-        .filter((c) => {
-          const date = c.datetime?.[0] ? new Date(c.datetime[0]).getTime() : 0;
-          return date >= now;
-        })
-        .sort((a, b) => {
-          const dateA = a.datetime?.[0]
-            ? new Date(a.datetime[0]).getTime()
-            : Infinity;
-          const dateB = b.datetime?.[0]
-            ? new Date(b.datetime[0]).getTime()
-            : Infinity;
-          return dateA - dateB;
-        });
-
     case 'ticket_soon':
       // 예매 임박순 (티켓 오픈 날짜가 가까운 순)
       return sorted
@@ -77,7 +60,7 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
           return ticketA - ticketB;
         });
 
-    case 'date':
+    case 'upcoming_soon':
     default:
       // 날짜순 (미래 공연 임박순 -> 과거 공연 최신순)
       const futureConcerts = sorted.filter((c) => {

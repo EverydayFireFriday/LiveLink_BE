@@ -33,23 +33,6 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
-    case 'upcoming_soon':
-      // 공연 임박순 (공연 날짜가 가까운 순)
-      return sorted
-        .filter((c) => {
-          const date = c.datetime?.[0] ? new Date(c.datetime[0]).getTime() : 0;
-          return date >= now;
-        })
-        .sort((a, b) => {
-          const dateA = a.datetime?.[0]
-            ? new Date(a.datetime[0]).getTime()
-            : Infinity;
-          const dateB = b.datetime?.[0]
-            ? new Date(b.datetime[0]).getTime()
-            : Infinity;
-          return dateA - dateB;
-        });
-
     case 'ticket_soon':
       // 예매 임박순 (티켓 오픈 날짜가 가까운 순)
       return sorted
@@ -69,22 +52,38 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
           return ticketA - ticketB;
         });
 
-    case 'date':
+    case 'upcoming_soon':
     default:
-      // 날짜순 (공연 날짜 빠른 순)
-      return sorted.sort((a, b) => {
+      // 날짜순 (미래 공연 임박순 -> 과거 공연 최신순)
+      const futureConcerts = sorted.filter((c) => {
+        const date = c.datetime?.[0] ? new Date(c.datetime[0]).getTime() : 0;
+        return date >= now;
+      });
+
+      const pastConcerts = sorted.filter((c) => {
+        const date = c.datetime?.[0] ? new Date(c.datetime[0]).getTime() : 0;
+        return date < now;
+      });
+
+      // 미래 공연은 임박순(오름차순)으로 정렬
+      futureConcerts.sort((a, b) => {
         const dateA = a.datetime?.[0]
           ? new Date(a.datetime[0]).getTime()
           : Infinity;
         const dateB = b.datetime?.[0]
           ? new Date(b.datetime[0]).getTime()
           : Infinity;
-        if (dateA !== dateB) return dateA - dateB;
-        // 날짜가 같으면 생성일순
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        return dateA - dateB;
       });
+
+      // 과거 공연은 최신순(내림차순)으로 정렬
+      pastConcerts.sort((a, b) => {
+        const dateA = a.datetime?.[0] ? new Date(a.datetime[0]).getTime() : 0;
+        const dateB = b.datetime?.[0] ? new Date(b.datetime[0]).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      return [...futureConcerts, ...pastConcerts];
   }
 }
 
