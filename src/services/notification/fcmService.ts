@@ -1,12 +1,16 @@
 import * as admin from 'firebase-admin';
 import { getFirebaseApp } from '../../config/firebase/firebaseConfig';
 import logger from '../../utils/logger/logger';
+import { UserModel } from '../../models/auth/user.js';
+import { getDB } from '../../utils/database/db.js';
+import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
 
 export interface NotificationPayload {
   title: string;
   body: string;
   data?: Record<string, string>;
   imageUrl?: string;
+  badge?: number;
 }
 
 export interface ConcertUpdateNotification {
@@ -51,7 +55,7 @@ export class FCMService {
           payload: {
             aps: {
               sound: 'default',
-              badge: 1,
+              badge: payload.badge || 1,
             },
           },
         },
@@ -107,6 +111,10 @@ export class FCMService {
 
   /**
    * 여러 FCM 토큰으로 배치 알림 전송
+   * @description
+   * 개별 사용자에게 정확한 뱃지 카운트를 보내기 위해 각 토큰에 대해 개별적으로 알림을 전송합니다.
+   * 이는 sendEachForMulticast보다 비효율적일 수 있지만, 사용자 경험에 중요합니다.
+   * TODO: 대규모 전송 시 성능 최적화를 위해 사용자를 읽지 않은 알림 수로 그룹화하는 로직 추가 고려
    */
   async sendBatchNotifications(
     tokens: string[],
@@ -120,60 +128,55 @@ export class FCMService {
       return { successCount: 0, failureCount: 0, invalidTokens: [] };
     }
 
-    try {
-      const message: admin.messaging.MulticastMessage = {
-        tokens,
-        notification: {
-          title: payload.title,
-          body: payload.body,
-          imageUrl: payload.imageUrl,
-        },
-        data: payload.data,
-        android: {
-          priority: 'high',
-          notification: {
-            sound: 'default',
-            clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1,
-            },
-          },
-        },
-      };
+    let successCount = 0;
+    let failureCount = 0;
+    const invalidTokens: string[] = [];
 
-      const response = await this.messaging.sendEachForMulticast(message);
+    const userModel = new UserModel();
+    const db = getDB();
+    const notificationHistoryModel = getNotificationHistoryModel(db);
 
-      const invalidTokens: string[] = [];
-      response.responses.forEach((resp, idx) => {
-        if (!resp.success && resp.error) {
-          const errorCode = resp.error.code;
-          if (
-            errorCode === 'messaging/invalid-registration-token' ||
-            errorCode === 'messaging/registration-token-not-registered'
-          ) {
-            invalidTokens.push(tokens[idx]);
+    for (const token of tokens) {
+      try {
+        const user = await userModel.findByFcmToken(token);
+        if (user && user._id) {
+          const unreadCount = await notificationHistoryModel.countUnread(
+            user._id,
+          );
+          const userPayload: NotificationPayload = {
+            ...payload,
+            badge: unreadCount + 1,
+          };
+          const success = await this.sendNotification(token, userPayload);
+          if (success) {
+            successCount++;
+          } else {
+            failureCount++;
+            invalidTokens.push(token);
           }
+        } else {
+          // 사용자를 찾을 수 없는 경우 토큰을 무효 처리
+          logger.warn(
+            `User not found for FCM token: ${token.substring(0, 20)}...`,
+          );
+          failureCount++;
+          invalidTokens.push(token);
         }
-      });
-
-      logger.info(
-        `📊 FCM batch notification results: ${response.successCount} success, ${response.failureCount} failed, ${invalidTokens.length} invalid tokens`,
-      );
-
-      return {
-        successCount: response.successCount,
-        failureCount: response.failureCount,
-        invalidTokens,
-      };
-    } catch (error) {
-      logger.error('❌ Failed to send batch FCM notifications:', error);
-      throw error;
+      } catch (error) {
+        logger.error(
+          `Failed to send notification to token ${token.substring(0, 20)}...:`,
+          error,
+        );
+        failureCount++;
+        invalidTokens.push(token);
+      }
     }
+
+    logger.info(
+      `📊 FCM batch notification results: ${successCount} success, ${failureCount} failed, ${invalidTokens.length} invalid tokens`,
+    );
+
+    return { successCount, failureCount, invalidTokens };
   }
 
   /**

@@ -283,6 +283,11 @@ export class UserModel {
     return await this.userCollection.findOne({ _id: objectId });
   }
 
+  // FCM 토큰으로 사용자 찾기
+  async findByFcmToken(fcmToken: string): Promise<User | null> {
+    return await this.userCollection.findOne({ fcmToken });
+  }
+
   // 사용자 정보 업데이트
   async updateUser(
     id: string | ObjectId,

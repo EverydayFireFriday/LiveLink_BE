@@ -4,6 +4,7 @@ import {
   getScheduledNotificationModel,
   NotificationStatus,
 } from '../../models/notification/index.js';
+import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
 import FCMService, { NotificationPayload } from './fcmService.js';
 import { UserModel } from '../../models/auth/user.js';
 import logger from '../../utils/logger/logger.js';
@@ -80,11 +81,18 @@ async function processNotification(
       return;
     }
 
+    // Get unread notification count
+    const notificationHistoryModel = getNotificationHistoryModel(db);
+    const unreadCount = await notificationHistoryModel.countUnread(
+      notification.userId,
+    );
+
     // Prepare FCM payload
     const payload: NotificationPayload = {
       title: notification.title,
       body: notification.message,
       data: notification.data || {},
+      badge: unreadCount + 1,
     };
 
     // Add metadata
