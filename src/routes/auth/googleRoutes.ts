@@ -197,9 +197,9 @@ router.get(
  *                         profileImage:
  *                           type: string
  *                           example: "https://lh3.googleusercontent.com/..."
- *                         provider:
+ *                         status:
  *                           type: string
- *                           example: "google"
+ *                           example: "active"
  *                     session:
  *                       type: object
  *                       properties:
@@ -229,7 +229,7 @@ router.get(
  *                       email: "user@example.com"
  *                       username: "John Doe"
  *                       profileImage: "https://lh3.googleusercontent.com/..."
- *                       provider: "google"
+ *                       status: "active"
  *                     session:
  *                       expiresAt: "2025-12-02T00:00:00.000Z"
  *               withWarning:
@@ -243,7 +243,7 @@ router.get(
  *                       email: "user@example.com"
  *                       username: "John Doe"
  *                       profileImage: "https://lh3.googleusercontent.com/..."
- *                       provider: "google"
+ *                       status: "active"
  *                     session:
  *                       expiresAt: "2025-12-02T00:00:00.000Z"
  *                     warning:

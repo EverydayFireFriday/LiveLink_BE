@@ -4,6 +4,7 @@ import { maskEmail, maskEmails } from '../../utils/email/emailMask';
 import logger, { maskIpAddress } from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { AuthValidator } from '../../utils/validation/auth/authValidator';
+import type { OAuthProvider } from '../../models/auth/user';
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
@@ -207,7 +208,6 @@ export class AuthController {
               `[Session] Force login - Deleting ${samePlatformSessions.length} existing ${deviceInfo.platform} session(s) for user: ${user.email}`,
             );
 
-
             // MongoDB와 Redis에서 같은 플랫폼의 모든 세션 삭제
             for (const session of samePlatformSessions) {
               // 🔒 STEP 1: Mark session as invalidated FIRST (race condition prevention)
@@ -285,8 +285,6 @@ export class AuthController {
             termsConsents: user.termsConsents || [], // 약관 동의 배열
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            provider: user.provider,
-            socialId: user.socialId,
             likedConcerts: user.likedConcerts,
             likedArticles: user.likedArticles,
             fcmToken: user.fcmToken,
@@ -383,8 +381,6 @@ export class AuthController {
             termsConsents: user.termsConsents || [],
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            provider: user.provider,
-            socialId: user.socialId,
             likedConcerts: user.likedConcerts,
             likedArticles: user.likedArticles,
             fcmToken: user.fcmToken,
@@ -803,6 +799,179 @@ export class AuthController {
       return ResponseBuilder.internalError(
         res,
         '서버 에러로 통계 조회에 실패했습니다.',
+      );
+    }
+  };
+
+  /**
+   * OAuth 가입 완료 - 추가 정보 입력
+   * @description
+   * OAuth로 가입한 사용자가 약관동의 및 추가 정보를 입력하여 가입을 완료합니다.
+   * status를 PENDING_REGISTRATION에서 ACTIVE로 변경합니다.
+   */
+  completeRegistration = async (
+    req: express.Request,
+    res: express.Response,
+  ) => {
+    try {
+      const userId = req.session.user?.userId;
+
+      if (!userId) {
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+      }
+
+      const { name, birthDate, termsConsents } = req.body as {
+        name: string;
+        birthDate: string;
+        termsConsents: Array<{
+          type: string;
+          isAgreed: boolean;
+          version: string;
+        }>;
+      };
+
+      // 필수 필드 검증
+      if (!name || !birthDate) {
+        return ResponseBuilder.badRequest(
+          res,
+          '이름과 생년월일을 입력해주세요.',
+        );
+      }
+
+      if (!termsConsents || !Array.isArray(termsConsents)) {
+        return ResponseBuilder.badRequest(res, '약관 동의 정보가 필요합니다.');
+      }
+
+      // 필수 약관 동의 확인 (terms, privacy)
+      const requiredTerms = ['terms', 'privacy'];
+      const agreedTerms = termsConsents
+        .filter((consent) => consent.isAgreed)
+        .map((consent) => consent.type);
+
+      const missingTerms = requiredTerms.filter(
+        (term) => !agreedTerms.includes(term),
+      );
+
+      if (missingTerms.length > 0) {
+        return ResponseBuilder.badRequest(
+          res,
+          `필수 약관에 동의해주세요: ${missingTerms.join(', ')}`,
+        );
+      }
+
+      // 사용자 정보 조회
+      const { UserService } = await import('../../services/auth/userService');
+      const { UserStatus } = await import('../../models/auth/user');
+      const userService = new UserService();
+
+      const user = await userService.findById(userId);
+
+      if (!user) {
+        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+      }
+
+      // 이미 가입 완료된 사용자인지 확인
+      if (user.status === UserStatus.ACTIVE) {
+        return ResponseBuilder.badRequest(
+          res,
+          '이미 가입이 완료된 사용자입니다.',
+        );
+      }
+
+      // PENDING_REGISTRATION 상태가 아니면 오류
+      if (user.status !== UserStatus.PENDING_REGISTRATION) {
+        return ResponseBuilder.badRequest(res, '가입 대기 상태가 아닙니다.');
+      }
+
+      // 약관 동의 정보에 agreedAt 추가
+      const termsConsentsWithDate = termsConsents.map((consent) => ({
+        ...consent,
+        agreedAt: consent.isAgreed ? new Date() : undefined,
+      }));
+
+      // 사용자 정보 업데이트
+      const updatedUser = await userService.updateUser(userId, {
+        name,
+        birthDate: new Date(birthDate),
+        termsConsents: termsConsentsWithDate,
+        status: UserStatus.ACTIVE, // 가입 완료
+      });
+
+      if (!updatedUser) {
+        return ResponseBuilder.internalError(
+          res,
+          '사용자 정보 업데이트에 실패했습니다.',
+        );
+      }
+
+      logger.info(
+        `[Auth] User registration completed: ${userId} (${user.email})`,
+      );
+
+      return ResponseBuilder.success(res, '가입이 완료되었습니다.', {
+        user: {
+          _id: updatedUser._id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          status: updatedUser.status,
+        },
+      });
+    } catch (error) {
+      logger.error('[Auth] Failed to complete registration:', error);
+      return ResponseBuilder.internalError(
+        res,
+        '서버 에러로 가입 완료에 실패했습니다.',
+      );
+    }
+  };
+
+  /**
+   * 연결된 계정 조회
+   * @description
+   * 현재 사용자에게 연결된 OAuth 제공자 목록을 조회합니다.
+   * - 이메일 주소
+   * - 비밀번호 설정 여부
+   * - 연결된 OAuth 제공자 목록 (Google, Apple 등)
+   */
+  getConnectedAccounts = async (
+    req: express.Request,
+    res: express.Response,
+  ) => {
+    try {
+      const userId = req.session.user?.userId;
+
+      if (!userId) {
+        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+      }
+
+      const { UserService } = await import('../../services/auth/userService');
+      const userService = new UserService();
+
+      const user = await userService.findById(userId);
+
+      if (!user) {
+        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+      }
+
+      // OAuth 제공자 정보 (socialId 제외, 보안상 민감한 정보 제거)
+      const oauthProviders = (user.oauthProviders || []).map(
+        (provider: OAuthProvider) => ({
+          provider: provider.provider,
+          email: provider.email,
+          linkedAt: provider.linkedAt,
+        }),
+      );
+
+      return ResponseBuilder.success(res, '연결된 계정 조회 성공', {
+        email: user.email,
+        hasPassword: !!user.passwordHash, // 비밀번호 설정 여부
+        oauthProviders, // 연결된 OAuth 제공자 목록
+      });
+    } catch (error) {
+      logger.error('[Auth] Failed to get connected accounts:', error);
+      return ResponseBuilder.internalError(
+        res,
+        '서버 에러로 연결된 계정 조회에 실패했습니다.',
       );
     }
   };

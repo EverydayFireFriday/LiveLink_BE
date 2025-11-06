@@ -1,5 +1,10 @@
 import { Request } from 'express';
-import { UserModel, User } from '../../models/auth/user.js';
+import {
+  UserModel,
+  User,
+  UserStatus,
+  OAuthProvider,
+} from '../../models/auth/user.js';
 import { UserSessionModel } from '../../models/auth/userSession.js';
 import { DeviceDetector } from '../../utils/device/deviceDetector.js';
 import { getSessionMaxAge } from '../../config/env/env.js';
@@ -21,9 +26,15 @@ export class OAuthService {
 
   /**
    * OAuth 프로필 정보로 사용자 찾기 또는 생성
-   * 1. socialId로 기존 사용자 찾기
-   * 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
-   * 3. 신규 사용자 생성
+   *
+   * @description
+   * 새로운 OAuth 플로우:
+   * 1. oauthProviders 배열에서 해당 제공자의 socialId로 기존 사용자 찾기
+   * 2. 이메일로 기존 사용자 찾기 (있으면 OAuth 제공자 추가)
+   * 3. 신규 사용자 생성 (status: PENDING_REGISTRATION - 가입대기)
+   *
+   * @param params - OAuth 프로필 정보
+   * @returns User | null
    */
   async findOrCreateUser(params: {
     provider: 'google' | 'apple';
@@ -43,66 +54,85 @@ export class OAuthService {
         emailVerified,
       } = params;
 
-      // 1. 소셜 ID로 기존 사용자 찾기
-      let user = await this.userModel.findByProviderAndSocialId(
-        provider,
-        socialId,
-      );
+      // 1. oauthProviders 배열에서 해당 제공자로 기존 사용자 찾기
+      let user = await this.userModel.findByOAuthProvider(provider, socialId);
 
       if (user) {
         logger.info(
-          `Existing user found: ${user._id?.toHexString() ?? 'unknown'}`,
+          `Existing user found by OAuth provider: ${user._id?.toHexString() ?? 'unknown'} (${provider})`,
         );
         return user;
       }
 
-      // 2. 이메일로 기존 사용자 찾기 (다른 방식으로 가입했을 경우)
+      // 2. 이메일로 기존 사용자 찾기 (검증된 이메일만)
       if (email && emailVerified) {
         user = await this.userModel.findByEmail(email);
 
         if (user) {
-          // 소셜 정보 업데이트 후 반환
-          const updatedUser = await this.userModel.updateUser(user._id!, {
+          // 기존 계정에 OAuth 제공자 추가 (여러 개 가능)
+          const oauthProvider: OAuthProvider = {
             provider,
             socialId,
-          });
+            email,
+            linkedAt: new Date(),
+          };
+
+          const updatedUser = await this.userModel.addOAuthProvider(
+            user._id!,
+            oauthProvider,
+          );
+
           if (!updatedUser) {
-            logger.error(`Failed to link ${provider} account`);
+            logger.error(`Failed to link ${provider} account to existing user`);
             return null;
           }
+
           logger.info(
-            `Linked ${provider} account to existing user: ${user._id?.toHexString() ?? 'unknown'}`,
+            `✅ Linked ${provider} account to existing user: ${user._id?.toHexString() ?? 'unknown'}`,
           );
           return updatedUser;
         }
       }
 
-      // 3. 신규 사용자 생성
-      const newUser: Partial<User> = {
-        email,
-        username: username || `${provider}_${socialId}`,
-        provider,
-        socialId,
-        profileImage,
-        termsConsents: [], // OAuth 사용자는 초기에 약관 동의가 없음 (나중에 동의 필요)
-      };
+      // 3. 신규 사용자 생성 (가입대기 상태)
+      const generatedUsername = username || `${provider}_${socialId}`;
 
       // username 중복 체크
-      const existingUser = await this.userModel.findByUsername(
-        newUser.username!,
-      );
+      let finalUsername = generatedUsername;
+      const existingUser = await this.userModel.findByUsername(finalUsername);
       if (existingUser) {
-        newUser.username = `${newUser.username}_${Date.now()}`;
+        finalUsername = `${generatedUsername}_${Date.now()}`;
       }
 
+      const oauthProvider: OAuthProvider = {
+        provider,
+        socialId,
+        email,
+        linkedAt: new Date(),
+      };
+
+      const newUser: Partial<User> = {
+        email,
+        username: finalUsername,
+        oauthProviders: [oauthProvider],
+        profileImage,
+        termsConsents: [], // 약관 동의 없음 (나중에 complete-registration에서 동의)
+        // name, birthDate는 null (나중에 입력)
+      };
+
       const createdUser = await this.userModel.createUser(
-        newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt'>,
+        newUser as Omit<User, '_id' | 'createdAt' | 'updatedAt' | 'status'>,
       );
 
+      // status를 PENDING_REGISTRATION으로 변경
+      const updatedUser = await this.userModel.updateUser(createdUser._id!, {
+        $set: { status: UserStatus.PENDING_REGISTRATION },
+      });
+
       logger.info(
-        `New user created: ${createdUser._id?.toHexString() ?? 'unknown'}`,
+        `✅ New user created (PENDING_REGISTRATION): ${createdUser._id?.toHexString() ?? 'unknown'}`,
       );
-      return createdUser;
+      return updatedUser || createdUser;
     } catch (error) {
       logger.error(`Error in findOrCreateUser (${params.provider}):`, error);
       return null;

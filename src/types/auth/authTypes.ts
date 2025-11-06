@@ -3,6 +3,7 @@ import {
   UserStatus,
   TermsConsent,
   NotificationPreference,
+  OAuthProvider,
 } from '../../models/auth/user';
 import { IConcert } from '../../models/concert/base/ConcertTypes';
 import { Article } from '../article/articleTypes';
@@ -23,8 +24,10 @@ export interface User {
 
   createdAt: Date;
   updatedAt: Date;
-  provider?: string;
-  socialId?: string;
+
+  // OAuth 관련 (여러 OAuth 제공자 동시 연동 가능)
+  oauthProviders?: OAuthProvider[]; // OAuth 제공자 목록 (Google, Apple 등)
+
   likedConcerts?: Array<ObjectId | IConcert>; // Can be ObjectId or populated IConcert
   likedArticles?: Array<string | Article>; // Can be string ID or populated Article
   fcmToken?: string; // FCM 푸시 알림 토큰
@@ -44,8 +47,6 @@ export interface SessionUser {
   termsConsents: TermsConsent[]; // 약관 동의 배열
   createdAt: Date;
   updatedAt: Date;
-  provider?: string;
-  socialId?: string;
   likedConcerts: string[];
   likedArticles: string[];
   loginTime: string;

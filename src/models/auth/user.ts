@@ -14,6 +14,7 @@ export enum UserStatus {
   SUSPENDED = 'suspended',
   DELETED = 'deleted',
   PENDING_VERIFICATION = 'pending_verification',
+  PENDING_REGISTRATION = 'pending_registration', // OAuth 가입 후 추가 정보 입력 대기
 }
 
 // 약관 동의 정보 인터페이스 (배열 구조)
@@ -28,6 +29,14 @@ export interface TermsConsent {
 export interface NotificationPreference {
   ticketOpenNotification: number[]; // 티켓 오픈 알림 시간 (분 단위) - 예: [10, 30, 60, 1440]
   concertStartNotification: number[]; // 공연 시작 알림 시간 (분 단위) - 예: [60, 180, 1440]
+}
+
+// OAuth Provider 정보 인터페이스
+export interface OAuthProvider {
+  provider: 'google' | 'apple'; // OAuth 제공자
+  socialId: string; // OAuth 제공자에서 받은 고유 ID
+  email?: string; // OAuth에서 받은 이메일
+  linkedAt: Date; // 연동 시간
 }
 
 // User 인터페이스 정의 - 이메일 필드 추가
@@ -47,8 +56,10 @@ export interface User {
 
   createdAt: Date;
   updatedAt: Date;
-  provider?: string; // ex: 'google', 'apple'
-  socialId?: string; // 소셜 로그인 ID
+
+  // OAuth 관련 (여러 OAuth 제공자 동시 연동 가능)
+  oauthProviders?: OAuthProvider[]; // OAuth 제공자 목록 (Google, Apple 등)
+
   likedConcerts?: ObjectId[]; // 좋아요한 콘서트
   likedArticles?: ObjectId[]; // 좋아요한 게시글
   fcmToken?: string; // FCM 푸시 알림 토큰
@@ -119,10 +130,16 @@ export class Database {
     await userCollection.createIndex({ username: 1 }, { unique: true });
     await userCollection.createIndex({ email: 1 }, { unique: true });
     await userCollection.createIndex({ status: 1 });
-    // 소셜 로그인을 위한 인덱스. provider와 socialId 필드가 있는 문서에만 적용됩니다.
+
+    // OAuth 제공자 인덱스 (oauthProviders 배열)
+    // provider와 socialId 조합이 고유해야 함
     await userCollection.createIndex(
-      { provider: 1, socialId: 1 },
-      { unique: true, sparse: true },
+      { 'oauthProviders.provider': 1, 'oauthProviders.socialId': 1 },
+      {
+        unique: true,
+        sparse: true,
+        name: 'oauth_provider_social_id_unique',
+      },
     );
   }
 
@@ -258,12 +275,45 @@ export class UserModel {
     return (results[0] as User) || null;
   }
 
-  // Provider와 Social ID로 사용자 찾기
+  // Provider와 Social ID로 사용자 찾기 (DEPRECATED - 호환성 유지)
   async findByProviderAndSocialId(
     provider: string,
     socialId: string,
   ): Promise<User | null> {
-    return await this.userCollection.findOne({ provider, socialId });
+    // 새로운 oauthProviders 구조에서 찾기
+    return await this.userCollection.findOne({
+      oauthProviders: {
+        $elemMatch: {
+          provider: provider as 'google' | 'apple',
+          socialId: socialId,
+        },
+      },
+    });
+  }
+
+  // OAuth Provider로 사용자 찾기 (새로운 메서드)
+  async findByOAuthProvider(
+    provider: 'google' | 'apple',
+    socialId: string,
+  ): Promise<User | null> {
+    return await this.userCollection.findOne({
+      oauthProviders: {
+        $elemMatch: {
+          provider,
+          socialId,
+        },
+      },
+    });
+  }
+
+  // 기존 사용자에게 OAuth Provider 추가
+  async addOAuthProvider(
+    userId: ObjectId,
+    oauthProvider: OAuthProvider,
+  ): Promise<User | null> {
+    return await this.updateUser(userId, {
+      $addToSet: { oauthProviders: oauthProvider },
+    });
   }
 
   // 이메일과 username 모두로 사용자 찾기

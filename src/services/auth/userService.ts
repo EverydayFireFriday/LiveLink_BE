@@ -60,8 +60,6 @@ export class UserService {
     birthDate?: Date;
     profileImage?: string;
     termsConsents: TermsConsent[];
-    provider?: string;
-    socialId?: string;
     notificationPreference?: NotificationPreference;
   }): Promise<User> {
     return (await this.getUserModel().createUser(userData)) as User;

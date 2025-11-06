@@ -178,9 +178,9 @@ router.post(
  *                         profileImage:
  *                           type: string
  *                           example: null
- *                         provider:
+ *                         status:
  *                           type: string
- *                           example: "apple"
+ *                           example: "active"
  *                     session:
  *                       type: object
  *                       properties:

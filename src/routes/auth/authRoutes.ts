@@ -896,4 +896,173 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
   await authController.getUserStats(req, res);
 });
 
+// OAuth 가입 완료
+/**
+ * @swagger
+ * /auth/complete-registration:
+ *   post:
+ *     summary: OAuth 가입 완료 - 추가 정보 입력
+ *     description: |
+ *       OAuth로 가입한 사용자가 약관동의 및 추가 정보를 입력하여 가입을 완료합니다.
+ *       status를 PENDING_REGISTRATION에서 ACTIVE로 변경합니다.
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - birthDate
+ *               - termsConsents
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: 사용자 실명
+ *                 example: "홍길동"
+ *               birthDate:
+ *                 type: string
+ *                 format: date
+ *                 description: 생년월일 (YYYY-MM-DD)
+ *                 example: "1990-01-01"
+ *               termsConsents:
+ *                 type: array
+ *                 description: 약관 동의 목록
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - type
+ *                     - isAgreed
+ *                     - version
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: [terms, privacy, marketing]
+ *                       description: 약관 타입
+ *                     isAgreed:
+ *                       type: boolean
+ *                       description: 동의 여부
+ *                     version:
+ *                       type: string
+ *                       description: 약관 버전
+ *                       example: "1.0"
+ *     responses:
+ *       200:
+ *         description: 가입 완료 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "가입이 완료되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                           example: "active"
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.post(
+  '/complete-registration',
+  defaultLimiter,
+  requireAuth,
+  async (req, res) => {
+    const authController = await getAuthController();
+    await authController.completeRegistration(req, res);
+  },
+);
+
+// 연결된 계정 조회
+/**
+ * @swagger
+ * /auth/me/connected-accounts:
+ *   get:
+ *     summary: 연결된 계정 조회
+ *     description: |
+ *       현재 사용자에게 연결된 OAuth 제공자 목록을 조회합니다.
+ *       - 이메일 주소
+ *       - 비밀번호 설정 여부
+ *       - 연결된 OAuth 제공자 목록 (Google, Apple 등)
+ *     tags: [Auth]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 연결된 계정 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "연결된 계정 조회 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     email:
+ *                       type: string
+ *                       example: "user@example.com"
+ *                     hasPassword:
+ *                       type: boolean
+ *                       description: 비밀번호 설정 여부
+ *                       example: true
+ *                     oauthProviders:
+ *                       type: array
+ *                       description: 연결된 OAuth 제공자 목록
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           provider:
+ *                             type: string
+ *                             enum: [google, apple]
+ *                             example: "google"
+ *                           email:
+ *                             type: string
+ *                             example: "user@gmail.com"
+ *                           linkedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-01T10:30:00Z"
+ *       401:
+ *         description: 인증 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.get(
+  '/me/connected-accounts',
+  defaultLimiter,
+  requireAuth,
+  async (req, res) => {
+    const authController = await getAuthController();
+    await authController.getConnectedAccounts(req, res);
+  },
+);
+
 export default router;

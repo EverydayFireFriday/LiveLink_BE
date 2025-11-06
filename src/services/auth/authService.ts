@@ -33,8 +33,6 @@ export class AuthService {
       | 'termsConsents'
       | 'createdAt'
       | 'updatedAt'
-      | 'provider'
-      | 'socialId'
     > & {
       _id?: { toHexString(): string };
       likedConcerts?: unknown;
@@ -52,8 +50,6 @@ export class AuthService {
     termsConsents: TermsConsent[];
     createdAt: Date;
     updatedAt: Date;
-    provider?: string;
-    socialId?: string;
     likedConcerts?: unknown;
     likedArticles?: unknown;
     loginTime: string;
@@ -70,8 +66,6 @@ export class AuthService {
       termsConsents: user.termsConsents || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      provider: user.provider,
-      socialId: user.socialId,
       likedConcerts: user.likedConcerts,
       likedArticles: user.likedArticles,
       loginTime: new Date().toISOString(),

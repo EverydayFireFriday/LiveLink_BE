@@ -1,3 +1,4 @@
+import appleSignin from 'apple-signin-auth';
 import logger from '../../utils/logger/logger.js';
 import { User } from '../../models/auth/user.js';
 import { OAuthService } from './oauthService.js';
@@ -27,15 +28,36 @@ export class AppleAuthService {
    * Verify Apple ID Token
    * 애플 ID 토큰 검증
    *
-   * TODO: Apple ID 토큰 검증 구현 필요
-   * - Apple의 공개 키를 사용한 JWT 검증
-   * - 또는 apple-auth 라이브러리 사용
+   * @description
+   * Apple의 공개 키를 사용하여 ID 토큰(JWT)을 검증합니다.
+   * - 토큰 서명 검증
+   * - 발급자(issuer) 확인: https://appleid.apple.com
+   * - 대상(audience) 확인: APPLE_CLIENT_ID와 일치해야 함
+   * - 만료 시간 확인
    */
-  verifyIdToken(_idToken: string): Promise<AppleTokenPayload | null> {
-    // TODO: Apple ID 토큰 검증 로직 구현
-    // 현재는 임시로 null 반환
-    logger.warn('Apple ID token verification not implemented yet');
-    return Promise.resolve(null);
+  async verifyIdToken(idToken: string): Promise<AppleTokenPayload | null> {
+    try {
+      if (!process.env.APPLE_CLIENT_ID) {
+        logger.error('APPLE_CLIENT_ID is not configured');
+        return null;
+      }
+
+      // Apple ID 토큰 검증
+      const appleIdTokenPayload = await appleSignin.verifyIdToken(idToken, {
+        audience: process.env.APPLE_CLIENT_ID,
+        ignoreExpiration: false, // 만료 시간 확인
+      });
+
+      return {
+        sub: appleIdTokenPayload.sub,
+        email: appleIdTokenPayload.email,
+        email_verified: appleIdTokenPayload.email_verified === 'true',
+        is_private_email: appleIdTokenPayload.is_private_email === 'true',
+      };
+    } catch (error) {
+      logger.error('Error verifying Apple ID token:', error);
+      return null;
+    }
   }
 
   /**

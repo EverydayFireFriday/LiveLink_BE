@@ -46,7 +46,11 @@ export const configurePassport = (passport: PassportStatic) => {
     })();
   });
 
-  // Google OAuth 2.0 전략 설정
+  // Google OAuth 2.0 전략 설정 (웹용)
+  // OAuthService.findOrCreateUser를 통해:
+  // 1. 기존 사용자 찾기 (oauthProviders 배열에서 검색)
+  // 2. 같은 이메일 사용자가 있으면 OAuth 제공자 추가
+  // 3. 신규 사용자는 PENDING_REGISTRATION 상태로 생성
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     passport.use(
@@ -65,6 +69,7 @@ export const configurePassport = (passport: PassportStatic) => {
         ) => {
           void (async () => {
             try {
+              // OAuth 서비스를 통해 사용자 찾기 또는 생성
               const user = await oauthService.findOrCreateUser({
                 provider: 'google',
                 socialId: profile.id,
@@ -93,7 +98,12 @@ export const configurePassport = (passport: PassportStatic) => {
     );
   }
 
-  // Apple OAuth 2.0 전략 설정
+  // Apple OAuth 2.0 전략 설정 (웹용)
+  // OAuthService.findOrCreateUser를 통해:
+  // 1. 기존 사용자 찾기 (oauthProviders 배열에서 검색)
+  // 2. 같은 이메일 사용자가 있으면 OAuth 제공자 추가
+  // 3. 신규 사용자는 PENDING_REGISTRATION 상태로 생성
+  // 참고: Apple은 이메일을 항상 검증함
   if (
     process.env.APPLE_CLIENT_ID &&
     process.env.APPLE_TEAM_ID &&
@@ -121,6 +131,7 @@ export const configurePassport = (passport: PassportStatic) => {
         ) => {
           void (async () => {
             try {
+              // OAuth 서비스를 통해 사용자 찾기 또는 생성
               const user = await oauthService.findOrCreateUser({
                 provider: 'apple',
                 socialId: profile.id,
@@ -128,7 +139,7 @@ export const configurePassport = (passport: PassportStatic) => {
                 username: profile.name
                   ? `${profile.name.firstName}${profile.name.lastName}`
                   : undefined,
-                emailVerified: true, // Apple always verifies emails
+                emailVerified: true, // Apple은 이메일을 항상 검증함
               });
 
               if (!user) {

@@ -125,7 +125,7 @@ export const authenticateWithApple = async (
           email: user.email,
           username: user.username,
           profileImage: user.profileImage,
-          provider: user.provider,
+          status: user.status,
         },
         session: {
           expiresAt: sessionResult.expiresAt.toISOString(),
