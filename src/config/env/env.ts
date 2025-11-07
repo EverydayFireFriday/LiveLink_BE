@@ -129,6 +129,12 @@ const envSchema = z.object({
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
     .optional()
     .default('1800000'), // 30분 (밀리초)
+
+  // 🍎 Apple OAuth 설정
+  APPLE_APP_BUNDLE_ID: z
+    .string()
+    .min(1, 'Apple App Bundle ID가 필요합니다')
+    .optional(),
 });
 
 // 🔍 환경변수 검증 및 파싱 (즉시 실행)

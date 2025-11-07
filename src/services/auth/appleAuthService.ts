@@ -29,22 +29,25 @@ export class AppleAuthService {
    * 애플 ID 토큰 검증
    *
    * @description
-   * Apple의 공개 키를 사용하여 ID 토큰(JWT)을 검증합니다.
+   * Apple의 공개 키를 https://appleid.apple.com/auth/keys에서 가져와 ID 토큰(JWT)을 검증합니다.
    * - 토큰 서명 검증
    * - 발급자(issuer) 확인: https://appleid.apple.com
-   * - 대상(audience) 확인: APPLE_CLIENT_ID와 일치해야 함
+   * - 대상(audience) 확인: App Bundle ID(com.J-Min.stagelives)와 일치해야 함
    * - 만료 시간 확인
    */
   async verifyIdToken(idToken: string): Promise<AppleTokenPayload | null> {
     try {
-      if (!process.env.APPLE_CLIENT_ID) {
-        logger.error('APPLE_CLIENT_ID is not configured');
+      const appBundleId = process.env.APPLE_APP_BUNDLE_ID;
+
+      if (!appBundleId) {
+        logger.error('APPLE_APP_BUNDLE_ID is not configured');
         return null;
       }
 
       // Apple ID 토큰 검증
+      // 앱에서는 Bundle ID를 audience로 사용
       const appleIdTokenPayload = await appleSignin.verifyIdToken(idToken, {
-        audience: process.env.APPLE_CLIENT_ID,
+        audience: appBundleId,
         ignoreExpiration: false, // 만료 시간 확인
       });
 
