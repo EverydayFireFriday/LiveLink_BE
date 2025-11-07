@@ -1,0 +1,30 @@
+name: "Request"
+description: "간단한 요청사항"
+labels: ["request"]
+assignees: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "우선순위"
+      options:
+        - "🔴 Critical"
+        - "🟠 High"
+        - "🟡 Medium"
+        - "🟢 Low"
+    validations:
+      required: true
+
+  - type: textarea
+    id: request_description
+    attributes:
+      label: "요청 내용"
+      placeholder: "무엇이 필요하신가요?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_notes
+    attributes:
+      label: "추가 사항"
+      placeholder: "참고 자료나 상세 설명이 있으면 작성해주세요"

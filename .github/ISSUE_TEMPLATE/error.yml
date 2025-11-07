@@ -1,142 +1,40 @@
 name: "Error"
-description: "버그 또는 에러가 발생했을 때 사용해주세요"
+description: "버그 또는 에러 리포트"
 labels: ["bug", "에러"]
 assignees: []
 body:
-  - type: markdown
-    attributes:
-      value: |
-        ## 버그 리포트
-        버그를 발견해주셔서 감사합니다! 아래 정보를 상세히 작성해주시면 문제 해결에 큰 도움이 됩니다.
-
   - type: dropdown
     id: priority
     attributes:
       label: "우선순위"
-      description: "이 버그의 우선순위를 선택해주세요"
       options:
-        - "🔴 Critical (서비스 중단)"
-        - "🟠 High (주요 기능 영향)"
-        - "🟡 Medium (일반적인 버그)"
-        - "🟢 Low (사소한 문제)"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: environment
-    attributes:
-      label: "환경"
-      description: "버그가 발생한 환경을 선택해주세요"
-      options:
-        - "개발 환경 (Development)"
-        - "스테이징 환경 (Staging)"
-        - "프로덕션 환경 (Production)"
-        - "로컬 환경 (Local)"
-      multiple: true
+        - "🔴 Critical"
+        - "🟠 High"
+        - "🟡 Medium"
+        - "🟢 Low"
     validations:
       required: true
 
   - type: textarea
     id: bug_description
     attributes:
-      label: "버그 설명"
-      description: |
-        발생한 버그에 대해 명확하고 구체적으로 설명해주세요.
-      placeholder: |
-        예시: 로그인 버튼 클릭 시 "500 Internal Server Error"가 발생합니다.
+      label: "무슨 문제인가요?"
+      placeholder: "예: 로그인 시 500 에러 발생"
     validations:
       required: true
 
   - type: textarea
     id: steps_to_reproduce
     attributes:
-      label: "재현 단계"
-      description: |
-        버그를 재현할 수 있는 단계를 순서대로 작성해주세요.
+      label: "재현 방법"
       placeholder: |
-        1. 메인 페이지에 접속합니다
-        2. 로그인 버튼을 클릭합니다
-        3. 이메일과 비밀번호를 입력합니다
-        4. 로그인 버튼을 클릭합니다
-        5. 에러가 발생합니다
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected_behavior
-    attributes:
-      label: "예상된 동작"
-      description: |
-        정상적으로 동작했을 때 어떻게 되어야 하는지 설명해주세요.
-      placeholder: |
-        예시: 로그인이 성공하고 대시보드 페이지로 이동해야 합니다.
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual_behavior
-    attributes:
-      label: "실제 동작"
-      description: |
-        실제로 어떤 일이 발생했는지 설명해주세요.
-      placeholder: |
-        예시: 500 에러 페이지가 표시되고 로그인이 되지 않습니다.
-    validations:
-      required: true
-
-  - type: textarea
-    id: screenshots
-    attributes:
-      label: "스크린샷/영상"
-      description: |
-        버그가 발생한 화면의 스크린샷이나 영상을 첨부해주세요.
-      placeholder: |
-        여기에 파일을 드래그하거나 클릭하여 업로드하세요.
+        1. ~을 클릭
+        2. ~을 입력
+        3. 에러 발생
 
   - type: textarea
     id: error_logs
     attributes:
-      label: "에러 로그"
-      description: |
-        관련된 에러 로그나 콘솔 메시지가 있다면 첨부해주세요.
-      placeholder: |
-        콘솔에서 발생한 에러 메시지를 복사해서 붙여넣어주세요.
+      label: "에러 로그 (선택)"
+      placeholder: "에러 메시지나 스크린샷을 첨부해주세요"
       render: shell
-
-  - type: input
-    id: browser_info
-    attributes:
-      label: "브라우저 정보"
-      description: "사용 중인 브라우저와 버전을 입력해주세요"
-      placeholder: "Chrome 118.0.0.0, Safari 17.0, Firefox 119.0 등"
-
-  - type: input
-    id: device_info
-    attributes:
-      label: "디바이스 정보"
-      description: "사용 중인 디바이스 정보를 입력해주세요"
-      placeholder: "iPhone 15 Pro, Samsung Galaxy S23, MacBook Pro M2 등"
-
-  - type: textarea
-    id: additional_context
-    attributes:
-      label: "추가 정보"
-      description: |
-        문제 해결에 도움이 될 수 있는 추가 정보가 있다면 작성해주세요.
-      placeholder: |
-        - 특정 시간대에만 발생하는 문제인지
-        - 특정 사용자에게만 발생하는 문제인지
-        - 최근 배포와 관련이 있는지 등
-
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: "체크리스트"
-      description: "제출하기 전에 아래 항목들을 확인해주세요"
-      options:
-        - label: "이미 같은 버그가 리포트되지 않았는지 확인했습니다"
-          required: true
-        - label: "버그를 재현할 수 있는 명확한 단계를 제공했습니다"
-          required: true
-        - label: "필요한 스크린샷이나 로그를 첨부했습니다"
-          required: false

@@ -1,56 +1,17 @@
-name: "refactoring"
-description: "코드 개선 및 리팩토링 계획을 공유해주세요"
+name: "Refactoring"
+description: "코드 개선 및 리팩토링"
 labels: ["refactoring", "code-quality"]
 assignees: []
 body:
-  - type: markdown
-    attributes:
-      value: |
-        ## 코드 리팩토링 계획
-        더 나은 코드 품질을 위한 리팩토링 계획을 상세히 설명해주세요!
-
-  - type: dropdown
-    id: refactoring_type
-    attributes:
-      label: "리팩토링 유형"
-      description: "어떤 종류의 리팩토링인가요?"
-      options:
-        - "아키텍처 개선"
-        - "함수/메서드 분리"
-        - "중복 코드 제거"
-        - "네이밍 개선"
-        - "성능 최적화"
-        - "코드 정리"
-        - "타입 안정성 개선"
-        - "디자인 패턴 적용"
-        - "라이브러리/프레임워크 업그레이드"
-        - "기타"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: scope
-    attributes:
-      label: "리팩토링 범위"
-      description: "리팩토링의 범위는 어느 정도인가요?"
-      options:
-        - "함수/메서드 레벨"
-        - "파일/클래스 레벨"
-        - "모듈/패키지 레벨"
-        - "전체 시스템 레벨"
-    validations:
-      required: true
-
   - type: dropdown
     id: priority
     attributes:
       label: "우선순위"
-      description: "이 리팩토링의 우선순위는 어느 정도인가요?"
       options:
-        - "🔴 Critical (긴급한 개선 필요)"
-        - "🟠 High (중요한 개선)"
-        - "🟡 Medium (점진적 개선)"
-        - "🟢 Low (여유있을 때 개선)"
+        - "🔴 Critical"
+        - "🟠 High"
+        - "🟡 Medium"
+        - "🟢 Low"
     validations:
       required: true
 
@@ -58,14 +19,7 @@ body:
     id: current_problems
     attributes:
       label: "현재 문제점"
-      description: |
-        현재 코드에서 어떤 문제나 개선이 필요한 부분이 있나요?
-      placeholder: |
-        예시:
-        - 함수가 너무 길어서 가독성이 떨어짐 (200줄 이상)
-        - 중복된 코드가 5개 파일에 반복됨
-        - 타입 안정성이 부족해서 런타임 에러 발생 가능
-        - 성능이 느려서 사용자 경험에 영향
+      placeholder: "어떤 부분의 코드를 개선하고 싶으신가요?"
     validations:
       required: true
 
@@ -73,26 +27,7 @@ body:
     id: target_files
     attributes:
       label: "대상 파일/경로"
-      description: |
-        리팩토링 대상이 되는 파일이나 디렉토리를 명시해주세요.
-      placeholder: |
-        예시:
-        - src/components/UserProfile.tsx
-        - src/utils/dateHelpers.js
-        - src/services/ (전체 서비스 레이어)
-        - tests/integration/ (통합 테스트 코드)
-    validations:
-      required: true
-
-  - type: textarea
-    id: current_code
-    attributes:
-      label: "현재 코드"
-      description: |
-        리팩토링할 현재 코드의 주요 부분을 보여주세요.
-      placeholder: |
-        현재 코드의 핵심 부분을 복사해서 붙여넣어주세요.
-      render: javascript
+      placeholder: "예: src/components/UserProfile.tsx"
     validations:
       required: true
 
@@ -100,118 +35,12 @@ body:
     id: proposed_solution
     attributes:
       label: "개선 방안"
-      description: |
-        어떻게 리팩토링할 계획인지 구체적으로 설명해주세요.
-      placeholder: |
-        예시:
-        - 큰 함수를 역할별로 5개의 작은 함수로 분리
-        - 공통 로직을 utils/common.js로 추출
-        - TypeScript 도입으로 타입 안정성 확보
-        - useMemo, useCallback으로 성능 최적화
+      placeholder: "어떻게 개선할 계획인가요?"
     validations:
       required: true
-
-  - type: textarea
-    id: expected_code
-    attributes:
-      label: "예상 코드"
-      description: |
-        리팩토링 후 어떤 모습이 될지 예상 코드를 보여주세요.
-      placeholder: |
-        리팩토링 후 코드의 핵심 부분을 작성해주세요.
-      render: javascript
-
-  - type: textarea
-    id: benefits
-    attributes:
-      label: "기대 효과"
-      description: |
-        이 리팩토링으로 어떤 개선 효과를 기대하나요?
-      placeholder: |
-        예시:
-        - 코드 가독성 향상으로 개발 및 유지보수 시간 단축
-        - 중복 제거로 코드량 30% 감소
-        - 타입 안전성으로 런타임 에러 90% 감소
-        - 성능 개선으로 로딩 시간 2초 단축
-    validations:
-      required: true
-
-  - type: textarea
-    id: breaking_changes
-    attributes:
-      label: "⚠️ 영향도 분석"
-      description: |
-        이 리팩토링이 다른 코드에 미칠 영향이 있나요?
-      placeholder: |
-        예시:
-        - API 인터페이스 변경으로 프론트엔드 수정 필요
-        - 데이터베이스 스키마 변경으로 마이그레이션 필요
-        - 기존 테스트 케이스 수정 필요
-        - 문서 업데이트 필요
-
-  - type: textarea
-    id: testing_plan
-    attributes:
-      label: "테스트 계획"
-      description: |
-        리팩토링 후 어떻게 검증할 계획인가요?
-      placeholder: |
-        예시:
-        - 기존 단위 테스트가 모두 통과하는지 확인
-        - 통합 테스트로 전체 플로우 검증
-        - 성능 테스트로 개선 효과 측정
-        - 코드 리뷰를 통한 품질 검증
-
-  - type: input
-    id: estimated_effort
-    attributes:
-      label: "⏱예상 작업 시간"
-      description: "이 리팩토링에 필요한 예상 시간을 입력해주세요"
-      placeholder: "예시: 1주일, 3일, 반나절 등"
-
-  - type: textarea
-    id: screenshots
-    attributes:
-      label: "관련 이미지"
-      description: |
-        코드 구조도, 아키텍처 다이어그램, 성능 측정 결과 등 관련 이미지가 있다면 첨부해주세요.
-      placeholder: |
-        여기에 파일을 드래그하거나 클릭하여 업로드하세요.
-
-  - type: textarea
-    id: references
-    attributes:
-      label: "참고 자료"
-      description: |
-        참고한 문서, 블로그, 라이브러리 등이 있다면 링크를 공유해주세요.
-      placeholder: |
-        예시:
-        - https://refactoring.guru/design-patterns
-        - Clean Code 책 Chapter 3
-        - 비슷한 리팩토링 사례 블로그 글
 
   - type: textarea
     id: additional_notes
     attributes:
-      label: "추가 고려사항"
-      description: |
-        위에서 다루지 못한 추가적인 고려사항이나 의견이 있다면 작성해주세요.
-      placeholder: |
-        - 팀원들과의 합의가 필요한 부분
-        - 단계적 적용 계획
-        - 롤백 계획 등
-
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: "체크리스트"
-      description: "제출하기 전에 아래 항목들을 확인해주세요"
-      options:
-        - label: "리팩토링의 목적과 범위를 명확히 정의했습니다"
-          required: true
-        - label: "다른 코드에 미칠 영향을 분석했습니다"
-          required: true
-        - label: "테스트 계획을 수립했습니다"
-          required: true
-        - label: "예상 작업 시간을 합리적으로 산정했습니다"
-          required: false
+      label: "추가 사항"
+      placeholder: "영향도 분석, 테스트 계획 등"
