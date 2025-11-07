@@ -126,6 +126,7 @@ export const authenticateWithApple = async (
           username: user.username,
           profileImage: user.profileImage,
           status: user.status,
+          oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
         },
         session: {
           expiresAt: sessionResult.expiresAt.toISOString(),

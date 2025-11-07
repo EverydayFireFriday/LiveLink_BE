@@ -126,6 +126,36 @@ export const authSchemas = {
     },
   },
 
+  OAuthProvider: {
+    type: 'object',
+    required: ['provider', 'socialId', 'linkedAt'],
+    properties: {
+      provider: {
+        type: 'string',
+        enum: ['google', 'apple'],
+        example: 'google',
+        description: 'OAuth 프로바이더 타입',
+      },
+      socialId: {
+        type: 'string',
+        example: '1234567890',
+        description: '소셜 로그인 제공자의 고유 ID',
+      },
+      email: {
+        type: 'string',
+        format: 'email',
+        example: 'user@gmail.com',
+        description: '프로바이더에서 제공한 이메일 (선택사항)',
+      },
+      linkedAt: {
+        type: 'string',
+        format: 'date-time',
+        example: '2025-01-15T12:00:00Z',
+        description: '프로바이더 연동 시각',
+      },
+    },
+  },
+
   User: {
     type: 'object',
     required: [
@@ -171,13 +201,10 @@ export const authSchemas = {
         items: { $ref: '#/components/schemas/TermsConsent' },
         description: '약관 동의 목록',
       },
-      provider: {
-        type: 'string',
-        description: '소셜 로그인 제공자 (google, apple 등)',
-      },
-      socialId: {
-        type: 'string',
-        description: '소셜 로그인 ID',
+      oauthProviders: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/OAuthProvider' },
+        description: 'OAuth 프로바이더 목록 (구글, 애플 등)',
       },
       likedConcerts: {
         type: 'array',

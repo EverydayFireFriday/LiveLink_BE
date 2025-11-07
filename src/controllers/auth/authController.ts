@@ -290,6 +290,7 @@ export class AuthController {
             fcmToken: user.fcmToken,
             fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
             notificationPreference: user.notificationPreference,
+            oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
           },
           sessionId: req.sessionID,
         };
@@ -386,6 +387,7 @@ export class AuthController {
             fcmToken: user.fcmToken,
             fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
             notificationPreference: user.notificationPreference,
+            oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
           },
           sessionId: req.sessionID,
         });
