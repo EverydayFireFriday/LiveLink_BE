@@ -25,11 +25,7 @@ export class GoogleAuthService {
   private oauthService: OAuthService;
 
   constructor() {
-    if (!process.env.GOOGLE_CLIENT_ID) {
-      throw new Error('GOOGLE_CLIENT_ID is not configured');
-    }
-
-    this.client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    this.client = new OAuth2Client();
     this.oauthService = new OAuthService();
   }
 
@@ -39,9 +35,20 @@ export class GoogleAuthService {
    */
   async verifyIdToken(idToken: string): Promise<GoogleTokenPayload | null> {
     try {
+      // 여러 audience 허용 (Web, iOS, Android)
+      const audiences = [
+        process.env.GOOGLE_CLIENT_ID, // Web
+        process.env.GOOGLE_IOS_CLIENT_ID, // iOS
+        process.env.GOOGLE_ANDROID_CLIENT_ID, // Android (선택)
+      ].filter(Boolean) as string[]; // undefined 제거
+
+      logger.info('Verifying Google ID token with audiences:', {
+        audiences: audiences.map((a) => a?.substring(0, 20) + '...'),
+      });
+
       const ticket = await this.client.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: audiences, // 배열로 전달
       });
 
       const payload = ticket.getPayload();
@@ -49,6 +56,18 @@ export class GoogleAuthService {
         logger.error('Failed to get payload from ID token');
         return null;
       }
+
+      // 로깅: 어떤 audience가 매칭되었는지 확인
+      logger.info('Token verified successfully:', {
+        matchedAudience: payload.aud,
+        email: payload.email,
+        platform:
+          payload.aud === process.env.GOOGLE_CLIENT_ID
+            ? 'web'
+            : payload.aud === process.env.GOOGLE_IOS_CLIENT_ID
+              ? 'ios'
+              : 'android',
+      });
 
       return {
         sub: payload.sub,
