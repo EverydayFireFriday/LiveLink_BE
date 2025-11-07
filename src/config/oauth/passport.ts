@@ -24,8 +24,6 @@ interface AppleProfile {
   };
 }
 
-type AppleVerifyCallback = (error?: Error | null, user?: User | false) => void;
-
 export const configurePassport = (passport: PassportStatic) => {
   const userModel = new UserModel();
   const oauthService = new OAuthService();
@@ -110,8 +108,8 @@ export const configurePassport = (passport: PassportStatic) => {
     process.env.APPLE_KEY_ID &&
     process.env.APPLE_PRIVATE_KEY
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
     passport.use(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       new AppleStrategy(
         {
           clientID: process.env.APPLE_CLIENT_ID,
@@ -122,22 +120,26 @@ export const configurePassport = (passport: PassportStatic) => {
           scope: ['name', 'email'],
           passReqToCallback: false,
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (
           accessToken: string,
           refreshToken: string,
           idToken: string,
-          profile: AppleProfile,
-          done: AppleVerifyCallback,
+          profile: any,
+          done: any,
         ) => {
           void (async () => {
             try {
+              // profile 타입 안전성 확보
+              const appleProfile = profile as AppleProfile;
+
               // OAuth 서비스를 통해 사용자 찾기 또는 생성
               const user = await oauthService.findOrCreateUser({
                 provider: 'apple',
-                socialId: profile.id,
-                email: profile.email,
-                username: profile.name
-                  ? `${profile.name.firstName}${profile.name.lastName}`
+                socialId: appleProfile.id,
+                email: appleProfile.email,
+                username: appleProfile.name
+                  ? `${appleProfile.name.firstName}${appleProfile.name.lastName}`
                   : undefined,
                 emailVerified: true, // Apple은 이메일을 항상 검증함
               });

@@ -928,9 +928,18 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
  *                 format: date
  *                 description: 생년월일 (YYYY-MM-DD)
  *                 example: "1990-01-01"
+ *               username:
+ *                 type: string
+ *                 description: 사용자명/닉네임 (선택사항, 비어있으면 자동 생성)
+ *                 example: "내별명"
+ *                 minLength: 2
+ *                 maxLength: 20
  *               termsConsents:
  *                 type: array
- *                 description: 약관 동의 목록
+ *                 description: |
+ *                   약관 동의 목록
+ *                   - **필수 약관**: terms (서비스 이용약관), privacy (개인정보처리방침)
+ *                   - **선택 약관**: marketing (마케팅 정보 수신 동의)
  *                 items:
  *                   type: object
  *                   required:
@@ -941,14 +950,28 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
  *                     type:
  *                       type: string
  *                       enum: [terms, privacy, marketing]
- *                       description: 약관 타입
+ *                       description: |
+ *                         약관 타입
+ *                         - **terms**: 서비스 이용약관 (필수)
+ *                         - **privacy**: 개인정보처리방침 (필수)
+ *                         - **marketing**: 마케팅 정보 수신 동의 (선택)
  *                     isAgreed:
  *                       type: boolean
- *                       description: 동의 여부
+ *                       description: 동의 여부 (terms와 privacy는 반드시 true여야 함)
  *                     version:
  *                       type: string
- *                       description: 약관 버전
+ *                       description: 약관 버전 (현재 버전 확인 필요)
  *                       example: "1.0"
+ *                 example:
+ *                   - type: "terms"
+ *                     isAgreed: true
+ *                     version: "1.0"
+ *                   - type: "privacy"
+ *                     isAgreed: true
+ *                     version: "1.0"
+ *                   - type: "marketing"
+ *                     isAgreed: false
+ *                     version: "1.0"
  *     responses:
  *       200:
  *         description: 가입 완료 성공
@@ -973,6 +996,8 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
  *                           type: string
  *                         email:
  *                           type: string
+ *                         username:
+ *                           type: string
  *                         name:
  *                           type: string
  *                         status:
@@ -980,8 +1005,29 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
  *                           example: "active"
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     missing_fields:
+ *                       value: "이름과 생년월일을 입력해주세요."
+ *                     missing_terms:
+ *                       value: "약관 동의 정보가 필요합니다."
+ *                     terms_required:
+ *                       value: "필수 약관에 동의해주세요: terms, privacy"
+ *                     username_taken:
+ *                       value: "이미 사용 중인 사용자명입니다."
+ *                     already_completed:
+ *                       value: "이미 가입이 완료된 사용자입니다."
  *       401:
- *         description: 인증 필요
+ *         description: 인증 필요 (로그인 세션 없음)
  *       500:
  *         description: 서버 에러
  */

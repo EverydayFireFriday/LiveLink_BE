@@ -820,9 +820,10 @@ export class AuthController {
         return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
       }
 
-      const { name, birthDate, termsConsents } = req.body as {
+      const { name, birthDate, username, termsConsents } = req.body as {
         name: string;
         birthDate: string;
+        username?: string;
         termsConsents: Array<{
           type: string;
           isAgreed: boolean;
@@ -883,6 +884,25 @@ export class AuthController {
         return ResponseBuilder.badRequest(res, '가입 대기 상태가 아닙니다.');
       }
 
+      // username 처리: 입력값이 있으면 사용, 없으면 자동 생성
+      let finalUsername = username;
+      if (!finalUsername || finalUsername.trim().length === 0) {
+        // username이 없으면 기존 username 유지 (OAuth 시 이미 생성됨)
+        finalUsername = user.username;
+      } else {
+        // username이 입력된 경우 중복 체크
+        const { UserModel } = await import('../../models/auth/user');
+        const userModel = new UserModel();
+        const existingUser = await userModel.findByUsername(finalUsername);
+
+        if (existingUser && existingUser._id?.toHexString() !== userId) {
+          return ResponseBuilder.badRequest(
+            res,
+            '이미 사용 중인 사용자명입니다.',
+          );
+        }
+      }
+
       // 약관 동의 정보에 agreedAt 추가
       const termsConsentsWithDate = termsConsents.map((consent) => ({
         ...consent,
@@ -891,6 +911,7 @@ export class AuthController {
 
       // 사용자 정보 업데이트
       const updatedUser = await userService.updateUser(userId, {
+        username: finalUsername,
         name,
         birthDate: new Date(birthDate),
         termsConsents: termsConsentsWithDate,
@@ -912,6 +933,7 @@ export class AuthController {
         user: {
           _id: updatedUser._id,
           email: updatedUser.email,
+          username: updatedUser.username,
           name: updatedUser.name,
           status: updatedUser.status,
         },
