@@ -1,7 +1,7 @@
 // routes/article/articleBookmarkRoutes.ts
 import express from 'express';
 import { ArticleBookmarkController } from '../../controllers/article';
-import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
+import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
@@ -62,10 +62,10 @@ router.use(defaultLimiter);
  *       500:
  *         description: 서버 에러
  */
-// 게시글 북마크 추가 (개발환경에서는 인증 스킵)
+// 게시글 북마크 추가 (인증 필요)
 router.post(
   '/bookmark/:articleId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleBookmarkController.bookmarkArticle,
 );
 
@@ -118,10 +118,10 @@ router.post(
  *       500:
  *         description: 서버 에러
  */
-// 게시글 북마크 삭제 (개발환경에서는 인증 스킵)
+// 게시글 북마크 삭제 (인증 필요)
 router.delete(
   '/bookmark/:articleId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleBookmarkController.unbookmarkArticle,
 );
 
@@ -172,10 +172,10 @@ router.delete(
  *       500:
  *         description: 서버 에러
  */
-// 게시글 북마크 토글 (개발환경에서는 인증 스킵)
+// 게시글 북마크 토글 (인증 필요)
 router.post(
   '/bookmark/toggle/:articleId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleBookmarkController.toggleBookmark,
 );
 
@@ -314,10 +314,10 @@ router.get(
  *       500:
  *         description: 서버 에러
  */
-// 사용자의 북마크 목록 조회 (개발환경에서는 인증 스킵)
+// 사용자의 북마크 목록 조회 (인증 필요)
 router.get(
   '/bookmark/user/:userId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleBookmarkController.getUserBookmarks,
 );
 
@@ -364,10 +364,10 @@ router.get(
  *       500:
  *         description: 서버 에러
  */
-// 사용자의 북마크 통계 (개발환경에서는 인증 스킵)
+// 사용자의 북마크 통계 (인증 필요)
 router.get(
   '/bookmark/user/stats/:userId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleBookmarkController.getUserBookmarkStats,
 );
 
@@ -492,10 +492,10 @@ router.get(
  *       500:
  *         description: 서버 에러
  */
-// 여러 게시글의 북마크 상태 일괄 조회 (개발환경에서는 인증 스킵)
+// 여러 게시글의 북마크 상태 일괄 조회 (인증 필요)
 router.post(
   '/bookmark/status/batch',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleBookmarkController.getBatchBookmarkStatus,
 );
 

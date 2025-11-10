@@ -12,7 +12,6 @@ import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import {
   getCurrentUserInfo,
   logSessionInfoMiddleware,
-  requireAuthInProductionMiddleware,
 } from '../../middlewares/auth/conditionalAuthMiddleware';
 import {
   relaxedLimiter,
@@ -34,10 +33,7 @@ if (process.env.NODE_ENV === 'development') {
  *     description: |
  *       콘서트 정보를 MongoDB에 저장합니다. UID에서 timestamp를 추출하여 ObjectId로 변환합니다.
  *
- *       **개발 환경**: 로그인 없이 사용 가능 (임시 세션 자동 생성)
- *       **프로덕션 환경**: 로그인 필수
- *
- *       세션 구조: email, userId, username, profileImage?, loginTime
+ *       **인증 불필요**: 누구나 콘서트를 등록할 수 있습니다.
  *
  *       **업데이트된 스키마**:
  *
@@ -55,9 +51,6 @@ if (process.env.NODE_ENV === 'development') {
  *       - **옵셔널 필드 (10개)**: price, description, category, ticketLink, ticketOpenDate, posterImage, infoImages, likes, likesCount
  *
  *     tags: [Concerts - Basic]
- *     security:
- *       - sessionAuth: []
- *       - {} # 개발환경에서는 인증 없이도 가능
  *     requestBody:
  *       required: true
  *       content:
@@ -267,20 +260,13 @@ if (process.env.NODE_ENV === 'development') {
  *           잘못된 요청 데이터
  *           - 필수 필드 누락: uid, title, artist, location, datetime, status
  *           - 데이터 형식 오류
- *       401:
- *         description: 인증이 필요합니다 (프로덕션 환경만)
  *       409:
  *         description: 중복된 콘서트 UID
  *       500:
  *         description: 서버 에러
  */
-// 콘서트 업로드 - 개발환경에서는 인증 스킵 (임시 세션 자동 생성)
-router.post(
-  '/',
-  strictLimiter,
-  requireAuthInProductionMiddleware,
-  uploadConcert,
-);
+// 콘서트 업로드 - 인증 없이 사용 가능
+router.post('/', strictLimiter, uploadConcert);
 
 /**
  * @swagger
@@ -616,16 +602,12 @@ router.get('/:id', relaxedLimiter, getConcert);
  *       ObjectId 또는 UID로 특정 콘서트의 정보를 수정합니다.
  *       좋아요 관련 필드(likes, likesCount)와 UID는 수정할 수 없습니다.
  *
- *       **개발 환경**: 로그인 없이 사용 가능 (임시 세션 자동 생성)
- *       **프로덕션 환경**: 로그인 필수
+ *       **인증 불필요**: 누구나 콘서트를 수정할 수 있습니다.
  *
  *       **업데이트된 스키마**:
  *       - location: 문자열 배열로 수정
  *       - infoImages: 이미지 URL 배열로 수정
  *     tags: [Concerts - Basic]
- *     security:
- *       - sessionAuth: []
- *       - {} # 개발환경에서는 인증 없이도 가능
  *     parameters:
  *       - in: path
  *         name: id
@@ -800,15 +782,6 @@ router.get('/:id', relaxedLimiter, getConcert);
  *                 error: { type: string }
  *                 requestedId: { type: string }
  *                 timestamp: { type: string, format: date-time }
- *       401:
- *         description: 인증이 필요합니다
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message: { type: string, example: "인증이 필요합니다." }
- *                 timestamp: { type: string, format: date-time }
  *       404:
  *         description: 콘서트를 찾을 수 없음
  *         content:
@@ -831,13 +804,8 @@ router.get('/:id', relaxedLimiter, getConcert);
  *                 requestedId: { type: string }
  *                 timestamp: { type: string, format: date-time }
  */
-// 콘서트 수정 - 개발환경에서는 인증 스킵
-router.put(
-  '/:id',
-  strictLimiter,
-  requireAuthInProductionMiddleware,
-  updateConcert,
-);
+// 콘서트 수정 - 인증 없이 사용 가능
+router.put('/:id', strictLimiter, updateConcert);
 
 /**
  * @swagger
@@ -996,20 +964,6 @@ if (process.env.NODE_ENV === 'development') {
       timestamp: new Date().toISOString(),
     });
   });
-
-  // 미들웨어 테스트 라우트
-  router.get(
-    '/dev/test-auth',
-    requireAuthInProductionMiddleware,
-    (req, res) => {
-      res.json({
-        message: '개발환경 인증 테스트 성공',
-        userInfo: getCurrentUserInfo(req),
-        middleware: 'requireAuthInProductionMiddleware',
-        timestamp: new Date().toISOString(),
-      });
-    },
-  );
 }
 
 export default router;

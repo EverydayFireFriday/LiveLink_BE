@@ -1,7 +1,7 @@
 // routes/article/articleRoutes.ts
 import express from 'express';
 import { ArticleController } from '../../controllers/article';
-import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
+import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import {
   relaxedLimiter,
   strictLimiter,
@@ -86,13 +86,8 @@ const articleController = new ArticleController();
  *       500:
  *         description: 서버 에러
  */
-// 게시글 생성 (개발환경에서는 인증 스킵)
-router.post(
-  '/',
-  strictLimiter,
-  requireAuthInProductionMiddleware,
-  articleController.createArticle,
-);
+// 게시글 생성 (인증 필요)
+router.post('/', strictLimiter, requireAuth, articleController.createArticle);
 
 /**
  * @swagger
@@ -391,13 +386,8 @@ router.get('/:id', relaxedLimiter, articleController.getArticleById);
  *       500:
  *         description: 서버 에러
  */
-// 게시글 수정 (개발환경에서는 인증 스킵)
-router.put(
-  '/:id',
-  strictLimiter,
-  requireAuthInProductionMiddleware,
-  articleController.updateArticle,
-);
+// 게시글 수정 (인증 필요)
+router.put('/:id', strictLimiter, requireAuth, articleController.updateArticle);
 
 /**
  * @swagger
@@ -433,11 +423,11 @@ router.put(
  *       500:
  *         description: 서버 에러
  */
-// 게시글 삭제 (개발환경에서는 인증 스킵)
+// 게시글 삭제 (인증 필요)
 router.delete(
   '/:id',
   strictLimiter,
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleController.deleteArticle,
 );
 

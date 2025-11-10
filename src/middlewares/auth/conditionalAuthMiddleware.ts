@@ -211,8 +211,6 @@ export const updateSessionUser = (
 if (process.env.NODE_ENV === 'development') {
   logger.info('\n🔧 조건부 인증 미들웨어 설정:');
   logger.info(`  - NODE_ENV: ${process.env.NODE_ENV}`);
-  logger.info(`  - SKIP_AUTH: ${process.env.SKIP_AUTH || 'false'}`);
-  logger.info(`  - 개발환경 인증 스킵: ✅ 활성화됨`);
   logger.info(
     `  - 세션 구조: email, userId, username, profileImage?, loginTime`,
   );

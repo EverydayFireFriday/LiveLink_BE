@@ -1,7 +1,7 @@
 // routes/article/articleLikeRoutes.ts
 import express from 'express';
 import { ArticleLikeController } from '../../controllers/article';
-import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
+import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
@@ -59,7 +59,7 @@ router.use(defaultLimiter);
  */
 router.post(
   '/like/toggle/:articleId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleLikeController.toggleLike,
 );
 
@@ -105,7 +105,7 @@ router.post(
  */
 router.get(
   '/like/status/:articleId',
-  requireAuthInProductionMiddleware, // 현재 사용자 상태 조회를 위해 인증 필요
+  requireAuth, // 현재 사용자 상태 조회를 위해 인증 필요
   articleLikeController.getLikeStatus,
 );
 

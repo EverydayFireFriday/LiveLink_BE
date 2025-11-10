@@ -11,12 +11,7 @@ import * as path from 'path';
 dotenv.config();
 
 // ✅ 환경변수 검증 실행 (즉시 검증 및 프로세스 종료)
-import {
-  env,
-  isDevelopment,
-  isProduction,
-  shouldSkipAuth,
-} from './config/env/env';
+import { env, isDevelopment, isProduction } from './config/env/env';
 
 import logger, { stream } from './utils/logger/logger';
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from './config/swagger';
@@ -275,7 +270,6 @@ app.get('/', (req: express.Request, res: express.Response) => {
       'report-graphql': '/graphql',
     },
     features: {
-      authenticationSkip: shouldSkipAuth(),
       adminEmails: env.ADMIN_EMAILS.length,
       secureMode: isProduction(),
     },

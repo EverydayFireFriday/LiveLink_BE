@@ -1,7 +1,7 @@
 // routes/article/articleCommentRoutes.ts
 import express from 'express';
 import { ArticleCommentController } from '../../controllers/article';
-import { requireAuthInProductionMiddleware } from '../../middlewares/auth/conditionalAuthMiddleware';
+import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
@@ -76,10 +76,10 @@ router.use(defaultLimiter);
  *       500:
  *         description: 서버 에러
  */
-// 댓글 생성 (개발환경에서는 인증 스킵)
+// 댓글 생성 (인증 필요)
 router.post(
   '/comment/:articleId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleCommentController.createComment,
 );
 
@@ -277,10 +277,10 @@ router.get('/comment/:commentId', articleCommentController.getCommentById);
  *       500:
  *         description: 서버 에러
  */
-// 댓글 수정 (개발환경에서는 인증 스킵)
+// 댓글 수정 (인증 필요)
 router.put(
   '/comment/:commentId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleCommentController.updateComment,
 );
 
@@ -333,10 +333,10 @@ router.put(
  *       500:
  *         description: 서버 에러
  */
-// 댓글 삭제 (개발환경에서는 인증 스킵)
+// 댓글 삭제 (인증 필요)
 router.delete(
   '/comment/:commentId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleCommentController.deleteComment,
 );
 
@@ -447,10 +447,10 @@ router.get(
  *       500:
  *         description: 서버 에러
  */
-// 댓글 좋아요 토글 (개발환경에서는 인증 스킵)
+// 댓글 좋아요 토글 (인증 필요)
 router.post(
   '/comment/like/toggle/:commentId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleCommentController.toggleCommentLike,
 );
 
@@ -507,10 +507,10 @@ router.post(
  *       500:
  *         description: 서버 에러
  */
-// 작성자별 댓글 목록 조회 (개발환경에서는 인증 스킵)
+// 작성자별 댓글 목록 조회 (인증 필요)
 router.get(
   '/comment/author/:authorId',
-  requireAuthInProductionMiddleware,
+  requireAuth,
   articleCommentController.getCommentsByAuthor,
 );
 

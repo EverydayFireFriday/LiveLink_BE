@@ -78,13 +78,6 @@ const envSchema = z.object({
       '모든 관리자 이메일이 올바른 형식이어야 합니다',
     ),
 
-  // 🔧 개발/테스트 관련
-  SKIP_AUTH: z
-    .string()
-    .optional()
-    .default('false')
-    .transform((val) => val === 'true'),
-
   // 🗃️ 기타 옵션
   LOG_LEVEL: z
     .enum(['error', 'warn', 'info', 'verbose', 'debug'])
@@ -225,17 +218,6 @@ const validateEnv = () => {
     logger.info(
       `🔐 CORS 허용 도메인 개수: ${parsed.CORS_ALLOWED_ORIGINS.length}`,
     );
-
-    // 🔧 조건부 인증 설정 로그
-    logger.info('\n🔧 조건부 인증 미들웨어 설정:');
-    logger.info(`  - NODE_ENV: ${parsed.NODE_ENV}`);
-    logger.info(`  - SKIP_AUTH: ${parsed.SKIP_AUTH}`);
-    logger.info(
-      `  - 개발환경 인증 스킵: ${parsed.NODE_ENV === 'development' || parsed.SKIP_AUTH ? '✅ 활성화됨' : '❌ 비활성화됨'}`,
-    );
-    logger.info(
-      '  - 세션 구조: email, userId, username, profileImage?, loginTime',
-    );
     logger.info('');
 
     return parsed;
@@ -282,11 +264,6 @@ export const isAdminEmail = (email: string): boolean => {
   return env.ADMIN_EMAILS.some(
     (adminEmail) => adminEmail.toLowerCase() === email.trim().toLowerCase(),
   );
-};
-
-// 🔐 인증 스킵 여부 확인
-export const shouldSkipAuth = (): boolean => {
-  return isDevelopment() || env.SKIP_AUTH;
 };
 
 // 📱 플랫폼별 세션 만료 시간 가져오기
