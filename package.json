@@ -1,7 +1,7 @@
 {
-  "name": "unified-api-server",
-  "version": "1.0.0",
-  "description": "Unified API Server - Authentication & Concert Management with MongoDB & Redis",
+  "name": "stagelives-api",
+  "version": "0.9.0",
+  "description": "stagelives API Server - Concert information, Community, and Real-time chat platform with TypeScript, Express, MongoDB & Redis",
   "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon src/app.ts",
@@ -40,17 +40,22 @@
     ]
   },
   "keywords": [
-    "authentication",
+    "stagelives",
     "concert",
     "api",
+    "authentication",
+    "chat",
+    "real-time",
     "mongodb",
     "redis",
     "session",
     "typescript",
     "express",
-    "swagger"
+    "swagger",
+    "socket.io",
+    "graphql"
   ],
-  "author": "Your Name",
+  "author": "EverydayFireFriday Team",
   "license": "MIT",
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",

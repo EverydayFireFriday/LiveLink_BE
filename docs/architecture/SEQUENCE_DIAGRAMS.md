@@ -1,4 +1,4 @@
-# Sequence Diagrams - LiveLink API
+# Sequence Diagrams - stagelives API
 
 ## 1. 사용자 회원가입 및 인증 플로우
 
@@ -62,7 +62,7 @@ sequenceDiagram
     end
 ```
 
-### 1.2 소셜 로그인 (Google OAuth)
+### 1.2 소셜 로그인 (Google OAuth) - 다중 OAuth 지원
 
 ```mermaid
 sequenceDiagram
@@ -72,11 +72,12 @@ sequenceDiagram
     participant Passport as Passport.js
     participant Google as Google OAuth
     participant UserModel
+    participant UserSessionModel
     participant MongoDB
-    participant Session as Redis Session
+    participant Redis
 
     User->>Client: "Google로 로그인" 클릭
-    Client->>API: GET /auth/google
+    Client->>API: GET /auth/google (X-Platform: app|web)
     API->>Passport: Google OAuth 전략 실행
     Passport->>Google: OAuth 인증 요청
     Google-->>User: Google 로그인 페이지
@@ -84,24 +85,40 @@ sequenceDiagram
     Google->>API: GET /auth/google/callback?code=...
     API->>Passport: 콜백 처리
     Passport->>Google: 액세스 토큰 교환
-    Google-->>Passport: 사용자 프로필
+    Google-->>Passport: 사용자 프로필 (email, socialId)
 
-    Passport->>UserModel: findByProviderAndSocialId(google, socialId)
-    UserModel->>MongoDB: findOne({provider, socialId})
+    Passport->>UserModel: findByOAuthProvider('google', socialId)
+    UserModel->>MongoDB: findOne({oauthProviders: {$elemMatch: {provider: 'google', socialId}}})
     MongoDB-->>UserModel: 사용자 또는 null
 
-    alt 기존 사용자
+    alt 기존 사용자 (OAuth 연동됨)
         UserModel-->>Passport: User 객체
-    else 신규 사용자
-        Passport->>UserModel: createUser({provider, socialId, email, ...})
-        UserModel->>MongoDB: insertOne(user)
-        MongoDB-->>UserModel: 생성된 사용자
-        UserModel-->>Passport: User 객체
+    else 신규 사용자 OR 이메일로 기존 계정 찾기
+        Passport->>UserModel: findByEmail(email)
+        UserModel->>MongoDB: findOne({email})
+        MongoDB-->>UserModel: 사용자 또는 null
+
+        alt 이메일로 기존 계정 발견
+            Passport->>UserModel: addOAuthProvider(userId, {provider: 'google', socialId, email, linkedAt})
+            UserModel->>MongoDB: updateOne({$addToSet: {oauthProviders: {...}}})
+            MongoDB-->>UserModel: 업데이트된 User
+            UserModel-->>Passport: User 객체 (OAuth 추가됨)
+        else 완전히 신규 사용자
+            Passport->>UserModel: createUser({email, oauthProviders: [{provider: 'google', socialId, ...}], status: 'pending_registration'})
+            UserModel->>MongoDB: insertOne(user)
+            MongoDB-->>UserModel: 생성된 사용자
+            UserModel-->>Passport: User 객체
+        end
     end
 
-    Passport->>Session: serializeUser (사용자 ID 저장)
-    Session->>Redis: 세션 데이터 저장
-    Redis-->>Session: 세션 ID
+    Note over Passport,UserSessionModel: 세션 생성 (UserSession 모델)
+    Passport->>UserSessionModel: createSession(userId, sessionId, deviceInfo, expiresAt)
+    UserSessionModel->>MongoDB: insertOne(userSession)
+    MongoDB-->>UserSessionModel: 생성된 세션
+
+    Passport->>Redis: 세션 데이터 저장 (express-session)
+    Redis-->>Passport: 세션 ID
+
     Passport-->>API: 인증 완료
     API-->>Client: 302 Redirect to Frontend
     Client-->>User: 로그인 완료
@@ -354,9 +371,209 @@ sequenceDiagram
     end
 ```
 
-## 6. Health Check & Monitoring
+## 6. 세션 관리 (다중 디바이스)
 
-### 6.1 Readiness Probe
+### 6.1 활성 세션 조회
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant UserSessionModel
+    participant MongoDB
+
+    User->>Client: 활성 세션 목록 요청
+    Client->>API: GET /auth/sessions
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Redis-->>Auth: 세션 데이터 + userId + sessionId
+    Auth-->>API: 인증된 사용자
+
+    API->>UserSessionModel: findByUserId(userId)
+    UserSessionModel->>MongoDB: find({userId, expiresAt: {$gt: now}}).sort({lastActivityAt: -1})
+    MongoDB-->>UserSessionModel: 활성 세션 목록
+
+    UserSessionModel->>UserSessionModel: toSessionResponses(sessions, currentSessionId)
+    UserSessionModel-->>API: 세션 목록 (현재 세션 표시)
+
+    API-->>Client: 200 OK + 세션 목록
+    Client-->>User: 세션 목록 표시 (플랫폼, 디바이스, 마지막 활동 시간)
+```
+
+### 6.2 특정 세션 종료
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant UserSessionModel
+    participant MongoDB
+
+    User->>Client: 특정 세션 로그아웃 요청
+    Client->>API: DELETE /auth/sessions/:sessionId
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Auth-->>API: 인증된 사용자 (userId)
+
+    API->>UserSessionModel: findBySessionId(targetSessionId)
+    UserSessionModel->>MongoDB: findOne({sessionId})
+    MongoDB-->>UserSessionModel: 세션 정보
+
+    alt 세션 소유자 확인
+        UserSessionModel-->>API: 세션 소유자 일치
+
+        API->>UserSessionModel: deleteSession(targetSessionId)
+        UserSessionModel->>MongoDB: deleteOne({sessionId})
+        MongoDB-->>UserSessionModel: 삭제 완료
+
+        API->>Redis: Redis DEL (해당 세션)
+        Redis-->>API: 삭제 완료
+
+        API-->>Client: 200 OK
+        Client-->>User: 세션 종료 완료
+    else 권한 없음
+        UserSessionModel-->>API: 403 Forbidden
+        API-->>Client: 권한 없음
+    end
+```
+
+### 6.3 플랫폼별 세션 교체 (로그인)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant UserModel
+    participant UserSessionModel
+    participant MongoDB
+    participant Redis
+
+    User->>Client: 로그인 요청 (같은 플랫폼에서 재로그인)
+    Client->>API: POST /auth/login (X-Platform: web)
+
+    Note over API: 인증 성공 후
+
+    API->>UserSessionModel: findByUserId(userId)
+    UserSessionModel->>MongoDB: find({userId, expiresAt: {$gt: now}})
+    MongoDB-->>UserSessionModel: 활성 세션 목록
+
+    UserSessionModel->>UserSessionModel: 현재 플랫폼과 동일한 세션 찾기
+
+    alt 같은 플랫폼 세션 존재
+        UserSessionModel-->>API: 기존 web 세션 발견
+
+        Note over API: 기존 세션 종료
+        API->>UserSessionModel: deleteSession(oldSessionId)
+        UserSessionModel->>MongoDB: deleteOne({sessionId: oldSessionId})
+        API->>Redis: DEL oldSessionId
+
+        Note over API: 새 세션 생성
+        API->>UserSessionModel: createSession(userId, newSessionId, deviceInfo, expiresAt)
+        UserSessionModel->>MongoDB: insertOne(newSession)
+        API->>Redis: 새 세션 저장
+
+        API-->>Client: 200 OK + 경고 메시지
+        Note over Client: "이전에 로그인된 웹 세션이 로그아웃되었습니다"
+        Client-->>User: 로그인 완료 + 경고 표시
+    else 같은 플랫폼 세션 없음
+        Note over API: 새 세션만 생성
+        API->>UserSessionModel: createSession(userId, sessionId, deviceInfo, expiresAt)
+        UserSessionModel->>MongoDB: insertOne(session)
+        API->>Redis: 세션 저장
+        API-->>Client: 200 OK
+        Client-->>User: 로그인 완료
+    end
+```
+
+## 7. 알림 시스템
+
+### 7.1 티켓 오픈 알림 예약
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant UserModel
+    participant ConcertModel
+    participant ScheduledNotificationModel
+    participant MongoDB
+
+    User->>Client: 콘서트 좋아요 (알림 자동 예약)
+    Client->>API: POST /concert/:concertId/like
+
+    Note over API: 좋아요 처리 후
+
+    API->>ConcertModel: findById(concertId)
+    ConcertModel->>MongoDB: findOne({_id: concertId})
+    MongoDB-->>ConcertModel: Concert 정보 (ticketOpenDate[])
+
+    API->>UserModel: findById(userId)
+    UserModel->>MongoDB: findOne({_id: userId})
+    MongoDB-->>UserModel: User 정보 (notificationPreference)
+
+    loop 각 티켓 오픈 날짜
+        loop 사용자 알림 설정 (예: [10, 30, 60, 1440]분 전)
+            API->>API: scheduledAt = ticketOpenDate - 알림 시간
+            API->>ScheduledNotificationModel: create({userId, concertId, title, message, scheduledAt, status: 'pending'})
+            ScheduledNotificationModel->>MongoDB: insertOne(scheduledNotification)
+        end
+    end
+
+    API-->>Client: 200 OK (좋아요 + 알림 예약 완료)
+    Client-->>User: 좋아요 완료
+```
+
+### 7.2 예약 알림 전송 (크론 작업)
+
+```mermaid
+sequenceDiagram
+    participant Cron as Cron Job
+    participant NotificationService as Notification Service
+    participant ScheduledNotificationModel
+    participant UserModel
+    participant NotificationHistoryModel
+    participant FCM as Firebase Cloud Messaging
+    participant MongoDB
+
+    Cron->>NotificationService: 매분 실행 (예약 알림 확인)
+
+    NotificationService->>ScheduledNotificationModel: findPendingNotifications(now)
+    ScheduledNotificationModel->>MongoDB: find({status: 'pending', scheduledAt: {$lte: now}})
+    MongoDB-->>ScheduledNotificationModel: 전송할 알림 목록
+
+    loop 각 알림
+        NotificationService->>UserModel: findById(userId)
+        UserModel->>MongoDB: findOne({_id: userId})
+        MongoDB-->>UserModel: User (fcmToken)
+
+        alt FCM 토큰 존재
+            NotificationService->>FCM: send({token: fcmToken, notification: {...}})
+            FCM-->>NotificationService: 전송 성공
+
+            Note over NotificationService: 알림 상태 업데이트
+            NotificationService->>ScheduledNotificationModel: update({_id}, {status: 'sent', sentAt: now})
+            ScheduledNotificationModel->>MongoDB: updateOne(...)
+
+            Note over NotificationService: 알림 이력 저장
+            NotificationService->>NotificationHistoryModel: create({userId, concertId, title, message, type, isRead: false, sentAt, expiresAt})
+            NotificationHistoryModel->>MongoDB: insertOne(notificationHistory)
+        else FCM 토큰 없음
+            NotificationService->>ScheduledNotificationModel: update({_id}, {status: 'failed', errorReason: 'No FCM token'})
+        end
+    end
+```
+
+## 8. Health Check & Monitoring
+
+### 8.1 Readiness Probe
 
 ```mermaid
 sequenceDiagram
@@ -415,3 +632,8 @@ sequenceDiagram
 - **NoSQL Injection**: express-mongo-sanitize
 - **HPP**: hpp (HTTP Parameter Pollution)
 - **Helmet**: 보안 헤더
+
+---
+
+**Last Updated:** 2025-11-10
+**Version:** 1.0.0

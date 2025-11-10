@@ -1,4 +1,4 @@
-# LiveLink API 서버
+# stagelives API 서버
 
 <p align="center">
   <strong>공연 정보, 커뮤니티, 그리고 실시간 소통을 하나로.</strong><br/>
@@ -48,7 +48,7 @@
 
 ## ✨ 주요 기능
 
-LiveLink는 다양한 서비스를 제공하여 사용자와 관리자 모두에게 풍부한 경험을 제공합니다.
+stagelives는 다양한 서비스를 제공하여 사용자와 관리자 모두에게 풍부한 경험을 제공합니다.
 
 - **🔐 사용자 인증**
   - 세션 기반의 안전한 사용자 인증 및 프로필 관리
@@ -228,7 +228,7 @@ NODE_ENV=development
 PORT=3000
 
 # 데이터베이스
-MONGO_URI=mongodb://localhost:27017/livelink
+MONGO_URI=mongodb://localhost:27017/stagelives
 MONGO_ROOT_USERNAME=admin
 MONGO_ROOT_PASSWORD=changeme
 
@@ -249,7 +249,7 @@ Docker를 사용하여 로컬에서 실행:
 ```bash
 # MongoDB
 docker run -d \
-  --name livelink-mongo \
+  --name stagelives-mongo \
   -p 27017:27017 \
   -e MONGO_INITDB_ROOT_USERNAME=admin \
   -e MONGO_INITDB_ROOT_PASSWORD=changeme \
@@ -257,7 +257,7 @@ docker run -d \
 
 # Redis
 docker run -d \
-  --name livelink-redis \
+  --name stagelives-redis \
   -p 6379:6379 \
   redis:7-alpine redis-server --requirepass changeme
 ```
@@ -304,7 +304,7 @@ GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=강력한_비밀번호_사용_필수
 
 # MongoDB URI (인증 포함)
-MONGO_URI=mongodb://admin:강력한_비밀번호@mongo:27017/livelink?authSource=admin
+MONGO_URI=mongodb://admin:강력한_비밀번호@mongo:27017/stagelives?authSource=admin
 
 # Redis URL (인증 포함)
 REDIS_URL=redis://:강력한_비밀번호@redis:6379
@@ -474,7 +474,7 @@ LOG_LEVEL=info                   # 로그 레벨 (error, warn, info, debug)
 #### 데이터베이스
 ```env
 # MongoDB
-MONGO_URI=mongodb://username:password@host:27017/livelink?authSource=admin
+MONGO_URI=mongodb://username:password@host:27017/stagelives?authSource=admin
 MONGO_ROOT_USERNAME=admin        # Docker Compose용
 MONGO_ROOT_PASSWORD=secure_pass  # Docker Compose용
 
@@ -609,7 +609,7 @@ limit_req_zone (DDoS 방지)
 
 ## 📊 모니터링
 
-LiveLink는 Prometheus와 Grafana를 사용하여 시스템을 실시간으로 모니터링합니다.
+stagelives는 Prometheus와 Grafana를 사용하여 시스템을 실시간으로 모니터링합니다.
 
 ### 메트릭 수집
 
@@ -667,13 +667,13 @@ GitHub Actions를 통한 자동화된 CI/CD:
 
 ```bash
 # 1. 이미지 빌드
-docker build -t livelink-api:latest .
+docker build -t stagelives-api:latest .
 
 # 2. 이미지 태그
-docker tag livelink-api:latest ghcr.io/your-org/livelink-api:latest
+docker tag stagelives-api:latest ghcr.io/your-org/stagelives-api:latest
 
 # 3. 레지스트리에 푸시
-docker push ghcr.io/your-org/livelink-api:latest
+docker push ghcr.io/your-org/stagelives-api:latest
 
 # 4. 서버에서 실행
 docker-compose pull
@@ -928,7 +928,7 @@ npm run dev
 docker-compose logs -f app
 
 # PM2 로그
-pm2 logs livelink-api
+pm2 logs stagelives-api
 
 # Nginx 로그
 docker-compose exec nginx tail -f /var/log/nginx/error.log
