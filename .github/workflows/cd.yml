@@ -144,7 +144,7 @@ jobs:
       # 실제 배포 작업을 여기에 추가하세요
       # 예: SSH를 통한 서버 배포, Kubernetes 배포 등
       - name: Deploy to server via SSH
-        uses: appleboy/ssh-action@v1.2.2
+        uses: appleboy/ssh-action@v1.2.3
         if: false  # 활성화하려면 true로 변경
         with:
           host: ${{ secrets.SERVER_HOST }}
