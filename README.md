@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Database-MongoDB-green.svg" alt="MongoDB">
   <img src="https://img.shields.io/badge/Cache-Redis-red.svg" alt="Redis">
   <img src="https://img.shields.io/badge/Test-Jest-yellow.svg" alt="Jest">
-  <br/>
+  <br/>ㄹ
   <a href="https://github.com/EverydayFireFriday/LiveLink_BE/actions/workflows/ci.yml">
     <img src="https://github.com/EverydayFireFriday/LiveLink_BE/actions/workflows/ci.yml/badge.svg" alt="CI Status">
   </a>
@@ -953,13 +953,13 @@ docker-compose exec nginx tail -f /var/log/nginx/error.log
 - **코드 스타일**: ESLint + Prettier 설정 준수
 - **커밋 메시지**: [Conventional Commits](https://www.conventionalcommits.org/) 형식 사용
   ```
-  feat: 새로운 기능 추가
-  fix: 버그 수정
-  docs: 문서 수정
-  style: 코드 포맷팅
-  refactor: 코드 리팩토링
-  test: 테스트 추가/수정
-  chore: 빌드 설정 등
+  feat :: 새로운 기능 추가
+  fix :: 버그 수정
+  docs :: 문서 수정
+  style :: 코드 포맷팅
+  refactor :: 코드 리팩토링
+  test :: 테스트 추가/수정
+  chore :: 빌드 설정 등
   ```
 - **테스트**: 새로운 기능에는 테스트 코드 포함
 - **문서화**: API 변경 시 Swagger 문서 업데이트
