@@ -50,6 +50,7 @@ export interface SessionUser {
   likedConcerts: string[];
   likedArticles: string[];
   loginTime: string;
+  loginProvider: 'email' | 'google' | 'apple'; // 로그인한 provider
 }
 
 export interface VerificationData {

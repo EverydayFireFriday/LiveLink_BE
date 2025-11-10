@@ -38,6 +38,7 @@ export class AuthService {
       likedConcerts?: unknown;
       likedArticles?: unknown;
     },
+    loginProvider: 'email' | 'google' | 'apple',
   ): {
     userId: string;
     email: string;
@@ -53,6 +54,7 @@ export class AuthService {
     likedConcerts?: unknown;
     likedArticles?: unknown;
     loginTime: string;
+    loginProvider: 'email' | 'google' | 'apple';
   } {
     return {
       userId: user._id!.toHexString(), // ObjectId를 string으로 변환
@@ -69,6 +71,7 @@ export class AuthService {
       likedConcerts: user.likedConcerts,
       likedArticles: user.likedArticles,
       loginTime: new Date().toISOString(),
+      loginProvider,
     };
   }
 }

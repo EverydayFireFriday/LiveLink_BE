@@ -30,7 +30,7 @@ export const handleAppleCallback = async (
     // 1. 세션 생성
     const authService = new AuthService();
     const user = req.user as User;
-    const sessionData = authService.createSessionData(user);
+    const sessionData = authService.createSessionData(user, 'apple');
     req.session.user = sessionData;
 
     // 2. UserSession 생성 및 관리
@@ -100,7 +100,7 @@ export const authenticateWithApple = async (
 
     // 3. 세션 생성
     const authService = new AuthService();
-    const sessionData = authService.createSessionData(user);
+    const sessionData = authService.createSessionData(user, 'apple');
     req.session.user = sessionData;
 
     // 4. UserSession 생성 및 관리
@@ -127,6 +127,7 @@ export const authenticateWithApple = async (
           profileImage: user.profileImage,
           status: user.status,
           oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
+          loginProvider: 'apple' as const, // 로그인한 provider
         },
         session: {
           expiresAt: sessionResult.expiresAt.toISOString(),

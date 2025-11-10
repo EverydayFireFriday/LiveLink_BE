@@ -171,7 +171,7 @@ export class AuthController {
       });
 
       // 세션 고정 공격 방지를 위해 세션 재생성
-      const sessionData = authService.createSessionData(user);
+      const sessionData = authService.createSessionData(user, 'email');
 
       req.session.regenerate(async (err) => {
         if (err) {
@@ -291,6 +291,7 @@ export class AuthController {
             fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
             notificationPreference: user.notificationPreference,
             oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
+            loginProvider: 'email' as const, // 로그인한 provider
           },
           sessionId: req.sessionID,
         };
@@ -367,6 +368,14 @@ export class AuthController {
           });
         }
 
+        // 세션에서 loginProvider 가져오기
+        const sessionUser = req.session.user as
+          | {
+              loginProvider?: 'email' | 'google' | 'apple';
+            }
+          | undefined;
+        const loginProvider = sessionUser?.loginProvider || 'email';
+
         // 로그인 API와 동일한 형식으로 사용자 데이터 반환
         return ResponseBuilder.success(res, '세션 확인 성공', {
           loggedIn: true,
@@ -388,6 +397,7 @@ export class AuthController {
             fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
             notificationPreference: user.notificationPreference,
             oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
+            loginProvider, // 로그인한 provider (기본값: email)
           },
           sessionId: req.sessionID,
         });
