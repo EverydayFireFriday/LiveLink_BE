@@ -28,7 +28,7 @@ const envSchema = z.object({
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
     .optional()
-    .default('10'),
+    .default('5'),
   BRUTE_FORCE_BLOCK_DURATION: z
     .string()
     .regex(/^\d+$/, '숫자만 입력 가능합니다')
@@ -90,31 +90,31 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .optional()
     .default('900000'), // 15분 (15 * 60 * 1000)
-  API_LIMIT_DEFAULT_MAX: z.string().regex(/^\d+$/).optional().default('100'),
+  API_LIMIT_DEFAULT_MAX: z.string().regex(/^\d+$/).optional().default('120'),
   API_LIMIT_STRICT_WINDOW_MS: z
     .string()
     .regex(/^\d+$/)
     .optional()
     .default('900000'), // 15분 (15 * 60 * 1000)
-  API_LIMIT_STRICT_MAX: z.string().regex(/^\d+$/).optional().default('50'),
+  API_LIMIT_STRICT_MAX: z.string().regex(/^\d+$/).optional().default('20'),
   API_LIMIT_RELAXED_WINDOW_MS: z
     .string()
     .regex(/^\d+$/)
     .optional()
     .default('3600000'), // 60분 (60 * 60 * 1000)
-  API_LIMIT_RELAXED_MAX: z.string().regex(/^\d+$/).optional().default('500'),
+  API_LIMIT_RELAXED_MAX: z.string().regex(/^\d+$/).optional().default('200'),
   API_LIMIT_LOGIN_WINDOW_MS: z
     .string()
     .regex(/^\d+$/)
     .optional()
     .default('900000'), // 15분 (15 * 60 * 1000)
-  API_LIMIT_LOGIN_MAX: z.string().regex(/^\d+$/).optional().default('10'),
+  API_LIMIT_LOGIN_MAX: z.string().regex(/^\d+$/).optional().default('15'),
   API_LIMIT_SIGNUP_WINDOW_MS: z
     .string()
     .regex(/^\d+$/)
     .optional()
     .default('3600000'), // 60분 (60 * 60 * 1000)
-  API_LIMIT_SIGNUP_MAX: z.string().regex(/^\d+$/).optional().default('10'),
+  API_LIMIT_SIGNUP_MAX: z.string().regex(/^\d+$/).optional().default('5'),
 
   // 🕐 스케줄러 설정
   CONCERT_STATUS_CHECK_INTERVAL: z

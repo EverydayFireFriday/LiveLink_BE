@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import logger from '../../utils/logger/logger';
-import { env } from '../../config/env/env';
+import { env, isDevelopment } from '../../config/env/env';
 
 const MAX_ATTEMPTS = parseInt(env.BRUTE_FORCE_MAX_ATTEMPTS);
 const BLOCK_DURATION_SECONDS = parseInt(env.BRUTE_FORCE_BLOCK_DURATION);
@@ -12,6 +12,13 @@ export class BruteForceProtectionService {
   constructor(redisClient: Redis) {
     this.redisClient = redisClient;
     void this.checkRedisConnection();
+
+    // 개발 환경에서는 Brute Force Protection 완전히 스킵
+    if (isDevelopment()) {
+      logger.info(
+        '[BruteForce] 🛠️ Development mode detected - Brute Force Protection is DISABLED',
+      );
+    }
   }
 
   private async checkRedisConnection() {
@@ -37,6 +44,11 @@ export class BruteForceProtectionService {
   }
 
   async increment(key: string): Promise<number> {
+    // 개발 환경에서는 항상 1 반환 (통과)
+    if (isDevelopment()) {
+      return 1;
+    }
+
     if (!this.isRedisAvailable) {
       logger.warn(
         `[BruteForce] Redis is unavailable. Skipping increment for ${key}.`,
@@ -82,6 +94,11 @@ export class BruteForceProtectionService {
   }
 
   async isBlocked(key: string): Promise<boolean> {
+    // 개발 환경에서는 항상 차단하지 않음
+    if (isDevelopment()) {
+      return false;
+    }
+
     if (!this.isRedisAvailable) {
       logger.warn(
         `[BruteForce] Redis is unavailable. Skipping block check for ${key}.`,
@@ -103,6 +120,11 @@ export class BruteForceProtectionService {
   }
 
   async getBlockTime(key: string): Promise<number> {
+    // 개발 환경에서는 항상 0 반환 (차단 시간 없음)
+    if (isDevelopment()) {
+      return 0;
+    }
+
     if (!this.isRedisAvailable) {
       logger.warn(
         `[BruteForce] Redis is unavailable. Skipping getBlockTime for ${key}.`,
@@ -123,6 +145,11 @@ export class BruteForceProtectionService {
   }
 
   async reset(key: string): Promise<void> {
+    // 개발 환경에서는 아무 것도 하지 않음
+    if (isDevelopment()) {
+      return;
+    }
+
     if (!this.isRedisAvailable) {
       logger.warn(
         `[BruteForce] Redis is unavailable. Skipping reset for ${key}.`,
