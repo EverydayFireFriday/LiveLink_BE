@@ -109,6 +109,7 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.10.0",
     "@types/nodemailer": "^6.4.19",
+    "@types/openapi-to-postmanv2": "^5.0.0",
     "@types/passport-apple": "^2.0.3",
     "@types/sanitize-html": "^2.16.0",
     "@types/supertest": "^6.0.2",

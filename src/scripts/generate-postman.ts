@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import * as fs from 'fs';
 import * as path from 'path';
 import { swaggerSpec } from '../config/swagger';
 import logger from '../utils/logger/logger';
-
-const Converter = require('openapi-to-postmanv2');
+import * as Converter from 'openapi-to-postmanv2';
 
 const outputDir = path.join(__dirname, '../../docs');
 const outputPath = path.join(outputDir, 'postman-collection.json');
@@ -16,16 +15,16 @@ if (!fs.existsSync(outputDir)) {
 
 // Convert Swagger to Postman Collection
 const options = {
-  requestNameSource: 'url',
-  indentCharacter: ' ',
+  requestNameSource: 'URL' as const,
+  indentCharacter: 'Space' as const,
   collapseFolders: true,
   includeAuthInfoInExample: false, // Session-based auth uses cookies
 };
 
 Converter.convert(
-  { type: 'json', data: swaggerSpec },
+  { type: 'json', data: JSON.stringify(swaggerSpec) },
   options,
-  (err: Error | null, conversionResult: any) => {
+  (err: unknown, conversionResult: any) => {
     if (err) {
       logger.error('❌ Error converting to Postman:', err);
       process.exit(1);
