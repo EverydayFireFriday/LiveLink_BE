@@ -1,72 +1,11 @@
-import promClient from 'prom-client';
-
-// Prometheus metrics setup
-const register = new promClient.Registry();
-
-// Collect default metrics (CPU, memory, event loop, etc.)
-promClient.collectDefaultMetrics({
-  register,
-  prefix: 'nodejs_',
-  gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
-});
-
-// HTTP Request Counter
-const httpRequestCounter = new promClient.Counter({
-  name: 'http_requests_total',
-  help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status'],
-  registers: [register],
-});
-
-// HTTP Request Duration Histogram
-const httpRequestDurationMicroseconds = new promClient.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'status'],
-  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
-  registers: [register],
-});
-
-// Active Connections Gauge
-const activeConnectionsGauge = new promClient.Gauge({
-  name: 'http_active_connections',
-  help: 'Number of active HTTP connections',
-  registers: [register],
-});
-
-// Database Connection Status
-const dbConnectionGauge = new promClient.Gauge({
-  name: 'db_connection_status',
-  help: 'Database connection status (1 = connected, 0 = disconnected)',
-  labelNames: ['database'],
-  registers: [register],
-});
-
-// Redis Connection Status
-const redisConnectionGauge = new promClient.Gauge({
-  name: 'redis_connection_status',
-  help: 'Redis connection status (1 = connected, 0 = disconnected)',
-  registers: [register],
-});
-
-// HTTP Error Counter
-const httpErrorCounter = new promClient.Counter({
-  name: 'http_errors_total',
-  help: 'Total number of HTTP errors',
-  labelNames: ['method', 'route', 'status'],
-  registers: [register],
-});
 import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { configurePassport } from './config/oauth/passport';
 import dotenv from 'dotenv';
-import cors from 'cors';
-import helmet from 'helmet';
 import morgan from 'morgan';
-import mongoSanitize from 'express-mongo-sanitize';
-import sanitizeHtml from 'sanitize-html';
-import hpp from 'hpp';
+import * as http from 'http';
+import * as path from 'path';
 
 // 🔧 환경변수 로드 (맨 먼저!)
 dotenv.config();
@@ -82,90 +21,51 @@ import {
 import logger, { stream } from './utils/logger/logger';
 import { swaggerSpec, swaggerUi, swaggerUiOptions } from './config/swagger';
 import { ChatSocketServer } from './socket';
-import { initializeChatModels } from './models/chat';
 
-// 데이터베이스 연결 함수들
+// 분리된 모듈들
 import {
-  connectDatabase as connectUserDB,
-  disconnectDatabase as disconnectUserDB,
-} from './models/auth/user';
+  register,
+  httpRequestCounter,
+  httpRequestDurationMicroseconds,
+  activeConnectionsGauge,
+  httpErrorCounter,
+  redisConnectionGauge,
+} from './config/metrics/prometheus';
+import { applySecurityMiddlewares } from './config/middleware/security';
 import {
-  connectDB as connectConcertDB,
-  disconnectDB as disconnectConcertDB,
-  initializeConcertModel,
-} from './utils/database/db';
-import { initializeAllArticleModels } from './models/article';
-import { initializeConcertTestModel } from './models/test/test';
-import { ReportService } from './report/reportService';
+  initializeDatabases,
+  databaseState,
+} from './config/database/initializer';
+import {
+  shutdownState,
+  setupShutdownHandlers,
+  setupGlobalErrorHandlers,
+} from './services/shutdown/gracefulShutdown';
+import { setupRoutes } from './config/routes';
 import { setupApolloServer } from './report/apolloServer';
-import { ConcertStatusScheduler } from './services/concert/concertStatusScheduler';
-import { SessionCleanupScheduler } from './services/auth/sessionCleanupScheduler';
-import {
-  createNotificationWorker,
-  closeNotificationWorker,
-} from './services/notification/notificationWorker';
-import { closeNotificationQueue } from './config/queue/notificationQueue';
-import { NotificationRecoveryService } from './services/notification/notificationRecovery';
-import { getNotificationHistoryModel } from './models/notification/notificationHistory';
-import {
-  startTicketNotificationScheduler,
-  stopTicketNotificationScheduler,
-} from './services/notification/ticketNotificationScheduler';
-import {
-  createTicketNotificationWorker,
-  closeTicketNotificationWorker,
-} from './services/notification/ticketNotificationWorker';
-import { closeTicketNotificationQueue } from './config/queue/ticketNotificationQueue';
-import {
-  startConcertStartNotificationScheduler,
-  stopConcertStartNotificationScheduler,
-} from './services/notification/concertStartNotificationScheduler';
-import {
-  createConcertStartNotificationWorker,
-  closeConcertStartNotificationWorker,
-} from './services/notification/concertStartNotificationWorker';
-import { closeConcertStartNotificationQueue } from './config/queue/concertStartNotificationQueue';
-import type { Worker } from 'bullmq';
-
-// 라우터 import
-import authRouter from './routes/auth/index';
-import concertRouter from './routes/concert/index';
-import testRouter from './routes/test/testRoutes';
-import healthRouter from './routes/health/healthRoutes';
-import swaggerRouter from './routes/swagger/swaggerRoutes';
-import termsRouter from './routes/terms/index';
-import notificationRouter from './routes/notification/index';
-import { createReportRouterWithService } from './routes/report/index';
-import { defaultLimiter } from './middlewares/security/rateLimitMiddleware';
-import {
-  errorHandler,
-  notFoundHandler,
-} from './middlewares/error/errorHandler';
 
 // Redis 클라이언트 import
 import {
   redisClient,
   connectRedis as connectRedisClient,
-  disconnectRedis,
 } from './config/redis/redisClient';
-import {
-  connectSocketRedis,
-  disconnectSocketRedis,
-} from './config/redis/socketRedisClient';
+import { connectSocketRedis } from './config/redis/socketRedisClient';
 
-// connect-redis v7.1.1 방식 (named export)
+// connect-redis v7.1.1 방식
 import RedisStore from 'connect-redis';
 import { Store } from 'express-session';
 
+// 유지보수 모드 미들웨어
+import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMiddleware';
+
 const app = express();
-import * as http from 'http';
-// ...
 const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
+// Prometheus 메트릭 및 요청 추적 미들웨어
 app.use((req, res, next) => {
   // Graceful shutdown: 새로운 요청 거부
-  if (isShuttingDown) {
+  if (shutdownState.isShuttingDown) {
     res.set('Connection', 'close');
     return res.status(503).json({
       error: 'Server is shutting down',
@@ -174,14 +74,12 @@ app.use((req, res, next) => {
   }
 
   // 진행 중인 요청 추적
-  activeRequests++;
-
-  // Track active connections (Prometheus)
+  shutdownState.activeRequests++;
   activeConnectionsGauge.inc();
 
   const end = httpRequestDurationMicroseconds.startTimer();
   res.on('finish', () => {
-    const route: string = req.route ? String(req.route.path) : req.path;
+    const route: string = (req.route?.path as string) || req.path;
     const status = res.statusCode;
     httpRequestCounter.inc({
       method: req.method,
@@ -199,16 +97,13 @@ app.use((req, res, next) => {
       });
     }
 
-    // Decrease active connections
     activeConnectionsGauge.dec();
-
-    // 완료된 요청 카운트 감소
-    activeRequests--;
+    shutdownState.activeRequests--;
   });
 
   res.on('close', () => {
     activeConnectionsGauge.dec();
-    activeRequests--;
+    shutdownState.activeRequests--;
   });
 
   next();
@@ -227,88 +122,12 @@ app.get('/metrics', (req, res) => {
   })();
 });
 
-// 🔧 프록시 신뢰 설정 (프로덕션 환경에서 로드밸런서/프록시 뒤에 있을 때)
-app.set('trust proxy', 1);
-
-// 보안 헤더 설정
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'", // Apollo Playground might use inline scripts
-          'https://cdn.jsdelivr.net',
-          'https://apollo-server-landing-page.cdn.apollographql.com',
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'", // UI 라이브러리 호환성을 위해 임시 허용, Apollo Playground도 필요
-          'https://cdn.jsdelivr.net',
-          'https://apollo-server-landing-page.cdn.apollographql.com',
-        ],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: [
-          "'self'",
-          'https://appleid.apple.com',
-          'https://accounts.google.com',
-          'https://oauth2.googleapis.com',
-          'https://apollo-server-landing-page.cdn.apollographql.com',
-        ],
-        frameAncestors: ["'self'"], // 클릭재킹 방지
-        objectSrc: ["'none'"], // 플러그인 로드 차단
-        // Only upgrade in production; omit in dev to prevent local HTTP breakage
-        ...(isProduction() ? { upgradeInsecureRequests: [] } : {}),
-        reportUri: isProduction() ? ['/csp-report'] : [], // Add CSP reporting endpoint
-      },
-    },
-    strictTransportSecurity: isProduction()
-      ? {
-          maxAge: 31536000, // 1년
-          includeSubDomains: true,
-          preload: true,
-        }
-      : false,
-    // Prefer CSP's frame-ancestors. If you need XFO, keep it consistent with CSP:
-    frameguard: { action: 'sameorigin' },
-  }),
-);
-
 // 환경별 로그 포맷 설정
 const logFormat = isDevelopment() ? 'dev' : 'combined';
 app.use(morgan(logFormat, { stream }));
 
-// CORS 설정 (보안 강화)
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // 프로덕션: FRONTEND_URL만 허용
-      // 개발: CORS_ALLOWED_ORIGINS 목록의 도메인만 허용
-      const allowedOrigins = isProduction()
-        ? [env.FRONTEND_URL]
-        : env.CORS_ALLOWED_ORIGINS;
-
-      // Origin이 없는 경우 (서버 간 통신, Postman 등)
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      // 허용된 도메인인지 확인
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        logger.warn(`🚫 CORS blocked request from origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true, // 항상 credentials 활성화
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Set-Cookie'],
-    maxAge: 86400, // Preflight 캐시 24시간
-  }),
-);
+// 보안 미들웨어 적용
+applySecurityMiddlewares(app);
 
 // Redis 이벤트 핸들링 (Prometheus 메트릭 추가)
 redisClient.on('connect', () => {
@@ -321,66 +140,7 @@ redisClient.on('end', () => {
   redisConnectionGauge.set(0);
 });
 
-// JSON 파싱 미들웨어
-app.use(
-  express.json({
-    limit: '10mb',
-    verify: (req: express.Request, res: express.Response, buf: Buffer) => {
-      try {
-        JSON.parse(buf.toString());
-      } catch (e) {
-        const error = new Error('잘못된 JSON 형식입니다.') as Error & {
-          status?: number;
-          type?: string;
-        };
-        error.status = 400;
-        error.type = 'entity.parse.failed';
-        throw error;
-      }
-    },
-  }),
-);
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// 보안 미들웨어 적용
-app.use(mongoSanitize());
-
-// XSS 방어 미들웨어 (sanitize-html 사용)
-const sanitizeInput = (input: unknown): unknown => {
-  if (typeof input === 'string') {
-    return sanitizeHtml(input, {
-      allowedTags: [], // 모든 HTML 태그 제거
-      allowedAttributes: {}, // 모든 HTML 속성 제거
-    });
-  }
-  if (Array.isArray(input)) {
-    return input.map((item) => sanitizeInput(item));
-  }
-  if (typeof input === 'object' && input !== null) {
-    const sanitizedObject: { [key: string]: unknown } = {};
-    for (const key in input) {
-      if (Object.prototype.hasOwnProperty.call(input, key)) {
-        sanitizedObject[key] = sanitizeInput(
-          (input as Record<string, unknown>)[key],
-        );
-      }
-    }
-    return sanitizedObject;
-  }
-  return input;
-};
-
-app.use((req, res, next) => {
-  if (req.body) {
-    req.body = sanitizeInput(req.body);
-  }
-  // req.query, req.params 등도 필요에 따라 sanitizeInput 적용 가능
-  next();
-});
-app.use(hpp());
-
 // 정적 파일 서빙
-import * as path from 'path';
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Apple App Site Association 파일 제공 (Universal Links용)
@@ -391,30 +151,10 @@ app.get('/.well-known/apple-app-site-association', (req, res) => {
   );
 });
 
-// 유지보수 모드 미들웨어 (정적 파일 서빙 후, 라우터 전에 위치)
-import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMiddleware';
+// 유지보수 모드 미들웨어
 app.use(maintenanceMiddleware);
 
-// 세션, Passport, 라우터 등은 startServer() 내부에서 초기화됩니다.
-
-// 데이터베이스 연결 상태 추적
-let isUserDBConnected = false;
-let isConcertDBConnected = false;
-let isArticleDBConnected = false;
-let isChatDBConnected = false;
-let reportService: ReportService;
-let concertStatusScheduler: ConcertStatusScheduler | null = null;
-let sessionCleanupScheduler: SessionCleanupScheduler | null = null;
-let notificationWorker: Worker | null = null;
-let ticketNotificationWorker: Worker | null = null;
-let concertStartNotificationWorker: Worker | null = null;
-
-// Graceful shutdown 상태 추적
-let isShuttingDown = false;
-let activeRequests = 0;
-
-// 🩺 헬스체크 엔드포인트들 (인증 없음 - K8s/로드밸런서용)
-// Liveness Probe: 단순 생존 확인
+// 🩺 헬스체크 엔드포인트들
 app.get('/health/liveness', (req: express.Request, res: express.Response) => {
   res.status(200).json({
     status: 'alive',
@@ -423,21 +163,19 @@ app.get('/health/liveness', (req: express.Request, res: express.Response) => {
   });
 });
 
-// Readiness Probe: 서비스 준비 상태 확인
 app.get('/health/readiness', (req: express.Request, res: express.Response) => {
-  // Redis는 선택적 - 필수 서비스만 체크
   const allServicesReady =
-    isUserDBConnected &&
-    isConcertDBConnected &&
-    isArticleDBConnected &&
-    isChatDBConnected;
+    databaseState.isUserDBConnected &&
+    databaseState.isConcertDBConnected &&
+    databaseState.isArticleDBConnected &&
+    databaseState.isChatDBConnected;
 
   const serviceStatus = {
-    userDB: isUserDBConnected,
-    concertDB: isConcertDBConnected,
-    articleDB: isArticleDBConnected,
-    chatDB: isChatDBConnected,
-    redis: redisClient?.status === 'ready' || false, // 정보성 - 필수 아님
+    userDB: databaseState.isUserDBConnected,
+    concertDB: databaseState.isConcertDBConnected,
+    articleDB: databaseState.isArticleDBConnected,
+    chatDB: databaseState.isChatDBConnected,
+    redis: redisClient?.status === 'ready' || false,
   };
 
   if (allServicesReady) {
@@ -455,7 +193,6 @@ app.get('/health/readiness', (req: express.Request, res: express.Response) => {
   }
 });
 
-// 일반 헬스체크 (호환성)
 app.get('/health', (req: express.Request, res: express.Response) => {
   res.status(200).json({
     status: 'healthy',
@@ -464,10 +201,10 @@ app.get('/health', (req: express.Request, res: express.Response) => {
     version: process.env.npm_package_version || '1.0.0',
     environment: env.NODE_ENV,
     services: {
-      userDB: isUserDBConnected,
-      concertDB: isConcertDBConnected,
-      articleDB: isArticleDBConnected,
-      chatDB: isChatDBConnected,
+      userDB: databaseState.isUserDBConnected,
+      concertDB: databaseState.isConcertDBConnected,
+      articleDB: databaseState.isArticleDBConnected,
+      chatDB: databaseState.isChatDBConnected,
       redis: redisClient?.status === 'ready' || false,
     },
   });
@@ -476,27 +213,32 @@ app.get('/health', (req: express.Request, res: express.Response) => {
 // 데이터베이스 연결 상태 확인 미들웨어
 app.use(
   (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    // 헬스체크는 항상 통과
     if (req.path.startsWith('/health')) {
       return next();
     }
 
-    if (req.path.startsWith('/auth') && !isUserDBConnected) {
+    if (req.path.startsWith('/auth') && !databaseState.isUserDBConnected) {
       return res.status(503).json({
         message: '사용자 데이터베이스 연결이 준비되지 않았습니다.',
       });
     }
-    if (req.path.startsWith('/concert') && !isConcertDBConnected) {
+    if (
+      req.path.startsWith('/concert') &&
+      !databaseState.isConcertDBConnected
+    ) {
       return res.status(503).json({
         message: '콘서트 데이터베이스 연결이 준비되지 않았습니다.',
       });
     }
-    if (req.path.startsWith('/article') && !isArticleDBConnected) {
+    if (
+      req.path.startsWith('/article') &&
+      !databaseState.isArticleDBConnected
+    ) {
       return res.status(503).json({
         message: '게시글 데이터베이스 연결이 준비되지 않았습니다.',
       });
     }
-    if (req.path.startsWith('/chat') && !isChatDBConnected) {
+    if (req.path.startsWith('/chat') && !databaseState.isChatDBConnected) {
       return res.status(503).json({
         message: '채팅 데이터베이스 연결이 준비되지 않았습니다.',
       });
@@ -541,12 +283,6 @@ app.get('/', (req: express.Request, res: express.Response) => {
   });
 });
 
-// 정적 라우터 연결
-app.use('/health', healthRouter);
-app.use('/swagger-json', swaggerRouter);
-app.use('/terms', termsRouter);
-// (라우터는 startServer()에서 연결)
-
 // CSP Violation Report Endpoint
 app.post(
   '/csp-report',
@@ -558,290 +294,9 @@ app.post(
     } else {
       logger.warn('CSP Violation: No report data received.');
     }
-    res.status(204).end(); // Respond with No Content
+    res.status(204).end();
   },
 );
-
-// 데이터베이스 초기화 함수
-const initializeDatabases = async (): Promise<void> => {
-  try {
-    logger.info('🔌 Connecting to User Database...');
-    await connectUserDB();
-    isUserDBConnected = true;
-    dbConnectionGauge.set({ database: 'user' }, 1);
-    logger.info('✅ User Database connected');
-
-    logger.info('🔌 Connecting to Concert Database...');
-    const concertDB = await connectConcertDB();
-    initializeConcertModel(concertDB);
-    initializeConcertTestModel(concertDB);
-    isConcertDBConnected = true;
-    dbConnectionGauge.set({ database: 'concert' }, 1);
-    logger.info('✅ Concert Database connected and models initialized');
-
-    logger.info('🔌 Initializing Article Database...');
-    initializeAllArticleModels(concertDB);
-    isArticleDBConnected = true;
-    dbConnectionGauge.set({ database: 'article' }, 1);
-    logger.info('✅ Article Database initialized and models ready');
-
-    // Initialize ReportService
-    reportService = new ReportService(concertDB);
-    logger.info('✅ Report Service initialized');
-
-    logger.info('🔌 Initializing Chat Database...');
-    initializeChatModels();
-    isChatDBConnected = true;
-    dbConnectionGauge.set({ database: 'chat' }, 1);
-    logger.info('✅ Chat Database initialized and models ready');
-
-    // Initialize Concert Status Scheduler
-    logger.info('🔌 Initializing Concert Status Scheduler...');
-    concertStatusScheduler = new ConcertStatusScheduler(concertDB);
-    concertStatusScheduler.start();
-    logger.info('✅ Concert Status Scheduler started');
-
-    // Initialize Session Cleanup Scheduler
-    logger.info('🔌 Initializing Session Cleanup Scheduler...');
-    sessionCleanupScheduler = new SessionCleanupScheduler();
-    sessionCleanupScheduler.start();
-    logger.info('✅ Session Cleanup Scheduler started');
-
-    // Initialize Notification History Model
-    logger.info('🔌 Initializing Notification History Model...');
-    const userDB = await import('./utils/database/db').then((m) => m.getDB());
-    getNotificationHistoryModel(userDB);
-    logger.info('✅ Notification History Model initialized');
-
-    // Initialize Notification Worker (BullMQ)
-    logger.info('🔌 Initializing Notification Worker (BullMQ)...');
-    notificationWorker = createNotificationWorker();
-    logger.info('✅ Notification Worker started');
-
-    // Run notification recovery (restore lost jobs from MongoDB)
-    logger.info('🔄 Running notification job recovery...');
-    await NotificationRecoveryService.runFullRecovery(concertDB);
-    logger.info('✅ Notification recovery completed');
-
-    // Initialize Ticket Notification Worker (BullMQ)
-    logger.info('🔌 Initializing Ticket Notification Worker (BullMQ)...');
-    ticketNotificationWorker = createTicketNotificationWorker();
-    logger.info('✅ Ticket Notification Worker started');
-
-    // Start Ticket Notification Scheduler (D-2 scheduler)
-    logger.info('🔌 Starting Ticket Notification Scheduler (D-2)...');
-    startTicketNotificationScheduler();
-    logger.info('✅ Ticket Notification Scheduler started');
-
-    // Initialize Concert Start Notification Worker (BullMQ)
-    logger.info(
-      '🔌 Initializing Concert Start Notification Worker (BullMQ)...',
-    );
-    concertStartNotificationWorker = createConcertStartNotificationWorker();
-    logger.info('✅ Concert Start Notification Worker started');
-
-    // Start Concert Notification Scheduler
-    logger.info('🔌 Starting Concert Notification Scheduler...');
-    startConcertStartNotificationScheduler();
-    logger.info('✅ Concert Notification Scheduler started');
-  } catch (error) {
-    logger.error('❌ Database initialization failed:', { error });
-    // Set all database connection gauges to 0 on failure
-    dbConnectionGauge.set({ database: 'user' }, isUserDBConnected ? 1 : 0);
-    dbConnectionGauge.set(
-      { database: 'concert' },
-      isConcertDBConnected ? 1 : 0,
-    );
-    dbConnectionGauge.set(
-      { database: 'article' },
-      isArticleDBConnected ? 1 : 0,
-    );
-    dbConnectionGauge.set({ database: 'chat' }, isChatDBConnected ? 1 : 0);
-    throw error;
-  }
-};
-
-// 우아한 종료 처리
-const gracefulShutdown = async (signal: string): Promise<void> => {
-  logger.info(`\n🛑 ${signal} received. Starting graceful shutdown...`);
-
-  // 중복 종료 방지
-  if (isShuttingDown) {
-    logger.warn('⚠️ Shutdown already in progress, ignoring signal');
-    return;
-  }
-
-  isShuttingDown = true;
-  const shutdownStartTime = Date.now();
-
-  try {
-    // 1️⃣ 새로운 요청 거부 시작 (미들웨어에서 처리)
-    logger.info('1️⃣ Rejecting new requests...');
-
-    // 2️⃣ Socket.IO 클라이언트에게 종료 알림 전송
-    if (chatSocketServer) {
-      logger.info('2️⃣ Notifying Socket.IO clients about shutdown...');
-      const io = chatSocketServer.getIO();
-      io.emit('server:shutdown', {
-        message: '서버가 곧 종료됩니다. 재연결을 준비해주세요.',
-        reconnectAfter: 5000,
-      });
-
-      // 클라이언트가 메시지를 받을 시간 제공 (5초)
-      logger.info(
-        '⏳ Waiting 5 seconds for clients to receive shutdown notice...',
-      );
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
-
-    // 3️⃣ 진행 중인 요청 완료 대기 (최대 30초)
-    logger.info(
-      `3️⃣ Waiting for ${activeRequests} active requests to complete (max 30s)...`,
-    );
-    const requestWaitStart = Date.now();
-    const maxWaitTime = 30000; // 30초
-
-    while (activeRequests > 0 && Date.now() - requestWaitStart < maxWaitTime) {
-      await new Promise((resolve) => setTimeout(resolve, 500)); // 0.5초마다 체크
-      if (activeRequests > 0) {
-        logger.info(
-          `⏳ Still waiting... ${activeRequests} active requests remaining`,
-        );
-      }
-    }
-
-    if (activeRequests > 0) {
-      logger.warn(
-        `⚠️ Force closing with ${activeRequests} active requests after 30s timeout`,
-      );
-    } else {
-      logger.info('✅ All requests completed successfully');
-    }
-
-    // 4️⃣ HTTP 서버 종료 (타임아웃 포함)
-    if (httpServer.listening) {
-      logger.info('4️⃣ Closing HTTP server...');
-      await Promise.race([
-        new Promise<void>((resolve) => {
-          httpServer.close(() => {
-            logger.info('✅ HTTP server closed gracefully');
-            resolve();
-          });
-        }),
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            logger.warn('⚠️ HTTP server close timeout, forcing shutdown');
-            resolve();
-          }, 10000); // 10초 타임아웃
-        }),
-      ]);
-    }
-
-    // 5️⃣ Socket.IO 서버 종료
-    if (chatSocketServer) {
-      logger.info('5️⃣ Closing Socket.IO server...');
-      const io = chatSocketServer.getIO();
-
-      // 모든 소켓 연결 강제 종료
-      const sockets = await io.fetchSockets();
-      sockets.forEach((socket) => socket.disconnect(true));
-
-      await io.close();
-      chatSocketServer = null;
-      logger.info('✅ Socket.IO server closed');
-    }
-
-    // 6️⃣ Concert Status Scheduler 종료
-    if (concertStatusScheduler) {
-      logger.info('6️⃣ Stopping Concert Status Scheduler...');
-      concertStatusScheduler.stop();
-      concertStatusScheduler = null;
-      logger.info('✅ Concert Status Scheduler stopped');
-    }
-
-    // 6️⃣-2 Session Cleanup Scheduler 종료
-    if (sessionCleanupScheduler) {
-      logger.info('6️⃣-2 Stopping Session Cleanup Scheduler...');
-      sessionCleanupScheduler.stop();
-      sessionCleanupScheduler = null;
-      logger.info('✅ Session Cleanup Scheduler stopped');
-    }
-
-    // 6️⃣-3 Notification Worker 종료 (BullMQ)
-    if (notificationWorker) {
-      logger.info('6️⃣-3 Stopping Notification Worker...');
-      await closeNotificationWorker(notificationWorker);
-      notificationWorker = null;
-      logger.info('✅ Notification Worker stopped');
-    }
-
-    // 6️⃣-4 Notification Queue 종료
-    logger.info('6️⃣-4 Closing Notification Queue...');
-    await closeNotificationQueue();
-    logger.info('✅ Notification Queue closed');
-
-    // 6️⃣-5 Ticket Notification Scheduler 종료
-    logger.info('6️⃣-5 Stopping Ticket Notification Scheduler...');
-    stopTicketNotificationScheduler();
-    logger.info('✅ Ticket Notification Scheduler stopped');
-
-    // 6️⃣-6 Ticket Notification Worker 종료 (BullMQ)
-    if (ticketNotificationWorker) {
-      logger.info('6️⃣-6 Stopping Ticket Notification Worker...');
-      await closeTicketNotificationWorker();
-      ticketNotificationWorker = null;
-      logger.info('✅ Ticket Notification Worker stopped');
-    }
-
-    // 6️⃣-7 Ticket Notification Queue 종료
-    logger.info('6️⃣-7 Closing Ticket Notification Queue...');
-    await closeTicketNotificationQueue();
-    logger.info('✅ Ticket Notification Queue closed');
-
-    // 6️⃣-8 Concert Notification Scheduler 종료
-    logger.info('6️⃣-8 Stopping Concert Notification Scheduler...');
-    stopConcertStartNotificationScheduler();
-    logger.info('✅ Concert Notification Scheduler stopped');
-
-    // 6️⃣-9 Concert Start Notification Worker 종료
-    if (concertStartNotificationWorker) {
-      logger.info('6️⃣-9 Stopping Concert Start Notification Worker...');
-      await closeConcertStartNotificationWorker();
-      concertStartNotificationWorker = null;
-      logger.info('✅ Concert Start Notification Worker stopped');
-    }
-
-    // 6️⃣-10 Concert Start Notification Queue 종료
-    logger.info('6️⃣-10 Closing Concert Start Notification Queue...');
-    await closeConcertStartNotificationQueue();
-    logger.info('✅ Concert Start Notification Queue closed');
-
-    // 7️⃣ Socket.IO Redis 연결 종료
-    logger.info('7️⃣ Disconnecting Socket.IO Redis clients...');
-    await disconnectSocketRedis();
-
-    // 8️⃣ Redis 연결 종료
-    logger.info('8️⃣ Disconnecting Redis client...');
-    await disconnectRedis();
-
-    // 9️⃣ MongoDB 연결 종료
-    logger.info('9️⃣ Disconnecting MongoDB...');
-    await disconnectUserDB();
-    logger.info('✅ User MongoDB disconnected');
-
-    await disconnectConcertDB();
-    logger.info('✅ Concert, Article, and Chat MongoDB disconnected');
-
-    const shutdownDuration = Date.now() - shutdownStartTime;
-    logger.info('🎉 ================================');
-    logger.info(`👋 Graceful shutdown completed in ${shutdownDuration}ms`);
-    logger.info('🎉 ================================');
-    process.exit(0);
-  } catch (error) {
-    logger.error('❌ Graceful shutdown failed', { error });
-    process.exit(1);
-  }
-};
 
 // 서버 시작 함수
 const startServer = async (): Promise<void> => {
@@ -858,7 +313,6 @@ const startServer = async (): Promise<void> => {
         '⚠️ Firebase initialization failed, notifications will be disabled:',
         firebaseError,
       );
-      // Firebase 실패는 서버 시작을 중단하지 않음
     }
 
     // Redis 연결 시도 (세션 스토어용)
@@ -873,7 +327,7 @@ const startServer = async (): Promise<void> => {
       cookie: {
         secure: isProduction() || env.COOKIE_SAMESITE === 'none',
         httpOnly: true,
-        maxAge: parseInt(env.SESSION_MAX_AGE_WEB), // 기본값: 1일 (WEB 플랫폼 기준)
+        maxAge: parseInt(env.SESSION_MAX_AGE_WEB),
         sameSite: env.COOKIE_SAMESITE,
         domain: env.COOKIE_DOMAIN || undefined,
       },
@@ -882,6 +336,7 @@ const startServer = async (): Promise<void> => {
 
     if (isRedisConnected && redisClient.status === 'ready') {
       logger.info('✅ Session store: Redis');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       sessionConfig.store = new (RedisStore as any)({
         client: redisClient,
         prefix: 'app:sess:',
@@ -895,7 +350,7 @@ const startServer = async (): Promise<void> => {
     const sessionMiddleware = session(sessionConfig);
     app.use(sessionMiddleware);
 
-    // PASSPORT 초기화 (세션 설정 후)
+    // Passport 초기화
     app.use(passport.initialize());
     app.use(passport.session());
 
@@ -907,52 +362,25 @@ const startServer = async (): Promise<void> => {
     // 데이터베이스 초기화
     await initializeDatabases();
 
-    // Passport 설정 (DB 연결 후)
+    // Passport 설정
     logger.info('🔌 Configuring Passport...');
     configurePassport(passport);
     logger.info('✅ Passport configured');
 
-    // 라우터 연결 (세션 및 Passport 미들웨어 설정 이후)
-    logger.info('🔌 Connecting main routes...');
-    app.use(defaultLimiter);
-    app.use('/auth', authRouter);
-    app.use('/concert', concertRouter);
-    app.use('/test', testRouter);
-    app.use('/', notificationRouter);
-    logger.info('✅ Main routes connected');
+    // 라우터 연결
+    logger.info('🔌 Connecting routes...');
+    await setupRoutes(app, databaseState.reportService!);
+    logger.info('✅ Routes connected');
 
-    // 동적 라우터 로드
-    logger.info('🔌 Loading Article routes...');
-    const { default: articleRouter } = await import('./routes/article/index');
-    app.use('/article', articleRouter);
-    logger.info('✅ Article routes loaded and connected');
-
-    logger.info('🔌 Loading Chat routes...');
-    const { default: chatRouter } = await import('./routes/chat/index');
-    app.use('/chat', chatRouter);
-    logger.info('✅ Chat routes loaded and connected');
-
-    // Setup Report REST API
-    logger.info('🔌 Setting up Report REST API...');
-    const reportRouter = createReportRouterWithService(reportService);
-    app.use('/report', reportRouter);
-    logger.info('✅ Report REST API setup complete');
-
-    // Setup Apollo Server (GraphQL)
+    // Apollo Server 설정
     logger.info('🔌 Setting up Apollo Server...');
-    await setupApolloServer(app, httpServer, reportService);
+    await setupApolloServer(app, httpServer, databaseState.reportService!);
     logger.info('✅ Apollo Server setup complete');
 
     // Socket.IO 초기화
     logger.info('🔌 Initializing Socket.IO server...');
     chatSocketServer = new ChatSocketServer(httpServer, sessionMiddleware);
     logger.info('✅ Socket.IO server initialized');
-
-    // 404 핸들러 (모든 라우터 뒤에, 에러 핸들러 앞에 위치)
-    app.use('*', notFoundHandler);
-
-    // 전역 에러 핸들러 (가장 마지막에 위치)
-    app.use(errorHandler);
 
     // HTTP 서버 시작
     const PORT = parseInt(env.PORT);
@@ -984,7 +412,7 @@ const startServer = async (): Promise<void> => {
       );
       logger.info('🎉 ================================');
 
-      // PM2 ready 신호 전송 (무중단 배포 지원)
+      // PM2 ready 신호 전송
       if (process.send) {
         process.send('ready');
         logger.info(
@@ -998,22 +426,13 @@ const startServer = async (): Promise<void> => {
   }
 };
 
-// 🚨 전역 오류 처리 (MUST)
-process.on('unhandledRejection', (reason) => {
-  logger.error('💥 UnhandledRejection:', { reason });
-  process.exit(1);
-});
+// 전역 오류 처리 설정
+setupGlobalErrorHandlers();
 
-process.on('uncaughtException', (err) => {
-  logger.error('💥 UncaughtException:', { error: err, stack: err?.stack });
-  process.exit(1);
-});
+// Graceful shutdown 핸들러 설정
+setupShutdownHandlers(httpServer, chatSocketServer);
 
-// 🛑 그레이스풀 셧다운 (MUST)
-process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
-
-// 🚀 서버 시작
+// 서버 시작
 try {
   startServer().catch((error: unknown) => {
     logger.error('❌ Failed to start server:', { error });
