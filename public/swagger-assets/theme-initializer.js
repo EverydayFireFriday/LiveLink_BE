@@ -194,7 +194,7 @@
       logger.info('검색 입력창 발견, 이벤트 설정');
 
       // 플레이스홀더 설정
-      searchInput.placeholder = '🔍 태그, 경로, 메소드, 설명으로 검색...';
+      searchInput.placeholder = '🔍 검색 (쉼표로 구분하여 여러 개 검색 가능, 예: concert, article, auth)';
 
       // 기존 이벤트 제거를 위해 클론 생성
       const newSearchInput = searchInput.cloneNode(true);
@@ -203,10 +203,14 @@
       // 검색 함수
       const performSearch = (searchTerm) => {
         const term = searchTerm.toLowerCase().trim();
-        logger.info(`검색어: "${term}"`);
+
+        // 쉼표로 구분된 검색어를 배열로 변환
+        const searchTerms = term.split(',').map(t => t.trim()).filter(t => t !== '');
+
+        logger.info(`검색어: "${term}" (${searchTerms.length}개 키워드: [${searchTerms.join(', ')}])`);
 
         // 검색어가 있으면 먼저 모든 섹션을 열기
-        if (term !== '') {
+        if (searchTerms.length > 0) {
           const allTagButtons = document.querySelectorAll('.opblock-tag-section .opblock-tag');
           allTagButtons.forEach(button => {
             const section = button.closest('.opblock-tag-section');
@@ -236,7 +240,8 @@
             const tagHeader = section.querySelector('h3, h4, .opblock-tag');
             const tagText = tagHeader ? tagHeader.textContent.toLowerCase() : '';
 
-            if (term === '' || tagText.includes(term)) {
+            // 검색어가 없거나, 태그가 검색어 중 하나라도 포함하면 매치
+            if (searchTerms.length === 0 || searchTerms.some(keyword => tagText.includes(keyword))) {
               sectionHasMatch = true;
             }
 
@@ -257,12 +262,13 @@
               const opblockSummary = operation.querySelector('.opblock-summary');
               const summaryText = opblockSummary ? opblockSummary.textContent.toLowerCase() : '';
 
-              // 검색어가 비어있거나 일치하는 경우
-              const isMatch = term === '' ||
-                  path.includes(term) ||
-                  method.includes(term) ||
-                  description.includes(term) ||
-                  summaryText.includes(term);
+              // 검색어가 없거나, 하나라도 매치되면 표시 (OR 조건)
+              const isMatch = searchTerms.length === 0 || searchTerms.some(keyword =>
+                  path.includes(keyword) ||
+                  method.includes(keyword) ||
+                  description.includes(keyword) ||
+                  summaryText.includes(keyword)
+              );
 
               if (isMatch) {
                 operation.style.display = '';
@@ -274,7 +280,7 @@
             });
 
             // 섹션 표시/숨김
-            if (term === '' || sectionHasMatch) {
+            if (searchTerms.length === 0 || sectionHasMatch) {
               section.style.display = '';
             } else {
               section.style.display = 'none';
@@ -284,7 +290,7 @@
               logger.info(`섹션 "${tagText}": ${visibleOpsCount}개 API 표시`);
             }
           });
-        }, term !== '' ? 100 : 0); // 검색어가 있을 때만 지연
+        }, searchTerms.length > 0 ? 100 : 0); // 검색어가 있을 때만 지연
       };
 
       // input 이벤트로 실시간 검색
