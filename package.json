@@ -107,7 +107,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/mongodb": "^4.0.7",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^20.19.17",
+    "@types/node": "^24.10.0",
     "@types/nodemailer": "^6.4.19",
     "@types/passport-apple": "^2.0.3",
     "@types/sanitize-html": "^2.16.0",
