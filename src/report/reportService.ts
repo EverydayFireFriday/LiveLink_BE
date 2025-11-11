@@ -13,25 +13,40 @@ interface MongoIndex {
 
 export class ReportService {
   private reportsCollection: Collection<Report>;
+  private db: Db;
 
   constructor(db: Db) {
+    this.db = db;
     this.reportsCollection = db.collection<Report>('reports');
     void this.ensureIndexes();
   }
 
   private async ensureIndexes(): Promise<void> {
     try {
-      // 기존 인덱스 목록 조회
-      const existingIndexes = await this.reportsCollection
-        .listIndexes()
+      // Check if collection exists by listing collections
+      const collections = await this.db
+        .listCollections({ name: 'reports' })
         .toArray();
 
-      // 오래된 contentId 관련 인덱스 삭제
-      for (const index of existingIndexes as MongoIndex[]) {
-        const indexName = index.name;
-        if (indexName?.includes('contentId')) {
-          await this.reportsCollection.dropIndex(indexName);
-          logger.info(`Dropped old index: ${indexName}`);
+      // If collection doesn't exist yet, create indexes anyway - they'll be applied when collection is created
+      if (collections.length === 0) {
+        logger.info(
+          'Reports collection does not exist yet, creating indexes...',
+        );
+      }
+
+      // 기존 인덱스 목록 조회 (only if collection exists)
+      let existingIndexes: unknown[] = [];
+      if (collections.length > 0) {
+        existingIndexes = await this.reportsCollection.listIndexes().toArray();
+
+        // 오래된 contentId 관련 인덱스 삭제
+        for (const index of existingIndexes as MongoIndex[]) {
+          const indexName = index.name;
+          if (indexName?.includes('contentId')) {
+            await this.reportsCollection.dropIndex(indexName);
+            logger.info(`Dropped old index: ${indexName}`);
+          }
         }
       }
 
@@ -48,6 +63,8 @@ export class ReportService {
         reportedEntityType: 1,
         createdAt: -1,
       });
+
+      logger.info('Report indexes ensured successfully');
     } catch (error) {
       logger.error('Error ensuring indexes:', error);
     }
