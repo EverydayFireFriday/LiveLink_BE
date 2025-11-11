@@ -6,6 +6,8 @@ import sanitizeHtml from 'sanitize-html';
 import hpp from 'hpp';
 import { env, isProduction } from '../env/env';
 import logger from '../../utils/logger/logger';
+import { BadRequestError } from '../../utils/errors/customErrors';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
 
 /**
  * Configure Helmet security headers
@@ -139,13 +141,10 @@ export const configureJsonParsing = () => {
       try {
         JSON.parse(buf.toString());
       } catch {
-        const error = new Error('잘못된 JSON 형식입니다.') as Error & {
-          status?: number;
-          type?: string;
-        };
-        error.status = 400;
-        error.type = 'entity.parse.failed';
-        throw error;
+        throw new BadRequestError(
+          '잘못된 JSON 형식입니다.',
+          ErrorCodes.VAL_INVALID_FORMAT,
+        );
       }
     },
   });

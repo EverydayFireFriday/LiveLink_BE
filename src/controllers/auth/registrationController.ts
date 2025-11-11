@@ -19,6 +19,15 @@ import {
   VerifyEmailRequest,
   CompleteRegistrationRequest,
 } from '../../types/auth/authTypes';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  UnauthorizedError,
+  ConflictError,
+  TooManyRequestsError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class RegistrationController {
   private authService: AuthService;
@@ -37,14 +46,17 @@ export class RegistrationController {
     const { email, base } = req.query;
 
     if (!email || typeof email !== 'string') {
-      return ResponseBuilder.badRequest(res, '이메일을 입력해주세요.');
+      throw new BadRequestError(
+        '이메일을 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         emailValidation.message || '유효성 검사 실패',
+        ErrorCodes.AUTH_INVALID_EMAIL,
       );
     }
 
@@ -67,8 +79,14 @@ export class RegistrationController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('사용자명 생성 에러:', error);
-      return ResponseBuilder.internalError(res, '사용자명 생성 실패');
+      throw new InternalServerError(
+        '사용자명 생성 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -77,9 +95,9 @@ export class RegistrationController {
 
     const usernameValidation = UserValidator.validateUsername(username);
     if (!usernameValidation.isValid) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         usernameValidation.message || '별명 형식이 올바르지 않습니다.',
+        ErrorCodes.VAL_INVALID_FORMAT,
       );
     }
 
@@ -87,15 +105,24 @@ export class RegistrationController {
       const existingUser = await this.userService.findByUsername(username);
 
       if (existingUser) {
-        return ResponseBuilder.conflict(res, '이미 사용 중인 별명입니다.');
+        throw new ConflictError(
+          '이미 사용 중인 별명입니다.',
+          ErrorCodes.AUTH_USERNAME_TAKEN,
+        );
       } else {
         return ResponseBuilder.success(res, '사용 가능한 별명입니다.', {
           available: true,
         });
       }
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('별명 중복 확인 에러:', error);
-      return ResponseBuilder.internalError(res, '별명 중복 확인 실패');
+      throw new InternalServerError(
+        '별명 중복 확인 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -112,9 +139,9 @@ export class RegistrationController {
     // 이메일 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         emailValidation.message || '유효하지 않은 이메일 형식입니다.',
+        ErrorCodes.AUTH_INVALID_EMAIL,
       );
     }
 
@@ -126,16 +153,19 @@ export class RegistrationController {
           'email_verification',
         );
       if (hasRecentRequest) {
-        return ResponseBuilder.tooManyRequests(
-          res,
+        throw new TooManyRequestsError(
           '너무 빈번한 요청입니다. 1분 후에 다시 시도해주세요.',
+          ErrorCodes.SYS_RATE_LIMIT_EXCEEDED,
         );
       }
 
       // 이메일 중복 확인
       const existingEmail = await this.userService.findByEmail(email);
       if (existingEmail) {
-        return ResponseBuilder.conflict(res, '이미 사용 중인 이메일입니다.');
+        throw new ConflictError(
+          '이미 사용 중인 이메일입니다.',
+          ErrorCodes.AUTH_EMAIL_ALREADY_EXISTS,
+        );
       }
 
       // 인증 코드 생성
@@ -158,10 +188,9 @@ export class RegistrationController {
 
       if (!emailResult.success) {
         await this.verificationService.deleteVerificationCode(redisKey);
-        return ResponseBuilder.internalError(
-          res,
+        throw new InternalServerError(
           '이메일 전송에 실패했습니다. 다시 시도해주세요.',
-          String(emailResult.error),
+          ErrorCodes.NOTIF_SEND_FAILED,
         );
       }
 
@@ -174,8 +203,14 @@ export class RegistrationController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('이메일 인증 코드 전송 에러:', error);
-      return ResponseBuilder.internalError(res, '이메일 전송 실패');
+      throw new InternalServerError(
+        '이메일 전송 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -187,9 +222,9 @@ export class RegistrationController {
     const { email, verificationCode } = req.body as VerifyEmailRequest;
 
     if (!email || !verificationCode) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '이메일과 인증 코드를 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
@@ -199,16 +234,16 @@ export class RegistrationController {
         await this.verificationService.getVerificationCode(redisKey);
 
       if (!storedData) {
-        return ResponseBuilder.gone(
-          res,
+        throw new UnauthorizedError(
           '인증 코드가 만료되었거나 존재하지 않습니다.',
+          ErrorCodes.AUTH_VERIFICATION_CODE_EXPIRED,
         );
       }
 
       if (storedData.code !== verificationCode) {
-        return ResponseBuilder.unauthorized(
-          res,
+        throw new UnauthorizedError(
           '인증 코드가 일치하지 않습니다.',
+          ErrorCodes.AUTH_INVALID_VERIFICATION_CODE,
         );
       }
 
@@ -231,7 +266,10 @@ export class RegistrationController {
       });
     } catch (error: unknown) {
       logger.error('이메일 인증 확인 에러:', error);
-      return ResponseBuilder.internalError(res, '이메일 인증 실패');
+      throw new InternalServerError(
+        '이메일 인증 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -289,7 +327,10 @@ export class RegistrationController {
         '[Registration] Missing required fields: ' +
           JSON.stringify({ missingFields }),
       );
-      return ResponseBuilder.badRequest(res, '필수 정보가 누락되었습니다.');
+      throw new BadRequestError(
+        '필수 정보가 누락되었습니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 유효성 검증
@@ -301,9 +342,9 @@ export class RegistrationController {
             message: passwordValidation.message,
           }),
       );
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         passwordValidation.message || '유효성 검사 실패',
+        ErrorCodes.AUTH_INVALID_PASSWORD,
       );
     }
 
@@ -316,9 +357,9 @@ export class RegistrationController {
             message: nameValidation.message,
           }),
       );
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         nameValidation.message || '이름 형식이 올바르지 않습니다.',
+        ErrorCodes.VAL_INVALID_FORMAT,
       );
     }
 
@@ -331,9 +372,9 @@ export class RegistrationController {
             message: birthDateValidation.message,
           }),
       );
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         birthDateValidation.message || '생년월일 형식이 올바르지 않습니다.',
+        ErrorCodes.VAL_INVALID_FORMAT,
       );
     }
 
@@ -343,17 +384,17 @@ export class RegistrationController {
 
     if (!termsConsent || !termsConsent.isAgreed) {
       logger.warn('[Registration] Terms consent not agreed');
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '서비스 이용약관에 동의해야 합니다.',
+        ErrorCodes.AUTH_TERMS_NOT_AGREED,
       );
     }
 
     if (!privacyConsent || !privacyConsent.isAgreed) {
       logger.warn('[Registration] Privacy policy consent not agreed');
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '개인정보처리방침에 동의해야 합니다.',
+        ErrorCodes.AUTH_TERMS_NOT_AGREED,
       );
     }
 
@@ -366,9 +407,9 @@ export class RegistrationController {
 
       if (!tokenData || !tokenData.verified) {
         logger.warn('[Registration] Invalid or expired verification token');
-        return ResponseBuilder.unauthorized(
-          res,
+        throw new UnauthorizedError(
           '유효하지 않거나 만료된 인증 토큰입니다.',
+          ErrorCodes.AUTH_INVALID_TOKEN,
         );
       }
 
@@ -387,7 +428,10 @@ export class RegistrationController {
         logger.warn(
           '[Registration] Email already in use: ' + JSON.stringify({ email }),
         );
-        return ResponseBuilder.conflict(res, '이미 사용 중인 이메일입니다.');
+        throw new ConflictError(
+          '이미 사용 중인 이메일입니다.',
+          ErrorCodes.AUTH_EMAIL_ALREADY_EXISTS,
+        );
       }
 
       // 사용자명 처리
@@ -408,9 +452,9 @@ export class RegistrationController {
                 message: usernameValidation.message,
               }),
           );
-          return ResponseBuilder.badRequest(
-            res,
+          throw new BadRequestError(
             usernameValidation.message || '별명 형식이 올바르지 않습니다.',
+            ErrorCodes.VAL_INVALID_FORMAT,
           );
         }
 
@@ -421,9 +465,9 @@ export class RegistrationController {
             '[Registration] Username already in use: ' +
               JSON.stringify({ username }),
           );
-          return ResponseBuilder.conflict(
-            res,
+          throw new ConflictError(
             '이미 사용 중인 별명입니다. 자동 생성을 원하시면 별명을 비워두세요.',
+            ErrorCodes.AUTH_USERNAME_TAKEN,
           );
         }
 
@@ -531,7 +575,10 @@ export class RegistrationController {
             stack: error instanceof Error ? error.stack : undefined,
           }),
       );
-      return ResponseBuilder.internalError(res, '서버 에러로 회원가입 실패');
+      throw new InternalServerError(
+        '서버 에러로 회원가입 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 }

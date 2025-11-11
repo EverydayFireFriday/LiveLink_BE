@@ -5,6 +5,13 @@ import { OAuthService } from '../../services/auth/oauthService.js';
 import { User } from '../../models/auth/user.js';
 import logger from '../../utils/logger/logger.js';
 import { env } from '../../config/env/env.js';
+import { ErrorCodes } from '../../utils/errors/errorCodes.js';
+import {
+  AppError,
+  BadRequestError,
+  UnauthorizedError,
+  InternalServerError,
+} from '../../utils/errors/customErrors.js';
 
 /**
  * Apple OAuth Controller
@@ -79,11 +86,10 @@ export const authenticateWithApple = async (
 
     // 1. ID 토큰 유효성 검사
     if (!idToken || typeof idToken !== 'string') {
-      res.status(400).json({
-        success: false,
-        error: 'ID token is required',
-      });
-      return;
+      throw new BadRequestError(
+        'ID token is required',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 2. Apple ID 토큰 검증 및 사용자 인증
@@ -91,11 +97,10 @@ export const authenticateWithApple = async (
     const user = await appleAuthService.authenticateWithIdToken(idToken);
 
     if (!user) {
-      res.status(401).json({
-        success: false,
-        error: 'Invalid Apple ID token',
-      });
-      return;
+      throw new UnauthorizedError(
+        'Invalid Apple ID token',
+        ErrorCodes.AUTH_INVALID_ID_TOKEN,
+      );
     }
 
     // 3. 세션 생성
@@ -141,10 +146,13 @@ export const authenticateWithApple = async (
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('Error in Apple authentication:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    throw new InternalServerError(
+      'Internal server error',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 };

@@ -10,9 +10,9 @@ import logger from '../../utils/logger/logger';
 import { isDevelopment } from '../../config/env/env';
 
 interface ErrorResponse {
-  status: 'error' | 'fail';
-  errorCode?: ErrorCode;
+  success: false;
   message: string;
+  errorCode?: ErrorCode;
   error?: string;
   stack?: string;
   timestamp: string;
@@ -62,9 +62,9 @@ export const errorHandler = (
 
   // 에러 응답 구성
   const errorResponse: ErrorResponse = {
-    status: statusCode >= 500 ? 'error' : 'fail',
-    errorCode,
+    success: false,
     message: err.message || '서버 내부 에러가 발생했습니다.',
+    ...(errorCode && { errorCode }),
     timestamp: new Date().toISOString(),
   };
 
@@ -90,8 +90,9 @@ export const notFoundHandler = (
   logger.warn(`404 Not Found: ${req.method} ${req.originalUrl} from ${req.ip}`);
 
   res.status(404).json({
-    status: 'fail',
+    success: false,
     message: '요청한 경로를 찾을 수 없습니다.',
+    errorCode: 'RESOURCE_NOT_FOUND',
     requestedPath: req.originalUrl,
     method: req.method,
     availableEndpoints: {

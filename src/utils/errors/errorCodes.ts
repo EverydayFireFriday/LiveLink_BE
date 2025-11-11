@@ -35,6 +35,11 @@ export const ErrorCodes = {
   AUTH_ACCOUNT_DELETED: 'AUTH_018',
   AUTH_OAUTH_FAILED: 'AUTH_019',
   AUTH_INVALID_ID_TOKEN: 'AUTH_020',
+  AUTH_USERNAME_TAKEN: 'AUTH_021',
+  AUTH_ALREADY_REGISTERED: 'AUTH_022',
+  AUTH_NOT_REGISTRATION_PENDING: 'AUTH_023',
+  AUTH_SESSION_CONFLICT: 'AUTH_024',
+  AUTH_VERIFICATION_NOT_FOUND: 'AUTH_025',
 
   // ==================== Article 관련 (2000번대) ====================
   ARTICLE_NOT_FOUND: 'ARTICLE_001',
@@ -158,6 +163,11 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   AUTH_018: '삭제된 계정입니다.',
   AUTH_019: 'OAuth 인증에 실패했습니다.',
   AUTH_020: '유효하지 않은 ID 토큰입니다.',
+  AUTH_021: '이미 사용 중인 별명입니다.',
+  AUTH_022: '이미 가입이 완료된 사용자입니다.',
+  AUTH_023: '가입 대기 상태가 아닙니다.',
+  AUTH_024: '이미 다른 기기에서 로그인되어 있습니다.',
+  AUTH_025: '인증 프로세스를 찾을 수 없습니다.',
 
   // Article
   ARTICLE_001: '게시글을 찾을 수 없습니다.',

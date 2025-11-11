@@ -1,4 +1,11 @@
 import express from 'express';
+import {
+  AppError,
+  UnauthorizedError,
+  BadRequestError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
 
 /**
  * 로그인 필수 미들웨어
@@ -10,8 +17,10 @@ export const requireAuth = async (
   next: express.NextFunction,
 ) => {
   if (!req.session || !req.session.user) {
-    res.status(401).json({ message: '로그인이 필요합니다.' });
-    return;
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   // 🔒 PRIORITY CHECK: Verify session is not in invalidation list
@@ -21,17 +30,20 @@ export const requireAuth = async (
     if (redisClient.status === 'ready') {
       const invalidationKey = `invalidated:${req.sessionID}`;
       const isInvalidated = await redisClient.get(invalidationKey);
-      
+
       if (isInvalidated) {
         // Session is marked for deletion - destroy immediately without saving
         req.session.destroy(() => {});
-        res.status(401).json({
-          message: '세션이 만료되었거나 다른 기기에서 로그인되었습니다.',
-        });
-        return;
+        throw new UnauthorizedError(
+          '세션이 만료되었거나 다른 기기에서 로그인되었습니다.',
+          ErrorCodes.AUTH_TOKEN_EXPIRED,
+        );
       }
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     console.error('[Auth] Failed to check invalidation list:', error);
   }
 
@@ -44,12 +56,15 @@ export const requireAuth = async (
     if (!sessionExists) {
       // MongoDB에 세션이 없으면 로그아웃 처리
       req.session.destroy(() => {});
-      res.status(401).json({
-        message: '세션이 만료되었거나 다른 기기에서 로그인되었습니다.',
-      });
-      return;
+      throw new UnauthorizedError(
+        '세션이 만료되었거나 다른 기기에서 로그인되었습니다.',
+        ErrorCodes.AUTH_TOKEN_EXPIRED,
+      );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     // UserSession 조회 실패 시 로그만 남기고 계속 진행
     console.error('[Auth] Failed to verify UserSession:', error);
   }
@@ -67,8 +82,10 @@ export const requireNoAuth = async (
   next: express.NextFunction,
 ) => {
   if (!req.session) {
-    res.status(500).json({ message: '세션이 초기화되지 않았습니다.' });
-    return;
+    throw new InternalServerError(
+      '세션이 초기화되지 않았습니다.',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 
   if (req.session.user) {
@@ -95,13 +112,18 @@ export const requireNoAuth = async (
         return;
       }
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       // UserSession 조회 실패 시 로그만 남기고 기존 로직 유지
       console.error('[Auth] Failed to verify UserSession:', error);
     }
 
     // 유효한 세션이 존재하면 로그인 차단
-    res.status(400).json({ message: '이미 로그인되어 있습니다.' });
-    return;
+    throw new BadRequestError(
+      '이미 로그인되어 있습니다.',
+      ErrorCodes.AUTH_ALREADY_LOGGED_IN,
+    );
   }
 
   next();
@@ -113,8 +135,10 @@ export const requireAdmin = (
   next: express.NextFunction,
 ) => {
   if (!req.session || !req.session.user) {
-    res.status(401).json({ message: '로그인이 필요합니다.' });
-    return;
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
   next();
 };

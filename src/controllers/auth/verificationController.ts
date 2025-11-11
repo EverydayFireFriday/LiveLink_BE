@@ -2,6 +2,13 @@ import express from 'express';
 import { VerificationService } from '../../services/auth/verificationService';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  NotFoundError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class VerificationController {
   private verificationService: VerificationService;
@@ -17,9 +24,9 @@ export class VerificationController {
     const { email, type } = req.body;
 
     if (!email || !type) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '이메일과 인증 유형을 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
@@ -30,7 +37,10 @@ export class VerificationController {
       const ttl = await this.verificationService.getTTL(redisKey);
 
       if (!storedCode || ttl <= 0) {
-        return ResponseBuilder.notFound(res, '활성화된 인증 코드가 없습니다.');
+        throw new NotFoundError(
+          '활성화된 인증 코드가 없습니다.',
+          ErrorCodes.AUTH_VERIFICATION_CODE_EXPIRED,
+        );
       }
 
       return ResponseBuilder.success(res, '인증 코드가 활성화되어 있습니다.', {
@@ -43,8 +53,14 @@ export class VerificationController {
           type === 'email_verification' ? !!storedCode.userData : false,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('인증 코드 상태 확인 에러:', error);
-      return ResponseBuilder.internalError(res, '인증 코드 상태 확인 실패');
+      throw new InternalServerError(
+        '인증 코드 상태 확인 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -52,14 +68,17 @@ export class VerificationController {
     const { email, type } = req.body;
 
     if (!email || !type) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '이메일과 인증 유형을 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
     if (!['password_reset', 'email_verification'].includes(type)) {
-      return ResponseBuilder.badRequest(res, '올바르지 않은 인증 유형입니다.');
+      throw new BadRequestError(
+        '올바르지 않은 인증 유형입니다.',
+        ErrorCodes.VAL_INVALID_ENUM,
+      );
     }
 
     try {
@@ -68,9 +87,9 @@ export class VerificationController {
         await this.verificationService.getVerificationCode(redisKey);
 
       if (!storedCode) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           '취소할 인증 프로세스가 없습니다.',
+          ErrorCodes.AUTH_VERIFICATION_NOT_FOUND,
         );
       }
 
@@ -85,8 +104,14 @@ export class VerificationController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('인증 프로세스 취소 에러:', error);
-      return ResponseBuilder.internalError(res, '인증 프로세스 취소 실패');
+      throw new InternalServerError(
+        '인증 프로세스 취소 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 }

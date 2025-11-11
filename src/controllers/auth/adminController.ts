@@ -3,6 +3,13 @@ import { UserService } from '../../services/auth/userService';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  NotFoundError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class AdminController {
   private userService: UserService;
@@ -54,8 +61,14 @@ export class AdminController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('관리자 사용자 목록 조회 에러:', error);
-      return ResponseBuilder.internalError(res, '사용자 목록 조회 실패');
+      throw new InternalServerError(
+        '사용자 목록 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -65,7 +78,10 @@ export class AdminController {
       const user = await this.userService.findById(userId);
 
       if (!user) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       return ResponseBuilder.success(res, '사용자 상세 조회 성공', {
@@ -83,8 +99,14 @@ export class AdminController {
         },
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('관리자 사용자 상세 조회 에러:', error);
-      return ResponseBuilder.internalError(res, '사용자 상세 조회 실패');
+      throw new InternalServerError(
+        '사용자 상세 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -94,12 +116,18 @@ export class AdminController {
       const { status, reason } = req.body;
 
       if (!['active', 'suspended', 'deleted'].includes(status)) {
-        return ResponseBuilder.badRequest(res, '올바르지 않은 상태값입니다.');
+        throw new BadRequestError(
+          '올바르지 않은 상태값입니다.',
+          ErrorCodes.VAL_INVALID_ENUM,
+        );
       }
 
       const user = await this.userService.findById(userId);
       if (!user) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       await this.userService.updateUser(userId, {
@@ -122,8 +150,14 @@ export class AdminController {
         },
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('사용자 상태 변경 에러:', error);
-      return ResponseBuilder.internalError(res, '사용자 상태 변경 실패');
+      throw new InternalServerError(
+        '사용자 상태 변경 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -156,8 +190,14 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('관리자 통계 조회 에러:', error);
-      return ResponseBuilder.internalError(res, '통계 조회 실패');
+      throw new InternalServerError(
+        '통계 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 }

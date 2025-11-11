@@ -4,6 +4,14 @@ import { UserValidator } from '../../utils/validation/auth/userValidator';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  NotFoundError,
+  ConflictError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class ProfileController {
   private userService: UserService;
@@ -19,7 +27,10 @@ export class ProfileController {
       );
 
       if (!user) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       return ResponseBuilder.success(res, '프로필 조회 성공', {
@@ -39,8 +50,14 @@ export class ProfileController {
         session: req.session.user,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('프로필 조회 에러:', error);
-      return ResponseBuilder.internalError(res, '프로필 조회 실패');
+      throw new InternalServerError(
+        '프로필 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -54,7 +71,10 @@ export class ProfileController {
       });
 
       if (!updatedUser) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       // 세션 정보도 업데이트
@@ -70,8 +90,14 @@ export class ProfileController {
         },
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('프로필 업데이트 에러:', error);
-      return ResponseBuilder.internalError(res, '프로필 업데이트 실패');
+      throw new InternalServerError(
+        '프로필 업데이트 실패',
+        ErrorCodes.USER_PROFILE_UPDATE_FAILED,
+      );
     }
   };
 
@@ -80,9 +106,9 @@ export class ProfileController {
 
     const usernameValidation = UserValidator.validateUsername(newUsername);
     if (!usernameValidation.isValid) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         usernameValidation.message || '별명 형식이 올바르지 않습니다.',
+        ErrorCodes.VAL_INVALID_FORMAT,
       );
     }
 
@@ -91,16 +117,25 @@ export class ProfileController {
       const currentUser = await this.userService.findById(userId);
 
       if (!currentUser) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       if (currentUser.username === newUsername) {
-        return ResponseBuilder.badRequest(res, '현재 별명과 동일합니다.');
+        throw new BadRequestError(
+          '현재 별명과 동일합니다.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       const existingUser = await this.userService.findByUsername(newUsername);
       if (existingUser) {
-        return ResponseBuilder.conflict(res, '이미 사용 중인 별명입니다.');
+        throw new ConflictError(
+          '이미 사용 중인 별명입니다.',
+          ErrorCodes.AUTH_USERNAME_TAKEN,
+        );
       }
 
       const updatedUser = await this.userService.updateUser(userId, {
@@ -108,7 +143,10 @@ export class ProfileController {
       });
 
       if (!updatedUser) {
-        return ResponseBuilder.notFound(res, '사용자 업데이트에 실패했습니다.');
+        throw new NotFoundError(
+          '사용자 업데이트에 실패했습니다.',
+          ErrorCodes.USER_UPDATE_FAILED,
+        );
       }
 
       req.session.user!.username = newUsername;
@@ -124,8 +162,14 @@ export class ProfileController {
         previousUsername: currentUser.username,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('별명 변경 에러:', error);
-      return ResponseBuilder.internalError(res, '별명 변경 실패');
+      throw new InternalServerError(
+        '별명 변경 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -158,8 +202,14 @@ export class ProfileController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('사용자 목록 조회 에러:', error);
-      return ResponseBuilder.internalError(res, '사용자 목록 조회 실패');
+      throw new InternalServerError(
+        '사용자 목록 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -169,7 +219,10 @@ export class ProfileController {
       const { fcmToken } = req.body;
 
       if (!fcmToken || typeof fcmToken !== 'string') {
-        return ResponseBuilder.badRequest(res, 'FCM 토큰이 필요합니다.');
+        throw new BadRequestError(
+          'FCM 토큰이 필요합니다.',
+          ErrorCodes.VAL_MISSING_FIELD,
+        );
       }
 
       const updatedUser = await this.userService.updateUser(userId, {
@@ -178,7 +231,10 @@ export class ProfileController {
       });
 
       if (!updatedUser) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       logger.info(
@@ -190,8 +246,14 @@ export class ProfileController {
         registeredAt: updatedUser.fcmTokenUpdatedAt,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('FCM 토큰 등록 에러:', error);
-      return ResponseBuilder.internalError(res, 'FCM 토큰 등록 실패');
+      throw new InternalServerError(
+        'FCM 토큰 등록 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 }

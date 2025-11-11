@@ -5,6 +5,17 @@ import logger, { maskIpAddress } from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { AuthValidator } from '../../utils/validation/auth/authValidator';
 import type { OAuthProvider } from '../../models/auth/user';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  UnauthorizedError,
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+  TooManyRequestsError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 // UserService와 AuthService는 필요할 때 지연 로딩
 export class AuthController {
@@ -20,14 +31,17 @@ export class AuthController {
     // 유효성 검증
     const emailValidation = AuthValidator.validateEmail(email);
     if (!emailValidation.isValid) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         emailValidation.message || '이메일 형식이 올바르지 않습니다.',
+        ErrorCodes.AUTH_INVALID_EMAIL,
       );
     }
 
     if (!password) {
-      return ResponseBuilder.badRequest(res, '비밀번호를 입력해주세요.');
+      throw new BadRequestError(
+        '비밀번호를 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     const { redisClient } = (await import('../../app')) as {
@@ -49,9 +63,9 @@ export class AuthController {
         logger.warn(
           `[Auth] 🚫 BLOCKED login attempt for account: ${maskedEmailAddr} from IP: ${maskedIp} (${remainingMinutes} minutes remaining)`,
         );
-        return ResponseBuilder.tooManyRequests(
-          res,
+        throw new TooManyRequestsError(
           `너무 많은 로그인 시도를 하셨습니다. ${remainingMinutes}분 후에 다시 시도해주세요.`,
+          ErrorCodes.SYS_RATE_LIMIT_EXCEEDED,
         );
       }
 
@@ -72,37 +86,37 @@ export class AuthController {
         logger.warn(
           `[Auth] Failed login attempt #${attempts} for account: ${maskedEmailAddr} from IP: ${maskedIp} (user not found)`,
         );
-        return ResponseBuilder.unauthorized(
-          res,
+        throw new UnauthorizedError(
           '이메일 또는 비밀번호가 일치하지 않습니다.',
+          ErrorCodes.AUTH_INVALID_CREDENTIALS,
         );
       }
 
       // 사용자 상태 확인
       if (user.status === UserStatus.INACTIVE) {
-        return ResponseBuilder.forbidden(
-          res,
+        throw new ForbiddenError(
           '탈퇴한 계정입니다. 계정 복구를 원하시면 고객센터에 문의해주세요.',
+          ErrorCodes.AUTH_ACCOUNT_DELETED,
         );
       }
       if (user.status === UserStatus.SUSPENDED) {
-        return ResponseBuilder.forbidden(
-          res,
+        throw new ForbiddenError(
           '이용이 정지된 계정입니다. 관리자에게 문의해주세요.',
+          ErrorCodes.AUTH_ACCOUNT_SUSPENDED,
         );
       }
       if (user.status === UserStatus.PENDING_VERIFICATION) {
-        return ResponseBuilder.forbidden(
-          res,
+        throw new ForbiddenError(
           '이메일 인증이 필요한 계정입니다.',
+          ErrorCodes.AUTH_EMAIL_NOT_VERIFIED,
         );
       }
 
       // 비밀번호 확인
       if (!user.passwordHash) {
-        return ResponseBuilder.unauthorized(
-          res,
+        throw new UnauthorizedError(
           '소셜 로그인 사용자는 비밀번호로 로그인할 수 없습니다.',
+          ErrorCodes.AUTH_OAUTH_FAILED,
         );
       }
       const isPasswordValid = await authService.verifyPassword(
@@ -116,9 +130,9 @@ export class AuthController {
         logger.warn(
           `[Auth] Failed login attempt #${attempts} for account: ${maskedEmailAddr} from IP: ${maskedIp} (incorrect password)`,
         );
-        return ResponseBuilder.unauthorized(
-          res,
+        throw new UnauthorizedError(
           '이메일 또는 비밀번호가 일치하지 않습니다.',
+          ErrorCodes.AUTH_INVALID_PASSWORD,
         );
       }
 
@@ -150,9 +164,16 @@ export class AuthController {
           `[Auth] Login attempt blocked - existing ${deviceInfo.platform} session found for user: ${user.email}`,
         );
 
+        const error = new ConflictError(
+          `이미 다른 기기에서 ${platformName} 로그인이 되어 있습니다.`,
+          ErrorCodes.AUTH_SESSION_CONFLICT,
+        );
+
+        // 추가 데이터를 포함하기 위해 직접 응답 구성
         return res.status(409).json({
-          success: false,
-          message: `이미 다른 기기에서 ${platformName} 로그인이 되어 있습니다.`,
+          status: 'fail',
+          errorCode: ErrorCodes.AUTH_SESSION_CONFLICT,
+          message: error.message,
           data: {
             existingSession: {
               deviceName: existingSession.deviceInfo.name,
@@ -176,7 +197,10 @@ export class AuthController {
       req.session.regenerate(async (err) => {
         if (err) {
           logger.error('세션 재생성 에러:', err);
-          return ResponseBuilder.internalError(res, '로그인 실패 (세션 오류)');
+          throw new InternalServerError(
+            '로그인 실패 (세션 오류)',
+            ErrorCodes.SYS_INTERNAL_ERROR,
+          );
         }
 
         // 재생성된 세션에 사용자 정보 저장
@@ -309,8 +333,16 @@ export class AuthController {
         return ResponseBuilder.success(res, '로그인 성공', responseData);
       });
     } catch (error) {
+      // 이미 throw된 커스텀 에러는 그대로 다시 throw
+      if (error instanceof AppError) {
+        throw error;
+      }
+      // 예상치 못한 에러만 로깅 후 InternalServerError로 감싸기
       logger.error('로그인 에러:', error);
-      return ResponseBuilder.internalError(res, '서버 에러로 로그인 실패');
+      throw new InternalServerError(
+        '서버 에러로 로그인 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -339,7 +371,10 @@ export class AuthController {
     req.session.destroy((err) => {
       if (err) {
         logger.error('로그아웃 에러:', err);
-        return ResponseBuilder.internalError(res, '로그아웃 실패');
+        throw new InternalServerError(
+          '로그아웃 실패',
+          ErrorCodes.SYS_INTERNAL_ERROR,
+        );
       }
 
       res.clearCookie('connect.sid');
@@ -423,7 +458,10 @@ export class AuthController {
     const userId = req.session.user?.userId;
 
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+      throw new UnauthorizedError(
+        '인증이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     try {
@@ -434,13 +472,19 @@ export class AuthController {
 
       const user = await userService.findById(userId);
       if (!user) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       // 비밀번호가 설정된 사용자(일반 로그인)는 비밀번호 확인 필요
       if (user.passwordHash) {
         if (!password) {
-          return ResponseBuilder.badRequest(res, '비밀번호를 입력해주세요.');
+          throw new BadRequestError(
+            '비밀번호를 입력해주세요.',
+            ErrorCodes.VAL_MISSING_FIELD,
+          );
         }
 
         const isPasswordValid = await authService.verifyPassword(
@@ -451,9 +495,9 @@ export class AuthController {
           logger.warn(
             `[Auth] Failed account deletion attempt for user: ${user.email} (incorrect password)`,
           );
-          return ResponseBuilder.unauthorized(
-            res,
+          throw new UnauthorizedError(
             '비밀번호가 일치하지 않습니다.',
+            ErrorCodes.AUTH_INVALID_PASSWORD,
           );
         }
       }
@@ -461,9 +505,9 @@ export class AuthController {
       // 회원 탈퇴 처리
       const deleted = await userService.deleteUser(userId);
       if (!deleted) {
-        return ResponseBuilder.internalError(
-          res,
+        throw new InternalServerError(
           '회원 탈퇴 처리에 실패했습니다.',
+          ErrorCodes.USER_DELETE_FAILED,
         );
       }
 
@@ -478,10 +522,13 @@ export class AuthController {
         return ResponseBuilder.success(res, '회원 탈퇴가 완료되었습니다.');
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('회원 탈퇴 에러:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 회원 탈퇴에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -495,11 +542,17 @@ export class AuthController {
 
     // 유효성 검증
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return ResponseBuilder.badRequest(res, '이름을 입력해주세요.');
+      throw new BadRequestError(
+        '이름을 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     if (!birthDate) {
-      return ResponseBuilder.badRequest(res, '생년월일을 입력해주세요.');
+      throw new BadRequestError(
+        '생년월일을 입력해주세요.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     try {
@@ -539,9 +592,9 @@ export class AuthController {
       }
 
       if (isNaN(birthDateObj.getTime())) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           '올바른 생년월일 형식이 아닙니다. (YYYY-MM-DD)',
+          ErrorCodes.VAL_INVALID_FORMAT,
         );
       }
 
@@ -558,9 +611,9 @@ export class AuthController {
       logger.info(`[Auth] Email search result: found ${users.length} user(s)`);
 
       if (users.length === 0) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           '일치하는 계정을 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
         );
       }
 
@@ -583,10 +636,13 @@ export class AuthController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('이메일 찾기 에러:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 이메일 찾기에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -599,7 +655,10 @@ export class AuthController {
     const userId = req.session.user?.userId;
 
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+      throw new UnauthorizedError(
+        '인증이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     try {
@@ -622,10 +681,13 @@ export class AuthController {
         sessions: sessionResponses,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('[Session] Failed to get sessions:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 세션 목록 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -639,18 +701,24 @@ export class AuthController {
     const { sessionId } = req.params;
 
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+      throw new UnauthorizedError(
+        '인증이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     if (!sessionId) {
-      return ResponseBuilder.badRequest(res, '세션 ID가 필요합니다.');
+      throw new BadRequestError(
+        '세션 ID가 필요합니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 현재 세션은 삭제할 수 없음 (logout 사용해야 함)
     if (sessionId === req.sessionID) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '현재 세션은 이 방법으로 삭제할 수 없습니다. /auth/logout을 사용해주세요.',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
 
@@ -666,13 +734,16 @@ export class AuthController {
       // 해당 세션이 현재 사용자의 것인지 확인
       const session = await userSessionModel.findBySessionId(sessionId);
       if (!session) {
-        return ResponseBuilder.notFound(res, '세션을 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '세션을 찾을 수 없습니다.',
+          ErrorCodes.AUTH_SESSION_NOT_FOUND,
+        );
       }
 
       if (session.userId.toString() !== userId) {
-        return ResponseBuilder.forbidden(
-          res,
+        throw new ForbiddenError(
           '다른 사용자의 세션을 삭제할 수 없습니다.',
+          ErrorCodes.AUTH_FORBIDDEN,
         );
       }
 
@@ -691,10 +762,13 @@ export class AuthController {
         deletedSessionId: sessionId,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('[Session] Failed to delete session:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 세션 삭제에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -708,7 +782,10 @@ export class AuthController {
     const currentSessionId = req.sessionID;
 
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다.');
+      throw new UnauthorizedError(
+        '인증이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     try {
@@ -770,10 +847,13 @@ export class AuthController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('[Session] Failed to delete all sessions:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 세션 삭제에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -792,7 +872,10 @@ export class AuthController {
       // 세션 확인
       const userId = req.session?.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
       }
 
       // 사용자 통계 조회
@@ -802,15 +885,21 @@ export class AuthController {
       const stats = await userService.getUserStats(userId);
 
       if (!stats) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       return ResponseBuilder.success(res, '사용자 통계 조회 성공', stats);
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('[Auth] Failed to get user stats:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 통계 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -829,7 +918,10 @@ export class AuthController {
       const userId = req.session.user?.userId;
 
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
       }
 
       const { name, birthDate, username, termsConsents } = req.body as {
@@ -845,14 +937,17 @@ export class AuthController {
 
       // 필수 필드 검증
       if (!name || !birthDate) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           '이름과 생년월일을 입력해주세요.',
+          ErrorCodes.VAL_MISSING_FIELD,
         );
       }
 
       if (!termsConsents || !Array.isArray(termsConsents)) {
-        return ResponseBuilder.badRequest(res, '약관 동의 정보가 필요합니다.');
+        throw new BadRequestError(
+          '약관 동의 정보가 필요합니다.',
+          ErrorCodes.VAL_MISSING_FIELD,
+        );
       }
 
       // 필수 약관 동의 확인 (terms, privacy)
@@ -866,9 +961,9 @@ export class AuthController {
       );
 
       if (missingTerms.length > 0) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           `필수 약관에 동의해주세요: ${missingTerms.join(', ')}`,
+          ErrorCodes.AUTH_TERMS_NOT_AGREED,
         );
       }
 
@@ -880,20 +975,26 @@ export class AuthController {
       const user = await userService.findById(userId);
 
       if (!user) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       // 이미 가입 완료된 사용자인지 확인
       if (user.status === UserStatus.ACTIVE) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           '이미 가입이 완료된 사용자입니다.',
+          ErrorCodes.AUTH_ALREADY_REGISTERED,
         );
       }
 
       // PENDING_REGISTRATION 상태가 아니면 오류
       if (user.status !== UserStatus.PENDING_REGISTRATION) {
-        return ResponseBuilder.badRequest(res, '가입 대기 상태가 아닙니다.');
+        throw new BadRequestError(
+          '가입 대기 상태가 아닙니다.',
+          ErrorCodes.AUTH_NOT_REGISTRATION_PENDING,
+        );
       }
 
       // username 처리: 입력값이 있으면 사용, 없으면 자동 생성
@@ -908,9 +1009,9 @@ export class AuthController {
         const existingUser = await userModel.findByUsername(finalUsername);
 
         if (existingUser && existingUser._id?.toHexString() !== userId) {
-          return ResponseBuilder.badRequest(
-            res,
+          throw new BadRequestError(
             '이미 사용 중인 사용자명입니다.',
+            ErrorCodes.AUTH_USERNAME_TAKEN,
           );
         }
       }
@@ -931,9 +1032,9 @@ export class AuthController {
       });
 
       if (!updatedUser) {
-        return ResponseBuilder.internalError(
-          res,
+        throw new InternalServerError(
           '사용자 정보 업데이트에 실패했습니다.',
+          ErrorCodes.USER_UPDATE_FAILED,
         );
       }
 
@@ -951,10 +1052,13 @@ export class AuthController {
         },
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('[Auth] Failed to complete registration:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 가입 완료에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -975,7 +1079,10 @@ export class AuthController {
       const userId = req.session.user?.userId;
 
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
       }
 
       const { UserService } = await import('../../services/auth/userService');
@@ -984,7 +1091,10 @@ export class AuthController {
       const user = await userService.findById(userId);
 
       if (!user) {
-        return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
       }
 
       // OAuth 제공자 정보 (socialId 제외, 보안상 민감한 정보 제거)
@@ -1002,10 +1112,13 @@ export class AuthController {
         oauthProviders, // 연결된 OAuth 제공자 목록
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('[Auth] Failed to get connected accounts:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '서버 에러로 연결된 계정 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };

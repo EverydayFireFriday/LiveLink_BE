@@ -1,4 +1,5 @@
 import express from 'express';
+import 'express-async-errors'; //Async 에러 자동 처리
 import session from 'express-session';
 import passport from 'passport';
 import { configurePassport } from './config/oauth/passport';
