@@ -142,11 +142,6 @@ const validateEnv = () => {
       const productionErrors: string[] = [];
 
       // PORT 검증
-      if (parsed.PORT === '3000') {
-        productionErrors.push(
-          'PORT: 프로덕션 환경에서는 명시적인 포트 설정이 권장됩니다',
-        );
-      }
 
       // FRONTEND_URL 검증
       if (parsed.FRONTEND_URL.includes('localhost')) {

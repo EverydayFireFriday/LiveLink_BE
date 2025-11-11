@@ -32,6 +32,7 @@ export const configureHelmet = () => {
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: [
           "'self'",
+          'https://test.backend.stagelives.com',
           'https://appleid.apple.com',
           'https://accounts.google.com',
           'https://oauth2.googleapis.com',

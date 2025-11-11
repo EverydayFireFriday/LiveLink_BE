@@ -20,7 +20,9 @@ export const swaggerOptions = {
       process.env.NODE_ENV === 'production'
         ? [
             {
-              url: process.env.PRODUCTION_URL || 'https://test.stagelives.com',
+              url:
+                process.env.PRODUCTION_URL ||
+                'https://test.backend.stagelives.com',
               description: 'Production server',
             },
           ]
