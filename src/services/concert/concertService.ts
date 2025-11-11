@@ -13,6 +13,9 @@ import {
 // Model의 Concert 타입을 그대로 사용 (I 접두사 제거)
 import type { IConcert } from '../../models/concert/base/ConcertTypes';
 
+// Live DB 동기화 서비스 import
+import { ConcertSyncService } from './concertSyncService';
+
 export interface CreateConcertRequest {
   uid: string;
   title: string;
@@ -101,7 +104,7 @@ export class ConcertService {
         if (existingById) {
           mongoId = new ObjectId();
         }
-      } catch (error) {
+      } catch {
         mongoId = new ObjectId();
       }
 
@@ -156,6 +159,9 @@ export class ConcertService {
 
       // 7. MongoDB에 저장
       const newConcert = await ConcertModel.create(processedData);
+
+      // 8. Live DB에 동기화 (비동기, 실패해도 메인 기능에 영향 없음)
+      void ConcertSyncService.syncCreate(newConcert);
 
       return {
         success: true,
@@ -757,7 +763,7 @@ export class ConcertService {
         cleanUpdateData.infoImages &&
         Array.isArray(cleanUpdateData.infoImages)
       ) {
-        for (const imageUrl of cleanUpdateData.infoImages) {
+        for (const imageUrl of cleanUpdateData.infoImages as string[]) {
           if (!isValidImageUrl(imageUrl)) {
             return {
               success: false,
@@ -800,6 +806,10 @@ export class ConcertService {
         };
       }
 
+      // 8. Live DB에 동기화 (비동기, 실패해도 메인 기능에 영향 없음)
+      // updatedConcert._id는 실제 MongoDB ObjectId이므로 UID가 아닌 ObjectId를 전달
+      void ConcertSyncService.syncUpdate(updatedConcert._id, cleanUpdateData);
+
       return {
         success: true,
         data: updatedConcert,
@@ -841,6 +851,10 @@ export class ConcertService {
           statusCode: 404,
         };
       }
+
+      // Live DB에서도 삭제 (비동기, 실패해도 메인 기능에 영향 없음)
+      // deletedConcert._id는 실제 MongoDB ObjectId이므로 UID가 아닌 ObjectId를 전달
+      void ConcertSyncService.syncDelete(deletedConcert._id);
 
       return {
         success: true,

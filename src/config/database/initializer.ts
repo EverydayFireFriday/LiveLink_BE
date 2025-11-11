@@ -43,6 +43,11 @@ import {
 } from '../../services/notification/concertStartNotificationWorker';
 import { closeConcertStartNotificationQueue } from '../queue/concertStartNotificationQueue';
 import { initializeChatModels } from '../../models/chat';
+import {
+  connectLiveDB,
+  disconnectLiveDB,
+  isLiveSyncEnabled,
+} from '../../utils/database/liveDbConnection';
 
 // 데이터베이스 연결 상태 추적
 export interface DatabaseState {
@@ -50,6 +55,7 @@ export interface DatabaseState {
   isConcertDBConnected: boolean;
   isArticleDBConnected: boolean;
   isChatDBConnected: boolean;
+  isLiveDBConnected: boolean;
   reportService: ReportService | null;
   concertStatusScheduler: ConcertStatusScheduler | null;
   sessionCleanupScheduler: SessionCleanupScheduler | null;
@@ -63,6 +69,7 @@ export const databaseState: DatabaseState = {
   isConcertDBConnected: false,
   isArticleDBConnected: false,
   isChatDBConnected: false,
+  isLiveDBConnected: false,
   reportService: null,
   concertStatusScheduler: null,
   sessionCleanupScheduler: null,
@@ -160,6 +167,21 @@ export const initializeDatabases = async (): Promise<void> => {
     logger.info('🔌 Starting Concert Notification Scheduler...');
     startConcertStartNotificationScheduler();
     logger.info('✅ Concert Notification Scheduler started');
+
+    // Initialize Live DB for concert sync (optional)
+    if (isLiveSyncEnabled()) {
+      logger.info('🔌 Connecting to Live Database for sync...');
+      const liveDb = await connectLiveDB();
+      if (liveDb) {
+        databaseState.isLiveDBConnected = true;
+        dbConnectionGauge.set({ database: 'live' }, 1);
+        logger.info('✅ Live Database connected for concert sync');
+      } else {
+        logger.warn('⚠️  Live Database connection failed, sync disabled');
+      }
+    } else {
+      logger.info('ℹ️  Live DB sync is disabled');
+    }
   } catch (error) {
     logger.error('❌ Database initialization failed:', { error });
     // Set all database connection gauges to 0 on failure
@@ -178,6 +200,10 @@ export const initializeDatabases = async (): Promise<void> => {
     dbConnectionGauge.set(
       { database: 'chat' },
       databaseState.isChatDBConnected ? 1 : 0,
+    );
+    dbConnectionGauge.set(
+      { database: 'live' },
+      databaseState.isLiveDBConnected ? 1 : 0,
     );
     throw error;
   }
@@ -259,4 +285,13 @@ export const disconnectDatabases = async (): Promise<void> => {
 
   await disconnectConcertDB();
   logger.info('✅ Concert, Article, and Chat MongoDB disconnected');
+
+  // Disconnect Live DB
+  if (databaseState.isLiveDBConnected) {
+    logger.info('Disconnecting Live MongoDB...');
+    await disconnectLiveDB();
+    databaseState.isLiveDBConnected = false;
+    dbConnectionGauge.set({ database: 'live' }, 0);
+    logger.info('✅ Live MongoDB disconnected');
+  }
 };
