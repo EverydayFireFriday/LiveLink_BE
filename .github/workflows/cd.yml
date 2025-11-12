@@ -1,8 +1,10 @@
-name: CD
+name: CD - Deploy
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
     tags:
       - 'v*.*.*'
 
@@ -66,10 +68,14 @@ jobs:
           name: deployment-info
           path: deployment-info.txt
 
-  deploy:
+  deploy-production:
+    name: Deploy to Production
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://api.stagelives.com
 
     steps:
       - name: Checkout code
@@ -83,92 +89,69 @@ jobs:
       - name: Display deployment info
         run: cat deployment-info.txt
 
-      - name: Create .env.production file from secrets
-        run: |
-          cat > .env.production << EOF
-          # Application
-          NODE_ENV=production
-          PORT=3000
-          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-
-          # Session and Cookie
-          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-          SESSION_MAX_AGE=86400000
-          COOKIE_DOMAIN=${{ secrets.COOKIE_DOMAIN }}
-          COOKIE_SAMESITE=${{ secrets.COOKIE_SAMESITE || 'lax' }}
-
-          # Brute-force Protection
-          BRUTE_FORCE_MAX_ATTEMPTS=10
-          BRUTE_FORCE_BLOCK_DURATION=1800
-
-          # MongoDB
-          MONGO_URI=${{ secrets.MONGO_URI || 'mongodb://mongo:27017/livelink' }}
-
-          # Redis
-          REDIS_URL=${{ secrets.REDIS_URL || 'redis://redis:6379' }}
-
-          # Email Service
-          EMAIL_SERVICE=gmail
-          EMAIL_USER=${{ secrets.EMAIL_USER }}
-          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
-
-          # Admin Users
-          ADMIN_EMAILS=${{ secrets.ADMIN_EMAILS }}
-
-          # Logging
-          LOG_LEVEL=info
-
-          # Google OAuth
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-
-          # Apple OAuth
-          APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}
-          APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
-          APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}
-          APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}
-
-          # API Rate Limiting
-          API_LIMIT_DEFAULT_WINDOW_MS=60000
-          API_LIMIT_DEFAULT_MAX=100
-          API_LIMIT_STRICT_WINDOW_MS=60000
-          API_LIMIT_STRICT_MAX=20
-          API_LIMIT_RELAXED_WINDOW_MS=60000
-          API_LIMIT_RELAXED_MAX=200
-
-          # Grafana (optional)
-          GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER || 'admin' }}
-          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD || 'admin' }}
-          EOF
-
-      # 실제 배포 작업을 여기에 추가하세요
-      # 예: SSH를 통한 서버 배포, Kubernetes 배포 등
-      - name: Deploy to server via SSH
+      - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.2.3
-        if: false  # 활성화하려면 true로 변경
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USERNAME }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PROD_SERVER_PORT || 22 }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH || '/opt/livelink' }}
+            cd ${{ secrets.PROD_DEPLOY_PATH || '/var/www/livelink-backend' }}
 
-            # .env.production 파일 업데이트
-            echo "${{ secrets.ENV_PRODUCTION_FILE }}" > .env.production
+            # Run production deployment script
+            ./scripts/deploy-production.sh
 
-            # Docker Compose로 전체 스택 재시작
-            docker-compose pull
-            docker-compose up -d
+            # Verify deployment
+            echo "✅ Production deployment completed"
 
-            # 헬스체크
-            sleep 10
-            curl -f http://localhost:3000/health/liveness || exit 1
-
-            echo "✅ Deployment completed successfully"
-
-      - name: Create deployment notification
+      - name: Notify Deployment Success
         run: |
-          echo "✅ Deployment completed successfully"
+          echo "✅ PRODUCTION deployment completed successfully"
           echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "Branch: ${{ github.ref_name }}"
+          echo "Branch: main"
+          echo "Commit: ${{ github.sha }}"
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://test-api.stagelives.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download deployment artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: deployment-info
+
+      - name: Display deployment info
+        run: cat deployment-info.txt
+
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v1.2.3
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.STAGING_SERVER_PORT || 22 }}
+          script: |
+            cd ${{ secrets.STAGING_DEPLOY_PATH || '/var/www/livelink-backend-staging' }}
+
+            # Run develop deployment script
+            ./scripts/deploy-develop.sh
+
+            # Verify deployment
+            echo "✅ Staging deployment completed"
+
+      - name: Notify Deployment Success
+        run: |
+          echo "✅ STAGING deployment completed successfully"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "Branch: develop"
+          echo "Commit: ${{ github.sha }}"
