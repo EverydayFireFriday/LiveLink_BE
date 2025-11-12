@@ -46,6 +46,8 @@ export class ProfileController {
           fcmToken: user.fcmToken,
           fcmTokenUpdatedAt: user.fcmTokenUpdatedAt,
           notificationPreference: user.notificationPreference,
+          hasPassword: !!user.passwordHash, // 비밀번호 설정 여부 (회원탈퇴 시 필요)
+          oauthProviders: user.oauthProviders?.map((p) => p.provider) || [], // OAuth 연동 정보
         },
         session: req.session.user,
       });
