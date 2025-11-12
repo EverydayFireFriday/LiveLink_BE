@@ -77,6 +77,11 @@ export const getMongoClientOptions = (
     // 압축 설정 (네트워크 대역폭 절약)
     compressors: ['zlib'],
 
+    // TLS/SSL 설정 (클라우드 DB 연결용)
+    tls: true, // TLS/SSL 활성화
+    tlsAllowInvalidCertificates: false, // 프로덕션에서는 반드시 false
+    tlsAllowInvalidHostnames: false, // 프로덕션에서는 반드시 false
+
     // 기타 설정
     writeConcern: {
       w: isProd ? 'majority' : 1, // 프로덕션: majority, 개발: 1
@@ -99,6 +104,7 @@ export const getMongoClientOptions = (
   logger.info(
     `  📦 Compressors: ${Array.isArray(options.compressors) ? options.compressors.join(', ') : options.compressors || 'none'}`,
   );
+  logger.info(`  🔒 TLS Enabled: ${options.tls}`);
   logger.info(`  ✍️  Write Concern: ${JSON.stringify(options.writeConcern)}`);
   logger.info(`  📖 Read Preference: ${String(options.readPreference)}`);
 
