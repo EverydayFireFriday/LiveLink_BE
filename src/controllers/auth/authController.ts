@@ -316,6 +316,7 @@ export class AuthController {
             notificationPreference: user.notificationPreference,
             oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
             loginProvider: 'email' as const, // 로그인한 provider
+            hasPassword: !!user.passwordHash, // 비밀번호 설정 여부 (회원탈퇴 시 필요)
           },
           sessionId: req.sessionID,
         };
@@ -433,6 +434,7 @@ export class AuthController {
             notificationPreference: user.notificationPreference,
             oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
             loginProvider, // 로그인한 provider (기본값: email)
+            hasPassword: !!user.passwordHash, // 비밀번호 설정 여부 (회원탈퇴 시 필요)
           },
           sessionId: req.sessionID,
         });
