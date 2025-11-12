@@ -61,17 +61,12 @@ echo -e "${GREEN}✓ Backup created at $BACKUP_DIR${NC}"
 echo -e "${BLUE}📦 Installing dependencies...${NC}"
 npm ci --production=false
 
-# 4. Validate environment file
-if [ -f ".env.production" ]; then
-  echo -e "${BLUE}🔍 Validating .env.production...${NC}"
-  npm run env:validate:prod || {
-    echo -e "${RED}❌ .env.production validation failed!${NC}"
-    exit 1
-  }
-else
-  echo -e "${RED}❌ .env.production not found!${NC}"
+# 4. Check environment file
+if [ ! -f ".env" ]; then
+  echo -e "${RED}❌ .env file not found!${NC}"
   exit 1
 fi
+echo -e "${GREEN}✓ .env file found${NC}"
 
 # 5. Run linter
 echo -e "${BLUE}🔍 Running linter...${NC}"
@@ -90,17 +85,13 @@ if [ ! -f "dist/app.js" ]; then
 fi
 echo -e "${GREEN}✓ Build completed successfully${NC}"
 
-# 7. Environment setup
-echo -e "${BLUE}🔧 Loading environment from .env.production${NC}"
-cp ".env.production" ".env"
-
-# 8. Database migration
+# 7. Database migration
 echo -e "${BLUE}🗃️  Running database migrations...${NC}"
 npm run migrate:up || {
   echo -e "${YELLOW}⚠️  Migration warnings, but continuing...${NC}"
 }
 
-# 9. PM2 deployment
+# 8. PM2 deployment
 echo -e "${BLUE}🔄 Deploying with PM2...${NC}"
 
 if pm2 describe livelink-backend > /dev/null 2>&1; then
@@ -111,15 +102,15 @@ else
   pm2 start ecosystem.config.js --env production
 fi
 
-# 10. Save PM2 process list
+# 9. Save PM2 process list
 pm2 save
 
-# 11. Show status
+# 10. Show status
 echo -e "\n${GREEN}✅ Deployment complete!${NC}\n"
 pm2 status
 pm2 logs livelink-backend --lines 20 --nostream
 
-# 12. Health check
+# 11. Health check
 echo -e "\n${BLUE}🏥 Running health check...${NC}"
 sleep 5
 
