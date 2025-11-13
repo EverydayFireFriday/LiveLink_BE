@@ -2,13 +2,9 @@
 import express from 'express';
 import { ArticleLikeController } from '../../controllers/article';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
-import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const articleLikeController = new ArticleLikeController();
-
-// 모든 좋아요 API에 defaultLimiter 적용
-router.use(defaultLimiter);
 
 /**
  * @swagger

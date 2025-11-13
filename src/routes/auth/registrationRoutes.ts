@@ -1,5 +1,4 @@
 import express from 'express';
-import { signupLimiter } from '../../middlewares/security/rateLimitMiddleware';
 import { RegistrationController } from '../../controllers/auth/registrationController';
 import { requireNoAuth } from '../../middlewares/auth/authMiddleware';
 
@@ -206,7 +205,7 @@ router.post(
  */
 router.post(
   '/send-verification-email',
-  signupLimiter,
+
   requireNoAuth,
   (req, res) => void registrationController.sendVerificationEmail(req, res),
 );
@@ -272,7 +271,7 @@ router.post(
  */
 router.post(
   '/verify-email',
-  signupLimiter,
+
   requireNoAuth,
   (req, res) => void registrationController.verifyEmail(req, res),
 );
@@ -427,7 +426,7 @@ router.post(
  */
 router.post(
   '/complete-registration',
-  signupLimiter,
+
   requireNoAuth,
   (req, res) => void registrationController.completeRegistration(req, res),
 );

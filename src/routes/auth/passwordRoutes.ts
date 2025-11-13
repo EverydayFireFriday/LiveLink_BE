@@ -1,7 +1,6 @@
 import express from 'express';
 import { PasswordController } from '../../controllers/auth/passwordController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
-import { strictLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const passwordController = new PasswordController();
@@ -89,7 +88,7 @@ const passwordController = new PasswordController();
 // 비밀번호 재설정 (로그인 없이)
 router.post(
   '/reset-password',
-  strictLimiter,
+
   passwordController.resetPasswordRequest,
 );
 /**
@@ -144,7 +143,7 @@ router.post(
  */
 router.post(
   '/verify-reset-code',
-  strictLimiter,
+
   passwordController.verifyResetCode,
 );
 
@@ -201,7 +200,7 @@ router.post(
  */
 router.post(
   '/reset-password-with-token',
-  strictLimiter,
+
   passwordController.resetPasswordWithToken,
 );
 
@@ -283,7 +282,7 @@ router.post(
 // 비밀번호 변경 (로그인 필요)
 router.put(
   '/change-password',
-  strictLimiter,
+
   requireAuth,
   passwordController.changePassword,
 );

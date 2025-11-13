@@ -12,11 +12,6 @@ import {
   requireAuth,
   requireAdmin,
 } from '../../middlewares/auth/authMiddleware';
-import {
-  relaxedLimiter,
-  defaultLimiter,
-  strictLimiter,
-} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const profileController = new ProfileController();
@@ -112,7 +107,7 @@ const profileController = new ProfileController();
  */
 router.get(
   '/profile',
-  relaxedLimiter,
+
   requireAuth,
   profileController.getProfile,
 );
@@ -190,7 +185,7 @@ router.get(
  */
 router.put(
   '/profile',
-  strictLimiter,
+
   requireAuth,
   profileController.updateProfile,
 );
@@ -295,7 +290,7 @@ router.put(
  */
 router.put(
   '/username',
-  strictLimiter,
+
   requireAuth,
   profileController.updateUsername,
 );
@@ -373,7 +368,7 @@ router.put(
  */
 router.put(
   '/fcm-token',
-  defaultLimiter,
+
   requireAuth,
   profileController.updateFCMToken,
 );
@@ -466,7 +461,7 @@ router.put(
  *       500:
  *         description: 서버 에러
  */
-router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
+router.get('/terms-consent', requireAuth, getMyTermsConsent);
 
 /**
  * @swagger
@@ -569,7 +564,7 @@ router.get('/terms-consent', relaxedLimiter, requireAuth, getMyTermsConsent);
  *       500:
  *         description: 서버 에러
  */
-router.put('/terms-consent', strictLimiter, requireAuth, updateTermsConsent);
+router.put('/terms-consent', requireAuth, updateTermsConsent);
 
 // 알림 설정 관련
 /**
@@ -599,7 +594,7 @@ router.put('/terms-consent', strictLimiter, requireAuth, updateTermsConsent);
  */
 router.get(
   '/notification-preferences',
-  relaxedLimiter,
+
   requireAuth,
   getNotificationPreferences,
 );
@@ -686,7 +681,7 @@ router.get(
  */
 router.put(
   '/notification-preferences',
-  defaultLimiter,
+
   requireAuth,
   updateNotificationPreferences,
 );
@@ -779,7 +774,7 @@ router.put(
  */
 router.get(
   '/users',
-  strictLimiter,
+
   requireAdmin,
   profileController.getAllUsers,
 );

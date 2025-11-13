@@ -1,11 +1,5 @@
 import express from 'express';
 import {
-  loginLimiter,
-  relaxedLimiter,
-  defaultLimiter,
-  strictLimiter,
-} from '../../middlewares/security/rateLimitMiddleware';
-import {
   requireAuth,
   requireNoAuth,
 } from '../../middlewares/auth/authMiddleware';
@@ -219,7 +213,7 @@ const getAuthController = async () => {
  *                   type: string
  *                   example: "서버 에러로 로그인 실패"
  */
-router.post('/login', loginLimiter, requireNoAuth, async (req, res) => {
+router.post('/login', requireNoAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.login(req, res);
 });
@@ -258,7 +252,7 @@ router.post('/login', loginLimiter, requireNoAuth, async (req, res) => {
  *                   type: string
  *                   example: "로그아웃 실패"
  */
-router.post('/logout', strictLimiter, requireAuth, async (req, res) => {
+router.post('/logout', requireAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.logout(req, res);
 });
@@ -312,7 +306,7 @@ router.post('/logout', strictLimiter, requireAuth, async (req, res) => {
  *                       type: string
  *                       description: 세션 ID
  */
-router.get('/session', relaxedLimiter, async (req, res) => {
+router.get('/session', async (req, res) => {
   const authController = await getAuthController();
   await authController.checkSession(req, res);
 });
@@ -398,7 +392,7 @@ router.get('/session', relaxedLimiter, async (req, res) => {
  *                     server_error:
  *                       value: "서버 에러로 회원 탈퇴에 실패했습니다."
  */
-router.delete('/account', strictLimiter, requireAuth, async (req, res) => {
+router.delete('/account', requireAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.deleteAccount(req, res);
 });
@@ -491,7 +485,7 @@ router.delete('/account', strictLimiter, requireAuth, async (req, res) => {
  *                   type: string
  *                   example: "서버 에러로 이메일 찾기에 실패했습니다."
  */
-router.post('/find-email', defaultLimiter, async (req, res) => {
+router.post('/find-email', async (req, res) => {
   const authController = await getAuthController();
   await authController.findEmail(req, res);
 });
@@ -665,7 +659,7 @@ router.post('/find-email', defaultLimiter, async (req, res) => {
  *                   type: string
  *                   format: date-time
  */
-router.get('/sessions', defaultLimiter, requireAuth, async (req, res) => {
+router.get('/sessions', requireAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.getSessions(req, res);
 });
@@ -704,7 +698,7 @@ router.get('/sessions', defaultLimiter, requireAuth, async (req, res) => {
  *       500:
  *         description: 서버 에러
  */
-router.delete('/sessions/all', strictLimiter, requireAuth, async (req, res) => {
+router.delete('/sessions/all', requireAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.deleteAllSessions(req, res);
 });
@@ -753,15 +747,10 @@ router.delete('/sessions/all', strictLimiter, requireAuth, async (req, res) => {
  *       500:
  *         description: 서버 에러
  */
-router.delete(
-  '/sessions/:sessionId',
-  strictLimiter,
-  requireAuth,
-  async (req, res) => {
-    const authController = await getAuthController();
-    await authController.deleteSessionById(req, res);
-  },
-);
+router.delete('/sessions/:sessionId', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.deleteSessionById(req, res);
+});
 
 // 사용자 통계
 /**
@@ -891,7 +880,7 @@ router.delete(
  *                   type: string
  *                   format: date-time
  */
-router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
+router.get('/stats', requireAuth, async (req, res) => {
   const authController = await getAuthController();
   await authController.getUserStats(req, res);
 });
@@ -1031,15 +1020,10 @@ router.get('/stats', defaultLimiter, requireAuth, async (req, res) => {
  *       500:
  *         description: 서버 에러
  */
-router.post(
-  '/oauth/complete-registration',
-  defaultLimiter,
-  requireAuth,
-  async (req, res) => {
-    const authController = await getAuthController();
-    await authController.completeRegistration(req, res);
-  },
-);
+router.post('/oauth/complete-registration', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.completeRegistration(req, res);
+});
 
 // 연결된 계정 조회
 /**
@@ -1101,14 +1085,9 @@ router.post(
  *       500:
  *         description: 서버 에러
  */
-router.get(
-  '/me/connected-accounts',
-  defaultLimiter,
-  requireAuth,
-  async (req, res) => {
-    const authController = await getAuthController();
-    await authController.getConnectedAccounts(req, res);
-  },
-);
+router.get('/me/connected-accounts', requireAuth, async (req, res) => {
+  const authController = await getAuthController();
+  await authController.getConnectedAccounts(req, res);
+});
 
 export default router;

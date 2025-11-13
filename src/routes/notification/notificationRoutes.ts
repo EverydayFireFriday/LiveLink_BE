@@ -16,12 +16,8 @@ import {
   deleteNotificationHistory,
 } from '../../controllers/notification/notificationHistoryController.js';
 import { requireAuth } from '../../middlewares/auth/authMiddleware.js';
-import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware.js';
 
 const router = express.Router();
-
-// 모든 알림 API에 defaultLimiter 적용 (일반 CRUD)
-router.use(defaultLimiter);
 
 /**
  * @swagger

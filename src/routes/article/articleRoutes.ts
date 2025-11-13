@@ -2,10 +2,6 @@
 import express from 'express';
 import { ArticleController } from '../../controllers/article';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
-import {
-  relaxedLimiter,
-  strictLimiter,
-} from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
 const articleController = new ArticleController();
@@ -87,7 +83,7 @@ const articleController = new ArticleController();
  *         description: 서버 에러
  */
 // 게시글 생성 (인증 필요)
-router.post('/', strictLimiter, requireAuth, articleController.createArticle);
+router.post('/', requireAuth, articleController.createArticle);
 
 /**
  * @swagger
@@ -148,7 +144,7 @@ router.post('/', strictLimiter, requireAuth, articleController.createArticle);
  *         description: 서버 에러
  */
 // 발행된 게시글 목록 조회 (인증 없이 조회 가능)
-router.get('/', relaxedLimiter, articleController.getPublishedArticles);
+router.get('/', articleController.getPublishedArticles);
 
 /**
  * @swagger
@@ -207,7 +203,7 @@ router.get('/', relaxedLimiter, articleController.getPublishedArticles);
  *         description: 서버 에러
  */
 // 인기 게시글 조회 (인증 없이 조회 가능)
-router.get('/popular', relaxedLimiter, articleController.getPopularArticles);
+router.get('/popular', articleController.getPopularArticles);
 
 /**
  * @swagger
@@ -265,11 +261,7 @@ router.get('/popular', relaxedLimiter, articleController.getPopularArticles);
  *         description: 서버 에러
  */
 // 작성자별 게시글 조회 (인증 없이 조회 가능)
-router.get(
-  '/author/:authorId',
-  relaxedLimiter,
-  articleController.getArticlesByAuthor,
-);
+router.get('/author/:authorId', articleController.getArticlesByAuthor);
 
 /**
  * @swagger
@@ -316,7 +308,7 @@ router.get(
  *         description: 서버 에러
  */
 // 게시글 상세 조회 (인증 없이 조회 가능, 조회수 증가)
-router.get('/:id', relaxedLimiter, articleController.getArticleById);
+router.get('/:id', articleController.getArticleById);
 
 /**
  * @swagger
@@ -387,7 +379,7 @@ router.get('/:id', relaxedLimiter, articleController.getArticleById);
  *         description: 서버 에러
  */
 // 게시글 수정 (인증 필요)
-router.put('/:id', strictLimiter, requireAuth, articleController.updateArticle);
+router.put('/:id', requireAuth, articleController.updateArticle);
 
 /**
  * @swagger
@@ -424,11 +416,6 @@ router.put('/:id', strictLimiter, requireAuth, articleController.updateArticle);
  *         description: 서버 에러
  */
 // 게시글 삭제 (인증 필요)
-router.delete(
-  '/:id',
-  strictLimiter,
-  requireAuth,
-  articleController.deleteArticle,
-);
+router.delete('/:id', requireAuth, articleController.deleteArticle);
 
 export default router;
