@@ -47,6 +47,7 @@ export const setupApolloServer = async (
       reportService,
     }),
     introspection: process.env.NODE_ENV !== 'production',
+    cache: 'bounded', // DoS 공격 방지를 위한 제한된 캐시 사용
   });
 
   await server.start();
