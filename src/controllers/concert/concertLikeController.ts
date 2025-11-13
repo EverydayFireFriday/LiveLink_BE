@@ -3,6 +3,16 @@ import { ConcertLikeService } from '../../services/concert/concertLikeService';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export const getLikeStatus = async (
   req: express.Request,
@@ -12,7 +22,10 @@ export const getLikeStatus = async (
     const { id } = req.params;
     const userId = req.session?.user?.userId;
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
+      throw new UnauthorizedError(
+        '로그인이 필요합니다',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     const result = await ConcertLikeService.getLikeStatus(id, userId);
@@ -20,17 +33,19 @@ export const getLikeStatus = async (
     if (result.success) {
       return ResponseBuilder.success(res, '좋아요 상태 조회 성공', result.data);
     } else {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '좋아요 상태 조회 실패',
+        ErrorCodes.CONCERT_NOT_FOUND,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.info('좋아요 상태 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '좋아요 상태 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -40,7 +55,10 @@ export const addLike = async (req: express.Request, res: express.Response) => {
     const { id } = req.params;
     const userId = req.session?.user?.userId;
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
+      throw new UnauthorizedError(
+        '로그인이 필요합니다',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     const result = await ConcertLikeService.addLike(id, userId);
@@ -69,17 +87,25 @@ export const addLike = async (req: express.Request, res: express.Response) => {
         concert: result.data,
       });
     } else {
-      return ResponseBuilder.badRequest(
-        res,
+      if (result.error?.includes('이미')) {
+        throw new ConflictError(
+          result.error || '이미 좋아요한 콘서트입니다',
+          ErrorCodes.CONCERT_ALREADY_LIKED,
+        );
+      }
+      throw new BadRequestError(
         result.error || '좋아요 추가 실패',
+        ErrorCodes.CONCERT_NOT_FOUND,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.info('좋아요 추가 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '좋아요 추가 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -92,7 +118,10 @@ export const removeLike = async (
     const { id } = req.params;
     const userId = req.session?.user?.userId;
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
+      throw new UnauthorizedError(
+        '로그인이 필요합니다',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     const result = await ConcertLikeService.removeLike(id, userId);
@@ -121,17 +150,19 @@ export const removeLike = async (
         concert: result.data,
       });
     } else {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '좋아요 삭제 실패',
+        ErrorCodes.CONCERT_NOT_LIKED,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('좋아요 삭제 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '좋아요 삭제 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -143,7 +174,10 @@ export const getLikedConcerts = async (
   try {
     const userId = req.session?.user?.userId;
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
+      throw new UnauthorizedError(
+        '로그인이 필요합니다',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     const { page, limit, sortBy } = req.query;
@@ -161,17 +195,19 @@ export const getLikedConcerts = async (
         result.data,
       );
     } else {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '좋아요한 콘서트 목록 조회 실패',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('좋아요한 콘서트 목록 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '좋아요한 콘서트 목록 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -183,16 +219,19 @@ export const getLikedConcertsByMonth = async (
   try {
     const userId = req.session?.user?.userId;
     if (!userId) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다');
+      throw new UnauthorizedError(
+        '로그인이 필요합니다',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
 
     const { year, month, page, limit, sortBy } = req.query;
 
     // year와 month 유효성 검증
     if (!year || !month) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         'year와 month 파라미터가 필요합니다',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
@@ -215,19 +254,24 @@ export const getLikedConcertsByMonth = async (
       );
     } else {
       if (result.statusCode === 400) {
-        return ResponseBuilder.badRequest(res, result.error || '잘못된 요청');
+        throw new BadRequestError(
+          result.error || '잘못된 요청',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '월별 좋아요한 콘서트 목록 조회 실패',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('월별 좋아요한 콘서트 목록 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '월별 좋아요한 콘서트 목록 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };

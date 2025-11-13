@@ -6,6 +6,12 @@ import {
 } from '../../config/terms';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import logger from '../../utils/logger/logger';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 /**
  * 모든 약관 문서 조회
@@ -20,8 +26,11 @@ export const getAllPolicies = (req: Request, res: Response) => {
       policies,
     );
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('약관 조회 에러:', error);
-    return ResponseBuilder.internalError(res, '약관 조회 실패');
+    throw new InternalServerError('약관 조회 실패', ErrorCodes.SYS_INTERNAL_ERROR);
   }
 };
 
@@ -35,9 +44,9 @@ export const getPolicyByType = (req: Request, res: Response) => {
 
     // 유효한 약관 타입인지 확인
     if (!Object.values(PolicyType).includes(type as PolicyType)) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '유효하지 않은 약관 타입입니다. (terms, privacy)',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
 
@@ -48,8 +57,11 @@ export const getPolicyByType = (req: Request, res: Response) => {
       policy,
     );
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('약관 조회 에러:', error);
-    return ResponseBuilder.internalError(res, '약관 조회 실패');
+    throw new InternalServerError('약관 조회 실패', ErrorCodes.SYS_INTERNAL_ERROR);
   }
 };
 
@@ -62,9 +74,13 @@ export const getTermsAndConditions = (req: Request, res: Response) => {
     const policy = getPolicyDocument(PolicyType.TERMS);
     return res.status(200).json({ termsAndConditions: policy.content });
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('이용약관 조회 에러:', error);
-    return res
-      .status(500)
-      .json({ message: 'Failed to retrieve terms and conditions.' });
+    throw new InternalServerError(
+      'Failed to retrieve terms and conditions.',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 };

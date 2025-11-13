@@ -3,6 +3,14 @@ import { ChatRoomService } from '../../services/chat/chatRoomService';
 import { MessageService } from '../../services/chat/messageService';
 import { ChatRoomCreateRequest } from '../../types/chat';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class ChatController {
   private chatRoomService: ChatRoomService;
@@ -17,7 +25,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const roomData: ChatRoomCreateRequest = req.body;
@@ -28,11 +36,13 @@ export class ChatController {
 
       return ResponseBuilder.created(res, '채팅방이 생성되었습니다.', chatRoom);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.internalError(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -40,7 +50,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const chatRooms = await this.chatRoomService.getUserChatRooms(userId);
@@ -51,11 +61,13 @@ export class ChatController {
         chatRooms,
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.internalError(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -75,11 +87,13 @@ export class ChatController {
         chatRooms,
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.internalError(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -87,14 +101,14 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { roomId } = req.params;
       const chatRoom = await this.chatRoomService.getChatRoom(roomId, userId);
 
       if (!chatRoom) {
-        return ResponseBuilder.notFound(res, '채팅방을 찾을 수 없습니다.');
+        throw new NotFoundError(undefined, ErrorCodes.CHAT_ROOM_NOT_FOUND);
       }
 
       return ResponseBuilder.success(
@@ -103,11 +117,13 @@ export class ChatController {
         chatRoom,
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.forbidden(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -115,7 +131,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { roomId } = req.params;
@@ -123,11 +139,13 @@ export class ChatController {
 
       return ResponseBuilder.success(res, '채팅방에 참여했습니다.', chatRoom);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.badRequest(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -135,7 +153,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { roomId } = req.params;
@@ -144,14 +162,19 @@ export class ChatController {
       if (success) {
         return ResponseBuilder.success(res, '채팅방을 떠났습니다.');
       } else {
-        return ResponseBuilder.badRequest(res, '채팅방 떠나기에 실패했습니다.');
+        throw new BadRequestError(
+          '채팅방 떠나기에 실패했습니다.',
+          ErrorCodes.CHAT_NOT_JOINED,
+        );
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.internalError(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -159,7 +182,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { roomId } = req.params;
@@ -179,11 +202,13 @@ export class ChatController {
         messages,
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.forbidden(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -191,7 +216,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { messageId } = req.params;
@@ -204,16 +229,18 @@ export class ChatController {
       );
 
       if (!message) {
-        return ResponseBuilder.notFound(res, '메시지를 찾을 수 없습니다.');
+        throw new NotFoundError(undefined, ErrorCodes.CHAT_MESSAGE_NOT_FOUND);
       }
 
       return ResponseBuilder.success(res, '메시지가 수정되었습니다.', message);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.forbidden(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -221,7 +248,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { messageId } = req.params;
@@ -233,14 +260,16 @@ export class ChatController {
       if (success) {
         return ResponseBuilder.success(res, '메시지가 삭제되었습니다.');
       } else {
-        return ResponseBuilder.notFound(res, '메시지를 찾을 수 없습니다.');
+        throw new NotFoundError(undefined, ErrorCodes.CHAT_MESSAGE_NOT_FOUND);
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.forbidden(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -250,7 +279,7 @@ export class ChatController {
       const limit = parseInt(req.query.limit as string) || 20;
 
       if (!searchTerm || typeof searchTerm !== 'string') {
-        return ResponseBuilder.badRequest(res, '검색어가 필요합니다.');
+        throw new BadRequestError(undefined, ErrorCodes.VAL_MISSING_FIELD);
       }
 
       const chatRooms = await this.chatRoomService.searchChatRooms(
@@ -260,11 +289,13 @@ export class ChatController {
 
       return ResponseBuilder.success(res, '채팅방 검색 결과입니다.', chatRooms);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.internalError(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
@@ -272,7 +303,7 @@ export class ChatController {
     try {
       const userId = req.session.user?.userId;
       if (!userId) {
-        return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
+        throw new UnauthorizedError(undefined, ErrorCodes.AUTH_UNAUTHORIZED);
       }
 
       const { roomId } = req.params;
@@ -280,7 +311,7 @@ export class ChatController {
       const limit = parseInt(req.query.limit as string) || 20;
 
       if (!searchTerm || typeof searchTerm !== 'string') {
-        return ResponseBuilder.badRequest(res, '검색어가 필요합니다.');
+        throw new BadRequestError(undefined, ErrorCodes.VAL_MISSING_FIELD);
       }
 
       const messages = await this.messageService.searchMessages(
@@ -292,11 +323,13 @@ export class ChatController {
 
       return ResponseBuilder.success(res, '메시지 검색 결과입니다.', messages);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : '알 수 없는 오류가 발생했습니다.';
-      return ResponseBuilder.forbidden(res, errorMessage);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new InternalServerError(
+        error instanceof Error ? error.message : undefined,
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 }

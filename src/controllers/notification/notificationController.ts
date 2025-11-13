@@ -3,6 +3,14 @@ import { ResponseBuilder } from '../../utils/response/apiResponse.js';
 import { ScheduledNotificationService } from '../../services/notification/scheduledNotificationService.js';
 import { NotificationStatus } from '../../models/notification/index.js';
 import logger from '../../utils/logger/logger.js';
+import { ErrorCodes } from '../../utils/errors/errorCodes.js';
+import {
+  AppError,
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError,
+  InternalServerError,
+} from '../../utils/errors/customErrors.js';
 
 /**
  * Create a scheduled notification
@@ -12,20 +20,20 @@ export const createScheduledNotification = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const { title, message, concertId, scheduledAt, data } = req.body;
 
     // Validation
     if (!title || !message || !scheduledAt) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         'title, message, scheduledAt 필드는 필수입니다',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
@@ -51,27 +59,29 @@ export const createScheduledNotification = async (
     } else {
       const statusCode = result.statusCode || 500;
       if (statusCode === 400) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           result.error || '예약 알림 생성 실패',
+          ErrorCodes.NOTIF_SEND_FAILED,
         );
       } else if (statusCode === 404) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           result.error || '리소스를 찾을 수 없습니다',
-        );
-      } else {
-        return ResponseBuilder.internalError(
-          res,
-          result.error || '예약 알림 생성 실패',
+          ErrorCodes.CONCERT_NOT_FOUND,
         );
       }
+      throw new InternalServerError(
+        result.error || '예약 알림 생성 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to create scheduled notification:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '예약 알림 생성 중 오류가 발생했습니다',
+      ErrorCodes.NOTIF_SEND_FAILED,
     );
   }
 };
@@ -84,18 +94,21 @@ export const getUserScheduledNotifications = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const status = req.query.status as NotificationStatus | undefined;
 
     // Validate status if provided
     if (status && !Object.values(NotificationStatus).includes(status)) {
-      return ResponseBuilder.badRequest(res, '유효하지 않은 상태 값입니다');
+      throw new BadRequestError(
+        '유효하지 않은 상태 값입니다',
+        ErrorCodes.VAL_INVALID_INPUT,
+      );
     }
 
     const result =
@@ -111,16 +124,19 @@ export const getUserScheduledNotifications = async (
         result.data,
       );
     } else {
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         result.error || '예약 알림 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to get scheduled notifications:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '예약 알림 조회 중 오류가 발생했습니다',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -133,17 +149,20 @@ export const getScheduledNotificationById = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const { id } = req.params;
 
     if (!id) {
-      return ResponseBuilder.badRequest(res, '알림 ID가 필요합니다');
+      throw new BadRequestError(
+        '알림 ID가 필요합니다',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     const result =
@@ -157,27 +176,29 @@ export const getScheduledNotificationById = async (
     } else {
       const statusCode = result.statusCode || 500;
       if (statusCode === 404) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           result.error || '예약 알림을 찾을 수 없습니다',
+          ErrorCodes.NOTIF_NOT_FOUND,
         );
       } else if (statusCode === 403) {
-        return ResponseBuilder.forbidden(
-          res,
+        throw new BadRequestError(
           result.error || '접근 권한이 없습니다',
-        );
-      } else {
-        return ResponseBuilder.internalError(
-          res,
-          result.error || '예약 알림 조회 실패',
+          ErrorCodes.AUTH_FORBIDDEN,
         );
       }
+      throw new InternalServerError(
+        result.error || '예약 알림 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to get scheduled notification:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '예약 알림 조회 중 오류가 발생했습니다',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -190,17 +211,20 @@ export const cancelScheduledNotification = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const { id } = req.params;
 
     if (!id) {
-      return ResponseBuilder.badRequest(res, '알림 ID가 필요합니다');
+      throw new BadRequestError(
+        '알림 ID가 필요합니다',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     const result =
@@ -221,32 +245,34 @@ export const cancelScheduledNotification = async (
     } else {
       const statusCode = result.statusCode || 500;
       if (statusCode === 400) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           result.error || '취소할 수 없는 상태입니다',
+          ErrorCodes.VAL_INVALID_INPUT,
         );
       } else if (statusCode === 404) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           result.error || '예약 알림을 찾을 수 없습니다',
+          ErrorCodes.NOTIF_NOT_FOUND,
         );
       } else if (statusCode === 403) {
-        return ResponseBuilder.forbidden(
-          res,
+        throw new BadRequestError(
           result.error || '접근 권한이 없습니다',
-        );
-      } else {
-        return ResponseBuilder.internalError(
-          res,
-          result.error || '예약 알림 취소 실패',
+          ErrorCodes.AUTH_FORBIDDEN,
         );
       }
+      throw new InternalServerError(
+        result.error || '예약 알림 취소 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to cancel scheduled notification:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '예약 알림 취소 중 오류가 발생했습니다',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -259,29 +285,32 @@ export const getNotificationStats = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const result =
       await ScheduledNotificationService.getNotificationStats(userId);
 
     if (result.success) {
       return ResponseBuilder.success(res, '알림 통계 조회 성공', result.data);
     } else {
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         result.error || '알림 통계 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to get notification stats:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '알림 통계 조회 중 오류가 발생했습니다',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -294,13 +323,13 @@ export const bulkCreateScheduledNotifications = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const { notifications } = req.body;
 
     // Validation
@@ -309,7 +338,10 @@ export const bulkCreateScheduledNotifications = async (
       !Array.isArray(notifications) ||
       notifications.length === 0
     ) {
-      return ResponseBuilder.badRequest(res, 'notifications 배열이 필요합니다');
+      throw new BadRequestError(
+        'notifications 배열이 필요합니다',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // Add userId to each notification
@@ -335,22 +367,24 @@ export const bulkCreateScheduledNotifications = async (
     } else {
       const statusCode = result.statusCode || 500;
       if (statusCode === 400) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           result.error || '예약 알림 일괄 생성 실패',
-        );
-      } else {
-        return ResponseBuilder.internalError(
-          res,
-          result.error || '예약 알림 일괄 생성 실패',
+          ErrorCodes.VAL_INVALID_INPUT,
         );
       }
+      throw new InternalServerError(
+        result.error || '예약 알림 일괄 생성 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to bulk create scheduled notifications:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '예약 알림 일괄 생성 중 오류가 발생했습니다',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -363,13 +397,13 @@ export const bulkCancelScheduledNotifications = async (
   req: express.Request,
   res: express.Response,
 ) => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
   try {
-    const userId = req.session?.user?.userId;
-
-    if (!userId) {
-      return ResponseBuilder.unauthorized(res, '인증이 필요합니다');
-    }
-
     const { notificationIds } = req.body;
 
     // Validation
@@ -378,9 +412,9 @@ export const bulkCancelScheduledNotifications = async (
       !Array.isArray(notificationIds) ||
       notificationIds.length === 0
     ) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         'notificationIds 배열이 필요합니다',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
@@ -402,22 +436,24 @@ export const bulkCancelScheduledNotifications = async (
     } else {
       const statusCode = result.statusCode || 500;
       if (statusCode === 400) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           result.error || '예약 알림 일괄 취소 실패',
-        );
-      } else {
-        return ResponseBuilder.internalError(
-          res,
-          result.error || '예약 알림 일괄 취소 실패',
+          ErrorCodes.VAL_INVALID_INPUT,
         );
       }
+      throw new InternalServerError(
+        result.error || '예약 알림 일괄 취소 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ Failed to bulk cancel scheduled notifications:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '예약 알림 일괄 취소 중 오류가 발생했습니다',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };

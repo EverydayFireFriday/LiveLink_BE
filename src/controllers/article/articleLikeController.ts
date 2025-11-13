@@ -3,28 +3,27 @@ import { getArticleLikeService } from '../../services/article';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  UnauthorizedError,
+  BadRequestError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class ArticleLikeController {
   private articleLikeService = getArticleLikeService();
 
-  // 🛡️ 세션에서 userId를 가져오고, 없으면 401 응답을 보냅니다.
-  private getUserIdFromSession(
-    req: express.Request,
-    res: express.Response,
-  ): string | null {
+  toggleLike = async (req: express.Request, res: express.Response) => {
     const userId = req.session?.user?.userId;
     if (!userId) {
-      ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
-      return null;
+      throw new UnauthorizedError(
+        '로그인이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
     }
-    return userId;
-  }
 
-  toggleLike = async (req: express.Request, res: express.Response) => {
     try {
-      const userId = this.getUserIdFromSession(req, res);
-      if (!userId) return;
-
       const { articleId } = req.params;
 
       const result = await this.articleLikeService.toggleLike(
@@ -60,23 +59,27 @@ export class ArticleLikeController {
         },
       );
     } catch (error) {
-      logger.error('좋아요 토글 에러:', error);
-      if (error instanceof Error) {
-        return ResponseBuilder.internalError(
-          res,
-          '좋아요 토글에 실패했습니다.',
-          error.message,
-        );
+      if (error instanceof AppError) {
+        throw error;
       }
-      return ResponseBuilder.internalError(res, '좋아요 토글에 실패했습니다.');
+      logger.error('좋아요 토글 에러:', error);
+      throw new InternalServerError(
+        '좋아요 토글에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 
   getLikeStatus = async (req: express.Request, res: express.Response) => {
-    try {
-      const userId = this.getUserIdFromSession(req, res);
-      if (!userId) return;
+    const userId = req.session?.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedError(
+        '로그인이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
+    }
 
+    try {
       const { articleId } = req.params;
 
       const result = await this.articleLikeService.checkLikeStatus(
@@ -89,17 +92,13 @@ export class ArticleLikeController {
         likesCount: result.likesCount,
       });
     } catch (error) {
-      logger.error('좋아요 상태 조회 에러:', error);
-      if (error instanceof Error) {
-        return ResponseBuilder.internalError(
-          res,
-          '좋아요 상태 조회에 실패했습니다.',
-          error.message,
-        );
+      if (error instanceof AppError) {
+        throw error;
       }
-      return ResponseBuilder.internalError(
-        res,
+      logger.error('좋아요 상태 조회 에러:', error);
+      throw new InternalServerError(
         '좋아요 상태 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -112,7 +111,10 @@ export class ArticleLikeController {
       // 다른 사용자의 좋아요 목록을 볼 수 있도록 param에서 userId를 받음
       const { userId } = req.params;
       if (!userId) {
-        return ResponseBuilder.badRequest(res, 'User ID is required.');
+        throw new BadRequestError(
+          'User ID is required.',
+          ErrorCodes.VAL_MISSING_FIELD,
+        );
       }
 
       const page = safeParseInt(req.query.page, 1);
@@ -135,10 +137,13 @@ export class ArticleLikeController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('사용자 좋아요 게시글 조회 에러:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '사용자 좋아요 게시글 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };

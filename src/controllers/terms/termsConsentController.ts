@@ -9,6 +9,14 @@ import { ResponseBuilder } from '../../utils/response/apiResponse';
 import logger from '../../utils/logger/logger';
 import { UserService } from '../../services/auth/userService';
 import { TermsConsent } from '../../models/auth/user';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 /**
  * 약관 동의 상태 조회 헬퍼 함수
@@ -25,16 +33,22 @@ const findConsent = (
  * GET /users/me/terms-consent
  */
 export const getMyTermsConsent = async (req: Request, res: Response) => {
-  try {
-    if (!req.session.user) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
-    }
+  if (!req.session.user) {
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
+  }
 
+  try {
     const userService = new UserService();
     const user = await userService.findByEmail(req.session.user.email);
 
     if (!user) {
-      return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+      throw new NotFoundError(
+        '사용자를 찾을 수 없습니다.',
+        ErrorCodes.USER_NOT_FOUND,
+      );
     }
 
     const consents = user.termsConsents || [];
@@ -73,8 +87,14 @@ export const getMyTermsConsent = async (req: Request, res: Response) => {
       requiresAction: needsTermsUpdate || needsPrivacyUpdate,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('약관 동의 상태 조회 에러:', error);
-    return ResponseBuilder.internalError(res, '약관 동의 상태 조회 실패');
+    throw new InternalServerError(
+      '약관 동의 상태 조회 실패',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 };
 
@@ -83,18 +103,21 @@ export const getMyTermsConsent = async (req: Request, res: Response) => {
  * PUT /users/me/terms-consent
  */
 export const updateTermsConsent = async (req: Request, res: Response) => {
-  try {
-    if (!req.session.user) {
-      return ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
-    }
+  if (!req.session.user) {
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
+  }
 
+  try {
     const { termsConsents }: { termsConsents?: TermsConsent[] } = req.body;
 
     // 요청 검증
     if (!termsConsents || !Array.isArray(termsConsents)) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         'termsConsents 배열이 필요합니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
       );
     }
 
@@ -103,16 +126,16 @@ export const updateTermsConsent = async (req: Request, res: Response) => {
     const privacyConsent = termsConsents.find((c) => c.type === 'privacy');
 
     if (termsConsent && termsConsent.isAgreed === false) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '이용약관에는 반드시 동의해야 합니다.',
+        ErrorCodes.AUTH_TERMS_NOT_AGREED,
       );
     }
 
     if (privacyConsent && privacyConsent.isAgreed === false) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '개인정보처리방침에는 반드시 동의해야 합니다.',
+        ErrorCodes.AUTH_TERMS_NOT_AGREED,
       );
     }
 
@@ -120,7 +143,10 @@ export const updateTermsConsent = async (req: Request, res: Response) => {
     const user = await userService.findByEmail(req.session.user.email);
 
     if (!user) {
-      return ResponseBuilder.notFound(res, '사용자를 찾을 수 없습니다.');
+      throw new NotFoundError(
+        '사용자를 찾을 수 없습니다.',
+        ErrorCodes.USER_NOT_FOUND,
+      );
     }
 
     const now = new Date();
@@ -166,7 +192,10 @@ export const updateTermsConsent = async (req: Request, res: Response) => {
     });
 
     if (!updatedUser) {
-      return ResponseBuilder.internalError(res, '약관 동의 업데이트 실패');
+      throw new InternalServerError(
+        '약관 동의 업데이트 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
 
     logger.info(
@@ -202,7 +231,13 @@ export const updateTermsConsent = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('약관 동의 업데이트 에러:', error);
-    return ResponseBuilder.internalError(res, '약관 동의 업데이트 실패');
+    throw new InternalServerError(
+      '약관 동의 업데이트 실패',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 };

@@ -3,26 +3,28 @@ import { getArticleCommentService } from '../../services/article';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError,
+  ForbiddenError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export class ArticleCommentController {
   private articleCommentService = getArticleCommentService();
 
-  // 🛡️ 세션 검증 헬퍼 메서드
-  private validateSession(
-    req: express.Request,
-    res: express.Response,
-  ): boolean {
-    if (!req.session?.user?.userId) {
-      ResponseBuilder.unauthorized(res, '로그인이 필요합니다.');
-      return false;
-    }
-    return true;
-  }
-
   createComment = async (req: express.Request, res: express.Response) => {
     try {
-      // 🛡️ 세션 검증
-      if (!this.validateSession(req, res)) return;
+      // 세션 검증
+      if (!req.session?.user?.userId) {
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
+      }
 
       const { articleId } = req.params;
       const { author_id, content, parent_id } = req.body;
@@ -40,21 +42,35 @@ export class ArticleCommentController {
     } catch (error: unknown) {
       logger.error('댓글 생성 에러:', error);
 
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('유효성 검사')) {
-          return ResponseBuilder.badRequest(res, error.message);
+          throw new BadRequestError(
+            error.message,
+            ErrorCodes.VAL_INVALID_INPUT,
+          );
         } else if (error.message.includes('찾을 수 없습니다')) {
-          return ResponseBuilder.notFound(res, error.message);
+          if (error.message.includes('게시글')) {
+            throw new NotFoundError(
+              error.message,
+              ErrorCodes.ARTICLE_NOT_FOUND,
+            );
+          } else if (error.message.includes('상위 댓글')) {
+            throw new NotFoundError(
+              error.message,
+              ErrorCodes.COMMENT_PARENT_NOT_FOUND,
+            );
+          }
+          throw new NotFoundError(error.message, ErrorCodes.COMMENT_NOT_FOUND);
         }
-        return ResponseBuilder.internalError(
-          res,
-          '댓글 작성에 실패했습니다.',
-          error.message,
-        );
       }
-      return ResponseBuilder.internalError(
-        res,
-        '알 수 없는 오류가 발생했습니다.',
+
+      throw new InternalServerError(
+        '댓글 작성에 실패했습니다.',
+        ErrorCodes.COMMENT_CREATE_FAILED,
       );
     }
   };
@@ -90,19 +106,22 @@ export class ArticleCommentController {
     } catch (error: unknown) {
       logger.error('댓글 목록 조회 에러:', error);
 
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('찾을 수 없습니다')) {
-          return ResponseBuilder.notFound(res, error.message);
+          throw new NotFoundError(
+            error.message,
+            ErrorCodes.ARTICLE_NOT_FOUND,
+          );
         }
-        return ResponseBuilder.internalError(
-          res,
-          '댓글 목록 조회에 실패했습니다.',
-          error.message,
-        );
       }
-      return ResponseBuilder.internalError(
-        res,
-        '알 수 없는 오류가 발생했습니다.',
+
+      throw new InternalServerError(
+        '댓글 목록 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -117,27 +136,32 @@ export class ArticleCommentController {
     } catch (error: unknown) {
       logger.error('댓글 조회 에러:', error);
 
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('찾을 수 없습니다')) {
-          return ResponseBuilder.notFound(res, error.message);
+          throw new NotFoundError(error.message, ErrorCodes.COMMENT_NOT_FOUND);
         }
-        return ResponseBuilder.internalError(
-          res,
-          '댓글 조회에 실패했습니다.',
-          error.message,
-        );
       }
-      return ResponseBuilder.internalError(
-        res,
-        '알 수 없는 오류가 발생했습니다.',
+
+      throw new InternalServerError(
+        '댓글 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
 
   updateComment = async (req: express.Request, res: express.Response) => {
     try {
-      // 🛡️ 세션 검증
-      if (!this.validateSession(req, res)) return;
+      // 세션 검증
+      if (!req.session?.user?.userId) {
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
+      }
 
       const { commentId } = req.params;
       const { content, author_id } = req.body;
@@ -154,31 +178,42 @@ export class ArticleCommentController {
     } catch (error: unknown) {
       logger.error('댓글 수정 에러:', error);
 
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('유효성 검사')) {
-          return ResponseBuilder.badRequest(res, error.message);
+          throw new BadRequestError(
+            error.message,
+            ErrorCodes.VAL_INVALID_INPUT,
+          );
         } else if (error.message.includes('권한이 없습니다')) {
-          return ResponseBuilder.forbidden(res, error.message);
+          throw new ForbiddenError(
+            error.message,
+            ErrorCodes.COMMENT_NO_PERMISSION,
+          );
         } else if (error.message.includes('찾을 수 없습니다')) {
-          return ResponseBuilder.notFound(res, error.message);
+          throw new NotFoundError(error.message, ErrorCodes.COMMENT_NOT_FOUND);
         }
-        return ResponseBuilder.internalError(
-          res,
-          '댓글 수정에 실패했습니다.',
-          error.message,
-        );
       }
-      return ResponseBuilder.internalError(
-        res,
-        '알 수 없는 오류가 발생했습니다.',
+
+      throw new InternalServerError(
+        '댓글 수정에 실패했습니다.',
+        ErrorCodes.COMMENT_UPDATE_FAILED,
       );
     }
   };
 
   deleteComment = async (req: express.Request, res: express.Response) => {
     try {
-      // 🛡️ 세션 검증
-      if (!this.validateSession(req, res)) return;
+      // 세션 검증
+      if (!req.session?.user?.userId) {
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
+      }
 
       const { commentId } = req.params;
       const { author_id } = req.body;
@@ -192,29 +227,37 @@ export class ArticleCommentController {
     } catch (error: unknown) {
       logger.error('댓글 삭제 에러:', error);
 
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('권한이 없습니다')) {
-          return ResponseBuilder.forbidden(res, error.message);
+          throw new ForbiddenError(
+            error.message,
+            ErrorCodes.COMMENT_NO_PERMISSION,
+          );
         } else if (error.message.includes('찾을 수 없습니다')) {
-          return ResponseBuilder.notFound(res, error.message);
+          throw new NotFoundError(error.message, ErrorCodes.COMMENT_NOT_FOUND);
         }
-        return ResponseBuilder.internalError(
-          res,
-          '댓글 삭제에 실패했습니다.',
-          error.message,
-        );
       }
-      return ResponseBuilder.internalError(
-        res,
-        '알 수 없는 오류가 발생했습니다.',
+
+      throw new InternalServerError(
+        '댓글 삭제에 실패했습니다.',
+        ErrorCodes.COMMENT_DELETE_FAILED,
       );
     }
   };
 
   toggleCommentLike = async (req: express.Request, res: express.Response) => {
     try {
-      // 🛡️ 세션 검증
-      if (!this.validateSession(req, res)) return;
+      // 세션 검증
+      if (!req.session?.user?.userId) {
+        throw new UnauthorizedError(
+          '로그인이 필요합니다.',
+          ErrorCodes.AUTH_UNAUTHORIZED,
+        );
+      }
 
       const { commentId } = req.params;
       const { user_id } = req.body;
@@ -234,9 +277,14 @@ export class ArticleCommentController {
       );
     } catch (error) {
       logger.error('댓글 좋아요 토글 에러:', error);
-      return ResponseBuilder.internalError(
-        res,
+
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new InternalServerError(
         '댓글 좋아요 토글에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -269,28 +317,33 @@ export class ArticleCommentController {
     } catch (error: unknown) {
       logger.error('대댓글 목록 조회 에러:', error);
 
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('찾을 수 없습니다')) {
-          return ResponseBuilder.notFound(res, error.message);
+          throw new NotFoundError(error.message, ErrorCodes.COMMENT_NOT_FOUND);
         }
-        return ResponseBuilder.internalError(
-          res,
-          '대댓글 목록 조회에 실패했습니다.',
-          error.message,
-        );
       }
-      return ResponseBuilder.internalError(
-        res,
-        '알 수 없는 오류가 발생했습니다.',
+
+      throw new InternalServerError(
+        '대댓글 목록 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
 
   getCommentsByAuthor = async (req: express.Request, res: express.Response) => {
-    try {
-      // 🛡️ 세션 검증
-      if (!this.validateSession(req, res)) return;
+    // 세션 검증
+    if (!req.session?.user?.userId) {
+      throw new UnauthorizedError(
+        '로그인이 필요합니다.',
+        ErrorCodes.AUTH_UNAUTHORIZED,
+      );
+    }
 
+    try {
       const { authorId } = req.params;
       const page = safeParseInt(req.query.page, 1);
       const limit = safeParseInt(req.query.limit, 20);
@@ -315,10 +368,13 @@ export class ArticleCommentController {
         },
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('작성자별 댓글 조회 에러:', error);
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         '작성자별 댓글 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   };
@@ -333,8 +389,14 @@ export class ArticleCommentController {
         commentCount,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('댓글 수 조회 에러:', error);
-      return ResponseBuilder.internalError(res, '댓글 수 조회에 실패했습니다.');
+      throw new InternalServerError(
+        '댓글 수 조회에 실패했습니다.',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
     }
   };
 }
