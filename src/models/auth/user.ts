@@ -190,6 +190,10 @@ export class UserModel {
       likedConcerts: [],
       likedArticles: [],
       termsConsents: userData.termsConsents || [], // 배열 초기화
+      notificationPreference: userData.notificationPreference || {
+        ticketOpenNotification: [10, 30, 60, 1440],
+        concertStartNotification: [60, 180, 1440],
+      }, // 알림 설정 기본값
       createdAt: now,
       updatedAt: now,
     };
