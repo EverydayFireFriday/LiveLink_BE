@@ -7,12 +7,8 @@ import {
   getLikedConcertsByMonth,
 } from '../../controllers/concert/concertLikeController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
-import { defaultLimiter } from '../../middlewares/security/rateLimitMiddleware';
 
 const router = express.Router();
-
-// 모든 좋아요 API에 defaultLimiter 적용 (일반 CRUD)
-router.use(defaultLimiter);
 
 /**
  * @swagger

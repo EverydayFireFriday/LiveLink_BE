@@ -1,6 +1,5 @@
 import express from 'express';
 import { ReportService } from '../report/reportService';
-import { defaultLimiter } from '../middlewares/security/rateLimitMiddleware';
 import {
   errorHandler,
   notFoundHandler,
@@ -28,8 +27,7 @@ export const setupRoutes = async (
   app.use('/swagger-json', swaggerRouter);
   app.use('/terms', termsRouter);
 
-  // 메인 라우터 연결 (rate limiter 적용)
-  app.use(defaultLimiter);
+  // 메인 라우터 연결
   app.use('/auth', authRouter);
   app.use('/concert', concertRouter);
   app.use('/test', testRouter);
