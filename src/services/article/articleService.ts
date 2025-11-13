@@ -15,6 +15,12 @@ import {
 } from '../../utils/validation/article';
 import { ObjectId } from 'mongodb';
 import { cacheManager } from '../../utils/cache/cacheManager';
+import {
+  CacheKeyBuilder,
+  CacheTTL,
+  CacheInvalidationPatterns,
+  CacheHelper,
+} from '../../utils';
 
 // 인터페이스 정의
 interface ArticleWithTags extends IArticle {
@@ -159,7 +165,11 @@ export class ArticleService {
       );
     }
 
-    await cacheManager.delByPattern('articles:*');
+    // 캐시 무효화 - 새로운 유틸리티 사용
+    await CacheHelper.deletePatterns([
+      CacheInvalidationPatterns.ARTICLE_ALL(),
+    ]);
+
     return article;
   }
 
@@ -233,9 +243,16 @@ export class ArticleService {
       userId,
     } = options;
 
-    const cacheKey = `articles:page=${page}:limit=${limit}:category=${
-      category_id || ''
-    }:tag=${tag_id || ''}:search=${search || ''}:userId=${userId || ''}`;
+    // 새로운 캐시 키 빌더 사용
+    const cacheKey = CacheKeyBuilder.articleList({
+      page,
+      limit,
+      category_id,
+      tag_id,
+      search,
+      userId,
+    });
+
     const cachedData =
       await cacheManager.get<PaginatedResult<EnrichedArticle>>(cacheKey);
     if (cachedData) {
@@ -328,7 +345,8 @@ export class ArticleService {
       totalPages: Math.ceil(total / limit),
     };
 
-    await cacheManager.set(cacheKey, result, 300); // 5분 캐시
+    // 설정된 TTL 사용
+    await cacheManager.set(cacheKey, result, CacheTTL.ARTICLE_LIST);
 
     return result;
   }
@@ -382,7 +400,12 @@ export class ArticleService {
       throw new Error('게시글 업데이트에 실패했습니다.');
     }
 
-    await cacheManager.delByPattern('articles:*');
+    // 캐시 무효화 - 해당 게시글과 관련된 모든 캐시 삭제
+    await CacheHelper.deletePatterns([
+      CacheInvalidationPatterns.ARTICLE_BY_ID(id),
+      CacheInvalidationPatterns.ARTICLE_LIST(),
+    ]);
+
     return updatedArticle;
   }
 
@@ -404,7 +427,12 @@ export class ArticleService {
 
     // 게시글 삭제
     await this.articleModel.deleteById(id);
-    await cacheManager.delByPattern('articles:*');
+
+    // 캐시 무효화
+    await CacheHelper.deletePatterns([
+      CacheInvalidationPatterns.ARTICLE_BY_ID(id),
+      CacheInvalidationPatterns.ARTICLE_LIST(),
+    ]);
   }
 
   // 조회수 증가

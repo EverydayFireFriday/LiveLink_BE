@@ -16,6 +16,14 @@ import type { IConcert } from '../../models/concert/base/ConcertTypes';
 // Live DB 동기화 서비스 import
 import { ConcertSyncService } from './concertSyncService';
 
+// 캐시 유틸리티 import
+import {
+  cacheManager,
+  CacheKeyBuilder,
+  CacheTTL,
+  CacheInvalidationPatterns,
+} from '../../utils';
+
 export interface CreateConcertRequest {
   uid: string;
   title: string;
@@ -163,6 +171,9 @@ export class ConcertService {
       // 8. Live DB에 동기화 (비동기, 실패해도 메인 기능에 영향 없음)
       void ConcertSyncService.syncCreate(newConcert);
 
+      // 9. 캐시 무효화 - 모든 콘서트 목록 캐시 삭제
+      await cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_ALL());
+
       return {
         success: true,
         data: {
@@ -204,6 +215,16 @@ export class ConcertService {
     userId?: string,
   ): Promise<ConcertServiceResponse> {
     try {
+      // 캐시 키 생성
+      const cacheKey = CacheKeyBuilder.concertDetail(id, { userId });
+
+      // 캐시 확인
+      const cachedData =
+        await cacheManager.get<ConcertServiceResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+
       const ConcertModel = getConcertModel();
       const concert = await ConcertModel.findById(id);
 
@@ -225,7 +246,7 @@ export class ConcertService {
         }
       }
 
-      return {
+      const response: ConcertServiceResponse = {
         success: true,
         data: {
           ...concert,
@@ -233,6 +254,11 @@ export class ConcertService {
         },
         statusCode: 200,
       };
+
+      // 캐시 저장
+      await cacheManager.set(cacheKey, response, CacheTTL.CONCERT_DETAIL);
+
+      return response;
     } catch (error) {
       logger.error('콘서트 조회 서비스 에러:', error);
       return {
@@ -272,6 +298,22 @@ export class ConcertService {
         title,
         search,
       } = params;
+
+      // 캐시 키 생성
+      const cacheKey = CacheKeyBuilder.concertList({
+        page,
+        limit,
+        category,
+        location,
+        userId,
+      });
+
+      // 캐시 확인
+      const cachedData =
+        await cacheManager.get<ConcertServiceResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
 
       const ConcertModel = getConcertModel();
 
@@ -411,7 +453,7 @@ export class ConcertService {
 
       const totalPages = Math.ceil(total / parseInt(limit.toString()));
 
-      return {
+      const response: ConcertServiceResponse = {
         success: true,
         data: {
           concerts: concertsWithLikeStatus,
@@ -425,6 +467,11 @@ export class ConcertService {
         },
         statusCode: 200,
       };
+
+      // 캐시 저장
+      await cacheManager.set(cacheKey, response, CacheTTL.CONCERT_LIST);
+
+      return response;
     } catch (error) {
       logger.error('콘서트 목록 조회 서비스 에러:', error);
       return {
@@ -506,6 +553,20 @@ export class ConcertService {
     userId?: string,
   ): Promise<ConcertServiceResponse> {
     try {
+      // 캐시 키 생성
+      const cacheKey = CacheKeyBuilder.concertList({
+        page: 1,
+        limit,
+        userId,
+      });
+
+      // 캐시 확인
+      const cachedData =
+        await cacheManager.get<ConcertServiceResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+
       const ConcertModel = getConcertModel();
 
       const filter = {
@@ -694,11 +755,16 @@ export class ConcertService {
         ...(userId && { isLiked: likedConcertIds.has(concert._id.toString()) }),
       }));
 
-      return {
+      const response: ConcertServiceResponse = {
         success: true,
         data: concertsWithLikeStatus,
         statusCode: 200,
       };
+
+      // 캐시 저장
+      await cacheManager.set(cacheKey, response, CacheTTL.CONCERT_LIST);
+
+      return response;
     } catch (error) {
       logger.error('최신 콘서트 조회 서비스 에러:', error);
       return {
@@ -810,6 +876,12 @@ export class ConcertService {
       // updatedConcert._id는 실제 MongoDB ObjectId이므로 UID가 아닌 ObjectId를 전달
       void ConcertSyncService.syncUpdate(updatedConcert._id, cleanUpdateData);
 
+      // 9. 캐시 무효화
+      await Promise.all([
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_BY_ID(id)),
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_LIST()),
+      ]);
+
       return {
         success: true,
         data: updatedConcert,
@@ -855,6 +927,12 @@ export class ConcertService {
       // Live DB에서도 삭제 (비동기, 실패해도 메인 기능에 영향 없음)
       // deletedConcert._id는 실제 MongoDB ObjectId이므로 UID가 아닌 ObjectId를 전달
       void ConcertSyncService.syncDelete(deletedConcert._id);
+
+      // 캐시 무효화
+      await Promise.all([
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_BY_ID(id)),
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_LIST()),
+      ]);
 
       return {
         success: true,
