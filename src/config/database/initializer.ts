@@ -14,6 +14,7 @@ import {
 } from '../../utils/database/db';
 import { initializeAllArticleModels } from '../../models/article';
 import { initializeConcertTestModel } from '../../models/test/test';
+import { initializeSetlistModel } from '../../models/setlist/setlist';
 import { ReportService } from '../../report/reportService';
 import { ConcertStatusScheduler } from '../../services/concert/concertStatusScheduler';
 import { SessionCleanupScheduler } from '../../services/auth/sessionCleanupScheduler';
@@ -93,6 +94,7 @@ export const initializeDatabases = async (): Promise<void> => {
     const concertDB = await connectConcertDB();
     initializeConcertModel(concertDB);
     initializeConcertTestModel(concertDB);
+    initializeSetlistModel(concertDB);
     databaseState.isConcertDBConnected = true;
     dbConnectionGauge.set({ database: 'concert' }, 1);
     logger.info('✅ Concert Database connected and models initialized');
