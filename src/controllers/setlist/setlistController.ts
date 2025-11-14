@@ -9,63 +9,6 @@ import {
   InternalServerError,
 } from '../../utils/errors/customErrors';
 
-/**
- * @swagger
- * /setlists/{concertId}:
- *   get:
- *     summary: 콘서트 셋리스트 조회
- *     description: 특정 콘서트의 셋리스트를 조회합니다. 셋리스트가 없으면 null을 반환합니다.
- *     tags: [Setlist]
- *     parameters:
- *       - in: path
- *         name: concertId
- *         required: true
- *         schema:
- *           type: string
- *         description: 콘서트 UID
- *     responses:
- *       200:
- *         description: 셋리스트 조회 성공 (셋리스트가 없으면 data는 null)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: 셋리스트 조회 성공
- *                 data:
- *                   oneOf:
- *                     - type: 'null'
- *                     - type: object
- *                       properties:
- *                         _id:
- *                           type: string
- *                         concertId:
- *                           type: string
- *                         setList:
- *                           type: array
- *                           items:
- *                             type: object
- *                             properties:
- *                               title:
- *                                 type: string
- *                               artist:
- *                                 type: string
- *                         createdAt:
- *                           type: string
- *                           format: date-time
- *                         updatedAt:
- *                           type: string
- *                           format: date-time
- *       404:
- *         description: 콘서트를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
 export const getSetlist = async (
   req: express.Request,
   res: express.Response,
@@ -103,56 +46,6 @@ export const getSetlist = async (
   }
 };
 
-/**
- * @swagger
- * /setlists:
- *   post:
- *     summary: 셋리스트 생성 또는 업데이트
- *     description: 콘서트의 셋리스트를 생성하거나 업데이트합니다. 이미 존재하면 업데이트됩니다.
- *     tags: [Setlist]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - concertId
- *               - setList
- *             properties:
- *               concertId:
- *                 type: string
- *                 description: 콘서트 UID
- *                 example: "20231105-concert-123"
- *               setList:
- *                 type: array
- *                 description: 곡 목록
- *                 items:
- *                   type: object
- *                   required:
- *                     - title
- *                     - artist
- *                   properties:
- *                     title:
- *                       type: string
- *                       description: 곡 제목
- *                       example: "Dynamite"
- *                     artist:
- *                       type: string
- *                       description: 아티스트명
- *                       example: "BTS"
- *     responses:
- *       200:
- *         description: 셋리스트 업데이트 성공
- *       201:
- *         description: 셋리스트 생성 성공
- *       400:
- *         description: 잘못된 요청
- *       404:
- *         description: 콘서트를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
 export const createOrUpdateSetlist = async (
   req: express.Request,
   res: express.Response,
@@ -212,28 +105,6 @@ export const createOrUpdateSetlist = async (
   }
 };
 
-/**
- * @swagger
- * /setlists/{concertId}:
- *   delete:
- *     summary: 셋리스트 삭제
- *     description: 특정 콘서트의 셋리스트를 삭제합니다.
- *     tags: [Setlist]
- *     parameters:
- *       - in: path
- *         name: concertId
- *         required: true
- *         schema:
- *           type: string
- *         description: 콘서트 UID
- *     responses:
- *       200:
- *         description: 셋리스트 삭제 성공
- *       404:
- *         description: 셋리스트를 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
 export const deleteSetlist = async (
   req: express.Request,
   res: express.Response,
