@@ -89,6 +89,22 @@ jobs:
       - name: Display deployment info
         run: cat deployment-info.txt
 
+      - name: Validate Production Secrets
+        run: |
+          if [ -z "${{ secrets.PROD_SERVER_HOST }}" ]; then
+            echo "::error::PROD_SERVER_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PROD_SERVER_USERNAME }}" ]; then
+            echo "::error::PROD_SERVER_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PROD_SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::PROD_SSH_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          echo "✅ All required secrets are configured"
+
       - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.2.3
         with:
@@ -132,6 +148,22 @@ jobs:
 
       - name: Display deployment info
         run: cat deployment-info.txt
+
+      - name: Validate Staging Secrets
+        run: |
+          if [ -z "${{ secrets.STAGING_SERVER_HOST }}" ]; then
+            echo "::error::STAGING_SERVER_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.STAGING_SERVER_USERNAME }}" ]; then
+            echo "::error::STAGING_SERVER_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::STAGING_SSH_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          echo "✅ All required secrets are configured"
 
       - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.2.3
