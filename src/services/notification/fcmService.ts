@@ -3,6 +3,7 @@ import { getFirebaseApp } from '../../config/firebase/firebaseConfig';
 import logger from '../../utils/logger/logger';
 import { UserModel } from '../../models/auth/user.js';
 import { getDB } from '../../utils/database/db.js';
+import { ObjectId } from 'mongodb';
 import {
   getNotificationHistoryModel,
   ConcertUpdateNotificationType,
@@ -233,6 +234,7 @@ export class FCMService {
           // 알림 히스토리에 저장
           const history = await notificationHistoryModel.create({
             userId: user._id,
+            concertId: new ObjectId(notification.concertId),
             type: ConcertUpdateNotificationType.CONCERT_UPDATE,
             title: notification.concertTitle,
             message:
