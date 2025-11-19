@@ -18,6 +18,12 @@ export interface ITicketOpen {
   openDate: Date;
 }
 
+// Setlist Song 인터페이스 (API 요청용으로만 사용, DB에는 별도 Setlist 컬렉션 사용)
+export interface ISetlistSong {
+  title: string;
+  artist: string;
+}
+
 // Concert 메인 인터페이스
 export interface IConcert {
   _id: ObjectId;
@@ -35,6 +41,9 @@ export interface IConcert {
   infoImages?: string[];
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   likesCount?: number;
+  // 주의: setlist는 별도 Setlist 컬렉션에 저장됨 (concertId로 참조)
+  youtubePlaylistUrl?: string; // YouTube Music 재생목록 URL
+  spotifyPlaylistUrl?: string; // Spotify 재생목록 URL
   createdAt: Date;
   updatedAt: Date;
 }

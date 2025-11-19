@@ -2,6 +2,7 @@ import { getSetlistModel } from '../../models/setlist/setlist';
 import { getConcertModel } from '../../models/concert/concert';
 import logger from '../../utils/logger/logger';
 import { ISetlist } from '../../models/setlist/SetlistTypes';
+import { ConcertService } from '../concert/concertService';
 
 export interface CreateSetlistRequest {
   concertId: string;
@@ -13,7 +14,12 @@ export interface CreateSetlistRequest {
 
 export interface SetlistServiceResponse {
   success: boolean;
-  data?: ISetlist | null;
+  data?:
+    | (ISetlist & {
+        youtubePlaylistUrl?: string;
+        spotifyPlaylistUrl?: string;
+      })
+    | null;
   error?: string;
   statusCode?: number;
 }
@@ -21,7 +27,7 @@ export interface SetlistServiceResponse {
 export class SetlistService {
   /**
    * concertId로 셋리스트 조회
-   * 이미 생성된 셋리스트가 있으면 반환
+   * 이미 생성된 셋리스트가 있으면 재생목록 URL과 함께 반환
    */
   async getSetlistByConcertId(
     concertId: string,
@@ -53,9 +59,15 @@ export class SetlistService {
       }
 
       logger.info(`셋리스트 조회 성공: ${concertId}`);
+
+      // 재생목록 URL도 함께 반환
       return {
         success: true,
-        data: setlist,
+        data: {
+          ...setlist,
+          youtubePlaylistUrl: concert.youtubePlaylistUrl,
+          spotifyPlaylistUrl: concert.spotifyPlaylistUrl,
+        },
         statusCode: 200,
       };
     } catch (error) {
@@ -71,6 +83,7 @@ export class SetlistService {
   /**
    * 셋리스트 생성 또는 업데이트
    * 이미 존재하면 업데이트, 없으면 새로 생성
+   * 재생목록도 자동으로 생성
    */
   async createOrUpdateSetlist(
     request: CreateSetlistRequest,
@@ -133,9 +146,88 @@ export class SetlistService {
         logger.info(`셋리스트 생성 성공: ${concertId}`);
       }
 
+      // 재생목록 자동 생성/업데이트 (현재 Spotify만 활성화)
+      const youtubePlaylistUrl = concert.youtubePlaylistUrl;
+      let spotifyPlaylistUrl = concert.spotifyPlaylistUrl;
+
+      // 셋리스트가 업데이트된 경우: 기존 재생목록 업데이트 또는 새로 생성
+      if (existingSetlist) {
+        // 업데이트 시: 재생목록도 함께 업데이트
+        logger.info(
+          `🔄 Spotify 재생목록 업데이트 시작: ${concertId} (${setList.length}곡)`,
+        );
+
+        try {
+          const playlistResult = await ConcertService.updatePlaylist(
+            concert._id.toString(),
+            setList,
+            'spotify',
+          );
+
+          if (playlistResult.success && playlistResult.data) {
+            spotifyPlaylistUrl =
+              playlistResult.data.playlists.spotify?.url || spotifyPlaylistUrl;
+
+            logger.info(
+              `✅ Spotify 재생목록 업데이트 완료 (Spotify: ${!!spotifyPlaylistUrl})`,
+            );
+          } else {
+            logger.warn(
+              `⚠️ Spotify 재생목록 업데이트 실패 (셋리스트는 저장됨): ${playlistResult.error}`,
+            );
+          }
+        } catch (playlistError) {
+          logger.warn(
+            `⚠️ 재생목록 업데이트 중 오류 (셋리스트는 저장됨): ${playlistError}`,
+          );
+        }
+      } else {
+        // 새로 생성 시: Spotify 재생목록이 아직 생성되지 않은 경우에만 생성
+        if (!spotifyPlaylistUrl) {
+          logger.info(
+            `🎵 Spotify 재생목록 자동 생성 시작: ${concertId} (${setList.length}곡)`,
+          );
+
+          try {
+            const playlistResult = await ConcertService.generatePlaylist(
+              concert._id.toString(),
+              'spotify', // YouTube 비활성화, Spotify만 생성
+            );
+
+            if (playlistResult.success && playlistResult.data) {
+              spotifyPlaylistUrl =
+                playlistResult.data.playlists.spotify?.url ||
+                spotifyPlaylistUrl;
+
+              logger.info(
+                `✅ Spotify 재생목록 자동 생성 완료 (Spotify: ${!!spotifyPlaylistUrl})`,
+              );
+            } else {
+              logger.warn(
+                `⚠️ Spotify 재생목록 생성 실패 (셋리스트는 저장됨): ${playlistResult.error}`,
+              );
+            }
+          } catch (playlistError) {
+            logger.warn(
+              `⚠️ 재생목록 생성 중 오류 (셋리스트는 저장됨): ${playlistError}`,
+            );
+          }
+        } else {
+          logger.info(
+            `ℹ️ Spotify 재생목록이 이미 존재함 (Spotify: ${!!spotifyPlaylistUrl})`,
+          );
+        }
+      }
+
       return {
         success: true,
-        data: result,
+        data: result
+          ? {
+              ...result,
+              youtubePlaylistUrl,
+              spotifyPlaylistUrl,
+            }
+          : null,
         statusCode: existingSetlist ? 200 : 201,
       };
     } catch (error: unknown) {
