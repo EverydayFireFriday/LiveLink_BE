@@ -189,7 +189,7 @@ export class SpotifyService {
         `https://api.spotify.com/v1/users/${userId}/playlists`,
         {
           name: title,
-          description: description || 'Created by LiveLink',
+          description: description || 'Created by stagelives',
           public: true,
         },
         {
@@ -397,7 +397,7 @@ export class SpotifyService {
       // 1. 재생목록 생성
       const playlist = await this.createPlaylist(
         `${concertTitle} - Setlist`,
-        `Setlist for ${concertTitle}. Created by LiveLink.`,
+        `Setlist for ${concertTitle}. Created by stagelives.`,
       );
 
       if (!playlist) {
