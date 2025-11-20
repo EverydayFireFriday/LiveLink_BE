@@ -1,5 +1,60 @@
-import { Collection, ObjectId } from 'mongodb';
+import {
+  Collection,
+  ObjectId,
+  AnyBulkWriteOperation,
+  BulkWriteResult,
+} from 'mongodb';
 import { IConcert } from '../base/ConcertTypes';
+
+/**
+ * Concert Like Entry
+ */
+interface IConcertLike {
+  userId: ObjectId;
+  likedAt: Date;
+}
+
+/**
+ * Concert with Likes
+ */
+interface IConcertWithLikes extends IConcert {
+  likes?: IConcertLike[];
+}
+
+/**
+ * Concert Insert Input (without generated fields)
+ */
+export interface IConcertInsertInput {
+  uid: string;
+  title: string;
+  artist: string[];
+  location: string[];
+  datetime?: (Date | string)[];
+  price?: Array<{ tier: string; amount: number }>;
+  description?: string;
+  category?: string[];
+  ticketLink?: Array<{ platform: string; url: string }>;
+  ticketOpenDate?: Array<{ openTitle: string; openDate: Date }>;
+  posterImage?: string;
+  infoImages?: string[];
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  likes?: IConcertLike[];
+  likesCount?: number;
+  youtubePlaylistUrl?: string;
+  spotifyPlaylistUrl?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Batch Operation Error
+ */
+interface IBatchOperationError {
+  concertId?: string;
+  userId?: string;
+  action?: string;
+  error: string;
+}
 
 export class ConcertBatch {
   collection: Collection<IConcert>;
@@ -19,22 +74,26 @@ export class ConcertBatch {
     return await this.collection.find({ _id: { $in: objectIds } }).toArray();
   }
 
-  async insertMany(concerts: any[]): Promise<IConcert[]> {
+  async insertMany(concerts: IConcertInsertInput[]): Promise<IConcert[]> {
     if (!concerts || concerts.length === 0) return [];
     const processedConcerts = concerts.map((concert) => {
       const now = new Date();
       return {
         ...concert,
-        status: concert.status || 'upcoming',
+        _id: new ObjectId(),
+        status: (concert.status || 'upcoming') as
+          | 'upcoming'
+          | 'ongoing'
+          | 'completed'
+          | 'cancelled',
         likes: concert.likes || [],
         likesCount: concert.likesCount || 0,
         createdAt: concert.createdAt || now,
         updatedAt: concert.updatedAt || now,
-        datetime: concert.datetime.map((dt: any) => new Date(dt)),
-        ticketOpenDate: concert.ticketOpenDate
-          ? new Date(concert.ticketOpenDate)
-          : undefined,
-      };
+        datetime: concert.datetime
+          ? concert.datetime.map((dt: Date | string) => new Date(dt))
+          : [],
+      } as IConcert;
     });
     const result = await this.collection.insertMany(processedConcerts, {
       ordered: false,
@@ -52,9 +111,31 @@ export class ConcertBatch {
     return result.deletedCount || 0;
   }
 
-  async bulkWrite(operations: any[]): Promise<any> {
+  async bulkWrite(
+    operations: AnyBulkWriteOperation<IConcert>[],
+  ): Promise<BulkWriteResult> {
     if (!operations || operations.length === 0) {
-      return { modifiedCount: 0, upsertedCount: 0, insertedCount: 0 };
+      // For empty operations, create a minimal dummy operation and clean up
+      const dummyId = new ObjectId();
+      const dummyConcert = {
+        _id: dummyId,
+        uid: `dummy-${dummyId.toString()}`,
+        title: 'dummy',
+        artist: [],
+        location: [],
+        status: 'upcoming' as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as IConcert;
+
+      const emptyResult = await this.collection.bulkWrite(
+        [{ insertOne: { document: dummyConcert } }],
+        { ordered: false },
+      );
+      // Immediately delete the dummy document
+      await this.collection.deleteOne({ _id: dummyId });
+
+      return emptyResult;
     }
     return await this.collection.bulkWrite(operations, { ordered: false });
   }
@@ -65,12 +146,12 @@ export class ConcertBatch {
       userId: string;
       action: 'add' | 'remove';
     }>,
-  ): Promise<{ success: number; failed: number; errors: any[] }> {
+  ): Promise<{ success: number; failed: number; errors: IBatchOperationError[] }> {
     if (!operations || operations.length === 0)
       return { success: 0, failed: 0, errors: [] };
 
-    const bulkOps: any[] = [];
-    const errors: any[] = [];
+    const bulkOps: AnyBulkWriteOperation<IConcertWithLikes>[] = [];
+    const errors: IBatchOperationError[] = [];
     let successCount = 0;
     let failedCount = 0;
 
@@ -78,7 +159,7 @@ export class ConcertBatch {
       try {
         const { concertId, userId, action } = op;
         if (!concertId || !userId || !['add', 'remove'].includes(action)) {
-          errors.push({ ...op, error: '잘못된 매개변수' });
+          errors.push({ concertId, userId, action, error: '잘못된 매개변수' });
           failedCount++;
           continue;
         }
@@ -113,7 +194,9 @@ export class ConcertBatch {
         successCount++;
       } catch (error) {
         errors.push({
-          ...op,
+          concertId: op.concertId,
+          userId: op.userId,
+          action: op.action,
           error: error instanceof Error ? error.message : '알 수 없는 에러',
         });
         failedCount++;

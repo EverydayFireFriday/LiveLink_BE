@@ -47,7 +47,7 @@ export const createScheduledNotification = async (
         data,
       });
 
-    if (result.success) {
+    if (result.success && result.data) {
       logger.info(
         `✅ Scheduled notification created by user ${userId}: ${result.data._id}`,
       );
@@ -355,7 +355,7 @@ export const bulkCreateScheduledNotifications = async (
         notificationsWithUserId,
       );
 
-    if (result.success) {
+    if (result.success && result.data) {
       logger.info(
         `✅ Bulk notifications created by user ${userId}: ${result.data.summary.succeeded}/${result.data.summary.total}`,
       );
@@ -424,7 +424,7 @@ export const bulkCancelScheduledNotifications = async (
         userId,
       );
 
-    if (result.success) {
+    if (result.success && result.data) {
       logger.info(
         `✅ Bulk notifications cancelled by user ${userId}: ${result.data.summary.succeeded}/${result.data.summary.total}`,
       );
