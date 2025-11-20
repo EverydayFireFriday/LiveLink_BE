@@ -1,5 +1,6 @@
 import { ObjectId, Sort } from 'mongodb';
 import { getConcertModel } from '../../models/concert/concert';
+import { getSetlistModel } from '../../models/setlist/setlist';
 import { UserModel } from '../../models/auth/user';
 import logger from '../../utils/logger/logger';
 
@@ -16,11 +17,11 @@ import type { IConcert } from '../../models/concert/base/ConcertTypes';
 // Live DB 동기화 서비스 import
 import { ConcertSyncService } from './concertSyncService';
 // Music Services import
-// import { YouTubeMusicService } from './youtubeMusicService'; // YouTube 비활성화
-import { SpotifyService } from './spotifyService';
+// import { YouTubeMusicService } from '../setlist/youtubeMusicService'; // YouTube 비활성화
 import type { ISetlistSong } from '../../models/concert/base/ConcertTypes';
 // Setlist 서비스 import
 import { setlistService } from '../setlist/setlistService';
+import { SpotifyService } from '../setlist/spotifyService';
 
 // 캐시 유틸리티 import
 import {
@@ -1025,8 +1026,8 @@ export class ConcertService {
       }
 
       const targetPlatform = platform || 'both';
-      const youtubePlaylistUrl = concert.youtubePlaylistUrl;
-      let spotifyPlaylistUrl = concert.spotifyPlaylistUrl;
+      const youtubePlaylistUrl = setlistResult.data.youtubePlaylistUrl;
+      let spotifyPlaylistUrl = setlistResult.data.spotifyPlaylistUrl;
       let needsUpdate = false;
 
       // YouTube 재생목록 생성 (필요한 경우) - 현재 주석 처리됨
@@ -1080,20 +1081,23 @@ export class ConcertService {
         }
       }
 
-      // DB 업데이트 (새로 생성된 URL이 있는 경우)
+      // DB 업데이트 (새로 생성된 URL이 있는 경우) - YouTube, Spotify 모두 Setlist에 저장
       if (needsUpdate) {
-        const updateData: Partial<IConcert> = {};
+        const setlistModel = getSetlistModel();
+
         if (youtubePlaylistUrl) {
-          updateData.youtubePlaylistUrl = youtubePlaylistUrl;
+          await setlistModel.updateYoutubePlaylistUrl(
+            concert.uid,
+            youtubePlaylistUrl,
+          );
         }
+
         if (spotifyPlaylistUrl) {
-          updateData.spotifyPlaylistUrl = spotifyPlaylistUrl;
+          await setlistModel.updateSpotifyPlaylistUrl(
+            concert.uid,
+            spotifyPlaylistUrl,
+          );
         }
-
-        await ConcertModel.updateById(concertId, updateData);
-
-        // Live DB 동기화 (비동기)
-        void ConcertSyncService.syncUpdate(concertId, updateData);
 
         logger.info(
           `✅ 재생목록 URL DB 저장 완료: ${concertId} (YouTube: ${!!youtubePlaylistUrl}, Spotify: ${!!spotifyPlaylistUrl})`,
@@ -1111,13 +1115,15 @@ export class ConcertService {
             youtube: youtubePlaylistUrl
               ? {
                   url: youtubePlaylistUrl,
-                  cached: !needsUpdate || !!concert.youtubePlaylistUrl,
+                  cached:
+                    !needsUpdate || !!setlistResult.data.youtubePlaylistUrl,
                 }
               : null,
             spotify: spotifyPlaylistUrl
               ? {
                   url: spotifyPlaylistUrl,
-                  cached: !needsUpdate || !!concert.spotifyPlaylistUrl,
+                  cached:
+                    !needsUpdate || !!setlistResult.data.spotifyPlaylistUrl,
                 }
               : null,
           },
@@ -1155,8 +1161,13 @@ export class ConcertService {
         };
       }
 
+      // 셋리스트에서 Spotify URL 가져오기
+      const setlistResult = await setlistService.getSetlistByConcertId(
+        concert.uid,
+      );
+
       const targetPlatform = platform || 'both';
-      const spotifyPlaylistUrl = concert.spotifyPlaylistUrl;
+      const spotifyPlaylistUrl = setlistResult.data?.spotifyPlaylistUrl;
 
       // Spotify 재생목록 업데이트
       if (

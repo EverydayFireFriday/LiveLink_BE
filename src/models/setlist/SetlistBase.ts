@@ -51,12 +51,66 @@ export class SetlistBase {
   async updateByConcertId(
     concertId: string,
     setList: { title: string; artist: string }[],
+    playlistUrls?: {
+      youtubePlaylistUrl?: string;
+      spotifyPlaylistUrl?: string;
+    },
+  ): Promise<ISetlist | null> {
+    const updateData: {
+      setList: { title: string; artist: string }[];
+      updatedAt: Date;
+      youtubePlaylistUrl?: string;
+      spotifyPlaylistUrl?: string;
+    } = {
+      setList,
+      updatedAt: new Date(),
+    };
+
+    if (playlistUrls?.youtubePlaylistUrl !== undefined) {
+      updateData.youtubePlaylistUrl = playlistUrls.youtubePlaylistUrl;
+    }
+    if (playlistUrls?.spotifyPlaylistUrl !== undefined) {
+      updateData.spotifyPlaylistUrl = playlistUrls.spotifyPlaylistUrl;
+    }
+
+    const result = await this.collection.findOneAndUpdate(
+      { concertId },
+      {
+        $set: updateData,
+      },
+      { returnDocument: 'after' },
+    );
+    return result || null;
+  }
+
+  // YouTube Playlist URL만 업데이트
+  async updateYoutubePlaylistUrl(
+    concertId: string,
+    youtubePlaylistUrl: string,
   ): Promise<ISetlist | null> {
     const result = await this.collection.findOneAndUpdate(
       { concertId },
       {
         $set: {
-          setList,
+          youtubePlaylistUrl,
+          updatedAt: new Date(),
+        },
+      },
+      { returnDocument: 'after' },
+    );
+    return result || null;
+  }
+
+  // Spotify Playlist URL만 업데이트
+  async updateSpotifyPlaylistUrl(
+    concertId: string,
+    spotifyPlaylistUrl: string,
+  ): Promise<ISetlist | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { concertId },
+      {
+        $set: {
+          spotifyPlaylistUrl,
           updatedAt: new Date(),
         },
       },

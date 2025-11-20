@@ -60,13 +60,13 @@ export class SetlistService {
 
       logger.info(`셋리스트 조회 성공: ${concertId}`);
 
-      // 재생목록 URL도 함께 반환
+      // 재생목록 URL도 함께 반환 (YouTube, Spotify 모두 Setlist에서)
       return {
         success: true,
         data: {
           ...setlist,
-          youtubePlaylistUrl: concert.youtubePlaylistUrl,
-          spotifyPlaylistUrl: concert.spotifyPlaylistUrl,
+          youtubePlaylistUrl: setlist.youtubePlaylistUrl,
+          spotifyPlaylistUrl: setlist.spotifyPlaylistUrl,
         },
         statusCode: 200,
       };
@@ -147,8 +147,8 @@ export class SetlistService {
       }
 
       // 재생목록 자동 생성/업데이트 (현재 Spotify만 활성화)
-      const youtubePlaylistUrl = concert.youtubePlaylistUrl;
-      let spotifyPlaylistUrl = concert.spotifyPlaylistUrl;
+      const youtubePlaylistUrl = existingSetlist?.youtubePlaylistUrl;
+      let spotifyPlaylistUrl = existingSetlist?.spotifyPlaylistUrl;
 
       // 셋리스트가 업데이트된 경우: 기존 재생목록 업데이트 또는 새로 생성
       if (existingSetlist) {
