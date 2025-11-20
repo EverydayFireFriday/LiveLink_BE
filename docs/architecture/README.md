@@ -27,50 +27,241 @@
 
 ## 🏗️ 시스템 아키텍처 개요
 
+```mermaid
+graph TB
+    subgraph Clients["클라이언트 계층"]
+        WebApp["웹 애플리케이션<br/>(React)"]
+        MobileApp["모바일 앱<br/>(iOS/Android)"]
+        Admin["관리자 대시보드"]
+    end
+
+    subgraph Gateway["API Gateway / Load Balancer"]
+        LB["NGINX / ALB"]
+    end
+
+    subgraph AppServer["애플리케이션 서버 (Express.js)"]
+        subgraph Middleware["미들웨어 계층"]
+            CORS["CORS"]
+            Helmet["Helmet<br/>(보안 헤더)"]
+            RateLimit["Rate Limiting<br/>(Redis)"]
+            Session["Session 관리<br/>(Redis Store)"]
+            Auth["인증<br/>(Passport)"]
+            BruteForce["Brute Force<br/>Protection"]
+        end
+
+        subgraph Routes["API 라우트"]
+            AuthRoute["/auth<br/>(인증)"]
+            ConcertRoute["/concert<br/>(콘서트)"]
+            ArticleRoute["/article<br/>(게시글)"]
+            ChatRoute["/chat<br/>(채팅)"]
+            SetlistRoute["/setlist<br/>(세트리스트)"]
+            NotificationRoute["/notification<br/>(알림)"]
+            HealthRoute["/health<br/>(헬스체크)"]
+        end
+
+        subgraph Business["비즈니스 로직 계층"]
+            Controllers["Controllers"]
+            Services["Services"]
+            Models["Models"]
+        end
+
+        subgraph Realtime["실시간 통신"]
+            SocketIO["Socket.IO Server<br/>(WebSocket)"]
+        end
+
+        subgraph Jobs["백그라운드 작업"]
+            CronJobs["Cron Schedulers<br/>(콘서트 상태 자동화)"]
+            NotificationWorkers["Notification Workers<br/>(티켓/공연 알림)"]
+        end
+    end
+
+    subgraph DataLayer["데이터 계층"]
+        subgraph MongoDB["MongoDB Cluster"]
+            UserDB["Users DB<br/>(users, sessions)"]
+            ConcertDB["Concerts DB<br/>(concerts, setlists)"]
+            ArticleDB["Articles DB<br/>(articles, comments)"]
+            ChatDB["Chat DB<br/>(chatrooms, messages)"]
+        end
+
+        subgraph Cache["캐시 & 세션"]
+            Redis["Redis<br/>(sessions, cache,<br/>rate limit)"]
+        end
+    end
+
+    subgraph External["외부 서비스"]
+        FCM["Firebase Cloud<br/>Messaging"]
+        YouTube["YouTube Music<br/>API"]
+        Spotify["Spotify Web<br/>API"]
+        Google["Google OAuth"]
+        Apple["Apple Sign In"]
+    end
+
+    WebApp -->|HTTPS| LB
+    MobileApp -->|HTTPS| LB
+    Admin -->|HTTPS| LB
+
+    LB --> Middleware
+    Middleware --> Routes
+    Routes --> Controllers
+    Controllers --> Services
+    Services --> Models
+
+    Models --> MongoDB
+    Session --> Redis
+    RateLimit --> Redis
+    BruteForce --> Redis
+
+    Services --> FCM
+    Services --> YouTube
+    Services --> Spotify
+    Auth --> Google
+    Auth --> Apple
+
+    SocketIO -.->|WebSocket| WebApp
+    SocketIO -.->|WebSocket| MobileApp
+
+    CronJobs --> Services
+    NotificationWorkers --> Services
+
+    style Clients fill:#e1f5ff
+    style Gateway fill:#fff3e0
+    style AppServer fill:#f3e5f5
+    style DataLayer fill:#e8f5e9
+    style External fill:#fce4ec
 ```
-┌─────────────┐
-│   Client    │
-│  (React)    │
-└──────┬──────┘
-       │ HTTP/WebSocket
-       ↓
-┌─────────────────────────────────────────┐
-│        Express.js Server                │
-│  ┌────────────────────────────────┐    │
-│  │  Middleware Stack              │    │
-│  │  - CORS, Helmet, Morgan        │    │
-│  │  - Rate Limiting (Redis)       │    │
-│  │  - Session (Redis)             │    │
-│  │  - Passport OAuth              │    │
-│  │  - Brute Force Protection      │    │
-│  └────────────────────────────────┘    │
-│                                         │
-│  ┌────────────────────────────────┐    │
-│  │  API Routes                    │    │
-│  │  - /auth    (인증)             │    │
-│  │  - /concert (콘서트)           │    │
-│  │  - /article (게시글)           │    │
-│  │  - /chat    (채팅)             │    │
-│  │  - /health  (헬스체크)         │    │
-│  └────────────────────────────────┘    │
-│                                         │
-│  ┌────────────────────────────────┐    │
-│  │  Socket.IO Server              │    │
-│  │  - Real-time Chat              │    │
-│  └────────────────────────────────┘    │
-└─────────────────────────────────────────┘
-       │                │
-       │                │
-       ↓                ↓
-┌──────────────┐  ┌──────────────┐
-│   MongoDB    │  │    Redis     │
-│              │  │              │
-│ - Users      │  │ - Sessions   │
-│ - Concerts   │  │ - Cache      │
-│ - Articles   │  │ - Rate Limit │
-│ - ChatRooms  │  │ - Brute Force│
-│ - Messages   │  │              │
-└──────────────┘  └──────────────┘
+
+### 계층별 상세 설명
+
+#### 1. 클라이언트 계층
+- **웹 애플리케이션**: React 기반 SPA
+- **모바일 앱**: iOS/Android 네이티브 앱
+- **관리자 대시보드**: 콘서트/사용자 관리
+
+#### 2. API Gateway
+- HTTPS 종단점
+- 로드 밸런싱
+- SSL/TLS 종료
+
+#### 3. 애플리케이션 서버
+- **미들웨어**: 보안, 인증, Rate Limiting
+- **API 라우트**: RESTful 엔드포인트
+- **비즈니스 로직**: MVC 패턴 (Controller → Service → Model)
+- **실시간 통신**: Socket.IO WebSocket 서버
+- **백그라운드 작업**: Cron 기반 스케줄러
+
+#### 4. 데이터 계층
+- **MongoDB**: 4개의 분리된 데이터베이스 (Users, Concerts, Articles, Chat)
+- **Redis**: 세션 스토어, 캐싱, Rate Limiting
+
+#### 5. 외부 서비스
+- **FCM**: 푸시 알림
+- **YouTube/Spotify**: 재생목록 생성
+- **OAuth Providers**: Google, Apple 소셜 로그인
+
+## 📊 데이터 플로우 다이어그램
+
+### 전형적인 API 요청 처리 흐름
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant M as Middleware
+    participant R as Route
+    participant Ctrl as Controller
+    participant S as Service
+    participant Mod as Model
+    participant DB as MongoDB
+    participant Cache as Redis
+
+    C->>M: HTTP Request
+    M->>M: CORS 확인
+    M->>M: Rate Limit 확인
+    M->>Cache: Rate Limit 카운트 조회
+    Cache-->>M: 허용됨
+    M->>M: 세션 확인
+    M->>Cache: 세션 조회
+    Cache-->>M: 세션 데이터
+    M->>R: 인증 완료
+    R->>Ctrl: Route Handler 호출
+    Ctrl->>Ctrl: 입력 검증
+    Ctrl->>S: 비즈니스 로직 호출
+    S->>Cache: 캐시 확인
+
+    alt 캐시 HIT
+        Cache-->>S: 캐시된 데이터
+    else 캐시 MISS
+        S->>Mod: 데이터 조회
+        Mod->>DB: MongoDB 쿼리
+        DB-->>Mod: 결과 반환
+        Mod-->>S: 데이터 반환
+        S->>Cache: 캐시 저장
+    end
+
+    S-->>Ctrl: 결과 반환
+    Ctrl-->>C: HTTP Response (JSON)
+```
+
+### 실시간 채팅 플로우
+
+```mermaid
+sequenceDiagram
+    participant U1 as User 1
+    participant U2 as User 2
+    participant WS as Socket.IO
+    participant S as Service
+    participant DB as MongoDB
+
+    U1->>WS: connect (with session)
+    WS->>WS: 세션 인증
+    U1->>WS: join-room (roomId)
+    WS->>DB: 채팅방 참여 권한 확인
+    DB-->>WS: 권한 확인 완료
+    WS->>WS: socket.join(roomId)
+
+    U2->>WS: connect
+    U2->>WS: join-room (same roomId)
+    WS->>WS: socket.join(roomId)
+
+    U1->>WS: send-message (content)
+    WS->>S: createMessage()
+    S->>DB: insertOne(message)
+    DB-->>S: 저장 완료
+    S-->>WS: message 객체
+    WS->>U1: new-message (broadcast)
+    WS->>U2: new-message (broadcast)
+```
+
+### 알림 시스템 플로우
+
+```mermaid
+flowchart TD
+    A[사용자가 콘서트 좋아요] --> B{콘서트에 티켓 오픈 날짜가 있는가?}
+    B -->|예| C[사용자 알림 설정 조회]
+    B -->|아니오| Z[종료]
+
+    C --> D[티켓 오픈 날짜마다<br/>알림 설정 시간만큼<br/>ScheduledNotification 생성]
+
+    D --> E[MongoDB에<br/>pending 상태로 저장]
+
+    E --> F[Cron Job<br/>매분 실행]
+
+    F --> G{전송 시간이<br/>도래한 알림이 있는가?}
+
+    G -->|예| H[사용자 FCM 토큰 조회]
+    G -->|아니오| F
+
+    H --> I{FCM 토큰이<br/>존재하는가?}
+
+    I -->|예| J[FCM 푸시 알림 전송]
+    I -->|아니오| K[failed 상태로<br/>업데이트]
+
+    J --> L{전송 성공?}
+
+    L -->|예| M[sent 상태로 업데이트<br/>NotificationHistory에 저장]
+    L -->|아니오| K
+
+    M --> F
+    K --> F
 ```
 
 ## 🔑 핵심 기술 스택
@@ -295,6 +486,110 @@ Redis 장애 시에도 서비스 계속 운영:
 
 ---
 
-**마지막 업데이트:** 2025-10-10
-**버전:** 1.0.0
+## 🔄 배포 아키텍처
+
+```mermaid
+graph TB
+    subgraph Production["프로덕션 환경"]
+        subgraph K8s["Kubernetes Cluster"]
+            Ingress["Ingress Controller<br/>(NGINX)"]
+
+            subgraph Pods["Application Pods"]
+                Pod1["LiveLink API<br/>Pod 1"]
+                Pod2["LiveLink API<br/>Pod 2"]
+                Pod3["LiveLink API<br/>Pod 3"]
+            end
+
+            subgraph Services["Kubernetes Services"]
+                APIService["ClusterIP Service<br/>(Port 3000)"]
+            end
+
+            Ingress --> APIService
+            APIService --> Pod1
+            APIService --> Pod2
+            APIService --> Pod3
+        end
+
+        subgraph Persistence["Persistent Storage"]
+            MongoAtlas["MongoDB Atlas<br/>(Managed)"]
+            RedisCloud["Redis Cloud<br/>(Managed)"]
+        end
+
+        Pod1 --> MongoAtlas
+        Pod2 --> MongoAtlas
+        Pod3 --> MongoAtlas
+
+        Pod1 --> RedisCloud
+        Pod2 --> RedisCloud
+        Pod3 --> RedisCloud
+    end
+
+    subgraph Monitoring["모니터링 & 로깅"]
+        Prometheus["Prometheus"]
+        Grafana["Grafana"]
+        Winston["Winston Logger<br/>(CloudWatch)"]
+    end
+
+    Pod1 -.->|metrics| Prometheus
+    Pod2 -.->|metrics| Prometheus
+    Pod3 -.->|metrics| Prometheus
+
+    Prometheus --> Grafana
+
+    Pod1 -.->|logs| Winston
+    Pod2 -.->|logs| Winston
+    Pod3 -.->|logs| Winston
+
+    style Production fill:#e3f2fd
+    style K8s fill:#f3e5f5
+    style Persistence fill:#e8f5e9
+    style Monitoring fill:#fff3e0
+```
+
+### 배포 특징
+
+1. **Horizontal Scaling**: Kubernetes를 통한 자동 스케일링
+2. **Zero-Downtime Deployment**: Rolling update 전략
+3. **Health Checks**: Readiness/Liveness Probes
+4. **Session Persistence**: Redis 기반 공유 세션
+5. **Graceful Shutdown**: SIGTERM 핸들링
+
+## 🛡️ 보안 아키텍처
+
+```mermaid
+graph LR
+    Client["Client"] -->|1. TLS/HTTPS| Gateway["API Gateway"]
+    Gateway -->|2. Rate Limiting| RateLimit["Rate Limiter"]
+    RateLimit -->|3. Session Check| Session["Session Store"]
+    Session -->|4. Authentication| Auth["Auth Middleware"]
+    Auth -->|5. Input Validation| Validation["Validator"]
+    Validation -->|6. Sanitization| Sanitize["Sanitizer<br/>(XSS/NoSQL)"]
+    Sanitize -->|7. Authorization| RBAC["RBAC Check"]
+    RBAC -->|8. Business Logic| Service["Service Layer"]
+
+    style Gateway fill:#ffcdd2
+    style RateLimit fill:#f8bbd0
+    style Session fill:#e1bee7
+    style Auth fill:#d1c4e9
+    style Validation fill:#c5cae9
+    style Sanitize fill:#bbdefb
+    style RBAC fill:#b3e5fc
+    style Service fill:#b2ebf2
+```
+
+### 보안 계층
+
+1. **Network Level**: TLS/HTTPS, CORS
+2. **Rate Limiting**: IP 기반 요청 제한
+3. **Session Security**: HttpOnly cookies, SameSite
+4. **Authentication**: Passport.js, OAuth
+5. **Input Validation**: Joi/Zod 스키마
+6. **Sanitization**: XSS, NoSQL Injection 방지
+7. **Authorization**: Role-based Access Control
+8. **Audit Logging**: 모든 중요 작업 로깅
+
+---
+
+**마지막 업데이트:** 2025-11-20
+**버전:** 1.1.0
 **문서 작성자:** Architecture Documentation Team
