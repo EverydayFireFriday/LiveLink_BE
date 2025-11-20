@@ -51,10 +51,11 @@ export class SetlistService {
       const setlist = await setlistModel.findByConcertId(concertId);
 
       if (!setlist) {
+        logger.warn(`셋리스트를 찾을 수 없습니다: ${concertId}`);
         return {
-          success: true,
-          data: null,
-          statusCode: 200,
+          success: false,
+          error: '생성된 셋리스트가 없습니다.',
+          statusCode: 404,
         };
       }
 

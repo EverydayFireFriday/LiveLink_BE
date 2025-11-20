@@ -27,6 +27,13 @@ export const getSetlist = async (
 
     if (!result.success) {
       if (result.statusCode === 404) {
+        // 콘서트가 없는 경우와 셋리스트가 없는 경우를 구분
+        if (result.error?.includes('셋리스트')) {
+          throw new NotFoundError(
+            result.error,
+            ErrorCodes.CONCERT_SETLIST_NOT_FOUND,
+          );
+        }
         throw new NotFoundError(
           result.error || '콘서트를 찾을 수 없습니다.',
           ErrorCodes.CONCERT_NOT_FOUND,

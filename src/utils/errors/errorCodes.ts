@@ -88,6 +88,7 @@ export const ErrorCodes = {
   CONCERT_INVALID_DATE: 'CONCERT_007',
   CONCERT_SOLD_OUT: 'CONCERT_008',
   CONCERT_NOT_ON_SALE: 'CONCERT_009',
+  CONCERT_SETLIST_NOT_FOUND: 'CONCERT_010',
 
   // ==================== Notification 관련 (6000번대) ====================
   NOTIF_NOT_FOUND: 'NOTIF_001',
@@ -216,6 +217,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   CONCERT_007: '유효하지 않은 날짜입니다.',
   CONCERT_008: '매진된 공연입니다.',
   CONCERT_009: '판매 중이지 않은 공연입니다.',
+  CONCERT_010: '생성된 셋리스트가 없습니다.',
 
   // Notification
   NOTIF_001: '알림을 찾을 수 없습니다.',
