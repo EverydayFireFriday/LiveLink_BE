@@ -412,6 +412,7 @@ const startServer = async (): Promise<void> => {
       logger.info(`🎵 Concert API: http://localhost:${PORT}/concert`);
       logger.info(`📝 Article API: http://localhost:${PORT}/article`);
       logger.info(`💬 Chat API: http://localhost:${PORT}/chat`);
+      logger.info(`🆘 Support API: http://localhost:${PORT}/support`);
       logger.info(`📢 Report REST API: http://localhost:${PORT}/report`);
       logger.info(`📊 Report GraphQL API: http://localhost:${PORT}/graphql`);
       logger.info(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);
