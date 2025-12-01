@@ -106,7 +106,7 @@ jobs:
           echo "✅ All required secrets are configured"
 
       - name: Deploy to Production Server
-        uses: appleboy/ssh-action@v1.2.3
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.PROD_SERVER_HOST }}
           username: ${{ secrets.PROD_SERVER_USERNAME }}
@@ -166,7 +166,7 @@ jobs:
           echo "✅ All required secrets are configured"
 
       - name: Deploy to Staging Server
-        uses: appleboy/ssh-action@v1.2.3
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.STAGING_SERVER_HOST }}
           username: ${{ secrets.STAGING_SERVER_USERNAME }}
