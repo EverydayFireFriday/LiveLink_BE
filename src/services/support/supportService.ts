@@ -110,7 +110,10 @@ export class SupportService {
       const inquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!inquiry) {
-        throw new NotFoundError('문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       // Check authorization: only owner or admin can view
@@ -232,13 +235,19 @@ export class SupportService {
       const success = await supportInquiryModel.updateStatus(inquiryId, status);
 
       if (!success) {
-        throw new NotFoundError('문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!updatedInquiry) {
-        throw new NotFoundError('업데이트된 문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       logger.info(
@@ -269,13 +278,19 @@ export class SupportService {
       );
 
       if (!success) {
-        throw new NotFoundError('문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!updatedInquiry) {
-        throw new NotFoundError('업데이트된 문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       logger.info(
@@ -320,12 +335,15 @@ export class SupportService {
       // Check if inquiry exists
       const inquiry = await supportInquiryModel.findById(inquiryId);
       if (!inquiry) {
-        throw new NotFoundError('문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       // Check if already answered
       if (inquiry.adminResponse) {
-        throw new ConflictError('이미 답변된 문의입니다.');
+        throw new ConflictError(undefined, ErrorCodes.SUPPORT_ALREADY_ANSWERED);
       }
 
       const adminResponse: IAdminResponse = {
@@ -346,7 +364,10 @@ export class SupportService {
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!updatedInquiry) {
-        throw new NotFoundError('업데이트된 문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       logger.info(`Admin response added to inquiry: ${inquiryId.toString()}`);
@@ -373,7 +394,10 @@ export class SupportService {
       // Check if inquiry exists
       const inquiry = await supportInquiryModel.findById(inquiryId);
       if (!inquiry) {
-        throw new NotFoundError('문의를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          undefined,
+          ErrorCodes.SUPPORT_INQUIRY_NOT_FOUND,
+        );
       }
 
       // Check authorization: only owner or admin can delete

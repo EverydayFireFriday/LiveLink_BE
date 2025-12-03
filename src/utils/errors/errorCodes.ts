@@ -108,6 +108,15 @@ export const ErrorCodes = {
   USER_PROFILE_UPDATE_FAILED: 'USER_006',
   USER_SESSION_NOT_FOUND: 'USER_007',
 
+  // ==================== Support 관련 (7500번대) ====================
+  SUPPORT_INQUIRY_NOT_FOUND: 'SUPPORT_001',
+  SUPPORT_ALREADY_ANSWERED: 'SUPPORT_002',
+  SUPPORT_CREATE_FAILED: 'SUPPORT_003',
+  SUPPORT_UPDATE_FAILED: 'SUPPORT_004',
+  SUPPORT_DELETE_FAILED: 'SUPPORT_005',
+  SUPPORT_INVALID_CATEGORY: 'SUPPORT_006',
+  SUPPORT_INVALID_PRIORITY: 'SUPPORT_007',
+
   // ==================== File 관련 (8000번대) ====================
   FILE_UPLOAD_FAILED: 'FILE_001',
   FILE_NOT_FOUND: 'FILE_002',
@@ -236,6 +245,15 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   USER_005: '유효하지 않은 사용자 상태입니다.',
   USER_006: '프로필 업데이트에 실패했습니다.',
   USER_007: '세션을 찾을 수 없습니다.',
+
+  // Support
+  SUPPORT_001: '문의를 찾을 수 없습니다.',
+  SUPPORT_002: '이미 답변된 문의입니다.',
+  SUPPORT_003: '문의 생성에 실패했습니다.',
+  SUPPORT_004: '문의 수정에 실패했습니다.',
+  SUPPORT_005: '문의 삭제에 실패했습니다.',
+  SUPPORT_006: '유효하지 않은 문의 카테고리입니다.',
+  SUPPORT_007: '유효하지 않은 우선순위입니다.',
 
   // File
   FILE_001: '파일 업로드에 실패했습니다.',
