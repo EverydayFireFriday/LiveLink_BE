@@ -71,10 +71,10 @@ jobs:
 
       - name: Summary
         run: |
-          echo "✅ Docker image built and pushed successfully"
+          echo ":white_check_mark: Docker image built and pushed successfully"
           echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
           echo ""
-          echo "📦 Deployment artifact uploaded. Manual deployment required."
+          echo ":package: Deployment artifact uploaded. Manual deployment required."
