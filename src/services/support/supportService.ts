@@ -358,7 +358,7 @@ export class SupportService {
       );
 
       if (!success) {
-        throw new NotFoundError('답변 저장에 실패했습니다.');
+        throw new NotFoundError(undefined, ErrorCodes.SUPPORT_UPDATE_FAILED);
       }
 
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
@@ -415,7 +415,7 @@ export class SupportService {
       const success = await supportInquiryModel.softDelete(inquiryId);
 
       if (!success) {
-        throw new NotFoundError('문의 삭제에 실패했습니다.');
+        throw new NotFoundError(undefined, ErrorCodes.SUPPORT_DELETE_FAILED);
       }
 
       logger.info(`Inquiry deleted: ${inquiryId.toString()}`);
