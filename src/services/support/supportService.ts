@@ -11,6 +11,13 @@ import {
   Priority,
 } from '../../support/supportEnums.js';
 import logger from '../../utils/logger/logger.js';
+import {
+  NotFoundError,
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+} from '../../utils/errors/customErrors.js';
+import { ErrorCodes } from '../../utils/errors/errorCodes.js';
 
 /**
  * Create Inquiry Data Interface
@@ -41,19 +48,31 @@ export class SupportService {
 
       // Validate input
       if (!data.subject || data.subject.trim().length === 0) {
-        throw new Error('문의 제목을 입력해주세요.');
+        throw new BadRequestError(
+          '문의 제목을 입력해주세요.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       if (!data.content || data.content.trim().length === 0) {
-        throw new Error('문의 내용을 입력해주세요.');
+        throw new BadRequestError(
+          '문의 내용을 입력해주세요.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       if (data.subject.length > 200) {
-        throw new Error('문의 제목은 200자를 초과할 수 없습니다.');
+        throw new BadRequestError(
+          '문의 제목은 200자를 초과할 수 없습니다.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       if (data.content.length > 5000) {
-        throw new Error('문의 내용은 5000자를 초과할 수 없습니다.');
+        throw new BadRequestError(
+          '문의 내용은 5000자를 초과할 수 없습니다.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       const inquiry = await supportInquiryModel.create({
@@ -91,7 +110,7 @@ export class SupportService {
       const inquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!inquiry) {
-        throw new Error('문의를 찾을 수 없습니다.');
+        throw new NotFoundError('문의를 찾을 수 없습니다.');
       }
 
       // Check authorization: only owner or admin can view
@@ -100,7 +119,10 @@ export class SupportService {
         !isAdmin &&
         inquiry.userId.toString() !== userId.toString()
       ) {
-        throw new Error('이 문의를 조회할 권한이 없습니다.');
+        throw new ForbiddenError(
+          '이 문의를 조회할 권한이 없습니다.',
+          ErrorCodes.AUTH_FORBIDDEN,
+        );
       }
 
       return inquiry;
@@ -210,13 +232,13 @@ export class SupportService {
       const success = await supportInquiryModel.updateStatus(inquiryId, status);
 
       if (!success) {
-        throw new Error('문의를 찾을 수 없습니다.');
+        throw new NotFoundError('문의를 찾을 수 없습니다.');
       }
 
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!updatedInquiry) {
-        throw new Error('업데이트된 문의를 찾을 수 없습니다.');
+        throw new NotFoundError('업데이트된 문의를 찾을 수 없습니다.');
       }
 
       logger.info(
@@ -247,13 +269,13 @@ export class SupportService {
       );
 
       if (!success) {
-        throw new Error('문의를 찾을 수 없습니다.');
+        throw new NotFoundError('문의를 찾을 수 없습니다.');
       }
 
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!updatedInquiry) {
-        throw new Error('업데이트된 문의를 찾을 수 없습니다.');
+        throw new NotFoundError('업데이트된 문의를 찾을 수 없습니다.');
       }
 
       logger.info(
@@ -282,22 +304,28 @@ export class SupportService {
 
       // Validate input
       if (!content || content.trim().length === 0) {
-        throw new Error('답변 내용을 입력해주세요.');
+        throw new BadRequestError(
+          '답변 내용을 입력해주세요.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       if (content.length > 5000) {
-        throw new Error('답변 내용은 5000자를 초과할 수 없습니다.');
+        throw new BadRequestError(
+          '답변 내용은 5000자를 초과할 수 없습니다.',
+          ErrorCodes.VAL_INVALID_INPUT,
+        );
       }
 
       // Check if inquiry exists
       const inquiry = await supportInquiryModel.findById(inquiryId);
       if (!inquiry) {
-        throw new Error('문의를 찾을 수 없습니다.');
+        throw new NotFoundError('문의를 찾을 수 없습니다.');
       }
 
       // Check if already answered
       if (inquiry.adminResponse) {
-        throw new Error('이미 답변된 문의입니다.');
+        throw new ConflictError('이미 답변된 문의입니다.');
       }
 
       const adminResponse: IAdminResponse = {
@@ -312,13 +340,13 @@ export class SupportService {
       );
 
       if (!success) {
-        throw new Error('답변 저장에 실패했습니다.');
+        throw new NotFoundError('답변 저장에 실패했습니다.');
       }
 
       const updatedInquiry = await supportInquiryModel.findById(inquiryId);
 
       if (!updatedInquiry) {
-        throw new Error('업데이트된 문의를 찾을 수 없습니다.');
+        throw new NotFoundError('업데이트된 문의를 찾을 수 없습니다.');
       }
 
       logger.info(`Admin response added to inquiry: ${inquiryId.toString()}`);
@@ -345,7 +373,7 @@ export class SupportService {
       // Check if inquiry exists
       const inquiry = await supportInquiryModel.findById(inquiryId);
       if (!inquiry) {
-        throw new Error('문의를 찾을 수 없습니다.');
+        throw new NotFoundError('문의를 찾을 수 없습니다.');
       }
 
       // Check authorization: only owner or admin can delete
@@ -354,13 +382,16 @@ export class SupportService {
         !isAdmin &&
         inquiry.userId.toString() !== userId.toString()
       ) {
-        throw new Error('이 문의를 삭제할 권한이 없습니다.');
+        throw new ForbiddenError(
+          '이 문의를 삭제할 권한이 없습니다.',
+          ErrorCodes.AUTH_FORBIDDEN,
+        );
       }
 
       const success = await supportInquiryModel.softDelete(inquiryId);
 
       if (!success) {
-        throw new Error('문의 삭제에 실패했습니다.');
+        throw new NotFoundError('문의 삭제에 실패했습니다.');
       }
 
       logger.info(`Inquiry deleted: ${inquiryId.toString()}`);
