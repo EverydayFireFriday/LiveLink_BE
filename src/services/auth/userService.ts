@@ -5,6 +5,7 @@ import {
 } from '../../models/auth/user';
 import { User } from '../../types/auth/authTypes';
 import { cacheManager } from '../../utils/cache/cacheManager';
+import { CacheKeyBuilder, CacheTTL } from '../../utils';
 import logger from '../../utils/logger/logger';
 
 export class UserService {
@@ -33,7 +34,8 @@ export class UserService {
   }
 
   async findById(id: string, skipCache: boolean = false): Promise<User | null> {
-    const cacheKey = `user:${id}`;
+    // 새로운 캐시 키 빌더 사용
+    const cacheKey = CacheKeyBuilder.user(id);
 
     // 캐시 우회 옵션이 false이고 캐시에 데이터가 있으면 캐시 반환
     if (!skipCache) {
@@ -46,8 +48,8 @@ export class UserService {
     // DB에서 최신 데이터 조회
     const user = (await this.getUserModel().findById(id)) as User | null;
     if (user) {
-      // 캐시 갱신 (약관/알림 설정 변경 시에도 최신 데이터로 갱신)
-      await cacheManager.set(cacheKey, user, 3600); // 1시간 캐시
+      // 캐시 갱신 (설정된 TTL 사용)
+      await cacheManager.set(cacheKey, user, CacheTTL.USER_PROFILE);
     }
     return user;
   }
@@ -74,8 +76,13 @@ export class UserService {
     })) as User | null;
 
     if (user) {
-      const cacheKey = `user:${id}`;
+      // 캐시 무효화 - 새로운 유틸리티 사용
+      const cacheKey = CacheKeyBuilder.user(id);
       await cacheManager.del(cacheKey);
+
+      // 사용자 통계 캐시도 무효화
+      const statsCacheKey = CacheKeyBuilder.userStats(id);
+      await cacheManager.del(statsCacheKey);
     }
 
     return user;
@@ -165,8 +172,13 @@ export class UserService {
       const deleted = await this.getUserModel().deleteUser(id);
 
       if (deleted) {
-        const cacheKey = `user:${id}`;
+        // 캐시 무효화 - 사용자 관련 모든 캐시 삭제
+        const cacheKey = CacheKeyBuilder.user(id);
         await cacheManager.del(cacheKey);
+
+        const statsCacheKey = CacheKeyBuilder.userStats(id);
+        await cacheManager.del(statsCacheKey);
+
         logger.info(`✅ 사용자 계정 및 모든 데이터 삭제 완료: ${id}`);
       }
 

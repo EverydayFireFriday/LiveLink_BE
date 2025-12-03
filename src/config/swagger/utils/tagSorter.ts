@@ -20,6 +20,7 @@ export const swaggerTags = [
   { name: 'Concerts - Like', description: '콘서트 좋아요 관리' },
   { name: 'Concerts - Search', description: '콘서트 검색 및 필터링' },
   { name: 'Concerts - Batch', description: '콘서트 배치 작업' },
+  { name: 'Setlist', description: '콘서트 셋리스트 관리' },
 
   // Notification 관련 tags
   {
@@ -38,6 +39,9 @@ export const swaggerTags = [
 
   // Report 관련
   { name: 'Report', description: '신고 관리' },
+
+  // Support 관련
+  { name: 'Support', description: '고객센터 지원문의 관리 (FCM 알림 포함)' },
 
   // Admin 관련
   { name: 'Admin', description: '관리자 전용 기능' },

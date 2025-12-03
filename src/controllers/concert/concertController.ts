@@ -4,6 +4,15 @@ import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import concertNotificationService from '../../services/notification/concertNotificationService';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  AppError,
+  BadRequestError,
+  NotFoundError,
+  ConflictError,
+  ForbiddenError,
+  InternalServerError,
+} from '../../utils/errors/customErrors';
 
 export const uploadConcert = async (
   req: express.Request,
@@ -12,7 +21,10 @@ export const uploadConcert = async (
   try {
     // 요청 데이터 유효성 검사
     if (!req.body) {
-      return ResponseBuilder.badRequest(res, '요청 본문이 비어있습니다.');
+      throw new BadRequestError(
+        '요청 본문이 비어있습니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 미들웨어에서 이미 인증 처리되었으므로 여기서는 서비스 로직만
@@ -40,7 +52,7 @@ export const uploadConcert = async (
             posterImageProvided: !!result.data.posterImage,
             infoImagesCount: result.data.infoImages
               ? result.data.infoImages.length
-              : 0, // info → infoImages
+              : 0,
           },
           userInfo: {
             uploadedBy: userInfo.email,
@@ -57,33 +69,37 @@ export const uploadConcert = async (
         },
       });
     } else {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '콘서트 업로드 실패',
+        ErrorCodes.CONCERT_CREATE_FAILED,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     logger.error('❌ 콘서트 업로드 컨트롤러 에러:', error);
 
-    // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
       if (error.message.includes('유효성 검사 실패')) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           '입력 데이터가 유효하지 않습니다.',
-          error.message,
+          ErrorCodes.VAL_INVALID_INPUT,
         );
       }
 
       if (error.message.includes('중복')) {
-        return ResponseBuilder.conflict(res, '중복된 콘서트 UID입니다.');
+        throw new ConflictError(
+          '중복된 콘서트 UID입니다.',
+          ErrorCodes.DB_DUPLICATE_KEY,
+        );
       }
     }
 
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '서버 에러로 콘서트 업로드 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.CONCERT_CREATE_FAILED,
     );
   }
 };
@@ -97,7 +113,10 @@ export const getConcert = async (
 
     // ID 유효성 검사
     if (!id || id.trim().length === 0) {
-      return ResponseBuilder.badRequest(res, '콘서트 ID가 필요합니다.');
+      throw new BadRequestError(
+        '콘서트 ID가 필요합니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 세션에서 사용자 ID 가져오기 (로그인하지 않은 경우 undefined)
@@ -143,22 +162,24 @@ export const getConcert = async (
       });
     } else {
       if (result.error?.includes('찾을 수 없')) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           result.error || '콘서트를 찾을 수 없습니다.',
+          ErrorCodes.CONCERT_NOT_FOUND,
         );
       }
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '콘서트 조회 실패',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.info('❌ 콘서트 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '콘서트 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -173,16 +194,16 @@ export const getAllConcerts = async (
     const limit = Math.min(safeParseInt(req.query.limit, 20), 100);
 
     if (page < 1) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '페이지 번호는 1 이상이어야 합니다.',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
 
     if (limit < 1) {
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         '페이지당 항목 수는 1 이상이어야 합니다.',
+        ErrorCodes.VAL_INVALID_INPUT,
       );
     }
 
@@ -248,17 +269,19 @@ export const getAllConcerts = async (
         },
       });
     } else {
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         result.error || '콘서트 목록 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ 콘서트 목록 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '콘서트 목록 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -272,7 +295,10 @@ export const getRandomConcerts = async (
     const userId = req.session?.user?.userId;
 
     if (limit < 1) {
-      return ResponseBuilder.badRequest(res, 'limit은 1 이상이어야 합니다.');
+      throw new BadRequestError(
+        'limit은 1 이상이어야 합니다.',
+        ErrorCodes.VAL_INVALID_INPUT,
+      );
     }
 
     logger.info(
@@ -298,17 +324,19 @@ export const getRandomConcerts = async (
         },
       });
     } else {
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         result.error || '랜덤 콘서트 목록 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ 랜덤 콘서트 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '랜덤 콘서트 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -322,7 +350,10 @@ export const getLatestConcerts = async (
     const userId = req.session?.user?.userId;
 
     if (limit < 1) {
-      return ResponseBuilder.badRequest(res, 'limit은 1 이상이어야 합니다.');
+      throw new BadRequestError(
+        'limit은 1 이상이어야 합니다.',
+        ErrorCodes.VAL_INVALID_INPUT,
+      );
     }
 
     logger.info(
@@ -349,17 +380,19 @@ export const getLatestConcerts = async (
         },
       });
     } else {
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         result.error || '최신 콘서트 목록 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error('❌ 최신 콘서트 조회 컨트롤러 에러:', error);
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '최신 콘서트 조회 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.SYS_INTERNAL_ERROR,
     );
   }
 };
@@ -373,12 +406,18 @@ export const updateConcert = async (
 
     // ID 유효성 검사
     if (!id || id.trim().length === 0) {
-      return ResponseBuilder.badRequest(res, '콘서트 ID가 필요합니다.');
+      throw new BadRequestError(
+        '콘서트 ID가 필요합니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 요청 본문 유효성 검사
     if (!req.body || Object.keys(req.body).length === 0) {
-      return ResponseBuilder.badRequest(res, '수정할 데이터가 없습니다.');
+      throw new BadRequestError(
+        '수정할 데이터가 없습니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     // 수정 불가능한 필드 확인 및 제거
@@ -401,7 +440,10 @@ export const updateConcert = async (
     );
 
     if (modifiableFields.length === 0) {
-      return ResponseBuilder.badRequest(res, '수정 가능한 필드가 없습니다.');
+      throw new BadRequestError(
+        '수정 가능한 필드가 없습니다.',
+        ErrorCodes.VAL_INVALID_INPUT,
+      );
     }
 
     // 기존 콘서트 정보 조회 (변경사항 감지를 위해)
@@ -500,38 +542,42 @@ export const updateConcert = async (
       });
     } else {
       if (result.error?.includes('찾을 수 없')) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           result.error || '콘서트를 찾을 수 없습니다.',
+          ErrorCodes.CONCERT_NOT_FOUND,
         );
       }
-      return ResponseBuilder.badRequest(
-        res,
+      throw new BadRequestError(
         result.error || '콘서트 수정 실패',
+        ErrorCodes.CONCERT_UPDATE_FAILED,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     logger.info('❌ 콘서트 수정 컨트롤러 에러:', error);
 
-    // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
       if (error.message.includes('유효성 검사 실패')) {
-        return ResponseBuilder.badRequest(
-          res,
+        throw new BadRequestError(
           '수정 데이터가 유효하지 않습니다.',
-          error.message,
+          ErrorCodes.VAL_INVALID_INPUT,
         );
       }
 
       if (error.message.includes('찾을 수 없')) {
-        return ResponseBuilder.notFound(res, '콘서트를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '콘서트를 찾을 수 없습니다.',
+          ErrorCodes.CONCERT_NOT_FOUND,
+        );
       }
     }
 
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '콘서트 수정 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.CONCERT_UPDATE_FAILED,
     );
   }
 };
@@ -544,7 +590,10 @@ export const deleteConcert = async (
 
     // ID 유효성 검사
     if (!id || id.trim().length === 0) {
-      return ResponseBuilder.badRequest(res, '콘서트 ID가 필요합니다.');
+      throw new BadRequestError(
+        '콘서트 ID가 필요합니다.',
+        ErrorCodes.VAL_MISSING_FIELD,
+      );
     }
 
     logger.info(`🗑️ 콘서트 삭제 요청: ID=${id}`);
@@ -613,34 +662,42 @@ export const deleteConcert = async (
       logger.info(`❌ 콘서트 삭제 실패: ${id} - ${result.error}`);
 
       if (result.error?.includes('찾을 수 없')) {
-        return ResponseBuilder.notFound(
-          res,
+        throw new NotFoundError(
           result.error || '콘서트를 찾을 수 없습니다.',
+          ErrorCodes.CONCERT_NOT_FOUND,
         );
       }
-      return ResponseBuilder.internalError(
-        res,
+      throw new InternalServerError(
         result.error || '콘서트 삭제 실패',
+        ErrorCodes.CONCERT_DELETE_FAILED,
       );
     }
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     logger.error('❌ 콘서트 삭제 컨트롤러 에러:', error);
 
-    // 구체적인 에러 타입에 따른 응답
     if (error instanceof Error) {
       if (error.message.includes('찾을 수 없')) {
-        return ResponseBuilder.notFound(res, '콘서트를 찾을 수 없습니다.');
+        throw new NotFoundError(
+          '콘서트를 찾을 수 없습니다.',
+          ErrorCodes.CONCERT_NOT_FOUND,
+        );
       }
 
       if (error.message.includes('권한')) {
-        return ResponseBuilder.forbidden(res, '콘서트 삭제 권한이 없습니다.');
+        throw new ForbiddenError(
+          '콘서트 삭제 권한이 없습니다.',
+          ErrorCodes.AUTH_FORBIDDEN,
+        );
       }
     }
 
-    return ResponseBuilder.internalError(
-      res,
+    throw new InternalServerError(
       '콘서트 삭제 실패',
-      error instanceof Error ? error.message : '알 수 없는 에러',
+      ErrorCodes.CONCERT_DELETE_FAILED,
     );
   }
 };

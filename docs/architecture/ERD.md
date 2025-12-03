@@ -25,6 +25,7 @@ erDiagram
     Comment ||--o{ CommentLike : "has"
     Concert ||--o{ ScheduledNotification : "generates"
     Concert ||--o{ NotificationHistory : "generates"
+    Concert ||--o| Setlist : "has"
 
     User {
         ObjectId _id PK
@@ -237,6 +238,21 @@ erDiagram
         Date createdAt
         Date expiresAt "TTL 만료 시간"
     }
+
+    Setlist {
+        ObjectId _id PK
+        string concertId FK "콘서트 UID 참조"
+        Song[] setList "세트리스트 곡 목록"
+        string youtubePlaylistUrl "유튜브 뮤직 재생목록 URL"
+        string spotifyPlaylistUrl "스포티파이 재생목록 URL"
+        Date createdAt
+        Date updatedAt
+    }
+
+    Song {
+        string title "곡 제목"
+        string artist "아티스트명"
+    }
 ```
 
 ## 인덱스 정보
@@ -309,6 +325,10 @@ erDiagram
 - `{userId, createdAt}`: Compound Index (Descending)
 - `concertId`: Index
 - `expiresAt`: TTL Index (자동 삭제)
+
+### Setlist Collection
+- `concertId`: Unique Index (one setlist per concert)
+- `createdAt`: Index
 
 ## 관계 설명
 
@@ -391,11 +411,16 @@ erDiagram
 - 한 명의 사용자는 여러 개의 알림 이력을 받을 수 있습니다
 - `NotificationHistory.userId` → `User._id`
 
+### Concert → Setlist (1:1)
+- 한 개의 콘서트는 하나의 세트리스트를 가질 수 있습니다 (선택적)
+- `Setlist.concertId` → `Concert.uid` (String UID)
+
 ## 데이터베이스 연결 정보
 
-- **Primary Database**: `stagelives` (Users, UserSessions, ChatRooms, Messages, Notifications)
-- **Concert Database**: Concerts
+- **Primary Database**: `stagelives` (Users, UserSessions, Notifications)
+- **Concert Database**: Concerts, Setlists
 - **Article Database**: Articles, Categories, Comments, Tags, Likes, Bookmarks
+- **Chat Database**: ChatRooms, Messages
 - **Driver**: MongoDB Native Driver
 - **Connection**: MongoDB Atlas / Local MongoDB
 
@@ -427,7 +452,12 @@ erDiagram
 - `User.fcmToken`으로 디바이스별 푸시 알림 관리
 - 알림 설정 커스터마이징 (`NotificationPreference`)
 
+### 7. 콘서트 세트리스트
+- 별도 `Setlist` 컬렉션으로 정규화 (Concert와 1:1 관계)
+- YouTube Music 및 Spotify 재생목록 URL 저장
+- 콘서트 UID로 참조 (String 기반)
+
 ---
 
-**Last Updated:** 2025-11-10
-**Version:** 0.9.0
+**Last Updated:** 2025-11-20
+**Version:** 1.1.0

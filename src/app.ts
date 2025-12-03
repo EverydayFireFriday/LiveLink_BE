@@ -377,6 +377,23 @@ const startServer = async (): Promise<void> => {
     chatSocketServer = new ChatSocketServer(httpServer, sessionMiddleware);
     logger.info('✅ Socket.IO server initialized');
 
+    // 캐시 워밍 시작 (Redis가 연결된 경우에만)
+    if (isRedisConnected && redisClient.status === 'ready') {
+      logger.info('🔥 Starting cache warming...');
+      const { cacheWarmingService } = await import(
+        './utils/cache/cacheWarming'
+      );
+
+      // 초기 캐시 워밍
+      await cacheWarmingService.warmupOnStartup();
+
+      // 주기적 캐시 워밍 시작
+      cacheWarmingService.startPeriodicWarming();
+      logger.info('✅ Cache warming initialized');
+    } else {
+      logger.warn('⚠️ Cache warming skipped (Redis not connected)');
+    }
+
     // HTTP 서버 시작
     const PORT = parseInt(env.PORT);
     httpServer.listen(PORT, () => {
@@ -395,6 +412,7 @@ const startServer = async (): Promise<void> => {
       logger.info(`🎵 Concert API: http://localhost:${PORT}/concert`);
       logger.info(`📝 Article API: http://localhost:${PORT}/article`);
       logger.info(`💬 Chat API: http://localhost:${PORT}/chat`);
+      logger.info(`🆘 Support API: http://localhost:${PORT}/support`);
       logger.info(`📢 Report REST API: http://localhost:${PORT}/report`);
       logger.info(`📊 Report GraphQL API: http://localhost:${PORT}/graphql`);
       logger.info(`🔌 Socket.IO: http://localhost:${PORT}/socket.io/`);

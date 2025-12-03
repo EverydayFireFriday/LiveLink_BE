@@ -104,6 +104,7 @@ export const notFoundHandler = (
       concert: '/concert/*',
       article: '/article/*',
       chat: '/chat/*',
+      support: '/support/*',
       terms: '/terms/*',
     },
     timestamp: new Date().toISOString(),

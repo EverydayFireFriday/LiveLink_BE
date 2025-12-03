@@ -166,7 +166,7 @@ export class ScheduledNotificationModel {
     userId: ObjectId,
     status?: NotificationStatus,
   ): Promise<IScheduledNotification[]> {
-    const query: any = { userId };
+    const query: { userId: ObjectId; status?: NotificationStatus } = { userId };
     if (status) {
       query.status = status;
     }
@@ -261,13 +261,13 @@ export class ScheduledNotificationModel {
   public async countByStatus(
     userId?: ObjectId,
   ): Promise<Record<string, number>> {
-    const matchStage: any = {};
+    const matchStage: { userId?: ObjectId } = {};
     if (userId) {
       matchStage.userId = userId;
     }
 
     const result = await this.collection
-      .aggregate([
+      .aggregate<{ _id: string; count: number }>([
         ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
         {
           $group: {

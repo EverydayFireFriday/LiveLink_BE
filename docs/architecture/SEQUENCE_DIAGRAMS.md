@@ -612,6 +612,121 @@ sequenceDiagram
     end
 ```
 
+## 9. Setlist Management (YouTube Music & Spotify)
+
+### 9.1 Setlist 생성 및 재생목록 생성
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant SetlistService
+    participant SetlistModel
+    participant YouTubeService
+    participant SpotifyService
+    participant MongoDB
+    participant YouTubeAPI as YouTube Music API
+    participant SpotifyAPI as Spotify Web API
+
+    Admin->>Client: 콘서트 세트리스트 생성 요청
+    Client->>API: POST /setlist {concertId, setList: [{title, artist}]}
+    API->>Auth: 인증 확인 (Admin 권한)
+    Auth-->>API: 인증 완료
+
+    API->>SetlistService: createSetlist(concertId, setList)
+    SetlistService->>SetlistModel: findByConcertId(concertId)
+    SetlistModel->>MongoDB: findOne({concertId})
+
+    alt 기존 Setlist 존재
+        MongoDB-->>SetlistModel: 기존 Setlist
+        SetlistService->>SetlistModel: updateSetlist(concertId, setList)
+        SetlistModel->>MongoDB: updateOne({concertId}, {$set: {setList}})
+    else 새로운 Setlist
+        SetlistService->>SetlistModel: create({concertId, setList})
+        SetlistModel->>MongoDB: insertOne(setlist)
+    end
+
+    Note over SetlistService,YouTubeAPI: YouTube Music 재생목록 생성
+
+    SetlistService->>YouTubeService: createPlaylist(concertId, setList)
+    YouTubeService->>YouTubeAPI: POST /playlists (create empty playlist)
+    YouTubeAPI-->>YouTubeService: playlistId
+
+    loop 각 곡마다
+        YouTubeService->>YouTubeAPI: GET /search (title + artist)
+        YouTubeAPI-->>YouTubeService: videoId
+        YouTubeService->>YouTubeAPI: POST /playlistItems (add video to playlist)
+    end
+
+    YouTubeService-->>SetlistService: youtubePlaylistUrl
+
+    Note over SetlistService,SpotifyAPI: Spotify 재생목록 생성
+
+    SetlistService->>SpotifyService: createPlaylist(concertId, setList)
+    SpotifyService->>SpotifyAPI: POST /me/playlists (create empty playlist)
+    SpotifyAPI-->>SpotifyService: playlistId
+
+    loop 각 곡마다
+        SpotifyService->>SpotifyAPI: GET /search (track + artist)
+        SpotifyAPI-->>SpotifyService: trackUri
+    end
+
+    SpotifyService->>SpotifyAPI: POST /playlists/{id}/tracks (add all tracks)
+    SpotifyService-->>SetlistService: spotifyPlaylistUrl
+
+    Note over SetlistService,MongoDB: Setlist에 재생목록 URL 저장
+
+    SetlistService->>SetlistModel: update({$set: {youtubePlaylistUrl, spotifyPlaylistUrl}})
+    SetlistModel->>MongoDB: updateOne(...)
+    MongoDB-->>SetlistModel: 업데이트 완료
+
+    SetlistService-->>API: Setlist with playlist URLs
+    API-->>Client: 201 Created + Setlist
+    Client-->>Admin: 세트리스트 및 재생목록 생성 완료
+```
+
+### 9.2 Setlist 조회 (콘서트 상세 페이지)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant ConcertService
+    participant SetlistService
+    participant MongoDB
+
+    User->>Client: 콘서트 상세 페이지 요청
+    Client->>API: GET /concert/:concertId
+
+    API->>ConcertService: getConcertById(concertId)
+    ConcertService->>MongoDB: findOne({uid: concertId})
+    MongoDB-->>ConcertService: Concert 정보
+
+    Note over API,SetlistService: 세트리스트 조회 (선택적)
+
+    API->>SetlistService: getSetlistByConcertId(concertId)
+    SetlistService->>MongoDB: findOne({concertId})
+
+    alt Setlist 존재
+        MongoDB-->>SetlistService: Setlist with URLs
+        SetlistService-->>API: {setList, youtubePlaylistUrl, spotifyPlaylistUrl}
+    else Setlist 없음
+        MongoDB-->>SetlistService: null
+        SetlistService-->>API: null
+    end
+
+    API-->>Client: 200 OK {concert, setlist}
+    Client-->>User: 콘서트 정보 + 세트리스트 표시
+
+    alt 사용자가 재생목록 링크 클릭
+        User->>Client: YouTube/Spotify 재생목록 링크 클릭
+        Client->>Client: 외부 링크 열기 (YouTube Music / Spotify 앱)
+    end
+```
+
 ## 시스템 아키텍처 특징
 
 ### Redis 활용
@@ -633,7 +748,18 @@ sequenceDiagram
 - **HPP**: hpp (HTTP Parameter Pollution)
 - **Helmet**: 보안 헤더
 
+### 외부 API 통합
+- **YouTube Music**: 세트리스트 기반 재생목록 자동 생성
+- **Spotify**: 세트리스트 기반 재생목록 자동 생성
+- **FCM**: 푸시 알림 전송
+
+### 성능 최적화
+- **N+1 Query 방지**: Bulk operations (bulkCreate, bulkCancel)
+- **캐싱**: Redis 기반 콘서트 목록 캐싱
+- **인덱싱**: MongoDB 복합 인덱스 활용
+- **Connection Pooling**: MongoDB 및 Redis 연결 풀
+
 ---
 
-**Last Updated:** 2025-11-10
-**Version:** 1.0.0
+**Last Updated:** 2025-11-20
+**Version:** 1.1.0

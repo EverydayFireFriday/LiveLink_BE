@@ -8,11 +8,13 @@ import {
 // 라우터 import
 import authRouter from '../routes/auth/index';
 import concertRouter from '../routes/concert/index';
+import setlistRouter from '../routes/setlist/setlistRoutes';
 import testRouter from '../routes/test/testRoutes';
 import healthRouter from '../routes/health/healthRoutes';
 import swaggerRouter from '../routes/swagger/swaggerRoutes';
 import termsRouter from '../routes/terms/index';
 import notificationRouter from '../routes/notification/index';
+import supportRouter from '../routes/support/supportRoutes';
 import { createReportRouterWithService } from '../routes/report/index';
 
 /**
@@ -30,8 +32,10 @@ export const setupRoutes = async (
   // 메인 라우터 연결
   app.use('/auth', authRouter);
   app.use('/concert', concertRouter);
+  app.use('/api/setlists', setlistRouter);
   app.use('/test', testRouter);
   app.use('/', notificationRouter);
+  app.use('/support', supportRouter);
 
   // 동적 라우터 로드 - Article
   const { default: articleRouter } = await import('../routes/article/index');

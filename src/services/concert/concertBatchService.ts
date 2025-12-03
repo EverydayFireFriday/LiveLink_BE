@@ -77,7 +77,7 @@ interface BatchResults {
 
 interface ConcertToInsert {
   index: number;
-  processedData: Omit<IConcert, 'createdAt' | 'updatedAt'>;
+  processedData: import('../../models/concert/features/ConcertBatch.js').IConcertInsertInput;
 }
 
 export class ConcertBatchService {
@@ -197,9 +197,8 @@ export class ConcertBatchService {
         }
 
         // ObjectId 생성 및 데이터 준비 - Model의 Concert 타입 사용
-        const mongoId = generateObjectIdFromUid(concertData.uid);
-        const processedData: Omit<IConcert, 'createdAt' | 'updatedAt'> = {
-          _id: mongoId,
+        const processedData: import('../../models/concert/features/ConcertBatch.js').IConcertInsertInput =
+          {
           uid: concertData.uid,
           title: concertData.title,
           artist: Array.isArray(concertData.artist)
@@ -278,7 +277,9 @@ export class ConcertBatchService {
             const individualPromises = batch.map(
               async ({ index, processedData }) => {
                 try {
-                  const newConcert = await ConcertModel.create(processedData);
+                  const newConcert = await ConcertModel.create(
+                    processedData as Omit<IConcert, 'createdAt' | 'updatedAt'>,
+                  );
                   results.success.push({
                     index,
                     id: newConcert._id?.toString(),

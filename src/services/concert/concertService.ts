@@ -1,5 +1,6 @@
 import { ObjectId, Sort } from 'mongodb';
 import { getConcertModel } from '../../models/concert/concert';
+import { getSetlistModel } from '../../models/setlist/setlist';
 import { UserModel } from '../../models/auth/user';
 import logger from '../../utils/logger/logger';
 
@@ -15,6 +16,20 @@ import type { IConcert } from '../../models/concert/base/ConcertTypes';
 
 // Live DB 동기화 서비스 import
 import { ConcertSyncService } from './concertSyncService';
+// Music Services import
+// import { YouTubeMusicService } from '../setlist/youtubeMusicService'; // YouTube 비활성화
+import type { ISetlistSong } from '../../models/concert/base/ConcertTypes';
+// Setlist 서비스 import
+import { setlistService } from '../setlist/setlistService';
+import { SpotifyService } from '../setlist/spotifyService';
+
+// 캐시 유틸리티 import
+import {
+  cacheManager,
+  CacheKeyBuilder,
+  CacheTTL,
+  CacheInvalidationPatterns,
+} from '../../utils';
 
 export interface CreateConcertRequest {
   uid: string;
@@ -29,6 +44,7 @@ export interface CreateConcertRequest {
   ticketOpenDate?: string;
   posterImage?: string;
   infoImages?: string[]; // info -> infoImages로 변경
+  setlist?: ISetlistSong[]; // 셋리스트 곡 목록
 }
 
 export interface ConcertServiceResponse {
@@ -155,13 +171,35 @@ export class ConcertService {
 
         status: 'upcoming',
         likesCount: 0,
+        // 주의: setlist는 Concert 컬렉션이 아닌 별도 Setlist 컬렉션에 저장됨
       };
 
       // 7. MongoDB에 저장
       const newConcert = await ConcertModel.create(processedData);
 
-      // 8. Live DB에 동기화 (비동기, 실패해도 메인 기능에 영향 없음)
+      // 8. 셋리스트가 있는 경우 Setlist 컬렉션에도 저장
+      if (concertData.setlist && concertData.setlist.length > 0) {
+        try {
+          await setlistService.createOrUpdateSetlist({
+            concertId: concertData.uid,
+            setList: concertData.setlist,
+          });
+          logger.info(
+            `✅ 셋리스트 저장 완료: ${concertData.uid} (${concertData.setlist.length}곡)`,
+          );
+        } catch (error) {
+          logger.warn(
+            `⚠️ 셋리스트 저장 실패 (콘서트는 생성됨): ${concertData.uid} - ${error}`,
+          );
+          // 셋리스트 저장 실패해도 콘서트 생성은 성공으로 처리
+        }
+      }
+
+      // 9. Live DB에 동기화 (비동기, 실패해도 메인 기능에 영향 없음)
       void ConcertSyncService.syncCreate(newConcert);
+
+      // 10. 캐시 무효화 - 모든 콘서트 목록 캐시 삭제
+      await cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_ALL());
 
       return {
         success: true,
@@ -204,6 +242,16 @@ export class ConcertService {
     userId?: string,
   ): Promise<ConcertServiceResponse> {
     try {
+      // 캐시 키 생성
+      const cacheKey = CacheKeyBuilder.concertDetail(id, { userId });
+
+      // 캐시 확인
+      const cachedData =
+        await cacheManager.get<ConcertServiceResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+
       const ConcertModel = getConcertModel();
       const concert = await ConcertModel.findById(id);
 
@@ -225,7 +273,7 @@ export class ConcertService {
         }
       }
 
-      return {
+      const response: ConcertServiceResponse = {
         success: true,
         data: {
           ...concert,
@@ -233,6 +281,11 @@ export class ConcertService {
         },
         statusCode: 200,
       };
+
+      // 캐시 저장
+      await cacheManager.set(cacheKey, response, CacheTTL.CONCERT_DETAIL);
+
+      return response;
     } catch (error) {
       logger.error('콘서트 조회 서비스 에러:', error);
       return {
@@ -272,6 +325,22 @@ export class ConcertService {
         title,
         search,
       } = params;
+
+      // 캐시 키 생성
+      const cacheKey = CacheKeyBuilder.concertList({
+        page,
+        limit,
+        category,
+        location,
+        userId,
+      });
+
+      // 캐시 확인
+      const cachedData =
+        await cacheManager.get<ConcertServiceResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
 
       const ConcertModel = getConcertModel();
 
@@ -411,7 +480,7 @@ export class ConcertService {
 
       const totalPages = Math.ceil(total / parseInt(limit.toString()));
 
-      return {
+      const response: ConcertServiceResponse = {
         success: true,
         data: {
           concerts: concertsWithLikeStatus,
@@ -425,6 +494,11 @@ export class ConcertService {
         },
         statusCode: 200,
       };
+
+      // 캐시 저장
+      await cacheManager.set(cacheKey, response, CacheTTL.CONCERT_LIST);
+
+      return response;
     } catch (error) {
       logger.error('콘서트 목록 조회 서비스 에러:', error);
       return {
@@ -506,6 +580,20 @@ export class ConcertService {
     userId?: string,
   ): Promise<ConcertServiceResponse> {
     try {
+      // 캐시 키 생성
+      const cacheKey = CacheKeyBuilder.concertList({
+        page: 1,
+        limit,
+        userId,
+      });
+
+      // 캐시 확인
+      const cachedData =
+        await cacheManager.get<ConcertServiceResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+
       const ConcertModel = getConcertModel();
 
       const filter = {
@@ -694,11 +782,16 @@ export class ConcertService {
         ...(userId && { isLiked: likedConcertIds.has(concert._id.toString()) }),
       }));
 
-      return {
+      const response: ConcertServiceResponse = {
         success: true,
         data: concertsWithLikeStatus,
         statusCode: 200,
       };
+
+      // 캐시 저장
+      await cacheManager.set(cacheKey, response, CacheTTL.CONCERT_LIST);
+
+      return response;
     } catch (error) {
       logger.error('최신 콘서트 조회 서비스 에러:', error);
       return {
@@ -810,6 +903,12 @@ export class ConcertService {
       // updatedConcert._id는 실제 MongoDB ObjectId이므로 UID가 아닌 ObjectId를 전달
       void ConcertSyncService.syncUpdate(updatedConcert._id, cleanUpdateData);
 
+      // 9. 캐시 무효화
+      await Promise.all([
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_BY_ID(id)),
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_LIST()),
+      ]);
+
       return {
         success: true,
         data: updatedConcert,
@@ -856,6 +955,12 @@ export class ConcertService {
       // deletedConcert._id는 실제 MongoDB ObjectId이므로 UID가 아닌 ObjectId를 전달
       void ConcertSyncService.syncDelete(deletedConcert._id);
 
+      // 캐시 무효화
+      await Promise.all([
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_BY_ID(id)),
+        cacheManager.delByPattern(CacheInvalidationPatterns.CONCERT_LIST()),
+      ]);
+
       return {
         success: true,
         data: {
@@ -870,6 +975,279 @@ export class ConcertService {
       return {
         success: false,
         error: error instanceof Error ? error.message : '콘서트 삭제 실패',
+        statusCode: 500,
+      };
+    }
+  }
+
+  /**
+   * 셋리스트 재생목록 생성 (유저가 버튼 클릭 시)
+   * - 이미 생성된 경우: 저장된 URL 반환
+   * - 미생성 상태: YouTube & Spotify 재생목록 생성 후 DB 저장
+   */
+  static async generatePlaylist(
+    concertId: string,
+    platform?: 'youtube' | 'spotify' | 'both',
+  ): Promise<ConcertServiceResponse> {
+    try {
+      const ConcertModel = getConcertModel();
+      const concert = await ConcertModel.findById(concertId);
+
+      if (!concert) {
+        return {
+          success: false,
+          error: '콘서트를 찾을 수 없습니다.',
+          statusCode: 404,
+        };
+      }
+
+      // 별도 Setlist 컬렉션에서 셋리스트 조회
+      const setlistResult = await setlistService.getSetlistByConcertId(
+        concert.uid,
+      );
+
+      if (!setlistResult.success || !setlistResult.data) {
+        return {
+          success: false,
+          error: '셋리스트 정보가 없습니다.',
+          statusCode: 400,
+        };
+      }
+
+      const setlist = setlistResult.data.setList;
+
+      // 셋리스트가 비어있는 경우
+      if (!setlist || setlist.length === 0) {
+        return {
+          success: false,
+          error: '셋리스트 정보가 없습니다.',
+          statusCode: 400,
+        };
+      }
+
+      const targetPlatform = platform || 'both';
+      const youtubePlaylistUrl = setlistResult.data.youtubePlaylistUrl;
+      let spotifyPlaylistUrl = setlistResult.data.spotifyPlaylistUrl;
+      let needsUpdate = false;
+
+      // YouTube 재생목록 생성 (필요한 경우) - 현재 주석 처리됨
+      // if (
+      //   (targetPlatform === 'youtube' || targetPlatform === 'both') &&
+      //   !youtubePlaylistUrl
+      // ) {
+      //   logger.info(
+      //     `🎵 YouTube Music 재생목록 생성 시작: ${concert.title} (${setlist.length}곡)`,
+      //   );
+
+      //   const youtubeResult =
+      //     await YouTubeMusicService.createPlaylistFromSetlist(
+      //       concert.title,
+      //       setlist,
+      //     );
+
+      //   if (youtubeResult.success && youtubeResult.data) {
+      //     youtubePlaylistUrl = youtubeResult.data.playlistUrl;
+      //     needsUpdate = true;
+      //     logger.info(
+      //       `✅ YouTube Music 재생목록 생성 완료: ${youtubePlaylistUrl}`,
+      //     );
+      //   } else {
+      //     logger.warn(
+      //       `⚠️ YouTube Music 재생목록 생성 실패: ${youtubeResult.error}`,
+      //     );
+      //   }
+      // }
+
+      // Spotify 재생목록 생성 (필요한 경우)
+      if (
+        (targetPlatform === 'spotify' || targetPlatform === 'both') &&
+        !spotifyPlaylistUrl
+      ) {
+        logger.info(
+          `🎵 Spotify 재생목록 생성 시작: ${concert.title} (${setlist.length}곡)`,
+        );
+
+        const spotifyResult = await SpotifyService.createPlaylistFromSetlist(
+          concert.title,
+          setlist,
+        );
+
+        if (spotifyResult.success && spotifyResult.data) {
+          spotifyPlaylistUrl = spotifyResult.data.playlistUrl;
+          needsUpdate = true;
+          logger.info(`✅ Spotify 재생목록 생성 완료: ${spotifyPlaylistUrl}`);
+        } else {
+          logger.warn(`⚠️ Spotify 재생목록 생성 실패: ${spotifyResult.error}`);
+        }
+      }
+
+      // DB 업데이트 (새로 생성된 URL이 있는 경우) - YouTube, Spotify 모두 Setlist에 저장
+      if (needsUpdate) {
+        const setlistModel = getSetlistModel();
+
+        if (youtubePlaylistUrl) {
+          await setlistModel.updateYoutubePlaylistUrl(
+            concert.uid,
+            youtubePlaylistUrl,
+          );
+        }
+
+        if (spotifyPlaylistUrl) {
+          await setlistModel.updateSpotifyPlaylistUrl(
+            concert.uid,
+            spotifyPlaylistUrl,
+          );
+        }
+
+        logger.info(
+          `✅ 재생목록 URL DB 저장 완료: ${concertId} (YouTube: ${!!youtubePlaylistUrl}, Spotify: ${!!spotifyPlaylistUrl})`,
+        );
+      }
+
+      // 응답 반환
+      return {
+        success: true,
+        data: {
+          concertId,
+          concertTitle: concert.title,
+          setlistCount: setlist.length,
+          playlists: {
+            youtube: youtubePlaylistUrl
+              ? {
+                  url: youtubePlaylistUrl,
+                  cached:
+                    !needsUpdate || !!setlistResult.data.youtubePlaylistUrl,
+                }
+              : null,
+            spotify: spotifyPlaylistUrl
+              ? {
+                  url: spotifyPlaylistUrl,
+                  cached:
+                    !needsUpdate || !!setlistResult.data.spotifyPlaylistUrl,
+                }
+              : null,
+          },
+        },
+        statusCode: 200,
+      };
+    } catch (error) {
+      logger.error('재생목록 생성 서비스 에러:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '재생목록 생성 실패',
+        statusCode: 500,
+      };
+    }
+  }
+
+  /**
+   * 셋리스트 재생목록 업데이트
+   * 기존 재생목록의 모든 트랙을 제거하고 새 트랙으로 교체
+   */
+  static async updatePlaylist(
+    concertId: string,
+    setlist: ISetlistSong[],
+    platform?: 'youtube' | 'spotify' | 'both',
+  ): Promise<ConcertServiceResponse> {
+    try {
+      const ConcertModel = getConcertModel();
+      const concert = await ConcertModel.findById(concertId);
+
+      if (!concert) {
+        return {
+          success: false,
+          error: '콘서트를 찾을 수 없습니다.',
+          statusCode: 404,
+        };
+      }
+
+      // 셋리스트에서 Spotify URL 가져오기
+      const setlistResult = await setlistService.getSetlistByConcertId(
+        concert.uid,
+      );
+
+      const targetPlatform = platform || 'both';
+      const spotifyPlaylistUrl = setlistResult.data?.spotifyPlaylistUrl;
+
+      // Spotify 재생목록 업데이트
+      if (
+        (targetPlatform === 'spotify' || targetPlatform === 'both') &&
+        spotifyPlaylistUrl
+      ) {
+        logger.info(
+          `🔄 Spotify 재생목록 업데이트: ${concert.title} (${setlist.length}곡)`,
+        );
+
+        // Spotify Playlist ID 추출 (URL에서)
+        const playlistIdMatch = spotifyPlaylistUrl.match(
+          /playlist\/([a-zA-Z0-9]+)/,
+        );
+        if (!playlistIdMatch) {
+          logger.warn('⚠️ Spotify Playlist ID를 추출할 수 없습니다.');
+          return {
+            success: false,
+            error: 'Invalid Spotify playlist URL',
+            statusCode: 400,
+          };
+        }
+
+        const playlistId = playlistIdMatch[1];
+
+        try {
+          // 1. 기존 재생목록의 모든 트랙 삭제
+          await SpotifyService.clearPlaylist(playlistId);
+
+          // 2. 새 트랙 검색
+          const trackUris: string[] = [];
+          for (const song of setlist) {
+            const trackUri = await SpotifyService.searchSong(song);
+            if (trackUri) {
+              trackUris.push(trackUri);
+            }
+          }
+
+          // 3. 새 트랙 추가
+          if (trackUris.length > 0) {
+            await SpotifyService.addTracksToPlaylist(playlistId, trackUris);
+            logger.info(
+              `✅ Spotify 재생목록 업데이트 완료: ${trackUris.length}/${setlist.length}곡 추가됨`,
+            );
+          }
+        } catch (updateError) {
+          logger.error('Spotify 재생목록 업데이트 실패:', updateError);
+          return {
+            success: false,
+            error: '재생목록 업데이트 중 오류가 발생했습니다.',
+            statusCode: 500,
+          };
+        }
+      }
+
+      // 응답 반환
+      return {
+        success: true,
+        data: {
+          concertId,
+          concertTitle: concert.title,
+          setlistCount: setlist.length,
+          playlists: {
+            youtube: null,
+            spotify: spotifyPlaylistUrl
+              ? {
+                  url: spotifyPlaylistUrl,
+                  cached: false,
+                }
+              : null,
+          },
+        },
+        statusCode: 200,
+      };
+    } catch (error) {
+      logger.error('재생목록 업데이트 서비스 에러:', error);
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : '재생목록 업데이트 실패',
         statusCode: 500,
       };
     }

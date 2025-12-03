@@ -1,4 +1,4 @@
-name: CD - Deploy
+name: CD - Build and Push Docker Image
 
 on:
   push:
@@ -14,6 +14,7 @@ env:
 
 jobs:
   build-and-push:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -68,122 +69,12 @@ jobs:
           name: deployment-info
           path: deployment-info.txt
 
-  deploy-production:
-    name: Deploy to Production
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment:
-      name: production
-      url: https://api.stagelives.com
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Download deployment artifact
-        uses: actions/download-artifact@v6
-        with:
-          name: deployment-info
-
-      - name: Display deployment info
-        run: cat deployment-info.txt
-
-      - name: Validate Production Secrets
+      - name: Summary
         run: |
-          if [ -z "${{ secrets.PROD_SERVER_HOST }}" ]; then
-            echo "::error::PROD_SERVER_HOST secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.PROD_SERVER_USERNAME }}" ]; then
-            echo "::error::PROD_SERVER_USERNAME secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.PROD_SSH_PRIVATE_KEY }}" ]; then
-            echo "::error::PROD_SSH_PRIVATE_KEY secret is not set"
-            exit 1
-          fi
-          echo "✅ All required secrets are configured"
-
-      - name: Deploy to Production Server
-        uses: appleboy/ssh-action@v1.2.4
-        with:
-          host: ${{ secrets.PROD_SERVER_HOST }}
-          username: ${{ secrets.PROD_SERVER_USERNAME }}
-          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.PROD_SERVER_PORT || 22 }}
-          script: |
-            cd ${{ secrets.PROD_DEPLOY_PATH || '/var/www/livelink-backend' }}
-
-            # Run production deployment script
-            ./scripts/deploy-production.sh
-
-            # Verify deployment
-            echo "✅ Production deployment completed"
-
-      - name: Notify Deployment Success
-        run: |
-          echo "✅ PRODUCTION deployment completed successfully"
+          echo ":white_check_mark: Docker image built and pushed successfully"
           echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "Branch: main"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
+          echo "Branch: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
-
-  deploy-staging:
-    name: Deploy to Staging
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment:
-      name: staging
-      url: https://test-api.stagelives.com
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Download deployment artifact
-        uses: actions/download-artifact@v6
-        with:
-          name: deployment-info
-
-      - name: Display deployment info
-        run: cat deployment-info.txt
-
-      - name: Validate Staging Secrets
-        run: |
-          if [ -z "${{ secrets.STAGING_SERVER_HOST }}" ]; then
-            echo "::error::STAGING_SERVER_HOST secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.STAGING_SERVER_USERNAME }}" ]; then
-            echo "::error::STAGING_SERVER_USERNAME secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" ]; then
-            echo "::error::STAGING_SSH_PRIVATE_KEY secret is not set"
-            exit 1
-          fi
-          echo "✅ All required secrets are configured"
-
-      - name: Deploy to Staging Server
-        uses: appleboy/ssh-action@v1.2.4
-        with:
-          host: ${{ secrets.STAGING_SERVER_HOST }}
-          username: ${{ secrets.STAGING_SERVER_USERNAME }}
-          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.STAGING_SERVER_PORT || 22 }}
-          script: |
-            cd ${{ secrets.STAGING_DEPLOY_PATH || '/var/www/livelink-backend-staging' }}
-
-            # Run develop deployment script
-            ./scripts/deploy-develop.sh
-
-            # Verify deployment
-            echo "✅ Staging deployment completed"
-
-      - name: Notify Deployment Success
-        run: |
-          echo "✅ STAGING deployment completed successfully"
-          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "Branch: develop"
-          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo ":package: Deployment artifact uploaded. Manual deployment required."

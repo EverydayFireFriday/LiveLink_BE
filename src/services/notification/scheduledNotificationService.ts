@@ -28,13 +28,64 @@ export interface BulkCreateScheduledNotificationRequest {
 }
 
 /**
- * Service Response Type
+ * Service Response Type - Generic to support different data types
  */
-export interface ScheduledNotificationServiceResponse {
+export interface ScheduledNotificationServiceResponse<T = unknown> {
   success: boolean;
-  data?: any;
+  data?: T;
   error?: string;
   statusCode?: number;
+}
+
+/**
+ * Notification Statistics Data
+ */
+export interface NotificationStatsData {
+  pending: number;
+  sent: number;
+  failed: number;
+  cancelled: number;
+  total: number;
+}
+
+/**
+ * Cleanup Result Data
+ */
+export interface CleanupResultData {
+  deletedCount: number;
+}
+
+/**
+ * Cancel Result Data
+ */
+export interface CancelResultData {
+  message: string;
+}
+
+/**
+ * Bulk Create Result Data
+ */
+export interface BulkCreateResultData {
+  created: import('../../models/notification/index.js').IScheduledNotification[];
+  failed: unknown[];
+  summary: {
+    total: number;
+    succeeded: number;
+    failed: number;
+  };
+}
+
+/**
+ * Bulk Cancel Result Data
+ */
+export interface BulkCancelResultData {
+  cancelled: Array<{ id: string; title: string }>;
+  failed: Array<{ id: string; error: string }>;
+  summary: {
+    total: number;
+    succeeded: number;
+    failed: number;
+  };
 }
 
 /**
@@ -48,7 +99,11 @@ export class ScheduledNotificationService {
    */
   static async createScheduledNotification(
     request: CreateScheduledNotificationRequest,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<
+    ScheduledNotificationServiceResponse<
+      import('../../models/notification/index.js').IScheduledNotification
+    >
+  > {
     try {
       const db = getDB();
       const model = getScheduledNotificationModel(db);
@@ -121,11 +176,14 @@ export class ScheduledNotificationService {
         data: notification,
         statusCode: 201,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to create scheduled notification:', error);
       return {
         success: false,
-        error: error.message || '예약 알림 생성 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '예약 알림 생성 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -138,7 +196,11 @@ export class ScheduledNotificationService {
   static async getUserScheduledNotifications(
     userId: string,
     status?: NotificationStatus,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<
+    ScheduledNotificationServiceResponse<
+      import('../../models/notification/index.js').IScheduledNotification[]
+    >
+  > {
     try {
       const db = getDB();
       const model = getScheduledNotificationModel(db);
@@ -152,11 +214,14 @@ export class ScheduledNotificationService {
         data: notifications,
         statusCode: 200,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to get scheduled notifications:', error);
       return {
         success: false,
-        error: error.message || '예약 알림 조회 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '예약 알림 조회 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -169,7 +234,11 @@ export class ScheduledNotificationService {
   static async getScheduledNotificationById(
     notificationId: string,
     userId?: string,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<
+    ScheduledNotificationServiceResponse<
+      import('../../models/notification/index.js').IScheduledNotification
+    >
+  > {
     try {
       const db = getDB();
       const model = getScheduledNotificationModel(db);
@@ -197,11 +266,14 @@ export class ScheduledNotificationService {
         data: notification,
         statusCode: 200,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to get scheduled notification:', error);
       return {
         success: false,
-        error: error.message || '예약 알림 조회 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '예약 알림 조회 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -214,7 +286,7 @@ export class ScheduledNotificationService {
   static async cancelScheduledNotification(
     notificationId: string,
     userId: string,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<ScheduledNotificationServiceResponse<CancelResultData>> {
     try {
       const db = getDB();
       const model = getScheduledNotificationModel(db);
@@ -268,10 +340,10 @@ export class ScheduledNotificationService {
           await job.remove();
           logger.info(`🗑️ Job removed from queue: ${notificationId}`);
         }
-      } catch (queueError: any) {
+      } catch (queueError) {
         // Log but don't fail the request if job removal fails
         logger.warn(
-          `⚠️ Failed to remove job from queue: ${queueError.message}`,
+          `⚠️ Failed to remove job from queue: ${queueError instanceof Error ? queueError.message : String(queueError)}`,
         );
       }
 
@@ -280,11 +352,14 @@ export class ScheduledNotificationService {
         data: { message: '예약 알림이 취소되었습니다' },
         statusCode: 200,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to cancel scheduled notification:', error);
       return {
         success: false,
-        error: error.message || '예약 알림 취소 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '예약 알림 취소 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -296,7 +371,7 @@ export class ScheduledNotificationService {
    */
   static async getNotificationStats(
     userId?: string,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<ScheduledNotificationServiceResponse<NotificationStatsData>> {
     try {
       const db = getDB();
       const model = getScheduledNotificationModel(db);
@@ -314,11 +389,14 @@ export class ScheduledNotificationService {
         },
         statusCode: 200,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to get notification stats:', error);
       return {
         success: false,
-        error: error.message || '통계 조회 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '통계 조회 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -330,7 +408,7 @@ export class ScheduledNotificationService {
    */
   static async cleanupOldNotifications(
     daysOld: number = 30,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<ScheduledNotificationServiceResponse<CleanupResultData>> {
     try {
       const db = getDB();
       const model = getScheduledNotificationModel(db);
@@ -348,11 +426,14 @@ export class ScheduledNotificationService {
         data: { deletedCount },
         statusCode: 200,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to cleanup old notifications:', error);
       return {
         success: false,
-        error: error.message || '알림 정리 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '알림 정리 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -364,7 +445,7 @@ export class ScheduledNotificationService {
    */
   static async bulkCreateScheduledNotifications(
     requests: CreateScheduledNotificationRequest[],
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<ScheduledNotificationServiceResponse<BulkCreateResultData>> {
     try {
       if (!requests || requests.length === 0) {
         return {
@@ -462,11 +543,14 @@ export class ScheduledNotificationService {
         },
         statusCode: 201,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to bulk create scheduled notifications:', error);
       return {
         success: false,
-        error: error.message || '예약 알림 일괄 생성 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '예약 알림 일괄 생성 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }
@@ -479,7 +563,7 @@ export class ScheduledNotificationService {
   static async bulkCancelScheduledNotifications(
     notificationIds: string[],
     userId: string,
-  ): Promise<ScheduledNotificationServiceResponse> {
+  ): Promise<ScheduledNotificationServiceResponse<BulkCancelResultData>> {
     try {
       if (!notificationIds || notificationIds.length === 0) {
         return {
@@ -552,9 +636,9 @@ export class ScheduledNotificationService {
           if (job) {
             await job.remove();
           }
-        } catch (queueError: any) {
+        } catch (queueError) {
           logger.warn(
-            `⚠️ Failed to remove job from queue: ${idStr} - ${queueError.message}`,
+            `⚠️ Failed to remove job from queue: ${idStr} - ${queueError instanceof Error ? queueError.message : String(queueError)}`,
           );
         }
       });
@@ -589,11 +673,14 @@ export class ScheduledNotificationService {
         },
         statusCode: 200,
       };
-    } catch (error: any) {
+    } catch (error) {
       logger.error('❌ Failed to bulk cancel scheduled notifications:', error);
       return {
         success: false,
-        error: error.message || '예약 알림 일괄 취소 중 오류가 발생했습니다',
+        error:
+          error instanceof Error
+            ? error.message
+            : '예약 알림 일괄 취소 중 오류가 발생했습니다',
         statusCode: 500,
       };
     }

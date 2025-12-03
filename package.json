@@ -5,7 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon src/app.ts",
-    "build": "tsc",
+    "build": "node --max-old-space-size=4096 ./node_modules/.bin/tsc",
     "start": "node dist/app.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -33,7 +33,8 @@
     "migrate:notification-preference": "ts-node scripts/migration/updateNotificationPreference.ts",
     "db:seed": "ts-node src/scripts/seed.ts",
     "sync:concerts": "ts-node src/scripts/syncConcertsToLive.ts",
-    "copy:live-to-test": "ts-node src/scripts/copyLiveToTest.ts"
+    "copy:live-to-test": "ts-node src/scripts/copyLiveToTest.ts",
+    "token:spotify": "ts-node src/scripts/spotify-token-generator.ts"
   },
   "lint-staged": {
     "*.ts": [
@@ -66,6 +67,7 @@
     "@types/swagger-ui-express": "^4.1.4",
     "apollo-server-express": "^3.13.0",
     "apple-signin-auth": "^2.0.0",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.61.2",
     "connect-redis": "^7.1.1",
@@ -77,6 +79,7 @@
     "express-session": "^1.18.2",
     "firebase-admin": "^13.6.0",
     "google-auth-library": "^10.4.1",
+    "googleapis": "^166.0.0",
     "graphql": "^16.11.0",
     "helmet": "^7.2.0",
     "hpp": "^0.2.3",
@@ -115,6 +118,7 @@
     "@types/mongodb": "^4.0.7",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.10.0",
+    "@types/node-fetch": "^2.6.13",
     "@types/nodemailer": "^6.4.19",
     "@types/openapi-to-postmanv2": "^5.0.0",
     "@types/passport-apple": "^2.0.3",
