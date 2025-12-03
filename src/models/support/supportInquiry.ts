@@ -4,7 +4,7 @@ import {
   SupportCategory,
   InquiryStatus,
   Priority,
-} from '../../support/supportEnums.js';
+} from '../../types/support/supportEnums.js';
 
 /**
  * Admin Response Interface

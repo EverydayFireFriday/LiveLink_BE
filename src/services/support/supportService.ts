@@ -9,7 +9,7 @@ import {
   SupportCategory,
   InquiryStatus,
   Priority,
-} from '../../support/supportEnums.js';
+} from '../../types/support/supportEnums.js';
 import logger from '../../utils/logger/logger.js';
 import {
   NotFoundError,

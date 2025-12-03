@@ -7,7 +7,7 @@ import {
   SupportCategory,
   InquiryStatus,
   Priority,
-} from '../../support/supportEnums.js';
+} from '../../types/support/supportEnums.js';
 import { ErrorCodes } from '../../utils/errors/errorCodes.js';
 import {
   AppError,
