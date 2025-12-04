@@ -82,7 +82,7 @@ export const authenticateWithApple = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { idToken } = req.body;
+    const { idToken } = req.body as { idToken?: string };
 
     // 1. ID 토큰 유효성 검사
     if (!idToken || typeof idToken !== 'string') {
@@ -131,6 +131,7 @@ export const authenticateWithApple = async (
           username: user.username,
           profileImage: user.profileImage,
           status: user.status,
+          role: user.role || 'user', // 사용자 권한 레벨
           oauthProviders: user.oauthProviders || [], // OAuth 프로바이더 정보
           loginProvider: 'apple' as const, // 로그인한 provider
         },

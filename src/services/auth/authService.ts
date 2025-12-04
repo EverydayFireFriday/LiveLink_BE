@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { User, TermsConsent } from '../../models/auth/user';
+import { User, TermsConsent, UserRole } from '../../models/auth/user';
 
 export class AuthService {
   private readonly SALT_ROUNDS = 12;
@@ -35,6 +35,7 @@ export class AuthService {
       | 'updatedAt'
     > & {
       _id?: { toHexString(): string };
+      role?: UserRole;
       likedConcerts?: unknown;
       likedArticles?: unknown;
     },
@@ -48,11 +49,12 @@ export class AuthService {
     status: string;
     statusReason?: string;
     profileImage?: string;
+    role: string;
     termsConsents: TermsConsent[];
     createdAt: Date;
     updatedAt: Date;
-    likedConcerts?: unknown;
-    likedArticles?: unknown;
+    likedConcerts?: string[];
+    likedArticles?: string[];
     loginTime: string;
     loginProvider: 'email' | 'google' | 'apple';
   } {
@@ -65,11 +67,12 @@ export class AuthService {
       status: user.status,
       statusReason: user.statusReason,
       profileImage: user.profileImage,
+      role: user.role || UserRole.USER, // role 필드 추가 (기본값: USER)
       termsConsents: user.termsConsents || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      likedConcerts: user.likedConcerts,
-      likedArticles: user.likedArticles,
+      likedConcerts: user.likedConcerts as string[] | undefined,
+      likedArticles: user.likedArticles as string[] | undefined,
       loginTime: new Date().toISOString(),
       loginProvider,
     };

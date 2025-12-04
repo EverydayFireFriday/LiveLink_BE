@@ -31,6 +31,7 @@
     "migrate:down": "ts-node src/scripts/migrate.ts down",
     "migrate:status": "ts-node src/scripts/migrate.ts status",
     "migrate:notification-preference": "ts-node scripts/migration/updateNotificationPreference.ts",
+    "migrate:roles": "ts-node src/scripts/migrateUserRoles.ts",
     "db:seed": "ts-node src/scripts/seed.ts",
     "sync:concerts": "ts-node src/scripts/syncConcertsToLive.ts",
     "copy:live-to-test": "ts-node src/scripts/copyLiveToTest.ts",

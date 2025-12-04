@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import {
   UserStatus,
+  UserRole,
   TermsConsent,
   NotificationPreference,
   OAuthProvider,
@@ -18,6 +19,7 @@ export interface User {
   status: UserStatus;
   statusReason?: string;
   profileImage?: string;
+  role?: UserRole; // 사용자 권한 레벨 (마이그레이션 중에는 선택적)
 
   // 약관 동의 관련 (배열 구조)
   termsConsents: TermsConsent[];

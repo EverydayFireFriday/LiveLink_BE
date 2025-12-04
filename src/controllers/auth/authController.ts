@@ -306,6 +306,7 @@ export class AuthController {
             status: user.status,
             statusReason: user.statusReason,
             profileImage: user.profileImage,
+            role: user.role || 'user', // 사용자 권한 레벨
             termsConsents: user.termsConsents || [], // 약관 동의 배열
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -424,6 +425,7 @@ export class AuthController {
             status: user.status,
             statusReason: user.statusReason,
             profileImage: user.profileImage,
+            role: user.role || 'user', // 사용자 권한 레벨
             termsConsents: user.termsConsents || [],
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,

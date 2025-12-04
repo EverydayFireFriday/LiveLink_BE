@@ -2,6 +2,7 @@ import {
   UserModel,
   TermsConsent,
   NotificationPreference,
+  UserRole,
 } from '../../models/auth/user';
 import { User } from '../../types/auth/authTypes';
 import { cacheManager } from '../../utils/cache/cacheManager';
@@ -61,6 +62,7 @@ export class UserService {
     name?: string;
     birthDate?: Date;
     profileImage?: string;
+    role?: UserRole;
     termsConsents: TermsConsent[];
     notificationPreference?: NotificationPreference;
   }): Promise<User> {

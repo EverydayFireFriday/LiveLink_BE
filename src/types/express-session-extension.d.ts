@@ -16,18 +16,19 @@ declare module 'express-session' {
       username: string;
       name?: string;
       birthDate?: Date;
-      status: string;
+      status?: string;
       statusReason?: string;
       profileImage?: string;
-      termsConsents: TermsConsent[]; // ✅ 최신 배열 구조
-      createdAt: Date;
-      updatedAt: Date;
+      role?: string; // 사용자 권한 레벨 (user, admin, superadmin)
+      termsConsents?: TermsConsent[]; // ✅ 최신 배열 구조
+      createdAt?: Date;
+      updatedAt?: Date;
       provider?: string;
       socialId?: string;
-      likedConcerts: string[];
-      likedArticles: string[];
+      likedConcerts?: string[];
+      likedArticles?: string[];
       loginTime: string;
-      loginProvider: 'email' | 'google' | 'apple'; // 로그인한 provider
+      loginProvider?: 'email' | 'google' | 'apple'; // 로그인한 provider
     };
   }
 }

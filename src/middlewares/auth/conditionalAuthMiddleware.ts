@@ -2,18 +2,7 @@ import express from 'express';
 import { requireAuth } from './authMiddleware';
 import logger from '../../utils/logger/logger';
 
-// SessionData 인터페이스 참조
-declare module 'express-session' {
-  interface SessionData {
-    user?: {
-      email: string; // 아이디로 사용되는 이메일
-      userId: string;
-      username: string; // 이름(수정 가능)
-      profileImage?: string;
-      loginTime: string;
-    };
-  }
-}
+// SessionData 타입은 src/types/express-session-extension.d.ts에서 정의됨
 
 /**
  * 개발환경에서만 인증을 스킵하는 미들웨어
@@ -129,6 +118,7 @@ export const createDevSessionIfNeeded = (
       userId,
       username,
       profileImage,
+      role: 'user', // 개발 환경 임시 세션은 기본 사용자 권한
       loginTime: timestamp,
     };
 
