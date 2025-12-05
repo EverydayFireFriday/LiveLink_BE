@@ -569,6 +569,7 @@ export class RegistrationController {
           name: (updatedUser || newUser).name,
           birthDate: (updatedUser || newUser).birthDate,
           profileImage: (updatedUser || newUser).profileImage,
+          role: (updatedUser || newUser).role,
           termsConsents: (updatedUser || newUser).termsConsents,
           createdAt: (updatedUser || newUser).createdAt,
         },

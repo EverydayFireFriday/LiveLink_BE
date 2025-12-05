@@ -1,6 +1,11 @@
 import express from 'express';
 import logger from '../../utils/logger/logger';
 import { UserRole } from '../../models/auth/user';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  UnauthorizedError,
+  ForbiddenError,
+} from '../../utils/errors/customErrors';
 
 /**
  * 관리자 권한 확인 미들웨어 (ADMIN 또는 SUPERADMIN)
@@ -12,11 +17,10 @@ export const requireAdmin = (
 ) => {
   // 로그인 확인
   if (!req.session.user) {
-    res.status(401).json({
-      message: '로그인이 필요합니다.',
-      redirectTo: '/auth/login',
-    });
-    return;
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   // 관리자 권한 확인 (ADMIN 또는 SUPERADMIN)
@@ -28,13 +32,10 @@ export const requireAdmin = (
     logger.info(
       `🚫 관리자 권한 없음: ${req.session.user.email} (현재 역할: ${userRole})`,
     );
-    res.status(403).json({
-      message: '관리자 권한이 필요합니다.',
-      currentUser: req.session.user.email,
-      currentRole: userRole,
-      requiredRole: 'admin or superadmin',
-    });
-    return;
+    throw new ForbiddenError(
+      '관리자 권한이 필요합니다.',
+      ErrorCodes.AUTH_FORBIDDEN,
+    );
   }
 
   // 관리자 접근 로그
@@ -55,11 +56,10 @@ export const requireSuperAdmin = (
 ) => {
   // 로그인 확인
   if (!req.session.user) {
-    res.status(401).json({
-      message: '로그인이 필요합니다.',
-      redirectTo: '/auth/login',
-    });
-    return;
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   // 슈퍼 관리자 권한 확인
@@ -69,13 +69,10 @@ export const requireSuperAdmin = (
     logger.info(
       `🚫 슈퍼 관리자 권한 없음: ${req.session.user.email} (현재 역할: ${userRole})`,
     );
-    res.status(403).json({
-      message: '슈퍼 관리자 권한이 필요합니다.',
-      currentUser: req.session.user.email,
-      currentRole: userRole,
-      requiredRole: 'superadmin',
-    });
-    return;
+    throw new ForbiddenError(
+      '슈퍼 관리자 권한이 필요합니다.',
+      ErrorCodes.AUTH_FORBIDDEN,
+    );
   }
 
   // 슈퍼 관리자 접근 로그
