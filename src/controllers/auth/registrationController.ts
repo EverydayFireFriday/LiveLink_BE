@@ -265,6 +265,12 @@ export class RegistrationController {
         expiresIn: '10분',
       });
     } catch (error: unknown) {
+      // AppError 인스턴스는 그대로 던지기 (비즈니스 로직 에러)
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      // 예상치 못한 시스템 에러만 InternalServerError로 변환
       logger.error('이메일 인증 확인 에러:', error);
       throw new InternalServerError(
         '이메일 인증 실패',
@@ -568,8 +574,21 @@ export class RegistrationController {
         },
       });
     } catch (error: unknown) {
+      // AppError 인스턴스는 그대로 던지기 (비즈니스 로직 에러)
+      if (error instanceof AppError) {
+        logger.error(
+          '[Registration] Complete registration error: ' +
+            JSON.stringify({
+              error: error.message,
+              stack: error.stack,
+            }),
+        );
+        throw error;
+      }
+
+      // 예상치 못한 시스템 에러만 InternalServerError로 변환
       logger.error(
-        '[Registration] Complete registration error: ' +
+        '[Registration] Unexpected error during registration: ' +
           JSON.stringify({
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,

@@ -80,9 +80,8 @@ const registrationController = new RegistrationController();
  *                   type: string
  *                   example: "사용자명 생성 실패"
  */
-router.get(
-  '/generate-username',
-  (req, res) => void registrationController.generateUsername(req, res),
+router.get('/generate-username', (req, res, next) =>
+  registrationController.generateUsername(req, res).catch(next),
 );
 /**
  * @swagger
@@ -148,9 +147,8 @@ router.get(
  *                   type: string
  *                   example: "별명 중복 확인 실패"
  */
-router.post(
-  '/check-username',
-  (req, res) => void registrationController.checkUsername(req, res),
+router.post('/check-username', (req, res, next) =>
+  registrationController.checkUsername(req, res).catch(next),
 );
 
 /**
@@ -203,11 +201,8 @@ router.post(
  *       500:
  *         description: 서버 에러
  */
-router.post(
-  '/send-verification-email',
-
-  requireNoAuth,
-  (req, res) => void registrationController.sendVerificationEmail(req, res),
+router.post('/send-verification-email', requireNoAuth, (req, res, next) =>
+  registrationController.sendVerificationEmail(req, res).catch(next),
 );
 
 /**
@@ -269,11 +264,8 @@ router.post(
  *       500:
  *         description: 서버 에러
  */
-router.post(
-  '/verify-email',
-
-  requireNoAuth,
-  (req, res) => void registrationController.verifyEmail(req, res),
+router.post('/verify-email', requireNoAuth, (req, res, next) =>
+  registrationController.verifyEmail(req, res).catch(next),
 );
 
 /**
@@ -424,11 +416,8 @@ router.post(
  *       500:
  *         description: 서버 에러
  */
-router.post(
-  '/complete-registration',
-
-  requireNoAuth,
-  (req, res) => void registrationController.completeRegistration(req, res),
+router.post('/complete-registration', requireNoAuth, (req, res, next) =>
+  registrationController.completeRegistration(req, res).catch(next),
 );
 
 export default router;
