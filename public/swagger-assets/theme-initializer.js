@@ -137,37 +137,37 @@
     logger.info('레인보우 모드 토글 설정 완료');
   }
 
-  // ==================== 미니게임 버튼 ====================
-  function setupMiniGameButton() {
-    if (document.querySelector('.minigame-button')) return;
+  // ==================== 고객 문의 버튼 ====================
+  function setupSupportButton() {
+    if (document.querySelector('.support-button')) return;
 
-    const gameButton = document.createElement('button');
-    gameButton.className = 'minigame-button';
-    gameButton.title = '미니게임 플레이';
-    gameButton.innerHTML = '🎮';
+    const supportButton = document.createElement('button');
+    supportButton.className = 'support-button';
+    supportButton.title = '고객 문의 관리';
+    supportButton.innerHTML = '📧';
 
-    Object.assign(gameButton.style, {
+    Object.assign(supportButton.style, {
       position: 'fixed', top: '14px', right: '120px', zIndex: '1001',
-      background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white', border: 'none',
       borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer',
       fontSize: '18px', transition: 'all 0.3s ease',
-      boxShadow: '0 4px 15px rgba(245, 87, 108, 0.3)',
+      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     });
 
-    gameButton.addEventListener('click', () => window.open('/games', '_blank'));
-    gameButton.addEventListener('mouseenter', () => {
-      gameButton.style.transform = 'scale(1.1)';
-      gameButton.style.boxShadow = '0 6px 20px rgba(245, 87, 108, 0.5)';
+    supportButton.addEventListener('click', () => window.open('/support/admin/login', '_blank'));
+    supportButton.addEventListener('mouseenter', () => {
+      supportButton.style.transform = 'scale(1.1)';
+      supportButton.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
     });
-    gameButton.addEventListener('mouseleave', () => {
-      gameButton.style.transform = 'scale(1)';
-      gameButton.style.boxShadow = '0 4px 15px rgba(245, 87, 108, 0.3)';
+    supportButton.addEventListener('mouseleave', () => {
+      supportButton.style.transform = 'scale(1)';
+      supportButton.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
     });
 
-    document.body.appendChild(gameButton);
-    logger.info('미니게임 버튼 설정 완료');
+    document.body.appendChild(supportButton);
+    logger.info('고객 문의 버튼 설정 완료');
   }
 
   // ==================== DOM 기반 검색 기능 ====================
@@ -331,7 +331,7 @@
       /* 토글 버튼 호버 효과 */
       .dark-mode-toggle:hover,
       .rainbow-mode-toggle:hover,
-      .minigame-button:hover {
+      .support-button:hover {
         transform: scale(1.1);
       }
     `;
@@ -347,7 +347,7 @@
       initializeTheme();
       setupDarkModeToggle();
       setupRainbowModeToggle();
-      setupMiniGameButton();
+      setupSupportButton();
       setupUIEnhancements();
       setupDOMSearch();
 

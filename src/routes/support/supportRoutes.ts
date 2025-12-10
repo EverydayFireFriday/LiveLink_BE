@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import {
   createInquiry,
   getInquiryById,
@@ -12,6 +13,21 @@ import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import { requireAdmin } from '../../middlewares/auth/adminMiddleware';
 
 const router = express.Router();
+
+// HTML Pages for Admin UI
+router.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../../public/support/login.html'));
+});
+
+router.get('/admin/inquiries', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../../public/support/inquiries.html'));
+});
+
+router.get('/admin/inquiry/:id', (req, res) => {
+  res.sendFile(
+    path.join(__dirname, '../../../public/support/inquiry-detail.html'),
+  );
+});
 
 /**
  * @swagger

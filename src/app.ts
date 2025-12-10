@@ -258,7 +258,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
     environment: env.NODE_ENV,
     endpoints: {
       documentation: '/api-docs',
-      games: '/games',
+      support: '/support',
       'health-liveness': '/health/liveness',
       'health-readiness': '/health/readiness',
       'health-general': '/health',

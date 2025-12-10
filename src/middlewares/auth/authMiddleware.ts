@@ -89,6 +89,14 @@ export const requireNoAuth = async (
   }
 
   if (req.session.user) {
+    // force 파라미터가 true이면 강제 로그인 허용
+    const { force } = req.body as { force?: boolean };
+    if (force === true) {
+      console.log('[Auth] Force login requested, allowing login');
+      next();
+      return;
+    }
+
     // MongoDB UserSession 존재 여부 확인
     try {
       const { UserSessionModel } = await import(
