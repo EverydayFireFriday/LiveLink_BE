@@ -239,6 +239,61 @@
     .logout-button:hover {
       background: rgba(255, 255, 255, 0.3);
     }
+
+    .refresh-button {
+      padding: 10px 20px;
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .refresh-button:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .refresh-button.refreshing {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .last-updated {
+      font-size: 12px;
+      color: #999;
+      margin-left: 15px;
+    }
+
+    .search-button {
+      padding: 10px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .search-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .search-button:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -253,7 +308,7 @@
     <div class="filters">
       <div class="filter-group">
         <label for="statusFilter">상태:</label>
-        <select id="statusFilter" onchange="loadInquiries()">
+        <select id="statusFilter">
           <option value="">전체</option>
           <option value="PENDING">대기중</option>
           <option value="IN_PROGRESS">처리중</option>
@@ -262,7 +317,7 @@
         </select>
 
         <label for="categoryFilter">카테고리:</label>
-        <select id="categoryFilter" onchange="loadInquiries()">
+        <select id="categoryFilter">
           <option value="">전체</option>
           <option value="TECHNICAL">기술</option>
           <option value="ACCOUNT">계정</option>
@@ -273,12 +328,21 @@
         </select>
 
         <label for="priorityFilter">우선순위:</label>
-        <select id="priorityFilter" onchange="loadInquiries()">
+        <select id="priorityFilter">
           <option value="">전체</option>
           <option value="HIGH">높음</option>
           <option value="MEDIUM">보통</option>
           <option value="LOW">낮음</option>
         </select>
+
+        <button class="search-button" onclick="applyFilters()">
+          🔍 조회
+        </button>
+
+        <button class="refresh-button" id="refreshButton" onclick="manualRefresh()">
+          🔄 새로고침
+        </button>
+        <span class="last-updated" id="lastUpdated"></span>
       </div>
     </div>
 
@@ -292,8 +356,54 @@
   <script>
     let currentPage = 1;
     const limit = 20;
+    let isRefreshing = false;
+    let autoRefreshInterval = null;
 
-    async function loadInquiries() {
+    // 자동 새로고침 시작 (30초마다)
+    function startAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+      autoRefreshInterval = setInterval(() => {
+        loadInquiries(true); // 자동 새로고침
+      }, 30000); // 30초
+    }
+
+    // 페이지 언로드 시 인터벌 정리
+    window.addEventListener('beforeunload', () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    });
+
+    // 수동 새로고침
+    async function manualRefresh() {
+      if (isRefreshing) return;
+      await loadInquiries();
+    }
+
+    // 필터 적용 및 조회
+    function applyFilters() {
+      currentPage = 1; // 필터 적용 시 첫 페이지로 이동
+      loadInquiries();
+    }
+
+    // 마지막 업데이트 시간 업데이트
+    function updateLastUpdatedTime() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('ko-KR');
+      document.getElementById('lastUpdated').textContent = `마지막 업데이트: ${timeStr}`;
+    }
+
+    async function loadInquiries(isAuto = false) {
+      if (isRefreshing) return;
+
+      isRefreshing = true;
+      const refreshButton = document.getElementById('refreshButton');
+      if (refreshButton) {
+        refreshButton.classList.add('refreshing');
+        refreshButton.disabled = true;
+      }
       const statusFilter = document.getElementById('statusFilter').value;
       const categoryFilter = document.getElementById('categoryFilter').value;
       const priorityFilter = document.getElementById('priorityFilter').value;
@@ -323,14 +433,24 @@
 
         const data = await response.json();
         displayInquiries(data.data, data.pagination);
+        updateLastUpdatedTime();
       } catch (error) {
         console.error('Error loading inquiries:', error);
-        document.getElementById('inquiryList').innerHTML = `
-          <div class="empty-state">
-            <div class="icon">⚠️</div>
-            <p>문의 목록을 불러오는데 실패했습니다.</p>
-          </div>
-        `;
+        if (!isAuto) {
+          // 수동 새로고침일 때만 에러 메시지 표시
+          document.getElementById('inquiryList').innerHTML = `
+            <div class="empty-state">
+              <div class="icon">⚠️</div>
+              <p>문의 목록을 불러오는데 실패했습니다.</p>
+            </div>
+          `;
+        }
+      } finally {
+        isRefreshing = false;
+        if (refreshButton) {
+          refreshButton.classList.remove('refreshing');
+          refreshButton.disabled = false;
+        }
       }
     }
 
@@ -448,7 +568,9 @@
       }
     }
 
+    // 페이지 로드 시 실행
     loadInquiries();
+    startAutoRefresh();
   </script>
 </body>
 </html>
