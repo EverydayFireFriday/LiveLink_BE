@@ -335,7 +335,14 @@
     }
 
     function displayInquiry(inquiry) {
-      const hasResponse = inquiry.adminResponse && inquiry.adminResponse.content;
+      // Debug: 답변 데이터 콘솔 확인
+      console.log('inquiry.adminResponse:', inquiry.adminResponse);
+      console.log('inquiry.status:', inquiry.status);
+
+      // 답변이 있는지 확인 (더 엄격한 체크)
+      const hasResponse = inquiry.adminResponse &&
+                         inquiry.adminResponse.content &&
+                         inquiry.adminResponse.content.trim().length > 0;
 
       document.getElementById('content').innerHTML = `
         <div class="card">
