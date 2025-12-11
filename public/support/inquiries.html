@@ -302,7 +302,7 @@
     <p>전체 문의 내역을 확인하고 답변할 수 있습니다</p>
   </div>
 
-  <button class="logout-button" onclick="logout()">로그아웃</button>
+  <button class="logout-button" id="logoutButton">로그아웃</button>
 
   <div class="container">
     <div class="filters">
@@ -335,11 +335,11 @@
           <option value="LOW">낮음</option>
         </select>
 
-        <button class="search-button" onclick="applyFilters()">
+        <button class="search-button" id="searchButton">
           🔍 조회
         </button>
 
-        <button class="refresh-button" id="refreshButton" onclick="manualRefresh()">
+        <button class="refresh-button" id="refreshButton">
           🔄 새로고침
         </button>
         <span class="last-updated" id="lastUpdated"></span>
@@ -469,7 +469,7 @@
       }
 
       inquiryList.innerHTML = inquiries.map(inquiry => `
-        <div class="inquiry-item" onclick="viewInquiry('${inquiry._id}')">
+        <div class="inquiry-item" data-inquiry-id="${inquiry._id}">
           <div class="inquiry-header">
             <div>
               <div class="inquiry-subject">${escapeHtml(inquiry.subject)}</div>
@@ -484,6 +484,14 @@
         </div>
       `).join('');
 
+      // 이벤트 리스너 추가
+      document.querySelectorAll('.inquiry-item').forEach(item => {
+        item.addEventListener('click', function() {
+          const inquiryId = this.getAttribute('data-inquiry-id');
+          viewInquiry(inquiryId);
+        });
+      });
+
       displayPagination(pagination);
     }
 
@@ -493,21 +501,29 @@
 
       let buttons = '';
 
-      buttons += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>이전</button>`;
+      buttons += `<button data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>이전</button>`;
 
       for (let i = 1; i <= totalPages; i++) {
         if (i === currentPage) {
           buttons += `<button class="current-page">${i}</button>`;
         } else if (Math.abs(i - currentPage) <= 2 || i === 1 || i === totalPages) {
-          buttons += `<button onclick="goToPage(${i})">${i}</button>`;
+          buttons += `<button data-page="${i}">${i}</button>`;
         } else if (Math.abs(i - currentPage) === 3) {
           buttons += `<button disabled>...</button>`;
         }
       }
 
-      buttons += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>`;
+      buttons += `<button data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>`;
 
       paginationDiv.innerHTML = buttons;
+
+      // 페이지네이션 버튼 이벤트 리스너 추가
+      paginationDiv.querySelectorAll('button[data-page]').forEach(button => {
+        button.addEventListener('click', function() {
+          const page = parseInt(this.getAttribute('data-page'));
+          goToPage(page);
+        });
+      });
     }
 
     function goToPage(page) {
@@ -567,6 +583,11 @@
         console.error('Logout error:', error);
       }
     }
+
+    // 이벤트 리스너 설정
+    document.getElementById('logoutButton').addEventListener('click', logout);
+    document.getElementById('searchButton').addEventListener('click', applyFilters);
+    document.getElementById('refreshButton').addEventListener('click', manualRefresh);
 
     // 페이지 로드 시 실행
     loadInquiries();

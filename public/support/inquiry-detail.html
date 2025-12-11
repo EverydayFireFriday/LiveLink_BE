@@ -371,7 +371,7 @@
 
           <div class="status-controls">
             <label>상태 변경:</label>
-            <select id="statusSelect" onchange="updateStatus()">
+            <select id="statusSelect">
               <option value="PENDING" ${inquiry.status === 'PENDING' ? 'selected' : ''}>대기중</option>
               <option value="IN_PROGRESS" ${inquiry.status === 'IN_PROGRESS' ? 'selected' : ''}>처리중</option>
               <option value="ANSWERED" ${inquiry.status === 'ANSWERED' ? 'selected' : ''}>답변완료</option>
@@ -379,7 +379,7 @@
             </select>
 
             <label>우선순위:</label>
-            <select id="prioritySelect" onchange="updatePriority()">
+            <select id="prioritySelect">
               <option value="LOW" ${inquiry.priority === 'LOW' ? 'selected' : ''}>낮음</option>
               <option value="MEDIUM" ${inquiry.priority === 'MEDIUM' ? 'selected' : ''}>보통</option>
               <option value="HIGH" ${inquiry.priority === 'HIGH' ? 'selected' : ''}>높음</option>
@@ -398,15 +398,24 @@
               </div>
               <div class="button-group">
                 <button type="submit" class="button button-primary">답변 전송</button>
-                <button type="button" class="button button-secondary" onclick="window.history.back()">취소</button>
+                <button type="button" class="button button-secondary" id="cancelButton">취소</button>
               </div>
             </form>
           </div>
         ` : ''}
       `;
 
+      // 이벤트 리스너 설정
+      document.getElementById('statusSelect').addEventListener('change', updateStatus);
+      document.getElementById('prioritySelect').addEventListener('change', updatePriority);
+
       if (!hasResponse) {
         setupResponseForm();
+        // 취소 버튼 이벤트 리스너
+        const cancelButton = document.getElementById('cancelButton');
+        if (cancelButton) {
+          cancelButton.addEventListener('click', () => window.history.back());
+        }
       }
     }
 
