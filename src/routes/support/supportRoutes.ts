@@ -20,11 +20,11 @@ router.get('/admin/login', (req, res) => {
   res.sendFile(path.join(__dirname, '../../../public/support/login.html'));
 });
 
-router.get('/admin/inquiries', (req, res) => {
+router.get('/admin/inquiries', requireAuth, requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, '../../../public/support/inquiries.html'));
 });
 
-router.get('/admin/inquiry/:id', (req, res) => {
+router.get('/admin/inquiry/:id', requireAuth, requireAdmin, (req, res) => {
   res.sendFile(
     path.join(__dirname, '../../../public/support/inquiry-detail.html'),
   );

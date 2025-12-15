@@ -418,7 +418,7 @@
       if (priorityFilter) params.append('priority', priorityFilter);
 
       try {
-        const response = await fetch(`/support?${params}`, {
+        const response = await fetch(`/support/admin?${params}`, {
           credentials: 'include'
         });
 
