@@ -263,11 +263,40 @@
           const user = data.data?.user;
           if (!user) {
             showError('사용자 정보를 불러올 수 없습니다.');
+            loginButton.disabled = false;
+            loginButton.textContent = '로그인';
             return;
           }
 
-          // 문의 목록 페이지로 이동
-          window.location.href = '/support/admin/inquiries';
+          // 관리자 권한 확인
+          const adminCheckResponse = await fetch('/auth/admin/check', {
+            credentials: 'include'
+          });
+
+          if (adminCheckResponse.ok) {
+            const adminData = await adminCheckResponse.json();
+
+            if (adminData.isAdmin) {
+              // 관리자 권한 있음 - 문의 목록 페이지로 이동
+              // 리다이렉트 되므로 버튼 상태 변경 불필요
+              window.location.href = '/support/admin/inquiries';
+              return; // finally 블록 실행 방지
+            } else {
+              // 관리자 권한 없음 - 로그아웃 후 에러 표시
+              await fetch('/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+              });
+              showError('관리자 권한이 없습니다. 관리자 계정으로 로그인해주세요.');
+            }
+          } else {
+            // 권한 확인 실패 - 로그아웃 후 에러 표시
+            await fetch('/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+            showError('권한 확인에 실패했습니다. 다시 시도해주세요.');
+          }
         } else {
           const errorMsg = data.message || '로그인에 실패했습니다.';
           showError(errorMsg);
