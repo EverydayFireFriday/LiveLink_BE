@@ -3,7 +3,8 @@ import path from 'path';
 import {
   createInquiry,
   getInquiryById,
-  getInquiries,
+  getUserInquiries,
+  getAdminInquiries,
   updateInquiryStatus,
   updateInquiryPriority,
   addAdminResponse,
@@ -85,8 +86,8 @@ router.post('/', requireAuth, createInquiry);
  * @swagger
  * /support:
  *   get:
- *     summary: 문의 목록 조회
- *     description: 사용자의 문의 목록을 조회합니다 (관리자는 전체 조회 가능)
+ *     summary: 본인 문의 목록 조회
+ *     description: 사용자 본인의 문의 목록을 조회합니다
  *     tags:
  *       - Support
  *     security:
@@ -98,18 +99,6 @@ router.post('/', requireAuth, createInquiry);
  *           type: string
  *           enum: [PENDING, IN_PROGRESS, ANSWERED, CLOSED]
  *         description: 문의 상태 필터
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *           enum: [TECHNICAL, ACCOUNT, PAYMENT, FEATURE_REQUEST, BUG_REPORT, OTHER]
- *         description: 문의 카테고리 필터 (관리자만 사용 가능)
- *       - in: query
- *         name: priority
- *         schema:
- *           type: string
- *           enum: [LOW, MEDIUM, HIGH]
- *         description: 우선순위 필터 (관리자만 사용 가능)
  *       - in: query
  *         name: page
  *         schema:
@@ -128,7 +117,58 @@ router.post('/', requireAuth, createInquiry);
  *       401:
  *         description: 인증 필요
  */
-router.get('/', requireAuth, getInquiries);
+router.get('/', requireAuth, getUserInquiries);
+
+/**
+ * @swagger
+ * /support/admin:
+ *   get:
+ *     summary: 전체 문의 목록 조회 (관리자 전용)
+ *     description: 관리자가 전체 문의 목록을 조회합니다
+ *     tags:
+ *       - Support (Admin)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, IN_PROGRESS, ANSWERED, CLOSED]
+ *         description: 문의 상태 필터
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [TECHNICAL, ACCOUNT, PAYMENT, FEATURE_REQUEST, BUG_REPORT, OTHER]
+ *         description: 문의 카테고리 필터
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: [LOW, MEDIUM, HIGH]
+ *         description: 우선순위 필터
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: 페이지당 항목 수
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ */
+router.get('/admin', requireAuth, requireAdmin, getAdminInquiries);
 
 /**
  * @swagger

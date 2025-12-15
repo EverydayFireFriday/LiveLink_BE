@@ -146,28 +146,81 @@ export const getInquiryById = async (
 };
 
 /**
- * Get inquiries list
- * 문의 목록 조회 (본인 or 관리자)
+ * Get user's own inquiries
+ * 사용자 본인의 문의 목록 조회
  * GET /api/support
  */
-export const getInquiries = async (
+export const getUserInquiries = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   const userId = req.session?.user?.userId;
-  const userEmail = req.session?.user?.email;
 
   if (!userId) {
     throw new UnauthorizedError('Unauthorized', ErrorCodes.AUTH_UNAUTHORIZED);
   }
 
-  // Check if user is admin using email
-  const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase());
-  const isAdmin = userEmail
-    ? adminEmails.includes(userEmail.toLowerCase())
-    : false;
+  try {
+    const {
+      status,
+      page = '1',
+      limit = '20',
+    } = req.query as {
+      status?: string;
+      page?: string;
+      limit?: string;
+    };
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+
+    // Validate status if provided
+    if (
+      status &&
+      !Object.values(InquiryStatus).includes(status as InquiryStatus)
+    ) {
+      throw new BadRequestError('Invalid status', ErrorCodes.VAL_INVALID_INPUT);
+    }
+
+    // Regular user can only see their own inquiries
+    const result = await supportService.getUserInquiries(new ObjectId(userId), {
+      status: status as InquiryStatus | undefined,
+      page: pageNum,
+      limit: limitNum,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result.inquiries,
+      pagination: {
+        page: result.page,
+        limit: limitNum,
+        total: result.total,
+        totalPages: Math.ceil(result.total / limitNum),
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    logger.error('Error fetching user inquiries:', error);
+    throw new InternalServerError(
+      'Failed to fetch inquiries',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
+  }
+};
+
+/**
+ * Get all inquiries (Admin only)
+ * 전체 문의 목록 조회 (관리자 전용)
+ * GET /api/support/admin
+ */
+export const getAdminInquiries = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  // Admin check is handled by requireAdmin middleware
 
   try {
     const {
@@ -212,25 +265,14 @@ export const getInquiries = async (
       );
     }
 
-    let result;
-
-    if (isAdmin) {
-      // Admin can see all inquiries
-      result = await supportService.getAllInquiries({
-        status: status as InquiryStatus | undefined,
-        category: category as SupportCategory | undefined,
-        priority: priority as Priority | undefined,
-        page: pageNum,
-        limit: limitNum,
-      });
-    } else {
-      // Regular user can only see their own inquiries
-      result = await supportService.getUserInquiries(new ObjectId(userId), {
-        status: status as InquiryStatus | undefined,
-        page: pageNum,
-        limit: limitNum,
-      });
-    }
+    // Admin can see all inquiries with full filtering
+    const result = await supportService.getAllInquiries({
+      status: status as InquiryStatus | undefined,
+      category: category as SupportCategory | undefined,
+      priority: priority as Priority | undefined,
+      page: pageNum,
+      limit: limitNum,
+    });
 
     res.status(200).json({
       success: true,
@@ -246,7 +288,7 @@ export const getInquiries = async (
     if (error instanceof AppError) {
       throw error;
     }
-    logger.error('Error fetching inquiries:', error);
+    logger.error('Error fetching admin inquiries:', error);
     throw new InternalServerError(
       'Failed to fetch inquiries',
       ErrorCodes.SYS_INTERNAL_ERROR,
