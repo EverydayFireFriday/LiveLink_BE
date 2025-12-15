@@ -585,14 +585,48 @@
       }
     }
 
+    // 관리자 권한 체크
+    async function checkAdminAuth() {
+      try {
+        const response = await fetch('/auth/admin/check', {
+          credentials: 'include'
+        });
+
+        if (!response.ok || response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 로그인 페이지로 이동합니다.');
+          window.location.href = '/support/admin/login';
+          return false;
+        }
+
+        const data = await response.json();
+        if (!data.isAdmin) {
+          alert('관리자 권한이 필요합니다. 로그인 페이지로 이동합니다.');
+          window.location.href = '/support/admin/login';
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Admin check error:', error);
+        alert('권한 확인 중 오류가 발생했습니다. 로그인 페이지로 이동합니다.');
+        window.location.href = '/support/admin/login';
+        return false;
+      }
+    }
+
     // 이벤트 리스너 설정
     document.getElementById('logoutButton').addEventListener('click', logout);
     document.getElementById('searchButton').addEventListener('click', applyFilters);
     document.getElementById('refreshButton').addEventListener('click', manualRefresh);
 
     // 페이지 로드 시 실행
-    loadInquiries();
-    startAutoRefresh();
+    (async () => {
+      const isAdmin = await checkAdminAuth();
+      if (isAdmin) {
+        loadInquiries();
+        startAutoRefresh();
+      }
+    })();
   </script>
 </body>
 </html>
