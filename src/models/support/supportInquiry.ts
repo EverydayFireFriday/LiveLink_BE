@@ -215,8 +215,22 @@ export class SupportInquiryModel {
    * Count inquiries by user ID
    * 사용자 ID로 문의 개수 조회
    */
-  public async countByUserId(userId: ObjectId): Promise<number> {
-    return this.collection.countDocuments({ userId, isDeleted: false });
+  public async countByUserId(
+    userId: ObjectId,
+    status?: InquiryStatus,
+  ): Promise<number> {
+    const query: {
+      userId: ObjectId;
+      isDeleted: boolean;
+      status?: InquiryStatus;
+    } = {
+      userId,
+      isDeleted: false,
+    };
+    if (status) {
+      query.status = status;
+    }
+    return this.collection.countDocuments(query);
   }
 
   /**

@@ -9,6 +9,7 @@ import {
   updateInquiryPriority,
   addAdminResponse,
   deleteInquiry,
+  getUserInquiryStats,
 } from '../../controllers/support/supportController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import { requireAdmin } from '../../middlewares/auth/adminMiddleware';
@@ -118,6 +119,47 @@ router.post('/', requireAuth, createInquiry);
  *         description: 인증 필요
  */
 router.get('/', requireAuth, getUserInquiries);
+
+/**
+ * @swagger
+ * /support/stats:
+ *   get:
+ *     summary: 본인 문의 통계 조회
+ *     description: 사용자 본인의 전체, 대기중, 답변완료 문의 개수를 조회합니다
+ *     tags:
+ *       - Support
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 통계 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: 전체 문의 수
+ *                       example: 15
+ *                     pending:
+ *                       type: integer
+ *                       description: 대기중인 문의 수
+ *                       example: 5
+ *                     answered:
+ *                       type: integer
+ *                       description: 답변완료된 문의 수
+ *                       example: 10
+ *       401:
+ *         description: 인증 필요
+ */
+router.get('/stats', requireAuth, getUserInquiryStats);
 
 /**
  * @swagger

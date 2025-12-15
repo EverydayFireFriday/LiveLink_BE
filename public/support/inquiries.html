@@ -422,7 +422,8 @@
           credentials: 'include'
         });
 
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
           window.location.href = '/support/admin/login';
           return;
         }

@@ -313,7 +313,8 @@
           credentials: 'include'
         });
 
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
           window.location.href = '/support/admin/login';
           return;
         }
@@ -440,6 +441,12 @@
             body: JSON.stringify({ content })
           });
 
+          if (response.status === 401 || response.status === 403) {
+            alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+            window.location.href = '/support/admin/login';
+            return;
+          }
+
           const data = await response.json();
 
           if (response.ok) {
@@ -473,6 +480,12 @@
           body: JSON.stringify({ status })
         });
 
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/support/admin/login';
+          return;
+        }
+
         if (response.ok) {
           showMessage('success', '상태가 변경되었습니다.');
         } else {
@@ -497,6 +510,12 @@
           credentials: 'include',
           body: JSON.stringify({ priority })
         });
+
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/support/admin/login';
+          return;
+        }
 
         if (response.ok) {
           showMessage('success', '우선순위가 변경되었습니다.');

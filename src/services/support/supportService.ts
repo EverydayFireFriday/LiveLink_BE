@@ -424,6 +424,36 @@ export class SupportService {
       throw error;
     }
   }
+
+  /**
+   * Get user's inquiry statistics
+   * 사용자 본인의 문의 통계 조회
+   */
+  async getUserInquiryStats(userId: ObjectId): Promise<{
+    total: number;
+    pending: number;
+    answered: number;
+  }> {
+    try {
+      const db = getDB();
+      const supportInquiryModel = getSupportInquiryModel(db);
+
+      const [total, pending, answered] = await Promise.all([
+        supportInquiryModel.countByUserId(userId),
+        supportInquiryModel.countByUserId(userId, InquiryStatus.PENDING),
+        supportInquiryModel.countByUserId(userId, InquiryStatus.ANSWERED),
+      ]);
+
+      return {
+        total,
+        pending,
+        answered,
+      };
+    } catch (error) {
+      logger.error('Error getting user inquiry stats:', error);
+      throw error;
+    }
+  }
 }
 
 export const supportService = new SupportService();

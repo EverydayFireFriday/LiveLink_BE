@@ -518,3 +518,39 @@ export const deleteInquiry = async (
     );
   }
 };
+
+/**
+ * Get user's inquiry statistics
+ * 사용자 본인의 문의 통계 조회
+ * GET /api/support/stats
+ */
+export const getUserInquiryStats = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = req.session?.user?.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('Unauthorized', ErrorCodes.AUTH_UNAUTHORIZED);
+  }
+
+  try {
+    const stats = await supportService.getUserInquiryStats(
+      new ObjectId(userId),
+    );
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    logger.error('Error fetching user inquiry stats:', error);
+    throw new InternalServerError(
+      'Failed to fetch inquiry stats',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
+  }
+};
