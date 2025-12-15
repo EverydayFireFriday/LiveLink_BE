@@ -15,6 +15,7 @@ import {
   BadRequestError,
   InternalServerError,
 } from '../../utils/errors/customErrors.js';
+import { UserRole } from '../../models/auth/user.js';
 
 /**
  * Create a new support inquiry
@@ -99,7 +100,7 @@ export const getInquiryById = async (
   res: Response,
 ): Promise<void> => {
   const userId = req.session?.user?.userId;
-  const userEmail = req.session?.user?.email;
+  const userRole = req.session?.user?.role;
 
   if (!userId) {
     throw new UnauthorizedError('Unauthorized', ErrorCodes.AUTH_UNAUTHORIZED);
@@ -115,13 +116,9 @@ export const getInquiryById = async (
       );
     }
 
-    // Check if user is admin using email
-    const adminEmails = (process.env.ADMIN_EMAILS || '')
-      .split(',')
-      .map((email) => email.trim().toLowerCase());
-    const isAdmin = userEmail
-      ? adminEmails.includes(userEmail.toLowerCase())
-      : false;
+    // Check if user is admin using role field
+    const isAdmin =
+      userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN;
 
     const inquiry = await supportService.getInquiryById(
       new ObjectId(id),
