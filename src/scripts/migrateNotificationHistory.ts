@@ -1,0 +1,271 @@
+/**
+ * Notification History 마이그레이션 스크립트
+ *
+ * 목적:
+ * 기존 NotificationHistory 도큐먼트의 루트 레벨 필드를 data 객체로 이동
+ * - type 필드를 data.type으로 이동
+ * - concertId 필드를 data.concertId로 이동
+ *
+ * 실행 방법:
+ * npm run migrate:notification-history
+ */
+
+import dotenv from 'dotenv';
+import { MongoClient, ObjectId } from 'mongodb';
+import logger from '../utils/logger/logger';
+
+// 환경변수 로드
+dotenv.config();
+
+interface MigrationStats {
+  totalNotifications: number;
+  notificationsWithType: number;
+  notificationsWithConcertId: number;
+  migratedNotifications: number;
+  errors: number;
+}
+
+interface OldNotificationHistory {
+  _id: ObjectId;
+  userId: ObjectId;
+  concertId?: ObjectId;
+  title: string;
+  message: string;
+  type?: string;
+  isRead: boolean;
+  readAt?: Date;
+  sentAt: Date;
+  data?: Record<string, string>;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+/**
+ * Map old FCM type values to new enum values
+ */
+const TYPE_MIGRATION_MAP: Record<string, string> = {
+  // Old FCM values -> New enum values
+  ticket_opening: 'ticket_open',
+  concert_start: 'concert_start',
+  concert_update: 'concert_update',
+  support_response: 'support_response',
+  scheduled: 'scheduled',
+
+  // Old time-specific enum values -> New unified values
+  ticket_open_10min: 'ticket_open',
+  ticket_open_30min: 'ticket_open',
+  ticket_open_1hour: 'ticket_open',
+  ticket_open_1day: 'ticket_open',
+  concert_start_1hour: 'concert_start',
+  concert_start_3hour: 'concert_start',
+  concert_start_1day: 'concert_start',
+};
+
+async function migrateNotificationHistory() {
+  const MONGO_URI = process.env.MONGO_URI;
+  const DB_NAME = process.env.MONGO_DB_NAME || 'livelink';
+
+  if (!MONGO_URI) {
+    logger.error('❌ MONGO_URI 환경변수가 설정되지 않았습니다.');
+    process.exit(1);
+  }
+
+  const client = new MongoClient(MONGO_URI);
+
+  try {
+    logger.info('🔄 MongoDB 연결 중...');
+    await client.connect();
+    logger.info('✅ MongoDB 연결 성공');
+
+    const db = client.db(DB_NAME);
+    const notificationHistoryCollection =
+      db.collection<OldNotificationHistory>('notificationHistory');
+
+    const stats: MigrationStats = {
+      totalNotifications: 0,
+      notificationsWithType: 0,
+      notificationsWithConcertId: 0,
+      migratedNotifications: 0,
+      errors: 0,
+    };
+
+    // 전체 알림 수 조회
+    stats.totalNotifications =
+      await notificationHistoryCollection.countDocuments();
+    logger.info(`📊 전체 알림 수: ${stats.totalNotifications}개`);
+
+    // type 필드가 있는 알림 수 조회
+    stats.notificationsWithType =
+      await notificationHistoryCollection.countDocuments({
+        type: { $exists: true },
+      });
+    logger.info(
+      `📊 type 필드가 있는 알림 수: ${stats.notificationsWithType}개`,
+    );
+
+    // concertId 필드가 있는 알림 수 조회
+    stats.notificationsWithConcertId =
+      await notificationHistoryCollection.countDocuments({
+        concertId: { $exists: true },
+      });
+    logger.info(
+      `📊 concertId 필드가 있는 알림 수: ${stats.notificationsWithConcertId}개`,
+    );
+
+    if (
+      stats.notificationsWithType === 0 &&
+      stats.notificationsWithConcertId === 0
+    ) {
+      logger.info('✅ 모든 알림이 이미 마이그레이션되었습니다.');
+      return;
+    }
+
+    // 마이그레이션 대상 알림 조회
+    logger.info('\n🔄 마이그레이션 시작...');
+
+    const notificationsToMigrate =
+      await notificationHistoryCollection
+        .find({
+          $or: [{ type: { $exists: true } }, { concertId: { $exists: true } }],
+        })
+        .toArray();
+
+    logger.info(
+      `📋 마이그레이션 대상 알림: ${notificationsToMigrate.length}개`,
+    );
+
+    // 각 알림을 순회하며 마이그레이션
+    for (const notification of notificationsToMigrate) {
+      try {
+        const updateFields: Record<string, any> = {};
+        const unsetFields: Record<string, any> = {};
+
+        // 기존 data 객체 가져오기 (없으면 빈 객체)
+        const existingData = notification.data || {};
+        const newData = { ...existingData };
+
+        // type 필드를 data.type으로 이동 (타입 값 변환)
+        if (notification.type) {
+          const migratedType =
+            TYPE_MIGRATION_MAP[notification.type] || notification.type;
+          newData.type = migratedType;
+          unsetFields.type = '';
+        }
+
+        // data.type이 이미 있는 경우도 변환
+        if (existingData.type) {
+          const migratedType =
+            TYPE_MIGRATION_MAP[existingData.type] || existingData.type;
+          newData.type = migratedType;
+        }
+
+        // concertId 필드를 data.concertId로 이동
+        if (notification.concertId) {
+          newData.concertId = notification.concertId.toString();
+          unsetFields.concertId = '';
+        }
+
+        // data 필드 업데이트
+        updateFields.data = newData;
+
+        // 업데이트 실행
+        const updateOperation: any = {
+          $set: updateFields,
+        };
+
+        if (Object.keys(unsetFields).length > 0) {
+          updateOperation.$unset = unsetFields;
+        }
+
+        await notificationHistoryCollection.updateOne(
+          { _id: notification._id },
+          updateOperation,
+        );
+
+        stats.migratedNotifications++;
+
+        // 100개마다 진행 상황 로그
+        if (stats.migratedNotifications % 100 === 0) {
+          logger.info(
+            `⏳ 진행 중... ${stats.migratedNotifications}/${notificationsToMigrate.length}`,
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `❌ 알림 마이그레이션 실패 (ID: ${notification._id}):`,
+          error,
+        );
+        stats.errors++;
+      }
+    }
+
+    // 최종 통계 출력
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📊 마이그레이션 완료 통계:');
+    logger.info('='.repeat(60));
+    logger.info(`전체 알림 수: ${stats.totalNotifications}개`);
+    logger.info(`type 필드가 있던 알림 수: ${stats.notificationsWithType}개`);
+    logger.info(
+      `concertId 필드가 있던 알림 수: ${stats.notificationsWithConcertId}개`,
+    );
+    logger.info(`마이그레이션된 알림 수: ${stats.migratedNotifications}개`);
+    logger.info(`오류 발생: ${stats.errors}건`);
+    logger.info('='.repeat(60));
+
+    // 검증: 마이그레이션 후 상태 확인
+    logger.info('\n🔍 마이그레이션 검증 중...');
+
+    const remainingWithType = await notificationHistoryCollection.countDocuments(
+      {
+        type: { $exists: true },
+      },
+    );
+
+    const remainingWithConcertId =
+      await notificationHistoryCollection.countDocuments({
+        concertId: { $exists: true },
+      });
+
+    const allWithData = await notificationHistoryCollection.countDocuments({
+      data: { $exists: true },
+    });
+
+    logger.info(`✅ 검증 결과:`);
+    logger.info(`  - type 필드가 남아있는 알림: ${remainingWithType}개`);
+    logger.info(
+      `  - concertId 필드가 남아있는 알림: ${remainingWithConcertId}개`,
+    );
+    logger.info(`  - data 필드를 가진 알림: ${allWithData}개`);
+
+    if (remainingWithType > 0 || remainingWithConcertId > 0) {
+      logger.warn(
+        '⚠️ 일부 알림이 완전히 마이그레이션되지 않았습니다. 로그를 확인하세요.',
+      );
+    } else {
+      logger.info('✅ 모든 알림이 성공적으로 마이그레이션되었습니다!');
+    }
+
+    logger.info('\n✅ 마이그레이션이 완료되었습니다!');
+  } catch (error) {
+    logger.error('❌ 마이그레이션 실패:', error);
+    throw error;
+  } finally {
+    await client.close();
+    logger.info('🔌 MongoDB 연결 종료');
+  }
+}
+
+// 스크립트 실행
+if (require.main === module) {
+  migrateNotificationHistory()
+    .then(() => {
+      logger.info('✅ 스크립트 실행 완료');
+      process.exit(0);
+    })
+    .catch((error) => {
+      logger.error('❌ 스크립트 실행 실패:', error);
+      process.exit(1);
+    });
+}
+
+export default migrateNotificationHistory;

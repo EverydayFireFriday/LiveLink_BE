@@ -80,8 +80,6 @@ export class SupportNotificationService {
         userId: inquiry.userId,
         title,
         message: body,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-        type: 'support_response' as any,
         data,
       });
 

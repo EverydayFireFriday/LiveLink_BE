@@ -108,20 +108,18 @@ async function processNotification(
     const payload: NotificationPayload = {
       title: notification.title,
       body: notification.message,
-      data: notification.data || {},
+      data: {
+        ...(notification.data || {}),
+        type: ScheduledNotificationType.SCHEDULED,
+        notificationId: notificationId,
+        scheduledAt: notification.scheduledAt.toISOString(),
+        historyId: historyId.toString(),
+        ...(notification.concertId && {
+          concertId: notification.concertId.toString(),
+        }),
+      },
       badge: unreadCount + 1,
     };
-
-    // Add metadata
-    if (!payload.data) {
-      payload.data = {};
-    }
-    payload.data.notificationId = notificationId;
-    payload.data.scheduledAt = notification.scheduledAt.toISOString();
-    payload.data.historyId = historyId.toString(); // ✅ historyId 포함!
-    if (notification.concertId) {
-      payload.data.concertId = notification.concertId.toString();
-    }
 
     // Send notification via FCM
     const success = await FCMService.sendNotification(user.fcmToken, payload);
@@ -135,15 +133,19 @@ async function processNotification(
         {
           _id: historyId,
           userId: notification.userId,
-          concertId: notification.concertId,
           title: notification.title,
           message: notification.message,
-          type: ScheduledNotificationType.SCHEDULED, // 스케줄된 알림
           isRead: false,
           sentAt: new Date(),
           createdAt: new Date(),
           expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
-          data: notification.data || {},
+          data: {
+            ...(notification.data || {}),
+            type: ScheduledNotificationType.SCHEDULED,
+            ...(notification.concertId && {
+              concertId: notification.concertId.toString(),
+            }),
+          },
         },
       ]);
 

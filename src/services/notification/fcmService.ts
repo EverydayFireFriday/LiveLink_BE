@@ -231,13 +231,12 @@ export class FCMService {
           // 알림 히스토리에 저장
           const history = await notificationHistoryModel.create({
             userId: user._id,
-            concertId: new ObjectId(notification.concertId),
-            type: ConcertUpdateNotificationType.CONCERT_UPDATE,
             title: notification.concertTitle,
             message:
               notification.message ||
               updateTypeMessages[notification.updateType],
             data: {
+              type: ConcertUpdateNotificationType.CONCERT_UPDATE,
               concertId: notification.concertId,
               updateType: notification.updateType,
             },
@@ -253,7 +252,7 @@ export class FCMService {
               notification.message ||
               updateTypeMessages[notification.updateType],
             data: {
-              type: 'concert_update',
+              type: ConcertUpdateNotificationType.CONCERT_UPDATE,
               concertId: notification.concertId,
               updateType: notification.updateType,
               timestamp: new Date().toISOString(),
