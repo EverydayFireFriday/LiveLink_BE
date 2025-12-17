@@ -54,7 +54,7 @@ router.get('/admin/inquiry/:id', requireAuth, requireAdmin, (req, res) => {
  *             properties:
  *               category:
  *                 type: string
- *                 enum: [TECHNICAL, ACCOUNT, PAYMENT, FEATURE_REQUEST, BUG_REPORT, OTHER]
+ *                 enum: [BOOKING_SITE_ERROR, ACCOUNT_SETTINGS, NOTIFICATION_ISSUE, SETTINGS_INQUIRY, CONCERT_INFO_ERROR, LOGIN_ERROR, OTHER]
  *                 description: 문의 카테고리
  *               subject:
  *                 type: string
@@ -182,7 +182,7 @@ router.get('/stats', requireAuth, getUserInquiryStats);
  *         name: category
  *         schema:
  *           type: string
- *           enum: [TECHNICAL, ACCOUNT, PAYMENT, FEATURE_REQUEST, BUG_REPORT, OTHER]
+ *           enum: [BOOKING_SITE_ERROR, ACCOUNT_SETTINGS, NOTIFICATION_ISSUE, SETTINGS_INQUIRY, CONCERT_INFO_ERROR, LOGIN_ERROR, OTHER]
  *         description: 문의 카테고리 필터
  *       - in: query
  *         name: priority
