@@ -79,8 +79,9 @@ async function migrateNotificationHistory() {
     logger.info('✅ MongoDB 연결 성공');
 
     const db = client.db(DB_NAME);
-    const notificationHistoryCollection =
-      db.collection<OldNotificationHistory>('notificationHistory');
+    const notificationHistoryCollection = db.collection<OldNotificationHistory>(
+      'notificationHistory',
+    );
 
     const stats: MigrationStats = {
       totalNotifications: 0,
@@ -149,8 +150,9 @@ async function migrateNotificationHistory() {
     // 각 알림을 순회하며 마이그레이션
     for (const notification of notificationsToMigrate) {
       try {
-        const updateFields: Record<string, any> = {};
-        const unsetFields: Record<string, any> = {};
+        const updateFields: Record<string, string | Record<string, string>> =
+          {};
+        const unsetFields: Record<string, ''> = {};
 
         // 기존 data 객체 가져오기 (없으면 빈 객체)
         const existingData = notification.data || {};
@@ -190,7 +192,10 @@ async function migrateNotificationHistory() {
         updateFields.data = newData;
 
         // 업데이트 실행
-        const updateOperation: any = {
+        const updateOperation: {
+          $set: Record<string, string | Record<string, string>>;
+          $unset?: Record<string, ''>;
+        } = {
           $set: updateFields,
         };
 
@@ -213,7 +218,7 @@ async function migrateNotificationHistory() {
         }
       } catch (error) {
         logger.error(
-          `❌ 알림 마이그레이션 실패 (ID: ${notification._id}):`,
+          `❌ 알림 마이그레이션 실패 (ID: ${notification._id?.toString()}):`,
           error,
         );
         stats.errors++;
@@ -255,21 +260,19 @@ async function migrateNotificationHistory() {
       });
 
     logger.info(`✅ 검증 결과:`);
-    logger.info(`  - 루트 type 필드: ${rootTypeCount}개 (목표: ${stats.totalNotifications}개)`);
+    logger.info(
+      `  - 루트 type 필드: ${rootTypeCount}개 (목표: ${stats.totalNotifications}개)`,
+    );
     logger.info(`  - 루트 concertId 필드: ${rootConcertIdCount}개 (목표: 0개)`);
     logger.info(`  - data.type 필드: ${dataTypeCount}개 (목표: 0개)`);
-    logger.info(
-      `  - data.concertId 필드: ${dataConcertIdCount}개 (유지됨)`,
-    );
+    logger.info(`  - data.concertId 필드: ${dataConcertIdCount}개 (유지됨)`);
 
     if (
       rootTypeCount === stats.totalNotifications &&
       rootConcertIdCount === 0 &&
       dataTypeCount === 0
     ) {
-      logger.info(
-        '\n✅ 모든 알림이 성공적으로 마이그레이션되었습니다!',
-      );
+      logger.info('\n✅ 모든 알림이 성공적으로 마이그레이션되었습니다!');
     } else {
       logger.warn(
         '\n⚠️ 일부 알림이 예상과 다르게 마이그레이션되었습니다. 로그를 확인하세요.',

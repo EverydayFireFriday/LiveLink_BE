@@ -46,9 +46,13 @@ async function inspectNotificationHistory() {
     logger.info('='.repeat(80));
 
     samples.forEach((notification, index) => {
-      logger.info(`\n[${index + 1}] Notification ID: ${notification._id}`);
+      logger.info(
+        `\n[${index + 1}] Notification ID: ${notification._id?.toString()}`,
+      );
       logger.info(`Title: ${notification.title}`);
-      logger.info(`Has 'type' field in root: ${notification.type !== undefined ? 'YES (' + notification.type + ')' : 'NO'}`);
+      logger.info(
+        `Has 'type' field in root: ${notification.type !== undefined ? 'YES (' + notification.type + ')' : 'NO'}`,
+      );
       logger.info(
         `Has 'concertId' field in root: ${notification.concertId !== undefined ? 'YES (' + notification.concertId + ')' : 'NO'}`,
       );
@@ -60,7 +64,9 @@ async function inspectNotificationHistory() {
         logger.info(
           `  data.concertId: ${notification.data.concertId || 'undefined'}`,
         );
-        logger.info(`  data keys: ${Object.keys(notification.data).join(', ')}`);
+        logger.info(
+          `  data keys: ${Object.keys(notification.data).join(', ')}`,
+        );
       }
       logger.info('-'.repeat(80));
     });
