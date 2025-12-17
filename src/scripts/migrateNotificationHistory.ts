@@ -114,15 +114,16 @@ async function migrateNotificationHistory() {
     );
 
     // data.type 필드가 있는 알림 수 조회
-    const dataTypeCount = await notificationHistoryCollection.countDocuments({
-      'data.type': { $exists: true },
-    });
-    logger.info(`📊 data.type 필드가 있는 알림 수: ${dataTypeCount}개`);
+    const initialDataTypeCount =
+      await notificationHistoryCollection.countDocuments({
+        'data.type': { $exists: true },
+      });
+    logger.info(`📊 data.type 필드가 있는 알림 수: ${initialDataTypeCount}개`);
 
     if (
       stats.notificationsWithType === stats.totalNotifications &&
       stats.notificationsWithConcertId === 0 &&
-      dataTypeCount === 0
+      initialDataTypeCount === 0
     ) {
       logger.info('✅ 모든 알림이 이미 마이그레이션되었습니다.');
       return;
