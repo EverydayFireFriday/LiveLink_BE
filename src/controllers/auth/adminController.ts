@@ -42,6 +42,7 @@ export class AdminController {
         email: user.email,
         username: user.username,
         profileImage: user.profileImage,
+        role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         // 추가 관리자 정보
@@ -90,6 +91,7 @@ export class AdminController {
           email: user.email,
           username: user.username,
           profileImage: user.profileImage,
+          role: user.role,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
           // 관리자용 추가 정보
@@ -144,6 +146,7 @@ export class AdminController {
           id: user._id,
           username: user.username,
           email: user.email,
+          role: user.role,
           status: status,
           statusReason: reason,
           updatedAt: new Date(),

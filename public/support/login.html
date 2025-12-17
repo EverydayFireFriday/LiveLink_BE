@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>고객 문의 관리 - 로그인</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .login-header h1 {
+      color: #667eea;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .login-header p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .login-button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+    }
+
+    .login-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .login-button:active {
+      transform: translateY(0);
+    }
+
+    .login-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      background: #fee;
+      color: #c33;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    .info-message {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .logout-link {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .logout-link a {
+      color: #667eea;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .logout-link a:hover {
+      text-decoration: underline;
+    }
+
+    .icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <div class="icon">📧</div>
+      <h1>고객 문의 관리</h1>
+      <p>관리자 로그인이 필요합니다</p>
+    </div>
+
+    <div id="errorMessage" class="error-message"></div>
+    <div id="infoMessage" class="info-message" style="display: none;"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">이메일</label>
+        <input type="email" id="email" name="email" required placeholder="admin@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" name="password" required placeholder="비밀번호 입력">
+      </div>
+
+      <button type="submit" class="login-button" id="loginButton">
+        로그인
+      </button>
+
+      <div class="logout-link">
+        <a onclick="handleLogout()">이미 로그인된 계정이 있나요? 로그아웃하기</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const errorMessage = document.getElementById('errorMessage');
+    const infoMessage = document.getElementById('infoMessage');
+    const loginButton = document.getElementById('loginButton');
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.classList.add('show');
+      setTimeout(() => {
+        errorMessage.classList.remove('show');
+      }, 5000);
+    }
+
+    function showInfo(message) {
+      infoMessage.textContent = message;
+      infoMessage.style.display = 'block';
+      setTimeout(() => {
+        infoMessage.style.display = 'none';
+      }, 5000);
+    }
+
+    async function handleLogout() {
+      try {
+        const response = await fetch('/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showInfo('로그아웃되었습니다. 다시 로그인해주세요.');
+        } else {
+          showInfo('로그아웃 처리가 완료되었습니다.');
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        showInfo('로그아웃 처리가 완료되었습니다.');
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      loginButton.disabled = true;
+      loginButton.textContent = '로그인 중...';
+
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ email, password, force: true })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // 로그인 성공 - 관리자 권한 확인
+          const user = data.data?.user;
+          if (!user) {
+            showError('사용자 정보를 불러올 수 없습니다.');
+            loginButton.disabled = false;
+            loginButton.textContent = '로그인';
+            return;
+          }
+
+          // 관리자 권한 확인
+          const adminCheckResponse = await fetch('/auth/admin/check', {
+            credentials: 'include'
+          });
+
+          if (adminCheckResponse.ok) {
+            const adminData = await adminCheckResponse.json();
+
+            if (adminData.isAdmin) {
+              // 관리자 권한 있음 - 문의 목록 페이지로 이동
+              // 리다이렉트 되므로 버튼 상태 변경 불필요
+              window.location.href = '/support/admin/inquiries';
+              return; // finally 블록 실행 방지
+            } else {
+              // 관리자 권한 없음 - 로그아웃 후 에러 표시
+              await fetch('/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+              });
+              showError('관리자 권한이 없습니다. 관리자 계정으로 로그인해주세요.');
+            }
+          } else {
+            // 권한 확인 실패 - 로그아웃 후 에러 표시
+            await fetch('/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+            showError('권한 확인에 실패했습니다. 다시 시도해주세요.');
+          }
+        } else {
+          const errorMsg = data.message || '로그인에 실패했습니다.';
+          showError(errorMsg);
+
+          // 이미 로그인되어 있는 경우 안내
+          if (data.errorCode === 'AUTH_011') {
+            showInfo('이미 로그인되어 있습니다. 아래 링크를 클릭하여 로그아웃 후 다시 시도해주세요.');
+          }
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showError('서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = '로그인';
+      }
+    });
+  </script>
+</body>
+</html>

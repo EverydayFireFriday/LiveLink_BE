@@ -6,10 +6,7 @@ import logger from '../../utils/logger/logger.js';
  * 티켓 오픈 알림 타입
  */
 export enum TicketNotificationType {
-  TICKET_OPEN_10MIN = 'ticket_open_10min', // 10분 전
-  TICKET_OPEN_30MIN = 'ticket_open_30min', // 30분 전
-  TICKET_OPEN_1HOUR = 'ticket_open_1hour', // 1시간 전
-  TICKET_OPEN_1DAY = 'ticket_open_1day', // 하루 전
+  TICKET_OPEN = 'ticket_open',
 }
 
 /**
@@ -17,9 +14,7 @@ export enum TicketNotificationType {
  * 공연 시작 알림 타입
  */
 export enum ConcertStartNotificationType {
-  CONCERT_START_1HOUR = 'concert_start_1hour', // 1시간 전
-  CONCERT_START_3HOUR = 'concert_start_3hour', // 3시간 전
-  CONCERT_START_1DAY = 'concert_start_1day', // 하루 전
+  CONCERT_START = 'concert_start',
 }
 
 /**
@@ -55,14 +50,13 @@ export type NotificationType =
 export interface INotificationHistory {
   _id?: ObjectId;
   userId: ObjectId; // 알림을 받은 사용자 ID
-  concertId?: ObjectId; // 콘서트 ID (스케줄된 알림의 경우 optional)
+  type: NotificationType; // 알림 타입 (루트 레벨)
   title: string; // 알림 제목
   message: string; // 알림 메시지
-  type: NotificationType; // 알림 타입 (티켓 오픈 또는 공연 시작)
   isRead: boolean; // 읽음 여부
   readAt?: Date; // 읽은 시간
   sentAt: Date; // 전송 시간
-  data?: Record<string, string>; // 추가 데이터 (FCM data payload)
+  data: Record<string, string>; // 알림 데이터 (concertId 등 포함, type 제외)
   createdAt: Date; // 생성 시간
   expiresAt: Date; // TTL 만료 시간 (읽은 알림: 30일, 안읽은 알림: 90일)
 }

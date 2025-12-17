@@ -41,7 +41,12 @@ export const swaggerTags = [
   { name: 'Report', description: '신고 관리' },
 
   // Support 관련
-  { name: 'Support', description: '고객센터 지원문의 관리 (FCM 알림 포함)' },
+  { name: 'Support', description: '고객센터 지원문의 관리 (사용자용)' },
+  {
+    name: 'Support (Admin)',
+    description:
+      '고객센터 지원문의 관리 (관리자 전용 - 전체 문의 조회 및 답변)',
+  },
 
   // Admin 관련
   { name: 'Admin', description: '관리자 전용 기능' },

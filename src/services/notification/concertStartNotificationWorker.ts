@@ -45,22 +45,11 @@ let worker: Worker<ConcertStartNotificationJobData> | null = null;
 const PROCESSING_BATCH_SIZE = 500;
 
 /**
- * Get notification type based on minutes before
- * 몇 분 전인지에 따라 알림 타입 반환
+ * Get notification type
+ * 알림 타입 반환
  */
-function getNotificationType(
-  notifyBeforeMinutes: number,
-): ConcertStartNotificationType {
-  switch (notifyBeforeMinutes) {
-    case 60:
-      return ConcertStartNotificationType.CONCERT_START_1HOUR;
-    case 180:
-      return ConcertStartNotificationType.CONCERT_START_3HOUR;
-    case 1440:
-      return ConcertStartNotificationType.CONCERT_START_1DAY;
-    default:
-      return ConcertStartNotificationType.CONCERT_START_1HOUR;
-  }
+function getNotificationType(): ConcertStartNotificationType {
+  return ConcertStartNotificationType.CONCERT_START;
 }
 
 /**
@@ -185,7 +174,7 @@ async function processConcertStartNotification(
     const allInvalidTokens: string[] = [];
     const successfulHistories: any[] = [];
     const notificationHistoryModel = getNotificationHistoryModel(userDB);
-    const notificationType = getNotificationType(notifyBeforeMinutes);
+    const notificationType = getNotificationType();
 
     for (let i = 0; i < totalUsers; i += PROCESSING_BATCH_SIZE) {
       const batch = users.slice(i, i + PROCESSING_BATCH_SIZE);
@@ -211,12 +200,11 @@ async function processConcertStartNotification(
             body: notificationMessage,
             badge: unreadCount + 1,
             data: {
-              type: 'concert_start',
               concertId: concertId,
               concertTitle: concertTitle,
               performanceDate: performanceDate.toISOString(),
               notifyBeforeMinutes: notifyBeforeMinutes.toString(),
-              historyId: historyId.toString(), // ✅ historyId 포함!
+              historyId: historyId.toString(),
             },
           });
 
@@ -226,10 +214,9 @@ async function processConcertStartNotification(
             successfulHistories.push({
               _id: historyId, // 사전 생성한 ObjectId 사용
               userId: user._id,
-              concertId: new ObjectId(concertId),
+              type: notificationType,
               title: notificationTitle,
               message: notificationMessage,
-              type: notificationType,
               isRead: false,
               sentAt: new Date(),
               createdAt: new Date(),

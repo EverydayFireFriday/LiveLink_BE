@@ -241,12 +241,10 @@ export class TestService {
         notifications.push({
           _id: new ObjectId(),
           userId: user._id,
-          concertId: concertId,
           type: ConcertUpdateNotificationType.CONCERT_UPDATE,
           title: `테스트 알림 ${i}`,
           message: `이것은 ${i}번째 테스트 알림입니다.`,
           data: {
-            type: 'test',
             index: i.toString(),
             concertId: concertId.toString(),
           },
@@ -281,7 +279,6 @@ export class TestService {
                 body: notification.message,
               },
               data: {
-                type: 'test',
                 historyId: notification._id.toString(),
                 concertId: concertId.toString(),
                 index: (i + 1).toString(),

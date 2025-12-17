@@ -1,17 +1,35 @@
 import express from 'express';
+import path from 'path';
 import {
   createInquiry,
   getInquiryById,
-  getInquiries,
+  getUserInquiries,
+  getAdminInquiries,
   updateInquiryStatus,
   updateInquiryPriority,
   addAdminResponse,
   deleteInquiry,
+  getUserInquiryStats,
 } from '../../controllers/support/supportController';
 import { requireAuth } from '../../middlewares/auth/authMiddleware';
 import { requireAdmin } from '../../middlewares/auth/adminMiddleware';
 
 const router = express.Router();
+
+// HTML Pages for Admin UI
+router.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../../public/support/login.html'));
+});
+
+router.get('/admin/inquiries', requireAuth, requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, '../../../public/support/inquiries.html'));
+});
+
+router.get('/admin/inquiry/:id', requireAuth, requireAdmin, (req, res) => {
+  res.sendFile(
+    path.join(__dirname, '../../../public/support/inquiry-detail.html'),
+  );
+});
 
 /**
  * @swagger
@@ -36,7 +54,7 @@ const router = express.Router();
  *             properties:
  *               category:
  *                 type: string
- *                 enum: [TECHNICAL, ACCOUNT, PAYMENT, FEATURE_REQUEST, BUG_REPORT, OTHER]
+ *                 enum: [BOOKING_SITE_ERROR, ACCOUNT_SETTINGS, NOTIFICATION_ISSUE, SETTINGS_INQUIRY, CONCERT_INFO_ERROR, LOGIN_ERROR, OTHER]
  *                 description: 문의 카테고리
  *               subject:
  *                 type: string
@@ -69,8 +87,8 @@ router.post('/', requireAuth, createInquiry);
  * @swagger
  * /support:
  *   get:
- *     summary: 문의 목록 조회
- *     description: 사용자의 문의 목록을 조회합니다 (관리자는 전체 조회 가능)
+ *     summary: 본인 문의 목록 조회
+ *     description: 사용자 본인의 문의 목록을 조회합니다
  *     tags:
  *       - Support
  *     security:
@@ -82,18 +100,6 @@ router.post('/', requireAuth, createInquiry);
  *           type: string
  *           enum: [PENDING, IN_PROGRESS, ANSWERED, CLOSED]
  *         description: 문의 상태 필터
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *           enum: [TECHNICAL, ACCOUNT, PAYMENT, FEATURE_REQUEST, BUG_REPORT, OTHER]
- *         description: 문의 카테고리 필터 (관리자만 사용 가능)
- *       - in: query
- *         name: priority
- *         schema:
- *           type: string
- *           enum: [LOW, MEDIUM, HIGH]
- *         description: 우선순위 필터 (관리자만 사용 가능)
  *       - in: query
  *         name: page
  *         schema:
@@ -112,7 +118,99 @@ router.post('/', requireAuth, createInquiry);
  *       401:
  *         description: 인증 필요
  */
-router.get('/', requireAuth, getInquiries);
+router.get('/', requireAuth, getUserInquiries);
+
+/**
+ * @swagger
+ * /support/stats:
+ *   get:
+ *     summary: 본인 문의 통계 조회
+ *     description: 사용자 본인의 전체, 대기중, 답변완료 문의 개수를 조회합니다
+ *     tags:
+ *       - Support
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 통계 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: 전체 문의 수
+ *                       example: 15
+ *                     pending:
+ *                       type: integer
+ *                       description: 대기중인 문의 수
+ *                       example: 5
+ *                     answered:
+ *                       type: integer
+ *                       description: 답변완료된 문의 수
+ *                       example: 10
+ *       401:
+ *         description: 인증 필요
+ */
+router.get('/stats', requireAuth, getUserInquiryStats);
+
+/**
+ * @swagger
+ * /support/admin:
+ *   get:
+ *     summary: 전체 문의 목록 조회 (관리자 전용)
+ *     description: 관리자가 전체 문의 목록을 조회합니다
+ *     tags:
+ *       - Support (Admin)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, IN_PROGRESS, ANSWERED, CLOSED]
+ *         description: 문의 상태 필터
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [BOOKING_SITE_ERROR, ACCOUNT_SETTINGS, NOTIFICATION_ISSUE, SETTINGS_INQUIRY, CONCERT_INFO_ERROR, LOGIN_ERROR, OTHER]
+ *         description: 문의 카테고리 필터
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: [LOW, MEDIUM, HIGH]
+ *         description: 우선순위 필터
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: 페이지당 항목 수
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ */
+router.get('/admin', requireAuth, requireAdmin, getAdminInquiries);
 
 /**
  * @swagger

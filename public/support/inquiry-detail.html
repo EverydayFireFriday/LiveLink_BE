@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>문의 상세 - 관리</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 40px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 2px solid white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+
+    .back-button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+
+    .inquiry-header {
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+
+    .inquiry-subject {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .inquiry-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .badge.status-PENDING {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.status-IN_PROGRESS {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge.status-ANSWERED {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge.status-CLOSED {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .badge.priority-HIGH {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge.priority-MEDIUM {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.priority-LOW {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .category-badge {
+      background: #ede9fe;
+      color: #5b21b6;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .inquiry-date {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .inquiry-content {
+      line-height: 1.8;
+      color: #333;
+      white-space: pre-wrap;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .admin-response {
+      background: #f0fdf4;
+      border-left: 4px solid #10b981;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .response-content {
+      line-height: 1.8;
+      color: #333;
+      white-space: pre-wrap;
+      margin-bottom: 10px;
+    }
+
+    .response-meta {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .response-form {
+      margin-top: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 150px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .button-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .button-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .button-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .button-secondary:hover {
+      background: #d1d5db;
+    }
+
+    .button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .status-controls select {
+      padding: 8px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+
+    .error-message {
+      background: #fee;
+      color: #c33;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .success-message {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📧 문의 상세</h1>
+    <a href="/support/admin/inquiries" class="back-button">← 목록으로</a>
+  </div>
+
+  <div class="container">
+    <div id="content">
+      <div class="loading">문의 내용을 불러오는 중...</div>
+    </div>
+  </div>
+
+  <script>
+    const inquiryId = window.location.pathname.split('/').pop();
+
+    async function loadInquiry() {
+      try {
+        const response = await fetch(`/support/${inquiryId}`, {
+          credentials: 'include'
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/support/admin/login';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Failed to load inquiry');
+        }
+
+        const data = await response.json();
+        displayInquiry(data.data);
+      } catch (error) {
+        console.error('Error loading inquiry:', error);
+        document.getElementById('content').innerHTML = `
+          <div class="card">
+            <div class="error-message">문의 내용을 불러오는데 실패했습니다.</div>
+          </div>
+        `;
+      }
+    }
+
+    function displayInquiry(inquiry) {
+      // Debug: 답변 데이터 콘솔 확인
+      console.log('inquiry.adminResponse:', inquiry.adminResponse);
+      console.log('inquiry.status:', inquiry.status);
+
+      // 답변이 있는지 확인 (더 엄격한 체크)
+      const hasResponse = inquiry.adminResponse &&
+                         inquiry.adminResponse.content &&
+                         inquiry.adminResponse.content.trim().length > 0;
+
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="inquiry-header">
+            <div class="inquiry-subject">${escapeHtml(inquiry.subject)}</div>
+            <div class="inquiry-meta">
+              <span class="badge status-${inquiry.status}">${getStatusText(inquiry.status)}</span>
+              <span class="badge priority-${inquiry.priority}">${getPriorityText(inquiry.priority)}</span>
+              <span class="category-badge">${getCategoryText(inquiry.category)}</span>
+            </div>
+            <div class="inquiry-date">작성일: ${new Date(inquiry.createdAt).toLocaleString('ko-KR')}</div>
+          </div>
+
+          <div class="section-title">📝 문의 내용</div>
+          <div class="inquiry-content">${escapeHtml(inquiry.content)}</div>
+
+          ${hasResponse ? `
+            <div class="section-title">✅ 관리자 답변</div>
+            <div class="admin-response">
+              <div class="response-content">${escapeHtml(inquiry.adminResponse.content)}</div>
+              <div class="response-meta">
+                답변일: ${new Date(inquiry.adminResponse.respondedAt).toLocaleString('ko-KR')}
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="status-controls">
+            <label>상태 변경:</label>
+            <select id="statusSelect">
+              <option value="PENDING" ${inquiry.status === 'PENDING' ? 'selected' : ''}>대기중</option>
+              <option value="IN_PROGRESS" ${inquiry.status === 'IN_PROGRESS' ? 'selected' : ''}>처리중</option>
+              <option value="ANSWERED" ${inquiry.status === 'ANSWERED' ? 'selected' : ''}>답변완료</option>
+              <option value="CLOSED" ${inquiry.status === 'CLOSED' ? 'selected' : ''}>종료</option>
+            </select>
+
+            <label>우선순위:</label>
+            <select id="prioritySelect">
+              <option value="LOW" ${inquiry.priority === 'LOW' ? 'selected' : ''}>낮음</option>
+              <option value="MEDIUM" ${inquiry.priority === 'MEDIUM' ? 'selected' : ''}>보통</option>
+              <option value="HIGH" ${inquiry.priority === 'HIGH' ? 'selected' : ''}>높음</option>
+            </select>
+          </div>
+        </div>
+
+        ${!hasResponse ? `
+          <div class="card">
+            <div class="section-title">💬 답변 작성</div>
+            <div id="responseMessage"></div>
+            <form id="responseForm" class="response-form">
+              <div class="form-group">
+                <label for="responseContent">답변 내용</label>
+                <textarea id="responseContent" required placeholder="고객에게 전달할 답변을 작성해주세요..."></textarea>
+              </div>
+              <div class="button-group">
+                <button type="submit" class="button button-primary">답변 전송</button>
+                <button type="button" class="button button-secondary" id="cancelButton">취소</button>
+              </div>
+            </form>
+          </div>
+        ` : ''}
+      `;
+
+      // 이벤트 리스너 설정
+      document.getElementById('statusSelect').addEventListener('change', updateStatus);
+      document.getElementById('prioritySelect').addEventListener('change', updatePriority);
+
+      if (!hasResponse) {
+        setupResponseForm();
+        // 취소 버튼 이벤트 리스너
+        const cancelButton = document.getElementById('cancelButton');
+        if (cancelButton) {
+          cancelButton.addEventListener('click', () => window.history.back());
+        }
+      }
+    }
+
+    function setupResponseForm() {
+      const form = document.getElementById('responseForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const content = document.getElementById('responseContent').value;
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        submitButton.disabled = true;
+        submitButton.textContent = '전송 중...';
+
+        try {
+          const response = await fetch(`/support/${inquiryId}/response`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ content })
+          });
+
+          if (response.status === 401 || response.status === 403) {
+            alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+            window.location.href = '/support/admin/login';
+            return;
+          }
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showMessage('success', '답변이 성공적으로 전송되었습니다.');
+            setTimeout(() => {
+              loadInquiry();
+            }, 1500);
+          } else {
+            showMessage('error', data.message || '답변 전송에 실패했습니다.');
+          }
+        } catch (error) {
+          console.error('Error sending response:', error);
+          showMessage('error', '서버 연결에 실패했습니다.');
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = '답변 전송';
+        }
+      });
+    }
+
+    async function updateStatus() {
+      const status = document.getElementById('statusSelect').value;
+
+      try {
+        const response = await fetch(`/support/${inquiryId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ status })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/support/admin/login';
+          return;
+        }
+
+        if (response.ok) {
+          showMessage('success', '상태가 변경되었습니다.');
+        } else {
+          throw new Error('Failed to update status');
+        }
+      } catch (error) {
+        console.error('Error updating status:', error);
+        showMessage('error', '상태 변경에 실패했습니다.');
+        loadInquiry();
+      }
+    }
+
+    async function updatePriority() {
+      const priority = document.getElementById('prioritySelect').value;
+
+      try {
+        const response = await fetch(`/support/${inquiryId}/priority`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ priority })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/support/admin/login';
+          return;
+        }
+
+        if (response.ok) {
+          showMessage('success', '우선순위가 변경되었습니다.');
+        } else {
+          throw new Error('Failed to update priority');
+        }
+      } catch (error) {
+        console.error('Error updating priority:', error);
+        showMessage('error', '우선순위 변경에 실패했습니다.');
+        loadInquiry();
+      }
+    }
+
+    function showMessage(type, message) {
+      const messageDiv = document.getElementById('responseMessage');
+      if (!messageDiv) return;
+
+      const className = type === 'success' ? 'success-message' : 'error-message';
+      messageDiv.innerHTML = `<div class="${className}">${message}</div>`;
+
+      setTimeout(() => {
+        messageDiv.innerHTML = '';
+      }, 5000);
+    }
+
+    function getStatusText(status) {
+      const statusMap = {
+        'PENDING': '대기중',
+        'IN_PROGRESS': '처리중',
+        'ANSWERED': '답변완료',
+        'CLOSED': '종료'
+      };
+      return statusMap[status] || status;
+    }
+
+    function getPriorityText(priority) {
+      const priorityMap = {
+        'HIGH': '높음',
+        'MEDIUM': '보통',
+        'LOW': '낮음'
+      };
+      return priorityMap[priority] || priority;
+    }
+
+    function getCategoryText(category) {
+      const categoryMap = {
+        'TECHNICAL': '기술',
+        'ACCOUNT': '계정',
+        'PAYMENT': '결제',
+        'FEATURE_REQUEST': '기능 요청',
+        'BUG_REPORT': '버그 신고',
+        'OTHER': '기타'
+      };
+      return categoryMap[category] || category;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 페이지 로드 시 실행 (권한 체크는 로그인에서만)
+    loadInquiry();
+  </script>
+</body>
+</html>

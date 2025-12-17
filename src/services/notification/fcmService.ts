@@ -8,6 +8,7 @@ import {
   getNotificationHistoryModel,
   ConcertUpdateNotificationType,
 } from '../../models/notification/notificationHistory.js';
+import { env } from '../../config/env/env';
 
 export interface NotificationPayload {
   title: string;
@@ -39,25 +40,16 @@ export class FCMService {
     token: string,
     payload: NotificationPayload,
   ): Promise<boolean> {
-    // 개발 환경에서 FCM 비활성화
-    if (process.env.ENABLE_FCM === 'false') {
-      logger.info(
-        `[DEV MODE] FCM notification skipped - would send to: ${token.substring(0, 20)}...`,
-        {
-          title: payload.title,
-          body: payload.body,
-          data: payload.data,
-          badge: payload.badge,
-        },
-      );
-      return true; // 성공으로 처리하여 로직은 정상 진행
-    }
-
     try {
+      // 테스트 서버일 때 제목에 [TEST] 추가
+      const finalTitle = env.IS_TEST_SERVER
+        ? `[TEST] ${payload.title}`
+        : payload.title;
+
       const message: admin.messaging.Message = {
         token,
         notification: {
-          title: payload.title,
+          title: finalTitle,
           body: payload.body,
           imageUrl: payload.imageUrl,
         },
@@ -80,8 +72,13 @@ export class FCMService {
       };
 
       await this.messaging.send(message);
+      const logPrefix = env.IS_TEST_SERVER ? '[TEST] ' : '';
       logger.info(
-        `✅ FCM notification sent successfully to token: ${token.substring(0, 20)}...`,
+        `✅ ${logPrefix}FCM notification sent successfully to token: ${token.substring(0, 20)}...`,
+        {
+          title: finalTitle,
+          body: payload.body,
+        },
       );
       return true;
     } catch (error: unknown) {
@@ -234,7 +231,6 @@ export class FCMService {
           // 알림 히스토리에 저장
           const history = await notificationHistoryModel.create({
             userId: user._id,
-            concertId: new ObjectId(notification.concertId),
             type: ConcertUpdateNotificationType.CONCERT_UPDATE,
             title: notification.concertTitle,
             message:
@@ -256,7 +252,6 @@ export class FCMService {
               notification.message ||
               updateTypeMessages[notification.updateType],
             data: {
-              type: 'concert_update',
               concertId: notification.concertId,
               updateType: notification.updateType,
               timestamp: new Date().toISOString(),

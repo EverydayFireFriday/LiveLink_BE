@@ -17,6 +17,12 @@ export enum UserStatus {
   PENDING_REGISTRATION = 'pending_registration', // OAuth 가입 후 추가 정보 입력 대기
 }
 
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+  SUPERADMIN = 'superadmin',
+}
+
 // 약관 동의 정보 인터페이스 (배열 구조)
 export interface TermsConsent {
   type: string; // 'terms' | 'privacy' | 'marketing'
@@ -50,6 +56,7 @@ export interface User {
   status: UserStatus;
   statusReason?: string; // 상태 변경 사유 추가
   profileImage?: string; // S3 URL 또는 파일 경로
+  role?: UserRole; // 사용자 권한 레벨 (마이그레이션 중에는 선택적)
 
   // 약관 동의 관련 (배열 구조)
   termsConsents: TermsConsent[]; // 모든 약관 동의 정보를 배열로 관리
@@ -130,6 +137,7 @@ export class Database {
     await userCollection.createIndex({ username: 1 }, { unique: true });
     await userCollection.createIndex({ email: 1 }, { unique: true });
     await userCollection.createIndex({ status: 1 });
+    await userCollection.createIndex({ role: 1 }); // role 인덱스 추가
 
     // OAuth 제공자 인덱스 (oauthProviders 배열)
     // provider와 socialId 조합이 고유해야 함
@@ -187,6 +195,7 @@ export class UserModel {
     const user: Omit<User, '_id'> = {
       ...userData,
       status: UserStatus.PENDING_VERIFICATION,
+      role: userData.role || UserRole.USER, // role 기본값 설정
       likedConcerts: [],
       likedArticles: [],
       termsConsents: userData.termsConsents || [], // 배열 초기화

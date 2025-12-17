@@ -39,6 +39,7 @@ export class ProfileController {
           email: user.email,
           username: user.username,
           profileImage: user.profileImage,
+          role: user.role,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
           likedConcerts: user.likedConcerts || [],
@@ -88,6 +89,7 @@ export class ProfileController {
           email: updatedUser.email,
           username: updatedUser.username,
           profileImage: updatedUser.profileImage,
+          role: updatedUser.role,
           updatedAt: updatedUser.updatedAt,
         },
       });
@@ -159,6 +161,7 @@ export class ProfileController {
           email: updatedUser.email,
           username: updatedUser.username,
           profileImage: updatedUser.profileImage,
+          role: updatedUser.role,
           updatedAt: updatedUser.updatedAt,
         },
         previousUsername: currentUser.username,
@@ -188,6 +191,7 @@ export class ProfileController {
         email: user.email,
         username: user.username,
         profileImage: user.profileImage,
+        role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       }));

@@ -1,21 +1,14 @@
 import express from 'express';
 import logger from '../../utils/logger/logger';
-
-// 관리자 이메일 목록 확인
-const getAdminEmails = (): string[] => {
-  const adminEmailsString = process.env.ADMIN_EMAILS;
-  if (!adminEmailsString) {
-    logger.warn('⚠️ ADMIN_EMAILS 환경변수가 설정되지 않았습니다.');
-    return [];
-  }
-
-  return adminEmailsString
-    .split(',')
-    .map((email) => email.trim().toLowerCase());
-};
+import { UserRole } from '../../models/auth/user';
+import { ErrorCodes } from '../../utils/errors/errorCodes';
+import {
+  UnauthorizedError,
+  ForbiddenError,
+} from '../../utils/errors/customErrors';
 
 /**
- * 관리자 권한 확인 미들웨어
+ * 관리자 권한 확인 미들웨어 (ADMIN 또는 SUPERADMIN)
  */
 export const requireAdmin = (
   req: express.Request,
@@ -24,31 +17,68 @@ export const requireAdmin = (
 ) => {
   // 로그인 확인
   if (!req.session.user) {
-    res.status(401).json({
-      message: '로그인이 필요합니다.',
-      redirectTo: '/auth/login',
-    });
-    return;
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
-  // 관리자 권한 확인
-  const adminEmails = getAdminEmails();
-  const userEmail = req.session.user.email.toLowerCase();
+  // 관리자 권한 확인 (ADMIN 또는 SUPERADMIN)
+  const userRole = req.session.user.role;
+  const isAdmin =
+    userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN;
 
-  if (!adminEmails.includes(userEmail)) {
+  if (!isAdmin) {
     logger.info(
-      `🚫 관리자 권한 없음: ${userEmail} (허용된 관리자: ${adminEmails.join(', ')})`,
+      `🚫 관리자 권한 없음: ${req.session.user.email} (현재 역할: ${userRole})`,
     );
-    res.status(403).json({
-      message: '관리자 권한이 필요합니다.',
-      currentUser: req.session.user.email,
-      requiredRole: 'admin',
-    });
-    return;
+    throw new ForbiddenError(
+      '관리자 권한이 필요합니다.',
+      ErrorCodes.AUTH_FORBIDDEN,
+    );
   }
 
   // 관리자 접근 로그
-  logger.info(`👑 관리자 접근: ${userEmail} → ${req.method} ${req.path}`);
+  logger.info(
+    `👑 관리자 접근: ${req.session.user.email} (${userRole}) → ${req.method} ${req.path}`,
+  );
+
+  next();
+};
+
+/**
+ * 슈퍼 관리자 권한 확인 미들웨어 (SUPERADMIN만)
+ */
+export const requireSuperAdmin = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) => {
+  // 로그인 확인
+  if (!req.session.user) {
+    throw new UnauthorizedError(
+      '로그인이 필요합니다.',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
+  }
+
+  // 슈퍼 관리자 권한 확인
+  const userRole = req.session.user.role;
+
+  if (userRole !== UserRole.SUPERADMIN) {
+    logger.info(
+      `🚫 슈퍼 관리자 권한 없음: ${req.session.user.email} (현재 역할: ${userRole})`,
+    );
+    throw new ForbiddenError(
+      '슈퍼 관리자 권한이 필요합니다.',
+      ErrorCodes.AUTH_FORBIDDEN,
+    );
+  }
+
+  // 슈퍼 관리자 접근 로그
+  logger.info(
+    `👑👑 슈퍼 관리자 접근: ${req.session.user.email} → ${req.method} ${req.path}`,
+  );
 
   next();
 };
@@ -69,13 +99,15 @@ export const checkAdminStatus = (
     return;
   }
 
-  const adminEmails = getAdminEmails();
-  const userEmail = req.session.user.email.toLowerCase();
-  const isAdmin = adminEmails.includes(userEmail);
+  const userRole = req.session.user.role;
+  const isAdmin =
+    userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN;
+  const isSuperAdmin = userRole === UserRole.SUPERADMIN;
 
   res.status(200).json({
     isAdmin,
+    isSuperAdmin,
+    role: userRole,
     user: req.session.user,
-    adminEmails: isAdmin ? adminEmails : undefined, // 관리자만 전체 목록 조회 가능
   });
 };

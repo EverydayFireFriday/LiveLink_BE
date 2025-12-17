@@ -91,6 +91,13 @@ const envSchema = z.object({
     .optional()
     .default('1800000'), // 30분 (밀리초)
 
+  // 🔔 알림 설정
+  IS_TEST_SERVER: z
+    .enum(['true', 'false'])
+    .optional()
+    .default('false')
+    .transform((val) => val === 'true'),
+
   // 🍎 Apple OAuth 설정
   APPLE_APP_BUNDLE_ID: z
     .string()

@@ -78,10 +78,9 @@ export class SupportNotificationService {
       // Save notification history
       await notificationHistoryModel.create({
         userId: inquiry.userId,
+        type: 'support_response' as any,
         title,
         message: body,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-        type: 'support_response' as any,
         data,
       });
 
