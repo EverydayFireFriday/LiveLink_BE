@@ -50,12 +50,13 @@ export type NotificationType =
 export interface INotificationHistory {
   _id?: ObjectId;
   userId: ObjectId; // 알림을 받은 사용자 ID
+  type: NotificationType; // 알림 타입 (루트 레벨)
   title: string; // 알림 제목
   message: string; // 알림 메시지
   isRead: boolean; // 읽음 여부
   readAt?: Date; // 읽은 시간
   sentAt: Date; // 전송 시간
-  data: Record<string, string>; // 알림 데이터 (type, concertId 등 포함)
+  data: Record<string, string>; // 알림 데이터 (concertId 등 포함, type 제외)
   createdAt: Date; // 생성 시간
   expiresAt: Date; // TTL 만료 시간 (읽은 알림: 30일, 안읽은 알림: 90일)
 }

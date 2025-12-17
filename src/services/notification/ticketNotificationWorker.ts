@@ -205,7 +205,6 @@ async function processTicketNotification(
             body: notificationMessage,
             badge: unreadCount + 1,
             data: {
-              type: notificationType,
               concertId: concertId,
               concertTitle: concertTitle,
               ticketOpenTitle: ticketOpenTitle,
@@ -221,6 +220,7 @@ async function processTicketNotification(
             successfulHistories.push({
               _id: historyId, // 사전 생성한 ObjectId 사용
               userId: user._id,
+              type: notificationType,
               title: notificationTitle,
               message: notificationMessage,
               isRead: false,
@@ -228,7 +228,6 @@ async function processTicketNotification(
               createdAt: new Date(),
               expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
               data: {
-                type: notificationType,
                 concertId: concertId,
                 concertTitle: concertTitle,
                 ticketOpenTitle: ticketOpenTitle,

@@ -200,7 +200,6 @@ async function processConcertStartNotification(
             body: notificationMessage,
             badge: unreadCount + 1,
             data: {
-              type: notificationType,
               concertId: concertId,
               concertTitle: concertTitle,
               performanceDate: performanceDate.toISOString(),
@@ -215,6 +214,7 @@ async function processConcertStartNotification(
             successfulHistories.push({
               _id: historyId, // 사전 생성한 ObjectId 사용
               userId: user._id,
+              type: notificationType,
               title: notificationTitle,
               message: notificationMessage,
               isRead: false,
@@ -222,7 +222,6 @@ async function processConcertStartNotification(
               createdAt: new Date(),
               expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
               data: {
-                type: notificationType,
                 concertId: concertId,
                 concertTitle: concertTitle,
                 performanceDate: performanceDate.toISOString(),

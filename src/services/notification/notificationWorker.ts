@@ -110,7 +110,6 @@ async function processNotification(
       body: notification.message,
       data: {
         ...(notification.data || {}),
-        type: ScheduledNotificationType.SCHEDULED,
         notificationId: notificationId,
         scheduledAt: notification.scheduledAt.toISOString(),
         historyId: historyId.toString(),
@@ -133,6 +132,7 @@ async function processNotification(
         {
           _id: historyId,
           userId: notification.userId,
+          type: ScheduledNotificationType.SCHEDULED,
           title: notification.title,
           message: notification.message,
           isRead: false,
@@ -141,7 +141,6 @@ async function processNotification(
           expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
           data: {
             ...(notification.data || {}),
-            type: ScheduledNotificationType.SCHEDULED,
             ...(notification.concertId && {
               concertId: notification.concertId.toString(),
             }),

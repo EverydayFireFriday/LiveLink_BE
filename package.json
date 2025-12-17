@@ -33,6 +33,7 @@
     "migrate:notification-preference": "ts-node scripts/migration/updateNotificationPreference.ts",
     "migrate:roles": "ts-node src/scripts/migrateUserRoles.ts",
     "migrate:notification-history": "ts-node src/scripts/migrateNotificationHistory.ts",
+    "inspect:notification-history": "ts-node src/scripts/inspectNotificationHistory.ts",
     "db:seed": "ts-node src/scripts/seed.ts",
     "sync:concerts": "ts-node src/scripts/syncConcertsToLive.ts",
     "copy:live-to-test": "ts-node src/scripts/copyLiveToTest.ts",

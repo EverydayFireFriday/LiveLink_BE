@@ -2,9 +2,10 @@
  * Notification History 마이그레이션 스크립트
  *
  * 목적:
- * 기존 NotificationHistory 도큐먼트의 루트 레벨 필드를 data 객체로 이동
- * - type 필드를 data.type으로 이동
+ * 기존 NotificationHistory 도큐먼트 구조 변경
+ * - type 필드를 루트 레벨에 유지 (enum 값으로 통일)
  * - concertId 필드를 data.concertId로 이동
+ * - data.type 필드가 있으면 루트로 이동
  *
  * 실행 방법:
  * npm run migrate:notification-history
@@ -94,27 +95,34 @@ async function migrateNotificationHistory() {
       await notificationHistoryCollection.countDocuments();
     logger.info(`📊 전체 알림 수: ${stats.totalNotifications}개`);
 
-    // type 필드가 있는 알림 수 조회
+    // type 필드가 있는 알림 수 조회 (루트 레벨)
     stats.notificationsWithType =
       await notificationHistoryCollection.countDocuments({
         type: { $exists: true },
       });
     logger.info(
-      `📊 type 필드가 있는 알림 수: ${stats.notificationsWithType}개`,
+      `📊 루트 type 필드가 있는 알림 수: ${stats.notificationsWithType}개`,
     );
 
-    // concertId 필드가 있는 알림 수 조회
+    // concertId 필드가 있는 알림 수 조회 (루트 레벨)
     stats.notificationsWithConcertId =
       await notificationHistoryCollection.countDocuments({
         concertId: { $exists: true },
       });
     logger.info(
-      `📊 concertId 필드가 있는 알림 수: ${stats.notificationsWithConcertId}개`,
+      `📊 루트 concertId 필드가 있는 알림 수: ${stats.notificationsWithConcertId}개`,
     );
 
+    // data.type 필드가 있는 알림 수 조회
+    const dataTypeCount = await notificationHistoryCollection.countDocuments({
+      'data.type': { $exists: true },
+    });
+    logger.info(`📊 data.type 필드가 있는 알림 수: ${dataTypeCount}개`);
+
     if (
-      stats.notificationsWithType === 0 &&
-      stats.notificationsWithConcertId === 0
+      stats.notificationsWithType === stats.totalNotifications &&
+      stats.notificationsWithConcertId === 0 &&
+      dataTypeCount === 0
     ) {
       logger.info('✅ 모든 알림이 이미 마이그레이션되었습니다.');
       return;
@@ -123,12 +131,15 @@ async function migrateNotificationHistory() {
     // 마이그레이션 대상 알림 조회
     logger.info('\n🔄 마이그레이션 시작...');
 
-    const notificationsToMigrate =
-      await notificationHistoryCollection
-        .find({
-          $or: [{ type: { $exists: true } }, { concertId: { $exists: true } }],
-        })
-        .toArray();
+    const notificationsToMigrate = await notificationHistoryCollection
+      .find({
+        $or: [
+          { type: { $exists: true } },
+          { concertId: { $exists: true } },
+          { 'data.type': { $exists: true } },
+        ],
+      })
+      .toArray();
 
     logger.info(
       `📋 마이그레이션 대상 알림: ${notificationsToMigrate.length}개`,
@@ -144,19 +155,28 @@ async function migrateNotificationHistory() {
         const existingData = notification.data || {};
         const newData = { ...existingData };
 
-        // type 필드를 data.type으로 이동 (타입 값 변환)
+        // type 필드 처리
+        let finalType: string | undefined;
+
+        // 1. 루트 레벨에 type이 있으면 우선 사용
         if (notification.type) {
-          const migratedType =
+          finalType =
             TYPE_MIGRATION_MAP[notification.type] || notification.type;
-          newData.type = migratedType;
-          unsetFields.type = '';
+        }
+        // 2. data.type이 있으면 사용 (루트에 없을 경우)
+        else if (existingData.type) {
+          finalType =
+            TYPE_MIGRATION_MAP[existingData.type] || existingData.type;
         }
 
-        // data.type이 이미 있는 경우도 변환
+        // type을 루트 레벨에 설정
+        if (finalType) {
+          updateFields.type = finalType;
+        }
+
+        // data.type이 있으면 제거
         if (existingData.type) {
-          const migratedType =
-            TYPE_MIGRATION_MAP[existingData.type] || existingData.type;
-          newData.type = migratedType;
+          delete newData.type;
         }
 
         // concertId 필드를 data.concertId로 이동
@@ -215,34 +235,44 @@ async function migrateNotificationHistory() {
     // 검증: 마이그레이션 후 상태 확인
     logger.info('\n🔍 마이그레이션 검증 중...');
 
-    const remainingWithType = await notificationHistoryCollection.countDocuments(
-      {
-        type: { $exists: true },
-      },
-    );
+    const rootTypeCount = await notificationHistoryCollection.countDocuments({
+      type: { $exists: true },
+    });
 
-    const remainingWithConcertId =
+    const rootConcertIdCount =
       await notificationHistoryCollection.countDocuments({
         concertId: { $exists: true },
       });
 
-    const allWithData = await notificationHistoryCollection.countDocuments({
-      data: { $exists: true },
+    const dataTypeCount = await notificationHistoryCollection.countDocuments({
+      'data.type': { $exists: true },
     });
 
-    logger.info(`✅ 검증 결과:`);
-    logger.info(`  - type 필드가 남아있는 알림: ${remainingWithType}개`);
-    logger.info(
-      `  - concertId 필드가 남아있는 알림: ${remainingWithConcertId}개`,
-    );
-    logger.info(`  - data 필드를 가진 알림: ${allWithData}개`);
+    const dataConcertIdCount =
+      await notificationHistoryCollection.countDocuments({
+        'data.concertId': { $exists: true },
+      });
 
-    if (remainingWithType > 0 || remainingWithConcertId > 0) {
-      logger.warn(
-        '⚠️ 일부 알림이 완전히 마이그레이션되지 않았습니다. 로그를 확인하세요.',
+    logger.info(`✅ 검증 결과:`);
+    logger.info(`  - 루트 type 필드: ${rootTypeCount}개 (목표: ${stats.totalNotifications}개)`);
+    logger.info(`  - 루트 concertId 필드: ${rootConcertIdCount}개 (목표: 0개)`);
+    logger.info(`  - data.type 필드: ${dataTypeCount}개 (목표: 0개)`);
+    logger.info(
+      `  - data.concertId 필드: ${dataConcertIdCount}개 (유지됨)`,
+    );
+
+    if (
+      rootTypeCount === stats.totalNotifications &&
+      rootConcertIdCount === 0 &&
+      dataTypeCount === 0
+    ) {
+      logger.info(
+        '\n✅ 모든 알림이 성공적으로 마이그레이션되었습니다!',
       );
     } else {
-      logger.info('✅ 모든 알림이 성공적으로 마이그레이션되었습니다!');
+      logger.warn(
+        '\n⚠️ 일부 알림이 예상과 다르게 마이그레이션되었습니다. 로그를 확인하세요.',
+      );
     }
 
     logger.info('\n✅ 마이그레이션이 완료되었습니다!');
