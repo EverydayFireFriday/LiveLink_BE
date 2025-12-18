@@ -81,12 +81,39 @@ class CacheManager {
       if (!this.checkRedisAvailability()) {
         return;
       }
-      const keys = await this.client.keys(pattern);
-      if (keys.length > 0) {
-        await this.client.del(...keys);
-        logger.info(
-          `✅ Cache DELETED for pattern: ${pattern}, keys: ${keys.join(', ')}`,
+
+      let cursor = '0';
+      let deletedCount = 0;
+      const allKeys: string[] = [];
+
+      // SCAN을 사용하여 비블로킹 방식으로 점진적 스캔
+      do {
+        const result = await this.client.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          100,
         );
+
+        // ioredis는 [cursor, keys] 배열 반환
+        cursor = result[0];
+        const keys = result[1];
+
+        if (keys.length > 0) {
+          await this.client.del(...keys);
+          deletedCount += keys.length;
+          allKeys.push(...keys);
+        }
+      } while (cursor !== '0');
+
+      if (deletedCount > 0) {
+        logger.info(
+          `✅ Cache DELETED for pattern: ${pattern}, total keys: ${deletedCount}`,
+        );
+        logger.debug(`   Deleted keys: ${allKeys.join(', ')}`);
+      } else {
+        logger.debug(`ℹ️ No cache keys found for pattern: ${pattern}`);
       }
     } catch (error) {
       logger.error(`❌ Error deleting cache for pattern ${pattern}:`, {
