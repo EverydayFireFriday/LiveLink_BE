@@ -226,6 +226,73 @@ export class UserService {
   }
 
   /**
+   * Get all users with email and role for admin
+   * 관리자용 사용자 목록 조회 (이메일, 역할 포함)
+   */
+  async getUsersForAdmin(
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<
+    Array<{
+      id: string;
+      email: string;
+      username: string;
+      role: UserRole;
+      status: string;
+      createdAt: Date;
+    }>
+  > {
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const usersCollection = db.collection('users');
+
+    const users = await usersCollection
+      .find(
+        {},
+        {
+          projection: {
+            _id: 1,
+            email: 1,
+            username: 1,
+            role: 1,
+            status: 1,
+            createdAt: 1,
+          },
+        },
+      )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    return users.map((user) => ({
+      id: user._id.toString(),
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+    }));
+  }
+
+  /**
+   * Update user role (admin only)
+   * 사용자 역할 변경 (관리자 전용)
+   */
+  async updateUserRole(
+    userId: string,
+    newRole: UserRole,
+  ): Promise<User | null> {
+    const user = await this.updateUser(userId, { role: newRole });
+
+    if (user) {
+      logger.info(`🔐 사용자 역할 변경: ${userId} -> ${newRole}`);
+    }
+
+    return user;
+  }
+
+  /**
    * Get user statistics including upcoming liked concerts count
    * 사용자 통계 조회 - 좋아요한 다가오는 콘서트 개수 포함
    */

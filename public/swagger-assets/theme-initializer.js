@@ -18,123 +18,10 @@
     error: (msg, error) => isDevelopment && console.error(`[Swagger] ${msg}`, error)
   };
 
-  // ==================== 레인보우 테마 설정 ====================
-  const rainbowThemes = [
-    { name: 'purple', colors: { primary: '#8B5CF6', secondary: '#EC4899', accent: '#F59E0B', primaryLight: '#A78BFA', secondaryLight: '#F472B6', bg: '#F3E8FF', bgEnd: '#FCE7F3', text: '#1F2937', heading: '#7C3AED' } },
-    { name: 'ocean', colors: { primary: '#0EA5E9', secondary: '#06B6D4', accent: '#3B82F6', primaryLight: '#38BDF8', secondaryLight: '#22D3EE', bg: '#E0F2FE', bgEnd: '#CFFAFE', text: '#1F2937', heading: '#0284C7' } },
-    { name: 'sunset', colors: { primary: '#F59E0B', secondary: '#EF4444', accent: '#EC4899', primaryLight: '#FBBF24', secondaryLight: '#F87171', bg: '#FEF3C7', bgEnd: '#FEE2E2', text: '#1F2937', heading: '#D97706' } },
-    { name: 'forest', colors: { primary: '#10B981', secondary: '#059669', accent: '#14B8A6', primaryLight: '#34D399', secondaryLight: '#10B981', bg: '#D1FAE5', bgEnd: '#CCFBF1', text: '#1F2937', heading: '#047857' } },
-    { name: 'candy', colors: { primary: '#EC4899', secondary: '#F472B6', accent: '#C084FC', primaryLight: '#F9A8D4', secondaryLight: '#FBCFE8', bg: '#FCE7F3', bgEnd: '#FAE8FF', text: '#1F2937', heading: '#DB2777' } },
-    { name: 'galaxy', colors: { primary: '#6366F1', secondary: '#8B5CF6', accent: '#A78BFA', primaryLight: '#818CF8', secondaryLight: '#A78BFA', bg: '#E0E7FF', bgEnd: '#EDE9FE', text: '#1F2937', heading: '#4F46E5' } },
-    { name: 'fire', colors: { primary: '#EF4444', secondary: '#F97316', accent: '#FBBF24', primaryLight: '#F87171', secondaryLight: '#FB923C', bg: '#FEE2E2', bgEnd: '#FFEDD5', text: '#1F2937', heading: '#DC2626' } },
-    { name: 'arctic', colors: { primary: '#06B6D4', secondary: '#0EA5E9', accent: '#3B82F6', primaryLight: '#22D3EE', secondaryLight: '#38BDF8', bg: '#CFFAFE', bgEnd: '#DBEAFE', text: '#1F2937', heading: '#0891B2' } }
-  ];
-
-  // ==================== 초기 테마 적용 ====================
-  function initializeTheme() {
-    const savedTheme = localStorage.getItem('swagger-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-  }
-
-  // ==================== 다크모드 토글 ====================
-  function setupDarkModeToggle() {
-    // 중복 방지
-    if (document.querySelector('.dark-mode-toggle')) return;
-
-    const toggleButton = document.createElement('button');
-    toggleButton.className = 'dark-mode-toggle';
-    toggleButton.title = '다크 모드 토글';
-
-    Object.assign(toggleButton.style, {
-      position: 'fixed', top: '14px', right: '20px', zIndex: '1001',
-      background: 'var(--primary-color, #3b82f6)', color: 'white', border: 'none',
-      borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer',
-      fontSize: '18px', transition: 'all 0.3s ease',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    });
-
-    const applyTheme = (theme) => {
-      if (theme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        toggleButton.innerHTML = '☀️';
-      } else {
-        document.documentElement.removeAttribute('data-theme');
-        toggleButton.innerHTML = '🌙';
-      }
-      localStorage.setItem('swagger-theme', theme);
-    };
-
-    toggleButton.addEventListener('click', () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      applyTheme(newTheme);
-    });
-
-    toggleButton.addEventListener('mouseenter', () => {
-      toggleButton.style.transform = 'scale(1.1)';
-      toggleButton.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)';
-    });
-
-    toggleButton.addEventListener('mouseleave', () => {
-      toggleButton.style.transform = 'scale(1)';
-      toggleButton.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-    });
-
-    document.body.appendChild(toggleButton);
-    applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
-    logger.info('다크 모드 토글 설정 완료');
-  }
-
-  // ==================== 레인보우 모드 토글 ====================
-  function setupRainbowModeToggle() {
-    if (document.querySelector('.rainbow-mode-toggle')) return;
-
-    const toggleButton = document.createElement('button');
-    toggleButton.className = 'rainbow-mode-toggle';
-    toggleButton.title = '레인보우 모드 토글';
-    toggleButton.innerHTML = '🌈';
-
-    Object.assign(toggleButton.style, {
-      position: 'fixed', top: '14px', right: '70px', zIndex: '1001',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: 'white', border: 'none',
-      borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer',
-      fontSize: '18px', transition: 'all 0.3s ease',
-      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    });
-
-    const applyRainbowTheme = () => {
-      const randomTheme = rainbowThemes[Math.floor(Math.random() * rainbowThemes.length)];
-      const root = document.documentElement;
-
-      root.setAttribute('data-theme', 'rainbow');
-      Object.entries(randomTheme.colors).forEach(([key, value]) => {
-        root.style.setProperty(`--rainbow-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`, value);
-      });
-
-      localStorage.setItem('swagger-theme', 'rainbow');
-      localStorage.setItem('rainbow-theme-name', randomTheme.name);
-      logger.info(`레인보우 모드 적용: ${randomTheme.name}`);
-    };
-
-    toggleButton.addEventListener('click', applyRainbowTheme);
-    toggleButton.addEventListener('mouseenter', () => {
-      toggleButton.style.transform = 'scale(1.1)';
-      toggleButton.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
-    });
-    toggleButton.addEventListener('mouseleave', () => {
-      toggleButton.style.transform = 'scale(1)';
-      toggleButton.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
-    });
-
-    document.body.appendChild(toggleButton);
-    logger.info('레인보우 모드 토글 설정 완료');
+  // ==================== 다크모드 강제 적용 ====================
+  function forceDarkMode() {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    logger.info('다크 모드 강제 적용 완료');
   }
 
   // ==================== 고객 문의 버튼 ====================
@@ -147,7 +34,7 @@
     supportButton.innerHTML = '📧';
 
     Object.assign(supportButton.style, {
-      position: 'fixed', top: '14px', right: '120px', zIndex: '1001',
+      position: 'fixed', top: '14px', right: '20px', zIndex: '1001',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white', border: 'none',
       borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer',
@@ -329,8 +216,6 @@
       }
 
       /* 토글 버튼 호버 효과 */
-      .dark-mode-toggle:hover,
-      .rainbow-mode-toggle:hover,
       .support-button:hover {
         transform: scale(1.1);
       }
@@ -344,9 +229,7 @@
     try {
       logger.info('Swagger UI 초기화 시작');
 
-      initializeTheme();
-      setupDarkModeToggle();
-      setupRainbowModeToggle();
+      forceDarkMode();
       setupSupportButton();
       setupUIEnhancements();
       setupDOMSearch();

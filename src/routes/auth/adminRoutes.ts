@@ -158,6 +158,158 @@ router.patch(
   adminController.updateUserStatus,
 );
 
+// 사용자 역할 관리
+/**
+ * @swagger
+ * /auth/admin/users-management:
+ *   get:
+ *     summary: 사용자 목록 조회 (이메일, 역할 포함) - 관리자 전용
+ *     description: 사용자 관리를 위한 목록을 조회합니다. 이메일과 역할 정보를 포함합니다.
+ *     tags: [Admin]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 페이지당 사용자 수
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *           minimum: 0
+ *         description: 건너뛸 사용자 수
+ *     responses:
+ *       200:
+ *         description: 사용자 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "사용자 목록 조회 성공"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "60d5ec49f1b2c72b8c8e4f1a"
+ *                       email:
+ *                         type: string
+ *                         example: "user@example.com"
+ *                       username:
+ *                         type: string
+ *                         example: "johndoe"
+ *                       role:
+ *                         type: string
+ *                         enum: [user, admin, superadmin]
+ *                         example: "user"
+ *                       status:
+ *                         type: string
+ *                         example: "active"
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       401:
+ *         description: 로그인 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ */
+router.get('/users-management', requireAdmin, adminController.getUsersForAdmin);
+
+/**
+ * @swagger
+ * /auth/admin/users/role/{userId}:
+ *   patch:
+ *     summary: 사용자 역할 변경 (관리자 전용)
+ *     description: 특정 사용자의 역할을 변경합니다.
+ *     tags: [Admin]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 사용자 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [user, admin, superadmin]
+ *                 example: "admin"
+ *                 description: 변경할 역할
+ *     responses:
+ *       200:
+ *         description: 역할 변경 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "사용자 역할이 변경되었습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         username:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *                         updatedAt:
+ *                           type: string
+ *                           format: date-time
+ *       400:
+ *         description: 올바르지 않은 역할
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *       401:
+ *         description: 로그인 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ */
+router.patch(
+  '/users/role/:userId',
+  requireAdmin,
+  adminController.updateUserRole,
+);
+
 // 통계 및 대시보드
 /**
  * @swagger
