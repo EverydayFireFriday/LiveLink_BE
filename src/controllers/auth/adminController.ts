@@ -4,6 +4,7 @@ import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { ErrorCodes } from '../../utils/errors/errorCodes';
+import { UserRole } from '../../models/auth/user';
 import {
   AppError,
   BadRequestError,
@@ -199,6 +200,97 @@ export class AdminController {
       logger.error('관리자 통계 조회 에러:', error);
       throw new InternalServerError(
         '통계 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
+    }
+  };
+
+  /**
+   * Get users with email and role for admin management
+   * 관리자용 사용자 목록 조회 (이메일, 역할 포함)
+   */
+  getUsersForAdmin = async (req: express.Request, res: express.Response) => {
+    try {
+      const limit = safeParseInt(req.query.limit, 50);
+      const skip = safeParseInt(req.query.skip, 0);
+
+      const users = await this.userService.getUsersForAdmin(limit, skip);
+      const totalUsers = await this.userService.countUsers();
+
+      return ResponseBuilder.paginated(res, '사용자 목록 조회 성공', users, {
+        total: totalUsers,
+        page: Math.floor(skip / limit) + 1,
+        limit,
+        totalPages: Math.ceil(totalUsers / limit),
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.error('관리자 사용자 목록 조회 에러:', error);
+      throw new InternalServerError(
+        '사용자 목록 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
+    }
+  };
+
+  /**
+   * Update user role (admin only)
+   * 사용자 역할 변경 (관리자 전용)
+   */
+  updateUserRole = async (req: express.Request, res: express.Response) => {
+    try {
+      const { userId } = req.params;
+      const { role } = req.body;
+
+      // 역할 유효성 검증
+      if (!Object.values(UserRole).includes(role)) {
+        throw new BadRequestError(
+          '올바르지 않은 역할입니다.',
+          ErrorCodes.VAL_INVALID_ENUM,
+        );
+      }
+
+      // 사용자 존재 확인
+      const user = await this.userService.findById(userId);
+      if (!user) {
+        throw new NotFoundError(
+          '사용자를 찾을 수 없습니다.',
+          ErrorCodes.AUTH_USER_NOT_FOUND,
+        );
+      }
+
+      // 역할 변경
+      const updatedUser = await this.userService.updateUserRole(userId, role);
+
+      if (!updatedUser) {
+        throw new InternalServerError(
+          '역할 변경에 실패했습니다.',
+          ErrorCodes.SYS_INTERNAL_ERROR,
+        );
+      }
+
+      logger.info(
+        `👑 관리자 조치: 사용자 ${user.username} 역할을 ${role}로 변경`,
+      );
+
+      return ResponseBuilder.success(res, '사용자 역할이 변경되었습니다.', {
+        user: {
+          id: updatedUser._id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          updatedAt: updatedUser.updatedAt,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.error('사용자 역할 변경 에러:', error);
+      throw new InternalServerError(
+        '사용자 역할 변경 실패',
         ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
