@@ -116,8 +116,7 @@
   // ==============================================
   // Testing Settings
   // ==============================================
-  "jest.autoRun": "off",
-  "jest.showCoverageOnLoad": false,
+  "jest.runMode": "on-demand",
   "jest.pathToJest": "npm test --",
 
   // ==============================================
@@ -139,7 +138,6 @@
   // npm Settings
   // ==============================================
   "npm.packageManager": "npm",
-  "npm.enableScriptExplorer": true,
 
   // ==============================================
   // Other Settings

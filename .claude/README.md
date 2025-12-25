@@ -1,196 +1,245 @@
-# Claude Code Project Documentation
+# stagelives Backend - AI Assistant Guide
 
-**서비스명**: stagelives
-
-이 폴더는 AI 어시스턴트(Claude, ChatGPT 등)가 stagelives 백엔드 프로젝트를 더 잘 이해하고 작업할 수 있도록 돕기 위한 컨텍스트 문서들을 포함합니다.
+**Last Updated**: 2024-12-26
 
 ## 서비스 정보
 
-- **서비스명**: stagelives (실제 서비스명, 모든 곳에서 사용)
-- **프로젝트명**: LiveLink (GitHub 레포지토리 이름)
+- **서비스명**: stagelives (모든 사용자 대면에서 사용)
+- **프로젝트명**: LiveLink (GitHub 레포지토리명만)
 - **데이터베이스**: stagelives
-- **도메인**: 콘서트/공연 정보 및 커뮤니티 플랫폼
+- **도메인**: 콘서트/공연 관리 및 소셜 플랫폼
 
-**중요**: 이메일, 푸시 알림, UI 등 사용자가 보는 모든 곳에서 **stagelives**를 사용합니다.
+**중요**: 이메일, 푸시 알림, UI 등 사용자가 보는 모든 곳에서 **stagelives** 사용
 
-## 📁 문서 구조
+## 프로젝트 개요
 
-### 1. [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)
-**프로젝트 개요 및 목표**
+Node.js, Express, TypeScript, MongoDB 기반 콘서트 관리 플랫폼:
 
-- 프로젝트 설명 및 주요 목표
-- 기술 스택 요약
-- 프로젝트 구조
-- 핵심 기능 설명
-- 환경 설정 가이드
-- 개발 워크플로우
+- 콘서트 검색 및 관리
+- 소셜 기능 (좋아요, 북마크, 댓글)
+- 실시간 채팅 (Socket.IO)
+- 푸시 알림 (FCM)
+- OAuth 인증 (Google, Apple)
 
-**언제 읽어야 하는가:**
-- 프로젝트를 처음 시작할 때
-- 프로젝트 전체 맥락을 이해할 때
-- 새로운 팀원 온보딩 시
+## 기술 스택
 
-### 2. [ARCHITECTURE.md](./ARCHITECTURE.md)
-**시스템 아키텍처 상세**
+- **Runtime**: Node.js >=18.0.0
+- **Framework**: Express.js + TypeScript
+- **Database**: MongoDB (Native Driver, Mongoose 사용 안 함)
+- **Cache**: Redis (세션, rate limiting)
+- **Auth**: Session-based (JWT 아님)
+- **Realtime**: Socket.IO
 
-- 고수준 아키텍처 다이어그램
-- 계층별 아키텍처 (Presentation, Business, Data, Infrastructure)
-- 데이터 플로우
-- 데이터베이스 구조
-- 보안 아키텍처
-- 확장성 고려사항
-- 배포 아키텍처
+## 프로젝트 구조
 
-**언제 읽어야 하는가:**
-- 새로운 주요 기능을 설계할 때
-- 시스템 성능 개선을 고려할 때
-- 아키텍처 결정이 필요할 때
+```
+src/
+├── config/         # OAuth, Redis, Swagger 설정
+├── models/         # 데이터 모델 (MongoDB Native Driver)
+├── services/       # 비즈니스 로직
+├── controllers/    # 요청 핸들러
+├── routes/         # API 라우트
+├── middlewares/    # 인증, 보안, 에러 처리
+├── utils/          # 로거, 캐시, DB 헬퍼
+├── socket/         # Socket.IO 서버
+└── app.ts          # 메인 진입점
+```
 
-### 3. [CODING_STANDARDS.md](./CODING_STANDARDS.md)
-**코딩 표준 및 베스트 프랙티스**
+## 핵심 데이터베이스
 
-- TypeScript 가이드라인
-- 코드 구조 및 네이밍 규칙
-- 에러 핸들링 패턴
-- 데이터베이스 작업 모범 사례
-- 로깅 전략
-- 보안 체크리스트
-- API 설계 규칙
-- 테스팅 철학
+- `stagelives`: Users, Sessions, Notifications
+- `concerts`: Concert 정보
+- `articles`: 게시글, 댓글, 좋아요, 북마크
+- `chat`: 채팅방, 메시지
+- `setlists`: 콘서트 세트리스트 (YouTube/Spotify)
 
-**언제 읽어야 하는가:**
-- 새로운 코드를 작성할 때
-- 코드 리뷰를 할 때
-- 일관된 코드 스타일을 유지할 때
+## AI 어시스턴트를 위한 중요 규칙
 
-### 4. [DEPENDENCIES.md](./DEPENDENCIES.md)
-**의존성 패키지 관리**
+### 1. MongoDB Native Driver 사용 (Mongoose 아님)
 
-- 핵심 의존성 목록 및 버전
-- 각 패키지 선택 이유
-- 대안 패키지 비교
-- 버전 관리 정책
-- 알려진 이슈 및 해결방법
-- 라이선스 준수
+```typescript
+// ✅ Correct
+const userModel = new UserModel();
+const user = await userModel.findByEmail(email);
 
-**언제 읽어야 하는가:**
-- 새로운 패키지를 추가할 때
-- 의존성을 업데이트할 때
-- 패키지 선택에 대한 이유를 알고 싶을 때
+// ❌ Wrong - Don't suggest Mongoose
+const user = await User.findOne({ email });
+```
 
-### 5. [COMMON_TASKS.md](./COMMON_TASKS.md)
-**자주 하는 작업 가이드**
+### 2. 세션 기반 인증 (JWT 아님)
 
-- 개발 환경 설정
-- 데이터베이스 작업
-- 새 기능 추가 방법
-- 테스팅 가이드
-- 디버깅 방법
-- 성능 최적화
-- 배포 절차
-- 문제 해결 (Troubleshooting)
+```typescript
+// ✅ Correct
+req.session.userId = user._id;
 
-**언제 읽어야 하는가:**
-- 특정 작업을 수행하는 방법을 찾을 때
-- 문제가 발생했을 때
-- 반복적인 작업의 효율성을 높이고 싶을 때
+// ❌ Wrong - Don't suggest JWT for primary auth
+const token = jwt.sign({ userId: user._id }, secret);
+```
 
-### 6. [CONTEXT.md](./CONTEXT.md)
-**AI 어시스턴트를 위한 특별 컨텍스트**
+### 3. 다중 기기 세션 관리
 
-- 프로젝트 특성 및 현 상태
-- 중요한 디자인 패턴
-- 흔한 실수 및 함정
-- 모델 구조 규칙
-- 보안 체크리스트
-- 최근 변경사항
-- AI가 코드를 작성할 때 고려해야 할 사항
+- 사용자는 플랫폼별로 하나의 세션 유지 (웹 1개, 앱 1개)
+- 같은 플랫폼에서 새 로그인 시 기존 세션 교체
+- 다른 플랫폼의 세션은 유지
 
-**언제 읽어야 하는가:**
-- AI 어시스턴트가 코드를 생성하기 전에 (자동으로 읽힘)
-- 프로젝트의 "암묵적 규칙"을 이해할 때
-- 왜 특정 방식으로 구현되었는지 알고 싶을 때
+### 4. 에러 처리 패턴
 
-## 🤖 AI 어시스턴트 사용 가이드
+```typescript
+// Services throw errors
+throw new Error('User not found');
 
-### Claude Code Desktop 사용자
+// Controllers catch and pass to middleware
+try {
+  await service.method();
+} catch (error) {
+  next(error);
+}
+```
 
-Claude Code Desktop을 사용하는 경우, 이 `.claude` 폴더의 문서들이 자동으로 프로젝트 컨텍스트에 포함됩니다.
+### 5. 알림 시스템
 
-**권장 사용법:**
-1. 프로젝트를 열면 자동으로 컨텍스트 로드
-2. 특정 작업 전에 해당 문서를 참조하도록 요청
-3. 예: "CODING_STANDARDS.md를 참고하여 새로운 API 엔드포인트를 작성해줘"
+- **ScheduledNotification**: 예약된 알림 큐
+- **NotificationHistory**: 사용자 알림 받은편지함 (TTL)
+- 콘서트 좋아요 시 알림 예약 (콘서트 생성 시 아님)
 
-### 다른 AI 어시스턴트 사용자
+### 6. Concert-Setlist 관계
 
-프로젝트 작업 시작 시 다음 문서들을 컨텍스트에 제공하세요:
+```typescript
+// ✅ Separate collections
+Concert { _id, uid, title, ... }
+Setlist { concertId: "concert.uid", setList: [] }
 
-**최소한의 컨텍스트:**
-- `PROJECT_OVERVIEW.md`: 프로젝트 이해
-- `CONTEXT.md`: AI를 위한 특별 지침
+// ❌ Don't embed
+Concert { setlist: [] }  // Wrong!
+```
 
-**코드 생성 시:**
-- `CODING_STANDARDS.md`: 코딩 규칙 준수
-- `ARCHITECTURE.md`: 아키텍처 패턴 이해
+## 피해야 할 함정
 
-**특정 작업 시:**
-- `COMMON_TASKS.md`: 작업별 가이드
-- `DEPENDENCIES.md`: 패키지 관련 작업
+### ObjectId 처리
 
-## 📚 추가 문서
+```typescript
+// ✅ Always type-check
+const objectId = typeof id === 'string' ? new ObjectId(id) : id;
 
-프로젝트의 다른 중요한 문서들:
+// ❌ Don't assume type
+return await collection.findOne({ _id: id });  // May fail
+```
 
-- **[docs/architecture/ERD.md](../docs/architecture/ERD.md)**: 데이터베이스 스키마 및 관계
-- **[docs/architecture/SEQUENCE_DIAGRAMS.md](../docs/architecture/SEQUENCE_DIAGRAMS.md)**: 주요 비즈니스 플로우
-- **[docs/architecture/README.md](../docs/architecture/README.md)**: 전체 아키텍처 문서
+### N+1 쿼리
 
-## 🔄 문서 업데이트
+```typescript
+// ✅ Use bulk operations
+await model.bulkCreate(items);
 
-이 문서들은 프로젝트와 함께 발전합니다.
+// ❌ Don't loop
+for (const item of items) {
+  await model.create(item);  // N+1!
+}
+```
 
-**업데이트가 필요한 경우:**
-- 새로운 주요 기능 추가 시
-- 아키텍처 변경 시
-- 새로운 의존성 추가 시
-- 중요한 디자인 결정 시
+### 비밀번호 보안
 
-**마지막 업데이트:** 2025-11-20
-**버전:** 1.1.0
+```typescript
+// ✅ Always hash
+const hash = await bcrypt.hash(password, 10);
+
+// ❌ Never store plain
+user.password = req.body.password;  // NEVER!
+```
+
+## 코드 작성 체크리스트
+
+새로운 엔드포인트 작성 시:
+
+- [ ] Input validation (Joi/Zod)
+- [ ] Authentication check
+- [ ] Authorization check
+- [ ] Rate limiting
+- [ ] XSS/NoSQL injection 방지
+- [ ] 에러 메시지 보안 (민감 정보 노출 안 함)
+- [ ] Structured logging
+
+## 명명 규칙
+
+### 서비스 참조
+
+- **모든 곳**: "stagelives" 사용
+- 이메일/푸시: "stagelives"
+- UI: "stagelives"
+- 로그: "[stagelives]"
+- 환경변수: `STAGELIVES_*`
+
+```typescript
+// ✅ Good
+logger.info('[stagelives] User logged in', { userId });
+const emailSubject = 'Welcome to stagelives!';
+
+// ❌ Bad
+const emailSubject = 'Welcome to LiveLink!';  // WRONG!
+```
+
+### 코드 명명
+
+- **파일명**: camelCase (`userService.ts`)
+- **클래스명**: PascalCase (`UserModel`)
+- **함수명**: camelCase (`findUserById`)
+- **상수명**: UPPER_SNAKE_CASE (`MAX_LOGIN_ATTEMPTS`)
+- **인터페이스**: PascalCase with 'I' prefix (`IUser`)
+
+## 로깅 전략
+
+```typescript
+// ✅ Structured logging
+logger.info('User logged in', {
+  userId: user._id,
+  email: user.email,
+  platform: 'web'
+});
+
+// ❌ String logs
+logger.info(`User ${user.email} logged in`);
+```
+
+**로그 레벨**:
+- `error`: 애플리케이션 에러
+- `warn`: 성능 저하 (Redis down, slow query)
+- `info`: 중요 이벤트 (로그인, 회원가입)
+- `debug`: 상세 진단 (개발 전용)
+
+## 환경별 동작
+
+### Development
+- Debug 레벨 로깅
+- Swagger UI 활성화
+- CORS 모든 출처 허용
+- 상세 에러 메시지
+
+### Production
+- Info 레벨 로깅
+- Swagger UI 비활성화
+- CORS FRONTEND_URL만 허용
+- 일반 에러 메시지
+- Prometheus 메트릭 활성화
+
+## 추가 문서
+
+- **[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)**: 코딩 표준, 일반 작업, 아키텍처
+- **[docs/architecture/ERD.md](../docs/architecture/ERD.md)**: DB 스키마
+- **[docs/architecture/SEQUENCE_DIAGRAMS.md](../docs/architecture/SEQUENCE_DIAGRAMS.md)**: 비즈니스 플로우
+
+## 구현 전 확인 질문
+
+1. MongoDB Native Driver 사용? (Mongoose 아님)
+2. 세션 기반 인증? (JWT 아님)
+3. 인증/권한 부여 필요?
+4. Rate limiting 필요?
+5. Input validation/sanitization?
+6. 에러 처리 포괄적?
+7. 로깅 적절?
+8. DB 쿼리 최적화?
+9. 기존 패턴 준수?
+10. 테스트 가능?
 
 ---
 
-## 💡 사용 예시
-
-### 예시 1: 새로운 기능 추가
-
-```
-1. PROJECT_OVERVIEW.md 읽기 → 프로젝트 구조 이해
-2. ARCHITECTURE.md 읽기 → 어디에 코드를 추가할지 결정
-3. COMMON_TASKS.md "새 기능 추가" 섹션 → 단계별 가이드 따르기
-4. CODING_STANDARDS.md 참고 → 코드 작성
-5. 코드 리뷰 시 CODING_STANDARDS.md 체크리스트 확인
-```
-
-### 예시 2: 버그 수정
-
-```
-1. COMMON_TASKS.md "디버깅" 섹션 → 문제 진단
-2. CONTEXT.md → 흔한 함정 확인
-3. 해결책 구현 (CODING_STANDARDS.md 준수)
-4. COMMON_TASKS.md "테스팅" 섹션 → 테스트 작성
-```
-
-### 예시 3: 의존성 업데이트
-
-```
-1. DEPENDENCIES.md → 현재 버전 및 업데이트 정책 확인
-2. 패키지 업데이트
-3. COMMON_TASKS.md "테스팅" → 회귀 테스트
-4. 문제 발생 시 DEPENDENCIES.md "알려진 이슈" 확인
-```
-
----
-
-**이 문서는 AI와 인간 개발자 모두를 위한 것입니다.**
+**버전**: 2.0.0
