@@ -33,16 +33,23 @@ logs/
 combined.log
 error.log
 access.log
+dev-error.log
 
 # ==============================================
 # 환경변수 파일 (보안)
 # ==============================================
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 .env.*.local
+
+# 예시 파일만 포함
+!.env.example
 
 # ==============================================
 # 운영/배포 관련
@@ -52,11 +59,20 @@ docker-compose.override.yml
 # ==============================================
 # IDE & 에디터
 # ==============================================
-.vscode/
+# VSCode 팀 설정 공유 (개인 설정만 제외)
+.vscode/*.code-workspace
+.vscode/settings.local.json
+
+# IntelliJ IDEA
 .idea/
+*.iml
+
+# Vim
 *.swp
 *.swo
 *~
+
+# OS 파일
 .DS_Store
 Thumbs.db
 
