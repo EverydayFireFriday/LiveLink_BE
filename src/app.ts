@@ -49,9 +49,16 @@ import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMidd
 // 응답 시간 측정 미들웨어
 import { responseTimeMiddleware } from './middlewares/responseTime/responseTime';
 
+// Request ID 트래킹 미들웨어
+import { requestIdMiddleware } from './middlewares/requestId/requestId';
+
 const app = express();
 const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
+
+// Request ID 트래킹 미들웨어 (가장 먼저 적용)
+// 모든 요청에 고유 ID 부여하여 로그 추적 가능
+app.use(requestIdMiddleware);
 
 // Prometheus 메트릭 및 요청 추적 미들웨어
 // 응답 시간 측정, 느린 API 감지, 성능 모니터링

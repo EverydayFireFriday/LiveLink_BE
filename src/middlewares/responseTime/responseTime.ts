@@ -74,10 +74,6 @@ export const createResponseTimeMiddleware = (
 
       // 느린 API 경고 로깅
       if (duration > slowApiThreshold) {
-        // requestId 타입 안전하게 처리
-        const requestId =
-          'id' in req && typeof req.id === 'string' ? req.id : undefined;
-
         logger.warn(`Slow API detected`, {
           duration: `${duration}ms`,
           method: req.method,
@@ -85,8 +81,8 @@ export const createResponseTimeMiddleware = (
           route,
           statusCode: status,
           userAgent: req.get('user-agent') || 'Unknown',
-          // requestId가 있다면 포함 (express-request-id 등 사용 시)
-          ...(requestId && { requestId }),
+          // requestId가 있다면 포함 (requestIdMiddleware에서 설정)
+          ...(req.id && { requestId: req.id }),
         });
       }
 
