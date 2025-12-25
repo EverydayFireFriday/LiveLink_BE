@@ -19,21 +19,13 @@ import { swaggerSpec, swaggerUi, swaggerUiOptions } from './config/swagger';
 import { ChatSocketServer } from './socket';
 
 // 분리된 모듈들
-import {
-  register,
-  httpRequestCounter,
-  httpRequestDurationMicroseconds,
-  activeConnectionsGauge,
-  httpErrorCounter,
-  redisConnectionGauge,
-} from './config/metrics/prometheus';
+import { register, redisConnectionGauge } from './config/metrics/prometheus';
 import { applySecurityMiddlewares } from './config/middleware/security';
 import {
   initializeDatabases,
   databaseState,
 } from './config/database/initializer';
 import {
-  shutdownState,
   setupShutdownHandlers,
   setupGlobalErrorHandlers,
 } from './services/shutdown/gracefulShutdown';
@@ -54,56 +46,16 @@ import { Store } from 'express-session';
 // 유지보수 모드 미들웨어
 import { maintenanceMiddleware } from './middlewares/maintenance/maintenanceMiddleware';
 
+// 응답 시간 측정 미들웨어
+import { responseTimeMiddleware } from './middlewares/responseTime/responseTime';
+
 const app = express();
 const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
 
 // Prometheus 메트릭 및 요청 추적 미들웨어
-app.use((req, res, next) => {
-  // Graceful shutdown: 새로운 요청 거부
-  if (shutdownState.isShuttingDown) {
-    res.set('Connection', 'close');
-    return res.status(503).json({
-      error: 'Server is shutting down',
-      message: '서버가 종료 중입니다. 잠시 후 다시 시도해주세요.',
-    });
-  }
-
-  // 진행 중인 요청 추적
-  shutdownState.activeRequests++;
-  activeConnectionsGauge.inc();
-
-  const end = httpRequestDurationMicroseconds.startTimer();
-  res.on('finish', () => {
-    const route: string = (req.route?.path as string) || req.path;
-    const status = res.statusCode;
-    httpRequestCounter.inc({
-      method: req.method,
-      route,
-      status,
-    });
-    end({ method: req.method, route, status });
-
-    // Track errors
-    if (status >= 400) {
-      httpErrorCounter.inc({
-        method: req.method,
-        route,
-        status,
-      });
-    }
-
-    activeConnectionsGauge.dec();
-    shutdownState.activeRequests--;
-  });
-
-  res.on('close', () => {
-    activeConnectionsGauge.dec();
-    shutdownState.activeRequests--;
-  });
-
-  next();
-});
+// 응답 시간 측정, 느린 API 감지, 성능 모니터링
+app.use(responseTimeMiddleware);
 
 // Prometheus metrics endpoint
 app.get('/metrics', (req, res) => {
