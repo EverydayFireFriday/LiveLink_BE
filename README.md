@@ -405,13 +405,32 @@ LiveLink_BE/
 │   └── ecosystem.config.js   # PM2 프로세스 관리 설정
 │
 ├── scripts/                  # 배포 및 유틸리티 스크립트
-│   ├── deploy.sh             # 배포 자동화 스크립트
-│   └── docker-build.sh       # Docker 이미지 빌드 스크립트
+│   ├── deployment/           # 배포 관련 스크립트
+│   │   ├── deploy.sh
+│   │   ├── deploy-develop.sh
+│   │   ├── deploy-production.sh
+│   │   ├── quick-deploy.sh
+│   │   ├── docker-build.sh
+│   │   └── rollback.sh
+│   ├── setup/                # 환경 설정 스크립트
+│   │   ├── setup-env.sh
+│   │   ├── setup-secrets.sh
+│   │   ├── sync-env.sh
+│   │   └── validate-env.sh
+│   ├── monitoring/           # 모니터링 스크립트
+│   │   ├── start-monitoring.sh
+│   │   ├── pm2-monitor.sh
+│   │   └── watch-logs.sh
+│   └── dev/                  # 개발/디버깅 스크립트
+│       ├── debug-session.sh
+│       └── check-redis-keys.sh
 │
 ├── docs/                     # 프로젝트 문서
-│   ├── API_RESPONSE_STANDARDIZATION.md
-│   ├── MONITORING_GUIDE.md
-│   ├── DEPLOY_CHECKLIST.md
+│   ├── operations/           # 운영 관련 문서
+│   │   ├── MONITORING_GUIDE.md
+│   │   ├── ENV_MANAGEMENT.md
+│   │   └── ...
+│   ├── deployment/           # 배포 관련 문서
 │   └── architecture/         # 아키텍처 문서
 │
 ├── .github/                  # GitHub Actions CI/CD
@@ -640,7 +659,7 @@ stagelives는 Prometheus와 Grafana를 사용하여 시스템을 실시간으로
 - 메모리 사용량 > 80%
 - 디스크 사용량 > 90%
 
-상세 가이드: [모니터링 가이드](./docs/MONITORING_GUIDE.md)
+상세 가이드: [모니터링 가이드](./docs/operations/MONITORING_GUIDE.md)
 
 ---
 
@@ -1010,7 +1029,7 @@ docker-compose exec nginx tail -f /var/log/nginx/error.log
 
 ```bash
 # 모니터링 스택 실행
-./scripts/start-monitoring.sh
+./scripts/monitoring/start-monitoring.sh
 
 # 또는 수동 실행
 docker-compose up -d prometheus grafana mongodb-exporter redis-exporter
@@ -1030,7 +1049,7 @@ docker-compose up -d prometheus grafana mongodb-exporter redis-exporter
 - ✅ 자동 프로비저닝된 대시보드
 - ✅ Health Check 엔드포인트 통합
 
-자세한 내용은 [MONITORING_GUIDE.md](./MONITORING_GUIDE.md)를 참고하세요.
+자세한 내용은 [모니터링 가이드](./docs/operations/MONITORING_GUIDE.md)를 참고하세요.
 
 ---
 
@@ -1084,7 +1103,7 @@ docker-compose up -d prometheus grafana mongodb-exporter redis-exporter
 - [API 레퍼런스](./docs/API_REFERENCE.md)
 
 **운영자용:**
-- [배포 가이드](./docs/DEPLOYMENT_GUIDE.md)
-- [모니터링 가이드](./MONITORING_GUIDE.md)
+- [배포 가이드](./docs/deployment/DEPLOYMENT_GUIDE.md)
+- [모니터링 가이드](./docs/operations/MONITORING_GUIDE.md)
 - [성능 분석](./docs/performance/CAPACITY_ANALYSIS.md)
 

@@ -4,22 +4,21 @@ LiveLink Backend 프로젝트 문서 목록입니다.
 
 ## 🚀 시작하기
 
-- [Quick Start](./QUICK_START.md) - 빠른 시작 가이드
-- [Development Setup](./DEVELOPMENT_SETUP.md) - 개발 환경 설정
-- [Environment Variables](./ENVIRONMENT_VARIABLES.md) - 환경 변수 관리
+- [Quick Start](./getting-started/QUICK_START.md) - 빠른 시작 가이드
+- [Development Setup](./getting-started/DEVELOPMENT_SETUP.md) - 개발 환경 설정
 
 ## 📖 주요 문서
 
 ### 배포 & 운영
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - 배포 가이드
-- [Deploy Checklist](./DEPLOY_CHECKLIST.md) - 배포 체크리스트
-- [CI/CD Setup](./CICD_SETUP.md) - CI/CD 파이프라인
-- [Horizontal Scaling Guide](./HORIZONTAL_SCALING_GUIDE.md) - 수평 확장 가이드
+- [Deployment Guide](./deployment/DEPLOYMENT_GUIDE.md) - 배포 가이드
+- [Deploy Checklist](./deployment/DEPLOY_CHECKLIST.md) - 배포 체크리스트
+- [CI/CD Setup](./deployment/CICD_SETUP.md) - CI/CD 파이프라인
+- [Horizontal Scaling Guide](./deployment/HORIZONTAL_SCALING_GUIDE.md) - 수평 확장 가이드
 
 ### 성능 & 모니터링
 - [Capacity Analysis](./performance/CAPACITY_ANALYSIS.md) - 서버 용량 분석 및 동접자 예측
 - [Query Optimization](./performance/QUERY_OPTIMIZATION_SUMMARY.md) - 데이터베이스 쿼리 최적화
-- [Monitoring Guide](../MONITORING_GUIDE.md) - Grafana & Prometheus 모니터링
+- [Monitoring Guide](./operations/MONITORING_GUIDE.md) - Grafana & Prometheus 모니터링
 
 ### 아키텍처
 - [Architecture Overview](./architecture/README.md) - 전체 아키텍처
@@ -27,19 +26,18 @@ LiveLink Backend 프로젝트 문서 목록입니다.
 - [Sequence Diagrams](./architecture/SEQUENCE_DIAGRAMS.md) - 시퀀스 다이어그램
 
 ### API & 기능
-- [API Reference](./API_REFERENCE.md) - API 명세
-- [API Response Standardization](./API_RESPONSE_STANDARDIZATION.md) - API 응답 표준화
-- [Socket.IO Events](./SOCKET_IO_EVENTS.md) - 실시간 이벤트
-- [Error Handling](./ERROR_HANDLING.md) - 에러 처리 가이드
+- [Playlist Feature](./features/PLAYLIST_FEATURE.md) - 플레이리스트 기능
 
 ### 외부 서비스 연동
-- [Spotify Production Setup](./SPOTIFY_PRODUCTION_SETUP.md) - Spotify API 연동
-- [Music Services Setup](./MUSIC_SERVICES_SETUP.md) - 음악 서비스 설정
+- [Spotify Production Setup](./integrations/SPOTIFY_PRODUCTION_SETUP.md) - Spotify API 연동
+- [Music Services Setup](./integrations/MUSIC_SERVICES_SETUP.md) - 음악 서비스 설정
 
 ### 시스템 관리
-- [Cache System](./CACHE_SYSTEM.md) - Redis 캐시 시스템
-- [Maintenance Mode](./MAINTENANCE_MODE.md) - 유지보수 모드
-- [Developer Tools](./DEVELOPER_TOOLS.md) - 개발 도구
+- [Cache System](./operations/CACHE_SYSTEM.md) - Redis 캐시 시스템
+- [Maintenance Mode](./operations/MAINTENANCE_MODE.md) - 유지보수 모드
+- [Developer Tools](./getting-started/DEVELOPER_TOOLS.md) - 개발 도구
+- [Environment Management](./operations/ENV_MANAGEMENT.md) - 환경 변수 관리
+- [Testing Guide](./operations/TESTING.md) - 테스트 가이드
 
 ## 🔧 개발 참고
 
