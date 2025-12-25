@@ -33,6 +33,11 @@ module.exports = {
         PORT: 3000,
         PM2_LOG_TYPE: 'json', // 프로덕션: JSON (로그 수집 시스템용)
       },
+      env_develop: {
+        NODE_ENV: 'development',
+        PORT: 3000,
+        PM2_LOG_TYPE: 'raw',
+      },
       env_staging: {
         NODE_ENV: 'staging',
         PORT: 3000,
