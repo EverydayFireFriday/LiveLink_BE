@@ -39,10 +39,16 @@ access.log
 # ==============================================
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 .env.*.local
+
+# 예시 파일만 포함
+!.env.example
 
 # ==============================================
 # 운영/배포 관련
