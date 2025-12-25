@@ -727,6 +727,163 @@ sequenceDiagram
     end
 ```
 
+## 10. Support Inquiry System
+
+### 10.1 고객 문의 제출
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant Validation as Validation Layer
+    participant SupportInquiryModel
+    participant MongoDB
+    participant Notification as Notification Service
+
+    User->>Client: 고객 문의 작성
+    Client->>API: POST /support/inquiry {category, subject, content, attachments[]}
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Redis-->>Auth: 세션 + userId
+    Auth-->>API: 인증된 사용자
+
+    API->>Validation: 입력 검증 (category, subject, content)
+
+    alt 검증 실패
+        Validation-->>API: 400 Bad Request
+        API-->>Client: 오류 응답
+    else 검증 통과
+        Validation-->>API: 통과
+
+        API->>API: priority 자동 설정 (카테고리, 키워드 기반)
+        API->>SupportInquiryModel: create({userId, category, subject, content, status: 'pending', priority, attachments})
+        SupportInquiryModel->>MongoDB: insertOne(supportInquiry)
+        MongoDB-->>SupportInquiryModel: 생성된 SupportInquiry
+        SupportInquiryModel-->>API: SupportInquiry 객체
+
+        Note over API,Notification: 관리자에게 알림 (선택적)
+        API->>Notification: notifyAdminNewInquiry(inquiryId, category, priority)
+
+        API-->>Client: 201 Created + SupportInquiry
+        Client-->>User: 문의 접수 완료
+    end
+```
+
+### 10.2 관리자 답변
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant AdminClient as Admin Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant SupportInquiryModel
+    participant UserModel
+    participant MongoDB
+    participant FCM as Firebase Cloud Messaging
+
+    Admin->>AdminClient: 문의 답변 작성
+    AdminClient->>API: PATCH /support/inquiry/:inquiryId/respond {content}
+    API->>Auth: 관리자 권한 확인
+    Auth->>Redis: 세션 확인
+    Auth-->>API: 관리자 인증 완료
+
+    API->>SupportInquiryModel: findById(inquiryId)
+    SupportInquiryModel->>MongoDB: findOne({_id: inquiryId, isDeleted: false})
+    MongoDB-->>SupportInquiryModel: SupportInquiry
+
+    alt 문의가 이미 답변됨
+        SupportInquiryModel-->>API: SupportInquiry (adminResponse exists)
+        API-->>AdminClient: 409 Conflict (이미 답변됨)
+    else 답변 가능
+        SupportInquiryModel-->>API: SupportInquiry
+
+        API->>SupportInquiryModel: update({_id}, {$set: {adminResponse: {responderId, content, respondedAt}, status: 'resolved'}})
+        SupportInquiryModel->>MongoDB: updateOne(...)
+        MongoDB-->>SupportInquiryModel: 업데이트 완료
+
+        Note over API,FCM: 사용자에게 푸시 알림 전송
+
+        API->>UserModel: findById(userId)
+        UserModel->>MongoDB: findOne({_id: userId})
+        MongoDB-->>UserModel: User (fcmToken)
+
+        alt FCM 토큰 존재
+            API->>FCM: send({token, notification: {title: '문의 답변 도착', body: '문의하신 내용에 대한 답변이 도착했습니다'}})
+            FCM-->>API: 전송 성공
+        end
+
+        API-->>AdminClient: 200 OK + Updated SupportInquiry
+        AdminClient-->>Admin: 답변 완료
+    end
+```
+
+### 10.3 사용자 문의 내역 조회
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant SupportInquiryModel
+    participant MongoDB
+
+    User->>Client: 내 문의 내역 조회
+    Client->>API: GET /support/inquiry/my?status=pending&page=1&limit=10
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Redis-->>Auth: 세션 + userId
+    Auth-->>API: 인증된 사용자
+
+    API->>SupportInquiryModel: findByUserId(userId, {status, page, limit})
+    SupportInquiryModel->>MongoDB: find({userId, isDeleted: false, status}).sort({createdAt: -1}).limit(10).skip(0)
+    MongoDB-->>SupportInquiryModel: 문의 목록
+
+    SupportInquiryModel->>MongoDB: countDocuments({userId, isDeleted: false, status})
+    MongoDB-->>SupportInquiryModel: total count
+
+    SupportInquiryModel-->>API: {inquiries, total, page, totalPages}
+    API-->>Client: 200 OK + 문의 목록
+    Client-->>User: 문의 내역 표시
+```
+
+### 10.4 관리자 문의 목록 조회 (필터링)
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant AdminClient as Admin Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant SupportInquiryModel
+    participant MongoDB
+
+    Admin->>AdminClient: 문의 관리 페이지 접근
+    AdminClient->>API: GET /support/inquiry/admin?status=pending&priority=high&category=technical&page=1&limit=20
+    API->>Auth: 관리자 권한 확인
+    Auth-->>API: 관리자 인증 완료
+
+    API->>SupportInquiryModel: findWithFilters({status, priority, category, page, limit})
+    SupportInquiryModel->>MongoDB: find({isDeleted: false, status, priority, category}).sort({priority: -1, createdAt: 1}).limit(20)
+
+    Note over MongoDB: 인덱스 활용: {status, createdAt}, {priority}
+
+    MongoDB-->>SupportInquiryModel: 문의 목록 (우선순위 높은 순)
+
+    SupportInquiryModel->>MongoDB: countDocuments({isDeleted: false, status, priority, category})
+    MongoDB-->>SupportInquiryModel: total count
+
+    SupportInquiryModel-->>API: {inquiries, total, page, totalPages, stats}
+    API-->>AdminClient: 200 OK + 문의 목록 + 통계
+    AdminClient-->>Admin: 문의 목록 표시 (우선순위별 강조)
+```
+
 ## 시스템 아키텍처 특징
 
 ### Redis 활용
@@ -754,12 +911,21 @@ sequenceDiagram
 - **FCM**: 푸시 알림 전송
 
 ### 성능 최적화
-- **N+1 Query 방지**: Bulk operations (bulkCreate, bulkCancel)
+- **N+1 Query 방지**: Bulk operations (bulkCreate, bulkCancel, bulkWrite)
 - **캐싱**: Redis 기반 콘서트 목록 캐싱
-- **인덱싱**: MongoDB 복합 인덱스 활용
+- **인덱싱**: MongoDB 복합 인덱스 활용 (SupportInquiry: {status, createdAt}, {userId, status})
 - **Connection Pooling**: MongoDB 및 Redis 연결 풀
+- **Query Optimization**: Projection, Aggregation Pipeline 최적화
+
+### 고객 지원
+- **Support Inquiry**: 카테고리별 문의 관리 (일반, 기술, 계정, 콘서트, 게시글 등)
+- **우선순위 시스템**: low, medium, high, urgent 자동 설정
+- **상태 관리**: pending, in_progress, resolved, closed
+- **관리자 답변**: Embedded document로 저장 (responderId, content, respondedAt)
+- **푸시 알림**: 답변 완료 시 FCM 푸시 알림 자동 전송
+- **소프트 삭제**: isDeleted, deletedAt으로 복구 가능한 삭제
 
 ---
 
-**Last Updated:** 2025-11-20
-**Version:** 1.1.0
+**Last Updated:** 2025-12-25
+**Version:** 1.2.0
