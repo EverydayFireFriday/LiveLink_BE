@@ -376,8 +376,28 @@ export class ConcertLikeService {
       const Concert = getConcertModel();
 
       // 모든 좋아요한 콘서트 가져오기 (정렬을 위해)
+      // 🚀 쿼리 최적화: Projection으로 필요한 필드만 조회
       const allConcerts = await Concert.collection
-        .find({ _id: { $in: likedConcertIds } })
+        .find(
+          { _id: { $in: likedConcertIds } },
+          {
+            projection: {
+              _id: 1,
+              uid: 1,
+              title: 1,
+              artist: 1,
+              datetime: 1,
+              location: 1,
+              posterImage: 1,
+              likesCount: 1,
+              createdAt: 1,
+              ticketOpenDate: 1,
+              category: 1,
+              status: 1,
+              // 불필요한 필드 제외: description, infoImages, price, ticketLink 등
+            },
+          },
+        )
         .toArray();
 
       // 정렬 적용
