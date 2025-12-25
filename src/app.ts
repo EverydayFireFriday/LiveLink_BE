@@ -52,6 +52,14 @@ import { responseTimeMiddleware } from './middlewares/responseTime/responseTime'
 // Request ID 트래킹 미들웨어
 import { requestIdMiddleware } from './middlewares/requestId/requestId';
 
+// Health Check 유틸리티
+import {
+  getSystemHealth,
+  checkRedisHealth,
+  getOverallHealthStatus,
+  type ExternalServiceHealth,
+} from './utils/health/healthCheck';
+
 const app = express();
 const httpServer = http.createServer(app);
 let chatSocketServer: ChatSocketServer | null = null;
@@ -148,21 +156,66 @@ app.get('/health/readiness', (req: express.Request, res: express.Response) => {
   }
 });
 
-app.get('/health', (req: express.Request, res: express.Response) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: Math.floor(process.uptime()),
-    version: process.env.npm_package_version || '1.0.0',
-    environment: env.NODE_ENV,
-    services: {
+app.get('/health', async (req: express.Request, res: express.Response) => {
+  try {
+    // 시스템 리소스 헬스 체크
+    const systemHealth = await getSystemHealth();
+
+    // 외부 서비스 헬스 체크
+    const externalServices: ExternalServiceHealth[] = [];
+
+    // Redis 헬스 체크
+    if (redisClient) {
+      const redisHealth = await checkRedisHealth(redisClient);
+      externalServices.push(redisHealth);
+    }
+
+    // 데이터베이스 상태 (기존 방식 유지)
+    const databaseServices = {
       userDB: databaseState.isUserDBConnected,
       concertDB: databaseState.isConcertDBConnected,
       articleDB: databaseState.isArticleDBConnected,
       chatDB: databaseState.isChatDBConnected,
-      redis: redisClient?.status === 'ready' || false,
-    },
-  });
+    };
+
+    // 전체 헬스 상태 판단
+    const overallHealth = getOverallHealthStatus(
+      systemHealth,
+      externalServices,
+    );
+
+    // 상태 코드 결정
+    const statusCode =
+      overallHealth.status === 'healthy'
+        ? 200
+        : overallHealth.status === 'degraded'
+          ? 200
+          : 503;
+
+    res.status(statusCode).json({
+      status: overallHealth.status,
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(process.uptime()),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: env.NODE_ENV,
+      system: {
+        memory: systemHealth.memory,
+        cpu: systemHealth.cpu,
+        disk: systemHealth.disk,
+        uptime: systemHealth.uptime,
+      },
+      services: databaseServices,
+      external: externalServices,
+      issues: overallHealth.issues,
+    });
+  } catch (error) {
+    logger.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 });
 
 // 데이터베이스 연결 상태 확인 미들웨어
