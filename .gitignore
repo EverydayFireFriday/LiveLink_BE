@@ -59,11 +59,20 @@ docker-compose.override.yml
 # ==============================================
 # IDE & 에디터
 # ==============================================
-.vscode/
+# VSCode 팀 설정 공유 (개인 설정만 제외)
+.vscode/*.code-workspace
+.vscode/settings.local.json
+
+# IntelliJ IDEA
 .idea/
+*.iml
+
+# Vim
 *.swp
 *.swo
 *~
+
+# OS 파일
 .DS_Store
 Thumbs.db
 

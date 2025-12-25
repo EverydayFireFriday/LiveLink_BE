@@ -1,0 +1,74 @@
+{
+  // ==============================================
+  // Recommended Extensions for LiveLink Backend
+  // ==============================================
+  "recommendations": [
+    // === Essential ===
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+
+    // === TypeScript & JavaScript ===
+    "yoavbls.pretty-ts-errors",
+    "usernamehw.errorlens",
+    "streetsidesoftware.code-spell-checker",
+
+    // === Testing ===
+    "orta.vscode-jest",
+    "hbenl.vscode-test-explorer",
+
+    // === Git ===
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "donjayamanne.githistory",
+
+    // === Database ===
+    "mongodb.mongodb-vscode",
+    "cweijan.vscode-redis-client",
+
+    // === API & REST ===
+    "humao.rest-client",
+    "rangav.vscode-thunder-client",
+    "42crunch.vscode-openapi",
+
+    // === Docker ===
+    "ms-azuretools.vscode-docker",
+
+    // === Utilities ===
+    "christian-kohler.path-intellisense",
+    "formulahendry.auto-rename-tag",
+    "wix.vscode-import-cost",
+    "mikestead.dotenv",
+
+    // === Code Quality ===
+    "sonarsource.sonarlint-vscode",
+    "ryanluker.vscode-coverage-gutters",
+
+    // === Documentation ===
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-preview-github-styles",
+    "yzane.markdown-pdf",
+
+    // === Productivity ===
+    "aaron-bond.better-comments",
+    "gruntfuggly.todo-tree",
+    "wayou.vscode-todo-highlight",
+
+    // === Theme & Icons ===
+    "pkief.material-icon-theme",
+    "github.github-vscode-theme",
+
+    // === AI Assistants (Optional) ===
+    "github.copilot",
+    "github.copilot-chat"
+  ],
+
+  // ==============================================
+  // Unwanted Extensions
+  // ==============================================
+  "unwantedRecommendations": [
+    // Conflict with ESLint/Prettier
+    "hookyqr.beautify",
+    "ms-vscode.vscode-typescript-tslint-plugin"
+  ]
+}
