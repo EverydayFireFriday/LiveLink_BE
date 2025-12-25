@@ -252,13 +252,33 @@ export class UserModel {
   async findByEmailWithLikes(email: string): Promise<User | null> {
     const results = await this.userCollection
       .aggregate([
+        // 🚀 최적화 1: 먼저 match로 필터링 (인덱스 활용)
         { $match: { email: email } },
+        { $limit: 1 }, // 조기 limit로 불필요한 처리 방지
+        // 🚀 최적화 2: $lookup에서 필요한 필드만 조회
         {
           $lookup: {
             from: 'concerts',
             localField: 'likedConcerts',
             foreignField: '_id',
             as: 'likedConcertsInfo',
+            // 필요한 필드만 가져오기 (projection)
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  uid: 1,
+                  title: 1,
+                  artist: 1,
+                  datetime: 1,
+                  location: 1,
+                  posterImage: 1,
+                  likesCount: 1,
+                  status: 1,
+                  category: 1,
+                },
+              },
+            ],
           },
         },
         {
@@ -267,6 +287,20 @@ export class UserModel {
             localField: 'likedArticles',
             foreignField: '_id',
             as: 'likedArticlesInfo',
+            // 필요한 필드만 가져오기 (projection)
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  author: 1,
+                  createdAt: 1,
+                  likesCount: 1,
+                  views: 1,
+                  category: 1,
+                },
+              },
+            ],
           },
         },
         {
@@ -281,7 +315,6 @@ export class UserModel {
             likedArticlesInfo: 0,
           },
         },
-        { $limit: 1 },
       ])
       .toArray();
 

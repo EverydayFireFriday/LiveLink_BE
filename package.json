@@ -37,7 +37,10 @@
     "db:seed": "ts-node src/scripts/seed.ts",
     "sync:concerts": "ts-node src/scripts/syncConcertsToLive.ts",
     "copy:live-to-test": "ts-node src/scripts/copyLiveToTest.ts",
-    "token:spotify": "ts-node src/scripts/spotify-token-generator.ts"
+    "token:spotify": "ts-node src/scripts/spotify-token-generator.ts",
+    "monitoring:start": "./scripts/start-monitoring.sh",
+    "monitoring:stop": "docker-compose down prometheus grafana mongodb-exporter redis-exporter",
+    "monitoring:logs": "docker-compose logs -f prometheus grafana"
   },
   "lint-staged": {
     "*.ts": [
@@ -99,6 +102,7 @@
     "socket.io": "^4.7.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "^4.1.13"
@@ -128,6 +132,7 @@
     "@types/sanitize-html": "^2.16.0",
     "@types/supertest": "^6.0.2",
     "@types/swagger-jsdoc": "^6.0.4",
+    "@types/uuid": "^10.0.0",
     "@types/winston": "^2.4.4",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.48.1",
