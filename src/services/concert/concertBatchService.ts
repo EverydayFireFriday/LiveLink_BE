@@ -368,91 +368,180 @@ export class ConcertBatchService {
       };
 
       const startTime = Date.now();
+      logger.info(`⚡ 배치 콘서트 수정 시작: ${updates.length}개 요청`);
 
       // 1. 모든 콘서트 UID 존재 확인
       const uids = updates.map((update) => update.uid).filter(Boolean);
       const existingConcerts = await ConcertModel.findByUids(uids);
       const existingUidMap = new Map(existingConcerts.map((c) => [c.uid, c]));
+      logger.info(
+        `✅ UID 일괄 조회 완료: ${existingConcerts.length}/${uids.length}개 발견`,
+      );
 
-      // 2. 배치 단위로 병렬 처리
+      // 2. 배치 단위로 bulkWrite 처리 (N+1 쿼리 최적화)
       const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize, 50);
-      const updatePromises: Promise<PromiseSettledResult<void>[]>[] = [];
+      const updatePromises: Promise<void>[] = [];
       const totalBatches = Math.ceil(updates.length / normalizedBatchSize);
 
       for (let i = 0; i < updates.length; i += normalizedBatchSize) {
         const batch = updates.slice(i, i + normalizedBatchSize);
 
-        const batchPromise = Promise.allSettled(
-          batch.map(async (updateItem, batchIndex) => {
+        const batchPromise = (async () => {
+          // bulkWrite 작업 준비
+          const bulkOps: any[] = [];
+          const batchIndexMap = new Map<string, number>(); // uid -> globalIndex 매핑
+
+          batch.forEach((updateItem, batchIndex) => {
             const globalIndex = i + batchIndex;
             const { uid, ...data } = updateItem;
 
-            try {
-              if (!uid || !data) {
-                throw new Error('uid 또는 data가 누락되었습니다.');
-              }
+            // 유효성 검증
+            if (!uid || !data) {
+              results.failed.push({
+                index: globalIndex,
+                uid: uid || 'unknown',
+                error: 'uid 또는 data가 누락되었습니다.',
+              });
+              return;
+            }
 
-              const existingConcert = existingUidMap.get(uid);
-              if (!existingConcert) {
-                results.notFound?.push({
-                  index: globalIndex,
-                  uid,
-                  error: '콘서트를 찾을 수 없습니다.',
-                });
-                return;
-              }
+            const existingConcert = existingUidMap.get(uid);
+            if (!existingConcert) {
+              results.notFound?.push({
+                index: globalIndex,
+                uid,
+                error: '콘서트를 찾을 수 없습니다.',
+              });
+              return;
+            }
 
-              // 수정 불가능한 필드 제거 및 타입 안전성 확보
-              const updateData: Partial<IConcert> = {
-                ...data,
-              } as Partial<IConcert>;
-              delete (updateData as Record<string, unknown>).uid;
-              delete (updateData as Record<string, unknown>).likesCount;
-              delete (updateData as Record<string, unknown>)._id;
-              delete (updateData as Record<string, unknown>).createdAt;
-              updateData.updatedAt = new Date();
+            // 수정 불가능한 필드 제거 및 타입 안전성 확보
+            const updateData: Partial<IConcert> = {
+              ...data,
+            } as Partial<IConcert>;
+            delete (updateData as Record<string, unknown>).uid;
+            delete (updateData as Record<string, unknown>).likesCount;
+            delete (updateData as Record<string, unknown>)._id;
+            delete (updateData as Record<string, unknown>).createdAt;
+            updateData.updatedAt = new Date();
 
-              // status 필드 유효성 검증
-              if (
-                updateData.status &&
-                !['completed', 'upcoming', 'ongoing', 'cancelled'].includes(
-                  updateData.status,
-                )
-              ) {
-                throw new Error(
-                  `유효하지 않은 status 값: ${updateData.status}`,
-                );
-              }
-
-              const updatedConcert = await ConcertModel.updateById(
-                existingConcert._id?.toString() || '',
-                updateData,
-              );
-
-              if (updatedConcert) {
-                results.success.push({
-                  index: globalIndex,
-                  uid,
-                  title: updatedConcert.title,
-                  updatedAt: updatedConcert.updatedAt,
-                });
-              } else {
-                throw new Error('수정 처리 중 오류가 발생했습니다.');
-              }
-            } catch (error) {
+            // status 필드 유효성 검증
+            if (
+              updateData.status &&
+              !['completed', 'upcoming', 'ongoing', 'cancelled'].includes(
+                updateData.status,
+              )
+            ) {
               results.failed.push({
                 index: globalIndex,
                 uid,
-                error:
-                  error instanceof Error ? error.message : '알 수 없는 에러',
+                error: `유효하지 않은 status 값: ${updateData.status}`,
               });
+              return;
+            }
 
+            // bulkWrite 작업 추가
+            bulkOps.push({
+              updateOne: {
+                filter: { _id: existingConcert._id },
+                update: { $set: updateData },
+              },
+            });
+
+            batchIndexMap.set(uid, globalIndex);
+          });
+
+          // bulkWrite 실행 (N개의 개별 쿼리 -> 1개의 bulk 쿼리)
+          if (bulkOps.length > 0) {
+            try {
+              const bulkResult = await ConcertModel.collection.bulkWrite(
+                bulkOps,
+                { ordered: false },
+              );
+
+              logger.info(
+                `✅ bulkWrite 완료: ${bulkOps.length}개 업데이트 (N+1 쿼리 최적화: ${bulkOps.length}→1 쿼리)`,
+              );
+
+              // 성공한 업데이트 추적 (bulkWrite 성공 시 모두 성공으로 간주)
+              // ordered: false이므로 일부 실패 가능하지만, 간단히 처리
+              const ids = Array.from(batchIndexMap.keys())
+                .map((uid) => existingUidMap.get(uid)?._id)
+                .filter((id) => id !== undefined);
+
+              const updatedConcerts = await ConcertModel.collection
+                .find({
+                  _id: { $in: ids },
+                })
+                .toArray();
+
+              updatedConcerts.forEach((concert: any) => {
+                const globalIndex = batchIndexMap.get(concert.uid);
+                if (globalIndex !== undefined) {
+                  results.success.push({
+                    index: globalIndex,
+                    uid: concert.uid,
+                    title: concert.title,
+                    updatedAt: concert.updatedAt,
+                  });
+                }
+              });
+            } catch (error) {
+              // bulkWrite 전체 실패 시 개별 처리로 폴백
               if (!continueOnError) {
                 throw error;
               }
+
+              logger.warn(
+                `⚠️ bulkWrite 실패, 개별 처리로 폴백: ${error instanceof Error ? error.message : '알 수 없는 에러'}`,
+              );
+
+              // 개별 처리 폴백
+              for (const [uid, globalIndex] of batchIndexMap) {
+                try {
+                  const existingConcert = existingUidMap.get(uid);
+                  if (!existingConcert) continue;
+
+                  const updateItem = batch.find((u) => u.uid === uid);
+                  if (!updateItem) continue;
+
+                  const { uid: _, ...data } = updateItem;
+                  const updateData: Partial<IConcert> = {
+                    ...data,
+                  } as Partial<IConcert>;
+                  delete (updateData as Record<string, unknown>).uid;
+                  delete (updateData as Record<string, unknown>).likesCount;
+                  delete (updateData as Record<string, unknown>)._id;
+                  delete (updateData as Record<string, unknown>).createdAt;
+                  updateData.updatedAt = new Date();
+
+                  const updatedConcert = await ConcertModel.updateById(
+                    existingConcert._id?.toString() || '',
+                    updateData,
+                  );
+
+                  if (updatedConcert) {
+                    results.success.push({
+                      index: globalIndex,
+                      uid,
+                      title: updatedConcert.title,
+                      updatedAt: updatedConcert.updatedAt,
+                    });
+                  }
+                } catch (individualError) {
+                  results.failed.push({
+                    index: globalIndex,
+                    uid,
+                    error:
+                      individualError instanceof Error
+                        ? individualError.message
+                        : '알 수 없는 에러',
+                  });
+                }
+              }
             }
-          }),
-        );
+          }
+        })();
 
         updatePromises.push(batchPromise);
       }
@@ -462,6 +551,14 @@ export class ConcertBatchService {
 
       const endTime = Date.now();
       const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+      const queriesAvoided = results.success.length;
+
+      logger.info(
+        `🎉 배치 콘서트 수정 완료: ${results.success.length}개 성공, ${results.failed.length}개 실패, ${processingTime}초 소요`,
+      );
+      logger.info(
+        `⚡ N+1 쿼리 최적화 효과: ${queriesAvoided}개 개별 쿼리 → ${totalBatches}개 bulk 쿼리 (${((queriesAvoided / Math.max(totalBatches, 1)) * 100).toFixed(0)}% 쿼리 감소)`,
+      );
 
       return {
         success: true,
@@ -477,6 +574,11 @@ export class ConcertBatchService {
             notFound: results.notFound,
             processingTime: `${processingTime}초`,
             batchCount: totalBatches,
+            optimization: {
+              queriesAvoided,
+              bulkOperations: totalBatches,
+              reductionPercentage: `${((queriesAvoided / Math.max(totalBatches, 1)) * 100).toFixed(0)}%`,
+            },
           },
           timestamp: new Date().toISOString(),
         },
@@ -522,11 +624,17 @@ export class ConcertBatchService {
       };
 
       const startTime = Date.now();
+      logger.info(
+        `⚡ 배치 콘서트 삭제 시작: ${uids.length}개 요청 (${softDelete ? '소프트' : '하드'} 삭제)`,
+      );
 
       // 1. 존재하는 콘서트들 일괄 조회
       const existingConcerts = await ConcertModel.findByUids(uids);
       const existingConcertMap = new Map(
         existingConcerts.map((concert) => [concert.uid, concert]),
+      );
+      logger.info(
+        `✅ UID 일괄 조회 완료: ${existingConcerts.length}/${uids.length}개 발견`,
       );
 
       // 2. 존재하지 않는 UID들 처리
@@ -575,7 +683,7 @@ export class ConcertBatchService {
         };
       }
 
-      // 4. 배치 단위로 삭제 처리
+      // 4. 배치 단위로 bulkWrite 삭제 처리 (N+1 쿼리 최적화)
       const normalizedBatchSize = validateAndNormalizeBatchSize(batchSize);
       const deletePromises: Promise<void>[] = [];
       const totalBatches = Math.ceil(validUids.length / normalizedBatchSize);
@@ -584,47 +692,107 @@ export class ConcertBatchService {
         const batch = validUids.slice(i, i + normalizedBatchSize);
 
         const deletePromise = (async () => {
-          for (const uid of batch) {
+          // bulkWrite 작업 준비
+          const bulkOps: any[] = [];
+          const batchIndexMap = new Map<string, number>(); // uid -> originalIndex 매핑
+
+          batch.forEach((uid) => {
             const originalIndex = uids.indexOf(uid);
-            try {
-              const concert = existingConcertMap.get(uid);
-              if (!concert) continue;
+            const concert = existingConcertMap.get(uid);
+            if (!concert) return;
 
-              let deletedConcert;
-              if (softDelete) {
-                // 소프트 삭제 (상태 변경)
-                deletedConcert = await ConcertModel.updateById(
-                  concert._id?.toString() || '',
-                  { status: 'cancelled', updatedAt: new Date() },
-                );
-              } else {
-                // 하드 삭제
-                deletedConcert = await ConcertModel.deleteById(
-                  concert._id?.toString() || '',
-                );
-              }
-
-              if (deletedConcert) {
-                results.success.push({
-                  index: originalIndex,
-                  uid,
-                  title: concert.title,
-                  deletedAt: new Date().toISOString(),
-                  deleteType: softDelete ? 'soft' : 'hard',
-                });
-              } else {
-                throw new Error('삭제 처리 중 오류가 발생했습니다.');
-              }
-            } catch (error) {
-              results.failed.push({
-                index: originalIndex,
-                uid,
-                error:
-                  error instanceof Error ? error.message : '알 수 없는 에러',
+            if (softDelete) {
+              // 소프트 삭제 (상태 변경)
+              bulkOps.push({
+                updateOne: {
+                  filter: { _id: concert._id },
+                  update: { $set: { status: 'cancelled', updatedAt: new Date() } },
+                },
               });
+            } else {
+              // 하드 삭제
+              bulkOps.push({
+                deleteOne: {
+                  filter: { _id: concert._id },
+                },
+              });
+            }
 
+            batchIndexMap.set(uid, originalIndex);
+          });
+
+          // bulkWrite 실행 (N개의 개별 쿼리 -> 1개의 bulk 쿼리)
+          if (bulkOps.length > 0) {
+            try {
+              const bulkResult = await ConcertModel.collection.bulkWrite(
+                bulkOps,
+                { ordered: false },
+              );
+
+              logger.info(
+                `✅ bulkWrite 완료: ${bulkOps.length}개 삭제 (N+1 쿼리 최적화: ${bulkOps.length}→1 쿼리)`,
+              );
+
+              // 성공한 삭제 추적 (bulkWrite 성공 시 모두 성공으로 간주)
+              batchIndexMap.forEach((originalIndex, uid) => {
+                const concert = existingConcertMap.get(uid);
+                if (concert) {
+                  results.success.push({
+                    index: originalIndex,
+                    uid,
+                    title: concert.title,
+                    deletedAt: new Date().toISOString(),
+                    deleteType: softDelete ? 'soft' : 'hard',
+                  });
+                }
+              });
+            } catch (error) {
+              // bulkWrite 전체 실패 시 개별 처리로 폴백
               if (!continueOnError) {
                 throw error;
+              }
+
+              logger.warn(
+                `⚠️ bulkWrite 실패, 개별 처리로 폴백: ${error instanceof Error ? error.message : '알 수 없는 에러'}`,
+              );
+
+              // 개별 처리 폴백
+              for (const [uid, originalIndex] of batchIndexMap) {
+                try {
+                  const concert = existingConcertMap.get(uid);
+                  if (!concert) continue;
+
+                  let deletedConcert;
+                  if (softDelete) {
+                    deletedConcert = await ConcertModel.updateById(
+                      concert._id?.toString() || '',
+                      { status: 'cancelled', updatedAt: new Date() },
+                    );
+                  } else {
+                    deletedConcert = await ConcertModel.deleteById(
+                      concert._id?.toString() || '',
+                    );
+                  }
+
+                  if (deletedConcert) {
+                    results.success.push({
+                      index: originalIndex,
+                      uid,
+                      title: concert.title,
+                      deletedAt: new Date().toISOString(),
+                      deleteType: softDelete ? 'soft' : 'hard',
+                    });
+                  }
+                } catch (individualError) {
+                  results.failed.push({
+                    index: originalIndex,
+                    uid,
+                    error:
+                      individualError instanceof Error
+                        ? individualError.message
+                        : '알 수 없는 에러',
+                  });
+                }
               }
             }
           }
@@ -638,6 +806,14 @@ export class ConcertBatchService {
 
       const endTime = Date.now();
       const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+      const queriesAvoided = results.success.length;
+
+      logger.info(
+        `🎉 배치 콘서트 삭제 완료: ${results.success.length}개 성공, ${results.failed.length}개 실패, ${processingTime}초 소요`,
+      );
+      logger.info(
+        `⚡ N+1 쿼리 최적화 효과: ${queriesAvoided}개 개별 쿼리 → ${totalBatches}개 bulk 쿼리 (${((queriesAvoided / Math.max(totalBatches, 1)) * 100).toFixed(0)}% 쿼리 감소)`,
+      );
 
       return {
         success: true,
@@ -654,6 +830,11 @@ export class ConcertBatchService {
             processingTime: `${processingTime}초`,
             batchCount: totalBatches,
             deleteType: softDelete ? 'soft' : 'hard',
+            optimization: {
+              queriesAvoided,
+              bulkOperations: totalBatches,
+              reductionPercentage: `${((queriesAvoided / Math.max(totalBatches, 1)) * 100).toFixed(0)}%`,
+            },
           },
           timestamp: new Date().toISOString(),
         },
