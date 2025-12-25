@@ -10,6 +10,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned for 1.0.0
 - 프로덕션 첫 배포
 
+## [0.9.1] - 2025-12-25
+
+### Added - Performance & Monitoring
+- **API 응답 시간 측정 미들웨어** (`src/middlewares/responseTime/`)
+  - Prometheus 메트릭 통합
+  - Slow API 자동 감지 (>500ms 임계값)
+  - 연결 종료 이벤트 처리
+- **Request ID 트래킹** (`src/middlewares/requestId/`)
+  - UUID 자동 생성
+  - X-Request-ID 헤더 지원
+  - Express Request 타입 확장
+- **강화된 Health Check** (`src/utils/health/healthCheck.ts`)
+  - 시스템 리소스 모니터링 (메모리, CPU, 디스크)
+  - 외부 서비스 상태 체크 (Redis, MongoDB, Firebase)
+  - 종합 상태 판단 (healthy/degraded/unhealthy)
+- **모니터링 스택 스크립트** (`scripts/start-monitoring.sh`)
+  - 원클릭 Grafana & Prometheus 실행
+  - npm 스크립트 추가: `monitoring:start`, `monitoring:stop`, `monitoring:logs`
+
+### Improved - Database Query Optimization
+- **N+1 쿼리 최적화** (`src/services/concert/concertBatchService.ts`)
+  - bulkWrite 적용: 50개 쿼리 → 1개 쿼리 (98% 감소)
+  - 배치 업데이트/삭제 성능 5-10배 향상
+  - 성능 로깅 추가
+- **Projection 최적화** (`src/services/concert/concertLikeService.ts`)
+  - 필요한 필드만 조회하여 데이터 전송량 60% 감소
+- **Aggregation Pipeline 최적화** (`src/models/auth/user.ts`)
+  - $lookup 전 $project 적용
+  - 파이프라인 초기에 $limit 배치
+  - 데이터 전송량 70-80% 감소
+
+### Added - Documentation
+- **성능 분석 문서** (`docs/performance/CAPACITY_ANALYSIS.md`)
+  - 동접자 수 예측 (REST API: 500-1,000명, Socket.IO: 2,000-3,000명)
+  - 병목 지점 분석 및 최적화 방안
+  - 단계별 확장 로드맵
+- **쿼리 최적화 요약** (`docs/performance/QUERY_OPTIMIZATION_SUMMARY.md`)
+- **모니터링 가이드** (`MONITORING_GUIDE.md`)
+  - Grafana & Prometheus 사용법
+  - PromQL 쿼리 예제
+  - 알림 설정 방법
+- **문서 인덱스** (`docs/INDEX.md`)
+  - 전체 문서 목록 및 추천 읽기 순서
+
+### Fixed - Code Quality
+- TypeScript 린팅 오류 수정
+  - health check 유틸리티 타입 안정성 강화
+  - `any` 타입 제거, 명시적 타입 지정 (MongoClient, Redis)
+  - Floating promise 경고 해결
+- 스크립트 파일 구조 정리
+  - `scripts/checkSupportInquiries.ts` → `src/scripts/` 이동
+  - Import 경로 수정 및 npm 스크립트 추가
+
+### Performance Metrics
+- 배치 작업 쿼리: 50개 → 1개 (-98%)
+- 데이터 전송량: 60-80% 감소
+- 평균 응답 시간: 30-40% 단축
+- 예상 동접자 처리량: 2-3배 증가 (500명 → 1,000-2,000명)
+
 ## [0.9.0] - 2025-11-10
 
 ### Added

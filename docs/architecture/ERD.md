@@ -14,6 +14,7 @@ erDiagram
     User ||--o{ CommentLike : "likes"
     User ||--o{ ScheduledNotification : "receives"
     User ||--o{ NotificationHistory : "receives"
+    User ||--o{ SupportInquiry : "submits"
     User }o--o{ ChatRoom : "participates"
     User }o--o{ Concert : "likes"
     ChatRoom ||--o{ Message : "contains"
@@ -253,6 +254,28 @@ erDiagram
         string title "곡 제목"
         string artist "아티스트명"
     }
+
+    SupportInquiry {
+        ObjectId _id PK
+        ObjectId userId FK "문의한 사용자"
+        string category "general|technical|account|concert|article|other"
+        string subject "문의 제목"
+        string content "문의 내용"
+        string status "pending|in_progress|resolved|closed"
+        string priority "low|medium|high|urgent"
+        AdminResponse adminResponse "관리자 답변"
+        string[] attachments "첨부파일 URL 목록"
+        boolean isDeleted "소프트 삭제"
+        Date deletedAt "삭제 시간"
+        Date createdAt
+        Date updatedAt
+    }
+
+    AdminResponse {
+        ObjectId responderId "답변한 관리자 ID"
+        string content "답변 내용"
+        Date respondedAt "답변 시간"
+    }
 ```
 
 ## 인덱스 정보
@@ -329,6 +352,14 @@ erDiagram
 ### Setlist Collection
 - `concertId`: Unique Index (one setlist per concert)
 - `createdAt`: Index
+
+### SupportInquiry Collection
+- `userId`: Index
+- `status`: Index
+- `{status, createdAt}`: Compound Index (Descending on createdAt)
+- `{userId, status}`: Compound Index
+- `category`: Index
+- `priority`: Index
 
 ## 관계 설명
 
@@ -415,9 +446,14 @@ erDiagram
 - 한 개의 콘서트는 하나의 세트리스트를 가질 수 있습니다 (선택적)
 - `Setlist.concertId` → `Concert.uid` (String UID)
 
+### User → SupportInquiry (1:N)
+- 한 명의 사용자는 여러 개의 고객 문의를 제출할 수 있습니다
+- `SupportInquiry.userId` → `User._id`
+- 관리자 답변은 `SupportInquiry.adminResponse`에 embedded document로 저장됩니다
+
 ## 데이터베이스 연결 정보
 
-- **Primary Database**: `stagelives` (Users, UserSessions, Notifications)
+- **Primary Database**: `stagelives` (Users, UserSessions, Notifications, SupportInquiries)
 - **Concert Database**: Concerts, Setlists
 - **Article Database**: Articles, Categories, Comments, Tags, Likes, Bookmarks
 - **Chat Database**: ChatRooms, Messages
@@ -457,7 +493,15 @@ erDiagram
 - YouTube Music 및 Spotify 재생목록 URL 저장
 - 콘서트 UID로 참조 (String 기반)
 
+### 8. 고객 지원 시스템
+- `SupportInquiry` 컬렉션으로 사용자 문의 관리
+- 카테고리별 분류 (일반, 기술, 계정, 콘서트, 게시글 등)
+- 우선순위 및 상태 관리 (대기, 진행중, 해결, 종료)
+- 관리자 답변은 embedded document로 저장
+- 첨부파일 지원 (URL 목록)
+- 소프트 삭제 지원 (`isDeleted`, `deletedAt`)
+
 ---
 
-**Last Updated:** 2025-11-20
-**Version:** 1.1.0
+**Last Updated:** 2025-12-25
+**Version:** 1.2.0
