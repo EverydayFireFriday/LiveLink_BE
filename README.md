@@ -1003,3 +1003,32 @@ docker-compose exec nginx tail -f /var/log/nginx/error.log
 <p align="center">
   Made with ❤️ by EverydayFireFriday Team
 </p>
+
+## 📊 모니터링 (Grafana & Prometheus)
+
+### 빠른 시작
+
+```bash
+# 모니터링 스택 실행
+./scripts/start-monitoring.sh
+
+# 또는 수동 실행
+docker-compose up -d prometheus grafana mongodb-exporter redis-exporter
+```
+
+### 접속 URL
+
+- **Grafana**: http://localhost:3001 (admin / changeme_in_production)
+- **Prometheus**: http://localhost:9090
+- **메트릭 엔드포인트**: http://localhost:3000/metrics
+
+### 주요 기능
+
+- ✅ API 응답 시간 및 처리량 모니터링
+- ✅ 시스템 리소스 (CPU, 메모리, 디스크) 모니터링
+- ✅ MongoDB & Redis 성능 메트릭
+- ✅ 자동 프로비저닝된 대시보드
+- ✅ Health Check 엔드포인트 통합
+
+자세한 내용은 [MONITORING_GUIDE.md](./MONITORING_GUIDE.md)를 참고하세요.
+

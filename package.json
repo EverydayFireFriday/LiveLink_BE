@@ -37,7 +37,10 @@
     "db:seed": "ts-node src/scripts/seed.ts",
     "sync:concerts": "ts-node src/scripts/syncConcertsToLive.ts",
     "copy:live-to-test": "ts-node src/scripts/copyLiveToTest.ts",
-    "token:spotify": "ts-node src/scripts/spotify-token-generator.ts"
+    "token:spotify": "ts-node src/scripts/spotify-token-generator.ts",
+    "monitoring:start": "./scripts/start-monitoring.sh",
+    "monitoring:stop": "docker-compose down prometheus grafana mongodb-exporter redis-exporter",
+    "monitoring:logs": "docker-compose logs -f prometheus grafana"
   },
   "lint-staged": {
     "*.ts": [
