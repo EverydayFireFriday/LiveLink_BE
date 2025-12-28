@@ -166,9 +166,7 @@ export class ArticleService {
     }
 
     // 캐시 무효화 - 새로운 유틸리티 사용
-    await CacheHelper.deletePatterns([
-      CacheInvalidationPatterns.ARTICLE_ALL(),
-    ]);
+    await CacheHelper.deletePatterns([CacheInvalidationPatterns.ARTICLE_ALL()]);
 
     return article;
   }
@@ -269,9 +267,11 @@ export class ArticleService {
         limit,
         publishedOnly: true,
       });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       articles = result.articles.map(
-        (article: any): IArticle => ({
+        (article): IArticle => ({
           ...article,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           likes_count: article.likes_count ?? 0,
         }),
       );

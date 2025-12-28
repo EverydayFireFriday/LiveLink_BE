@@ -6,6 +6,7 @@ import {
   InternalServerError,
 } from '../../utils/errors/customErrors';
 import { ErrorCodes } from '../../utils/errors/errorCodes';
+import logger from '../../utils/logger/logger';
 
 /**
  * 로그인 필수 미들웨어
@@ -44,7 +45,7 @@ export const requireAuth = async (
     if (error instanceof AppError) {
       throw error;
     }
-    console.error('[Auth] Failed to check invalidation list:', error);
+    logger.error('[Auth] Failed to check invalidation list:', error);
   }
 
   // MongoDB UserSession 존재 여부 확인 (세션이 무효화되었는지 체크)
@@ -66,7 +67,7 @@ export const requireAuth = async (
       throw error;
     }
     // UserSession 조회 실패 시 로그만 남기고 계속 진행
-    console.error('[Auth] Failed to verify UserSession:', error);
+    logger.error('[Auth] Failed to verify UserSession:', error);
   }
 
   next();
@@ -92,7 +93,7 @@ export const requireNoAuth = async (
     // force 파라미터가 true이면 강제 로그인 허용
     const { force } = req.body as { force?: boolean };
     if (force === true) {
-      console.log('[Auth] Force login requested, allowing login');
+      logger.info('[Auth] Force login requested, allowing login');
       next();
       return;
     }
@@ -112,7 +113,7 @@ export const requireNoAuth = async (
         // req.session.destroy()를 호출하면 req.session이 undefined가 되어
         // 컨트롤러에서 req.session.regenerate() 호출 시 에러 발생
         delete req.session.user;
-        console.log(
+        logger.info(
           '[Auth] Session user cleared (MongoDB session not found), allowing login',
         );
         // 세션이 무효하므로 로그인 허용
@@ -124,7 +125,7 @@ export const requireNoAuth = async (
         throw error;
       }
       // UserSession 조회 실패 시 로그만 남기고 기존 로직 유지
-      console.error('[Auth] Failed to verify UserSession:', error);
+      logger.error('[Auth] Failed to verify UserSession:', error);
     }
 
     // 유효한 세션이 존재하면 로그인 차단

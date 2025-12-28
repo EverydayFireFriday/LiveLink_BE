@@ -4,6 +4,7 @@ import logger from '../../utils/logger/logger';
 export class PasswordService {
   async requestPasswordReset(
     email: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<{ success: boolean; message: string; data?: any }> {
     try {
       // 지연 로딩으로 서비스들 import

@@ -8,6 +8,7 @@ import type { IConcert } from '../../models/concert/base/ConcertTypes';
 
 export interface ConcertServiceResponse {
   success: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
   error?: string;
   statusCode?: number;
@@ -61,7 +62,7 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
         });
 
     case 'upcoming_soon':
-    default:
+    default: {
       // 날짜순 (미래 공연 임박순 -> 과거 공연 최신순)
       const futureConcerts = sorted.filter((c) => {
         const date = c.datetime?.[0] ? new Date(c.datetime[0]).getTime() : 0;
@@ -92,6 +93,7 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
       });
 
       return [...futureConcerts, ...pastConcerts];
+    }
   }
 }
 
@@ -218,7 +220,7 @@ export class ConcertSearchService {
       const { page = 1, limit = 20, status, minLikes = 1 } = params;
       const Concert = getConcertModel();
 
-      const filter: any = {
+      const filter: Record<string, unknown> = {
         likesCount: { $gte: parseInt(minLikes.toString()) },
       };
       if (status) filter.status = status;
@@ -481,7 +483,9 @@ export class ConcertSearchService {
       }
 
       const Concert = getConcertModel();
-      const allStatusConcerts = await Concert.findByStatus(status as any);
+      const allStatusConcerts = await Concert.findByStatus(
+        status as 'completed' | 'upcoming' | 'ongoing' | 'cancelled',
+      );
 
       // 정렬 적용
       const sortedConcerts = sortConcerts(allStatusConcerts, sortBy);

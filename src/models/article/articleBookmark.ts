@@ -30,6 +30,7 @@ interface TotalCount {
 
 interface BookmarkedArticlesWithFoldersData extends IArticleBookmark {
   article: IArticle;
+  folder_id?: ObjectId;
 }
 
 interface BookmarkedArticlesWithFoldersResult {
@@ -327,7 +328,7 @@ export class ArticleBookmarkModel {
       page?: number;
       limit?: number;
     } = {},
-  ): Promise<{ bookmarks: any[]; total: number }> {
+  ): Promise<{ bookmarks: BookmarkedArticle[]; total: number }> {
     return this.withIndexes(async () => {
       if (!ObjectId.isValid(userId)) {
         return { bookmarks: [], total: 0 };
@@ -524,7 +525,7 @@ export class ArticleBookmarkModel {
       limit?: number;
       days?: number;
     } = {},
-  ): Promise<{ articles: any[]; total: number }> {
+  ): Promise<{ articles: PopularBookmarkedArticle[]; total: number }> {
     return this.withIndexes(async () => {
       const { page = 1, limit = 20, days = 30 } = options;
       const skip = (page - 1) * limit;
@@ -594,7 +595,7 @@ export class ArticleBookmarkModel {
       folderId?: string;
     } = {},
   ): Promise<{
-    bookmarks: Array<{ article: any; created_at: Date; folder?: string }>;
+    bookmarks: Array<{ article: IArticle; created_at: Date; folder?: string }>;
     total: number;
   }> {
     return this.withIndexes(async () => {
@@ -605,7 +606,7 @@ export class ArticleBookmarkModel {
       const { page = 1, limit = 20, folderId } = options;
       const skip = (page - 1) * limit;
 
-      const matchStage: any = {
+      const matchStage: Record<string, unknown> = {
         user_id: new ObjectId(userId),
       };
 
@@ -646,7 +647,7 @@ export class ArticleBookmarkModel {
         .aggregate<BookmarkedArticlesWithFoldersResult>(pipeline)
         .toArray();
 
-      const bookmarks = (result.data || []).map((item: any) => ({
+      const bookmarks = (result.data || []).map((item) => ({
         article: item.article,
         created_at: item.created_at,
         folder: item.folder_id ? item.folder_id.toString() : undefined,

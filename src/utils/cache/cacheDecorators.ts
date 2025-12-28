@@ -6,12 +6,14 @@ import { logger } from '../index';
  * 서비스 메서드에 적용할 수 있는 캐싱 데코레이터
  */
 
-interface CacheableOptions {
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+
+interface CacheableOptions<TArgs extends unknown[] = unknown[]> {
   /**
    * 캐시 키 생성 함수
    * 메서드의 인자를 받아 캐시 키를 생성
    */
-  keyGenerator: (...args: any[]) => string;
+  keyGenerator: (...args: TArgs) => string;
 
   /**
    * TTL (초 단위)
@@ -22,7 +24,7 @@ interface CacheableOptions {
    * 캐시 스킵 조건 (옵션)
    * true를 반환하면 캐시를 스킵하고 직접 DB 조회
    */
-  skipIf?: (...args: any[]) => boolean;
+  skipIf?: (...args: TArgs) => boolean;
 }
 
 /**
@@ -40,15 +42,17 @@ interface CacheableOptions {
  *   }
  * }
  */
-export function Cacheable(options: CacheableOptions) {
+export function Cacheable<TArgs extends unknown[] = unknown[]>(
+  options: CacheableOptions<TArgs>,
+) {
   return function (
-    target: any,
+    target: object,
     propertyKey: string,
     descriptor: PropertyDescriptor,
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (this: unknown, ...args: TArgs) {
       // 캐시 스킵 조건 확인
       if (options.skipIf && options.skipIf(...args)) {
         return await originalMethod.apply(this, args);
@@ -87,11 +91,11 @@ export function Cacheable(options: CacheableOptions) {
   };
 }
 
-interface CacheEvictOptions {
+interface CacheEvictOptions<TArgs extends unknown[] = unknown[]> {
   /**
    * 무효화할 캐시 키 패턴 생성 함수
    */
-  keyPatterns: (...args: any[]) => string[];
+  keyPatterns: (...args: TArgs) => string[];
 
   /**
    * 메서드 실행 전에 캐시 무효화 (기본값: false, 실행 후 무효화)
@@ -116,15 +120,17 @@ interface CacheEvictOptions {
  *   }
  * }
  */
-export function CacheEvict(options: CacheEvictOptions) {
+export function CacheEvict<TArgs extends unknown[] = unknown[]>(
+  options: CacheEvictOptions<TArgs>,
+) {
   return function (
-    target: any,
+    target: object,
     propertyKey: string,
     descriptor: PropertyDescriptor,
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (this: unknown, ...args: TArgs) {
       const evictCache = async () => {
         const patterns = options.keyPatterns(...args);
         await Promise.all(
@@ -159,11 +165,14 @@ export function CacheEvict(options: CacheEvictOptions) {
   };
 }
 
-interface CachePutOptions {
+interface CachePutOptions<
+  TArgs extends unknown[] = unknown[],
+  TResult = unknown,
+> {
   /**
    * 캐시 키 생성 함수
    */
-  keyGenerator: (...args: any[]) => string;
+  keyGenerator: (...args: TArgs) => string;
 
   /**
    * TTL (초 단위)
@@ -174,7 +183,7 @@ interface CachePutOptions {
    * 결과 변환 함수 (옵션)
    * 메서드 실행 결과를 변환하여 캐시에 저장
    */
-  valueTransformer?: (result: any) => any;
+  valueTransformer?: (result: TResult) => unknown;
 }
 
 /**
@@ -193,15 +202,18 @@ interface CachePutOptions {
  *   }
  * }
  */
-export function CachePut(options: CachePutOptions) {
+export function CachePut<
+  TArgs extends unknown[] = unknown[],
+  TResult = unknown,
+>(options: CachePutOptions<TArgs, TResult>) {
   return function (
-    target: any,
+    target: object,
     propertyKey: string,
     descriptor: PropertyDescriptor,
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (this: unknown, ...args: TArgs) {
       const result = await originalMethod.apply(this, args);
 
       // 결과를 캐시에 저장
@@ -233,7 +245,7 @@ export function CachePut(options: CachePutOptions) {
  *   // 업데이트 후 캐시 저장 및 목록 캐시 무효화
  *   @CachePut({ ... })
  *   @CacheEvict({ ... })
- *   async updateArticle(id: string, data: any) { ... }
+ *   async updateArticle(id: string, data: UpdateData) { ... }
  * }
  */
 
@@ -263,7 +275,9 @@ export class CacheHelper {
    * 여러 패턴을 동시에 삭제
    */
   static async deletePatterns(patterns: string[]): Promise<void> {
-    await Promise.all(patterns.map((pattern) => cacheManager.delByPattern(pattern)));
+    await Promise.all(
+      patterns.map((pattern) => cacheManager.delByPattern(pattern)),
+    );
   }
 
   /**

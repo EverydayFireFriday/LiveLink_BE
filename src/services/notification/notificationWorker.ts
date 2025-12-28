@@ -81,12 +81,14 @@ async function processNotification(
     const user = await userModel.findById(notification.userId);
 
     if (!user) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       logger.warn(`⚠️ User not found: ${notification.userId}`);
       await model.markAsFailed(new ObjectId(notificationId), 'User not found');
       return;
     }
 
     if (!user.fcmToken) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       logger.warn(`⚠️ No FCM token for user: ${notification.userId}`);
       await model.markAsFailed(
         new ObjectId(notificationId),
@@ -148,6 +150,7 @@ async function processNotification(
         },
       ]);
 
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       logger.info(
         `✅ Notification sent successfully: ${notificationId} to user ${notification.userId}`,
       );
@@ -168,8 +171,12 @@ async function processNotification(
         `⚠️ Invalid FCM token cleared for user ${notification.userId.toString()}`,
       );
     }
-  } catch (error: any) {
-    logger.error(`❌ Failed to process notification ${notificationId}:`, error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(
+      `❌ Failed to process notification ${notificationId}:`,
+      errorMessage,
+    );
 
     // Mark as failed in database
     try {
@@ -177,7 +184,7 @@ async function processNotification(
       const model = getScheduledNotificationModel(db);
       await model.markAsFailed(
         new ObjectId(notificationId),
-        error.message || 'Unknown error',
+        errorMessage || 'Unknown error',
       );
     } catch (dbError) {
       logger.error('❌ Failed to mark notification as failed:', dbError);

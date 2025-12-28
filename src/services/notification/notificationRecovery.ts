@@ -88,10 +88,10 @@ export class NotificationRecoveryService {
               );
             }
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.error(
             `❌ Failed to check/recover job ${notificationId}:`,
-            error.message,
+            error instanceof Error ? error.message : String(error),
           );
         }
       }
@@ -172,10 +172,10 @@ export class NotificationRecoveryService {
               );
             }
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           logger.error(
             `❌ Failed to cleanup stale job ${notificationId}:`,
-            error.message,
+            error instanceof Error ? error.message : String(error),
           );
         }
       }
