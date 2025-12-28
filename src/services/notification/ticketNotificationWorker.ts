@@ -11,6 +11,7 @@ import { User, UserStatus } from '../../models/auth/user.js';
 import { IConcert } from '../../models/concert/base/ConcertTypes.js';
 import fcmService from './fcmService.js';
 import { getNotificationHistoryModel } from '../../models/notification/notificationHistory.js';
+import type { INotificationHistory } from '../../models/notification/notificationHistory.js';
 import { TicketNotificationType } from '../../models/notification/notificationHistory.js';
 
 /**
@@ -177,7 +178,7 @@ async function processTicketNotification(
     let successCount = 0;
     let failureCount = 0;
     const allInvalidTokens: string[] = [];
-    const successfulHistories: any[] = [];
+    const successfulHistories: INotificationHistory[] = [];
     const notificationHistoryModel = getNotificationHistoryModel(userDB);
     const notificationType = getNotificationType();
 

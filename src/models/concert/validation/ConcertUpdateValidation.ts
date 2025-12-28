@@ -9,6 +9,7 @@ import logger from '../../../utils/logger/logger';
 /**
  * 콘서트 업데이트 데이터 유효성 검증 함수
  */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
 export const validateConcertUpdateData = (
   updateData: any,
 ): ValidationResult => {

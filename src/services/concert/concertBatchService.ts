@@ -1,9 +1,9 @@
 import { getConcertModel } from '../../models/concert/concert';
 import type { IConcert } from '../../models/concert/base/ConcertTypes';
 import { validateConcertData } from '../../models/concert/validation/ConcertCreateValidation';
-import { generateObjectIdFromUid } from '../../models/concert/validation/ConcertValidationUtils';
 import { validateAndNormalizeBatchSize } from '../../models/concert/validation/ConcertSearchValidation';
 import logger from '../../utils/logger/logger';
+import type { AnyBulkWriteOperation } from 'mongodb';
 
 export interface ConcertServiceResponse {
   success: boolean;
@@ -199,51 +199,51 @@ export class ConcertBatchService {
         // ObjectId 생성 및 데이터 준비 - Model의 Concert 타입 사용
         const processedData: import('../../models/concert/features/ConcertBatch.js').IConcertInsertInput =
           {
-          uid: concertData.uid,
-          title: concertData.title,
-          artist: Array.isArray(concertData.artist)
-            ? concertData.artist
-            : concertData.artist
-              ? [concertData.artist]
+            uid: concertData.uid,
+            title: concertData.title,
+            artist: Array.isArray(concertData.artist)
+              ? concertData.artist
+              : concertData.artist
+                ? [concertData.artist]
+                : [],
+            location: Array.isArray(concertData.location)
+              ? concertData.location
+              : [concertData.location], // string 배열로 변경
+            datetime: concertData.datetime
+              ? Array.isArray(concertData.datetime)
+                ? concertData.datetime.map(
+                    (dt: unknown) => new Date(dt as string),
+                  )
+                : [new Date(concertData.datetime as string)]
               : [],
-          location: Array.isArray(concertData.location)
-            ? concertData.location
-            : [concertData.location], // string 배열로 변경
-          datetime: concertData.datetime
-            ? Array.isArray(concertData.datetime)
-              ? concertData.datetime.map(
-                  (dt: unknown) => new Date(dt as string),
-                )
-              : [new Date(concertData.datetime as string)]
-            : [],
-          price: Array.isArray(concertData.price)
-            ? concertData.price
-            : concertData.price
-              ? [concertData.price]
-              : [],
-          description: concertData.description || '',
-          category: Array.isArray(concertData.category)
-            ? concertData.category
-            : concertData.category
-              ? [concertData.category]
-              : [],
-          ticketLink: Array.isArray(concertData.ticketLink)
-            ? concertData.ticketLink
-            : concertData.ticketLink
-              ? [concertData.ticketLink]
-              : [],
-          ticketOpenDate: Array.isArray(concertData.ticketOpenDate)
-            ? concertData.ticketOpenDate.map((item: any) => ({
-                openTitle: item.openTitle,
-                openDate: new Date(item.openDate),
-              }))
-            : undefined,
-          posterImage: concertData.posterImage || '',
-          infoImages: concertData.infoImages || [], // info → infoImages로 변경
+            price: Array.isArray(concertData.price)
+              ? concertData.price
+              : concertData.price
+                ? [concertData.price]
+                : [],
+            description: concertData.description || '',
+            category: Array.isArray(concertData.category)
+              ? concertData.category
+              : concertData.category
+                ? [concertData.category]
+                : [],
+            ticketLink: Array.isArray(concertData.ticketLink)
+              ? concertData.ticketLink
+              : concertData.ticketLink
+                ? [concertData.ticketLink]
+                : [],
+            ticketOpenDate: Array.isArray(concertData.ticketOpenDate)
+              ? concertData.ticketOpenDate.map((item) => ({
+                  openTitle: item.openTitle,
+                  openDate: new Date(item.openDate),
+                }))
+              : undefined,
+            posterImage: concertData.posterImage || '',
+            infoImages: concertData.infoImages || [], // info → infoImages로 변경
 
-          status: 'upcoming',
-          likesCount: 0,
-        };
+            status: 'upcoming',
+            likesCount: 0,
+          };
 
         concertsToInsert.push({ index, processedData });
       }
@@ -388,7 +388,7 @@ export class ConcertBatchService {
 
         const batchPromise = (async () => {
           // bulkWrite 작업 준비
-          const bulkOps: any[] = [];
+          const bulkOps: AnyBulkWriteOperation<IConcert>[] = [];
           const batchIndexMap = new Map<string, number>(); // uid -> globalIndex 매핑
 
           batch.forEach((updateItem, batchIndex) => {
@@ -454,10 +454,9 @@ export class ConcertBatchService {
           // bulkWrite 실행 (N개의 개별 쿼리 -> 1개의 bulk 쿼리)
           if (bulkOps.length > 0) {
             try {
-              const bulkResult = await ConcertModel.collection.bulkWrite(
-                bulkOps,
-                { ordered: false },
-              );
+              await ConcertModel.collection.bulkWrite(bulkOps, {
+                ordered: false,
+              });
 
               logger.info(
                 `✅ bulkWrite 완료: ${bulkOps.length}개 업데이트 (N+1 쿼리 최적화: ${bulkOps.length}→1 쿼리)`,
@@ -475,7 +474,7 @@ export class ConcertBatchService {
                 })
                 .toArray();
 
-              updatedConcerts.forEach((concert: any) => {
+              updatedConcerts.forEach((concert) => {
                 const globalIndex = batchIndexMap.get(concert.uid);
                 if (globalIndex !== undefined) {
                   results.success.push({
@@ -497,15 +496,15 @@ export class ConcertBatchService {
               );
 
               // 개별 처리 폴백
-              for (const [uid, globalIndex] of batchIndexMap) {
+              for (const [concertUid, globalIndex] of batchIndexMap) {
                 try {
-                  const existingConcert = existingUidMap.get(uid);
+                  const existingConcert = existingUidMap.get(concertUid);
                   if (!existingConcert) continue;
 
-                  const updateItem = batch.find((u) => u.uid === uid);
+                  const updateItem = batch.find((u) => u.uid === concertUid);
                   if (!updateItem) continue;
 
-                  const { uid: _, ...data } = updateItem;
+                  const { uid, ...data } = updateItem;
                   const updateData: Partial<IConcert> = {
                     ...data,
                   } as Partial<IConcert>;
@@ -693,7 +692,7 @@ export class ConcertBatchService {
 
         const deletePromise = (async () => {
           // bulkWrite 작업 준비
-          const bulkOps: any[] = [];
+          const bulkOps: AnyBulkWriteOperation<IConcert>[] = [];
           const batchIndexMap = new Map<string, number>(); // uid -> originalIndex 매핑
 
           batch.forEach((uid) => {
@@ -706,7 +705,9 @@ export class ConcertBatchService {
               bulkOps.push({
                 updateOne: {
                   filter: { _id: concert._id },
-                  update: { $set: { status: 'cancelled', updatedAt: new Date() } },
+                  update: {
+                    $set: { status: 'cancelled', updatedAt: new Date() },
+                  },
                 },
               });
             } else {
@@ -724,10 +725,9 @@ export class ConcertBatchService {
           // bulkWrite 실행 (N개의 개별 쿼리 -> 1개의 bulk 쿼리)
           if (bulkOps.length > 0) {
             try {
-              const bulkResult = await ConcertModel.collection.bulkWrite(
-                bulkOps,
-                { ordered: false },
-              );
+              await ConcertModel.collection.bulkWrite(bulkOps, {
+                ordered: false,
+              });
 
               logger.info(
                 `✅ bulkWrite 완료: ${bulkOps.length}개 삭제 (N+1 쿼리 최적화: ${bulkOps.length}→1 쿼리)`,

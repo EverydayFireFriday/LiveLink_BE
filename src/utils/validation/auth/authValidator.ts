@@ -62,7 +62,7 @@ export class AuthValidator {
   }
 
   static validateBoolean(
-    value: any,
+    value: unknown,
     fieldName: string,
   ): { isValid: boolean; message?: string } {
     if (typeof value !== 'boolean') {
