@@ -89,6 +89,9 @@ export class ArticleBookmarkService {
       validatedData.user_id,
     );
 
+    // 게시글의 북마크 수 증가 (atomic operation)
+    await this.articleModel.updateBookmarkCount(validatedData.article_id, 1);
+
     return bookmark;
   }
 
@@ -107,6 +110,9 @@ export class ArticleBookmarkService {
     if (!deletedBookmark) {
       throw new Error('북마크를 찾을 수 없습니다.');
     }
+
+    // 게시글의 북마크 수 감소 (atomic operation)
+    await this.articleModel.updateBookmarkCount(validatedData.article_id, -1);
 
     return { success: true };
   }
