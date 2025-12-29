@@ -267,14 +267,12 @@ export class ArticleService {
         limit,
         publishedOnly: true,
       });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      articles = result.articles.map(
-        (article): IArticle => ({
-          ...article,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          likes_count: article.likes_count ?? 0,
-        }),
-      );
+      articles = result.articles.map((article) => ({
+        ...article,
+        category_id: article.category_id ?? null,
+        published_at: article.published_at ?? null,
+        likes_count: 0,
+      }));
       total = result.total;
     } else if (search) {
       // 검색
@@ -559,11 +557,11 @@ export class ArticleService {
 
     // 유효한 게시글들만 필터링하고 ID 추출
     const validBookmarks = bookmarks.filter(
-      (bookmark: { article: unknown }) => bookmark.article,
+      (bookmark): bookmark is typeof bookmark & { article: IArticle } =>
+        bookmark.article !== undefined,
     );
-    const articleIds = validBookmarks.map(
-      (bookmark: { article: { _id: { toString: () => string } } }) =>
-        bookmark.article._id.toString(),
+    const articleIds = validBookmarks.map((bookmark) =>
+      bookmark.article._id.toString(),
     );
 
     if (articleIds.length === 0) {
@@ -575,10 +573,7 @@ export class ArticleService {
 
     // 각 게시글에 태그 정보와 북마크 시간 매핑
     const articlesWithTags: EnrichedArticle[] = validBookmarks.map(
-      (bookmark: {
-        article: IArticle & { _id: { toString: () => string } };
-        created_at: Date;
-      }) => ({
+      (bookmark) => ({
         ...bookmark.article,
         tags:
           (tagsMap as Record<string, unknown[]>)[
@@ -612,12 +607,10 @@ export class ArticleService {
 
     // 유효한 게시글들만 필터링하고 ID 추출
     const validItems = result.articles.filter(
-      (item: { article: unknown }) => item.article,
+      (item): item is typeof item & { article: IArticle } =>
+        item.article !== undefined,
     );
-    const articleIds = validItems.map(
-      (item: { article: { _id: { toString: () => string } } }) =>
-        item.article._id.toString(),
-    );
+    const articleIds = validItems.map((item) => item.article._id.toString());
 
     if (articleIds.length === 0) {
       return { articles: [], total: 0, page, totalPages: 0 };
@@ -642,31 +635,25 @@ export class ArticleService {
       await Promise.all(promises);
 
     // 각 게시글에 태그 정보와 인기도 점수 매핑
-    const articlesWithTags: EnrichedArticle[] = validItems.map(
-      (item: {
-        article: IArticle & { _id: { toString: () => string } };
-        bookmarkCount: number;
-      }) => {
-        const articleId = item.article._id.toString();
-        const result: EnrichedArticle = {
-          ...item.article,
-          tags: (tagsMap as Record<string, unknown[]>)[articleId] || [],
-          popularityScore: item.bookmarkCount,
+    const articlesWithTags: EnrichedArticle[] = validItems.map((item) => {
+      const articleId = item.article._id.toString();
+      const result: EnrichedArticle = {
+        ...item.article,
+        tags: (tagsMap as Record<string, unknown[]>)[articleId] || [],
+        popularityScore: item.bookmarkCount,
+      };
+
+      if (userId && likeStatusMap && bookmarkStatusMap) {
+        result.userStatus = {
+          isLiked:
+            (likeStatusMap as Record<string, boolean>)[articleId] || false,
+          isBookmarked:
+            (bookmarkStatusMap as Record<string, boolean>)[articleId] || false,
         };
+      }
 
-        if (userId && likeStatusMap && bookmarkStatusMap) {
-          result.userStatus = {
-            isLiked:
-              (likeStatusMap as Record<string, boolean>)[articleId] || false,
-            isBookmarked:
-              (bookmarkStatusMap as Record<string, boolean>)[articleId] ||
-              false,
-          };
-        }
-
-        return result;
-      },
-    );
+      return result;
+    });
 
     return {
       articles: articlesWithTags,

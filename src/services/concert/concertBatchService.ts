@@ -504,9 +504,8 @@ export class ConcertBatchService {
                   const updateItem = batch.find((u) => u.uid === concertUid);
                   if (!updateItem) continue;
 
-                  const { uid, ...data } = updateItem;
                   const updateData: Partial<IConcert> = {
-                    ...data,
+                    ...updateItem,
                   } as Partial<IConcert>;
                   delete (updateData as Record<string, unknown>).uid;
                   delete (updateData as Record<string, unknown>).likesCount;
@@ -522,7 +521,7 @@ export class ConcertBatchService {
                   if (updatedConcert) {
                     results.success.push({
                       index: globalIndex,
-                      uid,
+                      uid: concertUid,
                       title: updatedConcert.title,
                       updatedAt: updatedConcert.updatedAt,
                     });
@@ -530,7 +529,7 @@ export class ConcertBatchService {
                 } catch (individualError) {
                   results.failed.push({
                     index: globalIndex,
-                    uid,
+                    uid: concertUid,
                     error:
                       individualError instanceof Error
                         ? individualError.message
