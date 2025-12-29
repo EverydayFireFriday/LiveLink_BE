@@ -33,6 +33,7 @@
     "migrate:notification-preference": "ts-node scripts/migration/updateNotificationPreference.ts",
     "migrate:roles": "ts-node src/scripts/migrateUserRoles.ts",
     "migrate:notification-history": "ts-node src/scripts/migrateNotificationHistory.ts",
+    "migrate:article-bookmark-count": "ts-node src/scripts/migrateArticleBookmarkCount.ts",
     "inspect:notification-history": "ts-node src/scripts/inspectNotificationHistory.ts",
     "check:support-inquiries": "ts-node src/scripts/checkSupportInquiries.ts",
     "db:seed": "ts-node src/scripts/seed.ts",

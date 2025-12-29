@@ -272,6 +272,7 @@ export class ArticleService {
         category_id: article.category_id ?? null,
         published_at: article.published_at ?? null,
         likes_count: 0,
+        bookmark_count: 0,
       }));
       total = result.total;
     } else if (search) {

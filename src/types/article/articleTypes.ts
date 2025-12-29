@@ -11,6 +11,7 @@ export interface Article {
   updated_at: Date;
   views: number;
   likes_count: number;
+  bookmark_count: number;
 }
 
 export interface ArticleWithRelations extends Article {

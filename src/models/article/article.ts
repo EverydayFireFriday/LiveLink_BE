@@ -14,6 +14,7 @@ export interface IArticle {
   updated_at: Date;
   views: number;
   likes_count: number;
+  bookmark_count: number;
 }
 
 // MongoDB 에러 타입
@@ -43,10 +44,12 @@ interface SortOption {
 }
 
 // 업데이트 데이터 타입
-interface ArticleUpdateData
-  extends Partial<
-    Omit<IArticle, '_id' | 'views' | 'likes_count' | 'created_at'>
-  > {}
+type ArticleUpdateData = Partial<
+  Omit<
+    IArticle,
+    '_id' | 'views' | 'likes_count' | 'bookmark_count' | 'created_at'
+  >
+>;
 
 // 벌크 업데이트 오퍼레이션 타입
 interface BulkUpdateOperation {
@@ -112,7 +115,7 @@ export class ArticleModel {
           await this.collection.dropIndex(textIndex.name);
           logger.info('✅ 기존 텍스트 인덱스 삭제 완료');
         }
-      } catch (error) {
+      } catch {
         logger.info('ℹ️ 기존 텍스트 인덱스 없음 또는 삭제 불가 (정상)');
       }
 
@@ -191,7 +194,12 @@ export class ArticleModel {
   async create(
     articleData: Omit<
       IArticle,
-      '_id' | 'created_at' | 'updated_at' | 'views' | 'likes_count'
+      | '_id'
+      | 'created_at'
+      | 'updated_at'
+      | 'views'
+      | 'likes_count'
+      | 'bookmark_count'
     >,
   ): Promise<IArticle> {
     return this.withIndexes(async () => {
@@ -201,6 +209,7 @@ export class ArticleModel {
         ...articleData,
         views: 0,
         likes_count: 0,
+        bookmark_count: 0,
         created_at: now,
         updated_at: now,
       };
@@ -315,6 +324,7 @@ export class ArticleModel {
       delete (cleanUpdateData as Record<string, unknown>)._id;
       delete (cleanUpdateData as Record<string, unknown>).views;
       delete (cleanUpdateData as Record<string, unknown>).likes_count;
+      delete (cleanUpdateData as Record<string, unknown>).bookmark_count;
       delete (cleanUpdateData as Record<string, unknown>).created_at;
 
       cleanUpdateData.updated_at = new Date();
@@ -378,6 +388,29 @@ export class ArticleModel {
         { _id: new ObjectId(id) },
         {
           $inc: { likes_count: increment },
+          $set: { updated_at: new Date() },
+        },
+        updateOptions,
+      );
+    });
+  }
+
+  async updateBookmarkCount(
+    id: string,
+    increment: number,
+    session?: ClientSession,
+  ): Promise<void> {
+    return this.withIndexes(async () => {
+      if (!ObjectId.isValid(id)) {
+        return;
+      }
+
+      const updateOptions = session ? { session } : {};
+
+      await this.collection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $inc: { bookmark_count: increment },
           $set: { updated_at: new Date() },
         },
         updateOptions,
