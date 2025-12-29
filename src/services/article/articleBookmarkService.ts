@@ -196,7 +196,21 @@ export class ArticleBookmarkService {
     );
 
     return {
-      bookmarks: result.bookmarks as BookmarkWithArticle[],
+      bookmarks: result.bookmarks.map((bookmark) => ({
+        _id: bookmark._id.toString(),
+        article: {
+          _id: bookmark.article?._id.toString() || '',
+          title: bookmark.article?.title || '',
+          content_url: bookmark.article?.content_url || '',
+          author_id: bookmark.article?.author_id.toString() || '',
+          category: bookmark.article?.category_id
+            ? { name: bookmark.article.category_id.toString() }
+            : undefined,
+          created_at: bookmark.article?.created_at || new Date(),
+          updated_at: bookmark.article?.updated_at || new Date(),
+        },
+        created_at: bookmark.created_at,
+      })),
       total: result.total,
       page: validatedOptions.page,
       totalPages: Math.ceil(result.total / validatedOptions.limit),
@@ -267,7 +281,21 @@ export class ArticleBookmarkService {
       });
 
     return {
-      articles: result.articles as BookmarkWithArticle[],
+      articles: result.articles.map((item) => ({
+        _id: item._id.toString(),
+        article: {
+          _id: item.article?._id.toString() || '',
+          title: item.article?.title || '',
+          content_url: item.article?.content_url || '',
+          author_id: item.article?.author_id.toString() || '',
+          category: item.article?.category_id
+            ? { name: item.article.category_id.toString() }
+            : undefined,
+          created_at: item.article?.created_at || new Date(),
+          updated_at: item.article?.updated_at || new Date(),
+        },
+        created_at: item.latestBookmark,
+      })),
       total: result.total,
       page,
       totalPages: Math.ceil(result.total / limit),
@@ -326,10 +354,28 @@ export class ArticleBookmarkService {
         },
       );
 
-    return (result.bookmarks as BookmarkWithArticle[]).filter(
-      (bookmark: BookmarkWithArticle) =>
-        new Date(bookmark.bookmarkedAt || bookmark.created_at) >= dateThreshold,
-    );
+    return result.bookmarks
+      .map((bookmark) => ({
+        _id: bookmark.article._id.toString(),
+        article: {
+          _id: bookmark.article._id.toString(),
+          title: bookmark.article.title,
+          content_url: bookmark.article.content_url,
+          author_id: bookmark.article.author_id.toString(),
+          category: bookmark.article.category_id
+            ? { name: bookmark.article.category_id.toString() }
+            : undefined,
+          created_at: bookmark.article.created_at,
+          updated_at: bookmark.article.updated_at,
+        },
+        created_at: bookmark.created_at,
+        bookmarkedAt: bookmark.created_at,
+      }))
+      .filter(
+        (bookmark: BookmarkWithArticle) =>
+          new Date(bookmark.bookmarkedAt || bookmark.created_at) >=
+          dateThreshold,
+      );
   }
 
   // 북마크 통계 대시보드용 데이터
