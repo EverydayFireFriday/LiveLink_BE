@@ -208,15 +208,45 @@ export class NotificationHistoryModel {
    * Bulk insert notification histories with pre-generated IDs
    * 사전 생성된 ID로 알림 이력 일괄 삽입
    * (FCM 전송 후 historyId를 포함시키기 위해 사용)
+   *
+   * @param notifications - 삽입할 알림 히스토리 배열
+   * @param options.ordered - false로 설정하면 중복 키 에러가 발생해도 나머지는 계속 삽입
    */
   public async bulkInsertWithIds(
     notifications: INotificationHistory[],
+    options: { ordered?: boolean } = { ordered: false },
   ): Promise<void> {
     if (notifications.length === 0) {
       return;
     }
 
-    await this.collection.insertMany(notifications);
+    try {
+      await this.collection.insertMany(notifications, options);
+    } catch (error: unknown) {
+      // ordered: false일 때는 BulkWriteError가 발생할 수 있음
+      // 일부는 성공하고 일부는 실패 (중복 키)
+      if (
+        error instanceof Error &&
+        'writeErrors' in error &&
+        Array.isArray((error as { writeErrors?: unknown[] }).writeErrors)
+      ) {
+        const writeErrors = (error as { writeErrors: { code: number }[] })
+          .writeErrors;
+        const duplicateKeyErrors = writeErrors.filter(
+          (err) => err.code === 11000,
+        );
+
+        // 모두 중복 키 에러인 경우에만 로그 출력하고 무시
+        if (duplicateKeyErrors.length === writeErrors.length) {
+          logger.warn(
+            `⚠️ All ${duplicateKeyErrors.length} notifications already exist (duplicate key)`,
+          );
+          return;
+        }
+      }
+      // 다른 에러는 다시 throw
+      throw error;
+    }
   }
 
   /**

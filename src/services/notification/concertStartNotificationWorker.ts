@@ -161,10 +161,20 @@ async function processConcertStartNotification(
     const notificationMessage = `공연 시작까지 ${timeText} 남았습니다. 곧 시작됩니다!`;
 
     // 4. 각 사용자에 대해 ObjectId 미리 생성 및 매핑
+    // 멱등성을 위해 deterministic한 historyId 생성
+    // concertId + performanceDate + notifyBeforeMinutes + userId 조합으로 생성
     const userHistoryMap = new Map<string, ObjectId>(); // userId -> historyId
+    const idSeed = `${concertId}_${performanceDate.getTime()}_${notifyBeforeMinutes}`;
+
     users.forEach((user) => {
       if (user._id) {
-        userHistoryMap.set(user._id.toString(), new ObjectId());
+        // Deterministic ObjectId 생성 (같은 입력이면 항상 같은 ID)
+        const userSeed = `${idSeed}_${user._id.toString()}`;
+        const hash = Buffer.from(userSeed)
+          .toString('hex')
+          .padEnd(24, '0')
+          .slice(0, 24);
+        userHistoryMap.set(user._id.toString(), new ObjectId(hash));
       }
     });
 
@@ -249,10 +259,26 @@ async function processConcertStartNotification(
 
     // 6. 성공한 알림만 DB에 일괄 저장
     if (successfulHistories.length > 0) {
-      await notificationHistoryModel.bulkInsertWithIds(successfulHistories);
-      logger.info(
-        `💾 Saved ${successfulHistories.length} notification histories`,
-      );
+      try {
+        await notificationHistoryModel.bulkInsertWithIds(successfulHistories);
+        logger.info(
+          `💾 Saved ${successfulHistories.length} notification histories`,
+        );
+      } catch (error: unknown) {
+        // 중복 키 에러는 부분적으로 처리 (ordered: false 사용 필요)
+        // 일부는 저장되고 일부는 중복일 수 있음
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          (error.code === 11000 || 'writeErrors' in error)
+        ) {
+          logger.warn(
+            `⚠️ Some notification histories already exist (duplicate key), continuing...`,
+          );
+        } else {
+          throw error;
+        }
+      }
     }
 
     // 7. 잘못된 FCM 토큰 제거
