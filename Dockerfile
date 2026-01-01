@@ -14,14 +14,18 @@ COPY package*.json ./
 
 # Install all dependencies (including devDependencies) for building
 # 빌드를 위해 모든 종속성 (개발 종속성 포함) 설치
-RUN npm ci
+# --no-audit --no-fund: 빌드 시간 단축을 위해 감사 및 펀딩 정보 스킵
+RUN npm ci --no-audit --no-fund
 
-# Copy the rest of the application source code
-# 나머지 애플리케이션 소스 코드 복사
-COPY . .
+# Copy only necessary files for build
+# 빌드에 필요한 파일만 복사 (레이어 캐싱 최적화)
+COPY tsconfig.json ./
+COPY src ./src
+COPY public ./public
 
 # Build the TypeScript source code
 # TypeScript 소스 코드 빌드
+# --max-old-space-size 설정으로 메모리 최적화
 RUN npm run build
 
 # Prune development dependencies to keep only production dependencies for the final image
@@ -36,15 +40,21 @@ FROM node:25-alpine
 
 # Set NODE_ENV to production
 # NODE_ENV를 production으로 설정
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    # Disable npm update check for faster startup
+    # 빠른 시작을 위해 npm 업데이트 확인 비활성화
+    NO_UPDATE_NOTIFIER=true \
+    # Suppress npm funding messages
+    # npm 펀딩 메시지 숨김
+    NPM_CONFIG_FUND=false
 
 # Set the working directory
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# Install curl for health checks
-# 헬스 체크를 위해 curl 설치
-RUN apk add --no-cache curl
+# Install curl for health checks and dumb-init for proper signal handling
+# 헬스 체크를 위한 curl과 시그널 처리를 위한 dumb-init 설치
+RUN apk add --no-cache curl dumb-init
 
 # Create a non-root user and group for security
 # -S: create a system user
@@ -56,13 +66,14 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy dependencies and built application from the builder stage
 # 빌더 단계에서 종속성과 빌드된 애플리케이션 복사
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/public ./public
-COPY package.json .
+# --chown으로 복사와 동시에 소유권 설정 (성능 향상)
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/public ./public
+COPY --chown=appuser:appgroup package.json .
 
-# Create and set permissions for the logs directory where the application expects to write
-# The appuser needs to be able to write logs
+# Create logs directory with proper permissions
+# 로그 디렉토리 생성 및 권한 설정
 RUN mkdir -p dist/logs && chown -R appuser:appgroup dist/logs
 
 # Switch to the non-root user
@@ -86,4 +97,5 @@ LABEL maintainer="LiveLink Team" \
 
 # The command to run the application
 # 애플리케이션을 실행하는 명령어
-CMD ["node", "dist/app.js"]
+# dumb-init: PID 1 문제 해결 및 시그널 처리 개선 (graceful shutdown)
+CMD ["dumb-init", "node", "dist/app.js"]

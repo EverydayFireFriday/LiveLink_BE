@@ -126,29 +126,46 @@ async function processNotification(
     const success = await FCMService.sendNotification(user.fcmToken, payload);
 
     if (success) {
-      // Mark as sent
-      await model.markAsSent(new ObjectId(notificationId));
-
-      // ✅ NotificationHistory 저장 (사전 생성한 historyId 사용)
-      await notificationHistoryModel.bulkInsertWithIds([
-        {
-          _id: historyId,
-          userId: notification.userId,
-          type: ScheduledNotificationType.SCHEDULED,
-          title: notification.title,
-          message: notification.message,
-          isRead: false,
-          sentAt: new Date(),
-          createdAt: new Date(),
-          expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
-          data: {
-            ...(notification.data || {}),
-            ...(notification.concertId && {
-              concertId: notification.concertId.toString(),
-            }),
+      // ✅ 순서 변경: History 저장을 먼저 수행
+      // History 저장이 실패하면 Status도 업데이트되지 않아 재시도 시 중복 전송됨
+      // 하지만 historyId가 동일하므로 중복 저장 시도 시 에러 발생 (unique index)
+      try {
+        await notificationHistoryModel.bulkInsertWithIds([
+          {
+            _id: historyId,
+            userId: notification.userId,
+            type: ScheduledNotificationType.SCHEDULED,
+            title: notification.title,
+            message: notification.message,
+            isRead: false,
+            sentAt: new Date(),
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90일
+            data: {
+              ...(notification.data || {}),
+              ...(notification.concertId && {
+                concertId: notification.concertId.toString(),
+              }),
+            },
           },
-        },
-      ]);
+        ]);
+      } catch (historyError: unknown) {
+        // 중복 키 에러는 무시 (이미 저장된 경우)
+        if (
+          historyError instanceof Error &&
+          'code' in historyError &&
+          historyError.code === 11000
+        ) {
+          logger.warn(
+            `⚠️ History already exists for notification ${notificationId}, continuing...`,
+          );
+        } else {
+          throw historyError;
+        }
+      }
+
+      // Mark as sent (History 저장 후)
+      await model.markAsSent(new ObjectId(notificationId));
 
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       logger.info(

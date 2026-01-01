@@ -129,46 +129,64 @@ export class ArticleService {
     // 유효성 검사
     const validatedData = createArticleSchema.parse(data);
 
-    let categoryObjectId: ObjectId | null = null;
-    if (validatedData.category_name) {
-      // 카테고리 찾거나 생성 (선택사항)
-      const category = await this.categoryModel.findOrCreate(
-        validatedData.category_name,
-      );
-      categoryObjectId = category._id;
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const session = db.client.startSession();
+
+    try {
+      let article: IArticle | null = null;
+
+      await session.withTransaction(async () => {
+        let categoryObjectId: ObjectId | null = null;
+        if (validatedData.category_name) {
+          // 카테고리 찾거나 생성 (선택사항)
+          const category = await this.categoryModel.findOrCreate(
+            validatedData.category_name,
+          );
+          categoryObjectId = category._id;
+        }
+
+        let tagObjectIds: ObjectId[] = [];
+        if (validatedData.tag_names && validatedData.tag_names.length > 0) {
+          // 태그들을 찾거나 생성 (배치 최적화)
+          const tags = await this.tagModel.findOrCreateMany(
+            validatedData.tag_names,
+          );
+          tagObjectIds = tags.map((tag) => tag._id);
+        }
+
+        // 게시글 생성
+        article = await this.articleModel.create({
+          title: validatedData.title,
+          content_url: validatedData.content_url,
+          author_id: new ObjectId(validatedData.author_id),
+          category_id: categoryObjectId,
+          is_published: validatedData.is_published || false,
+          published_at: validatedData.published_at || null,
+        });
+
+        // 태그 연결 (배치 처리)
+        if (tagObjectIds.length > 0 && article) {
+          await this.articleTagModel.createMany(
+            article._id.toString(),
+            tagObjectIds.map((id) => id.toString()),
+          );
+        }
+      });
+
+      // 트랜잭션 성공 후 캐시 무효화
+      await CacheHelper.deletePatterns([
+        CacheInvalidationPatterns.ARTICLE_ALL(),
+      ]);
+
+      if (!article) {
+        throw new Error('게시글 생성에 실패했습니다.');
+      }
+
+      return article;
+    } finally {
+      await session.endSession();
     }
-
-    let tagObjectIds: ObjectId[] = [];
-    if (validatedData.tag_names && validatedData.tag_names.length > 0) {
-      // 태그들을 찾거나 생성 (배치 최적화)
-      const tags = await this.tagModel.findOrCreateMany(
-        validatedData.tag_names,
-      );
-      tagObjectIds = tags.map((tag) => tag._id);
-    }
-
-    // 게시글 생성
-    const article = await this.articleModel.create({
-      title: validatedData.title,
-      content_url: validatedData.content_url,
-      author_id: new ObjectId(validatedData.author_id),
-      category_id: categoryObjectId,
-      is_published: validatedData.is_published || false,
-      published_at: validatedData.published_at || null,
-    });
-
-    // 태그 연결 (배치 처리)
-    if (tagObjectIds.length > 0) {
-      await this.articleTagModel.createMany(
-        article._id.toString(),
-        tagObjectIds.map((id) => id.toString()),
-      );
-    }
-
-    // 캐시 무효화 - 새로운 유틸리티 사용
-    await CacheHelper.deletePatterns([CacheInvalidationPatterns.ARTICLE_ALL()]);
-
-    return article;
   }
 
   // 게시글 조회 (ID로)
@@ -361,51 +379,67 @@ export class ArticleService {
       throw new Error('게시글을 찾을 수 없습니다.');
     }
 
-    const updateData: Record<string, unknown> = { ...validatedData };
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const session = db.client.startSession();
 
-    // 카테고리 이름으로 ID 조회
-    if (validatedData.category_name !== undefined) {
-      if (validatedData.category_name === null) {
-        updateData.category_id = null; // 카테고리 제거
-      } else {
-        // 카테고리 찾거나 생성
-        const category = await this.categoryModel.findOrCreate(
-          validatedData.category_name,
-        );
-        updateData.category_id = category._id;
+    try {
+      let updatedArticle: IArticle | null = null;
+
+      await session.withTransaction(async () => {
+        const updateData: Record<string, unknown> = { ...validatedData };
+
+        // 카테고리 이름으로 ID 조회
+        if (validatedData.category_name !== undefined) {
+          if (validatedData.category_name === null) {
+            updateData.category_id = null; // 카테고리 제거
+          } else {
+            // 카테고리 찾거나 생성
+            const category = await this.categoryModel.findOrCreate(
+              validatedData.category_name,
+            );
+            updateData.category_id = category._id;
+          }
+          delete updateData.category_name;
+        }
+
+        // 태그 이름으로 ID 조회 및 업데이트
+        if (validatedData.tag_names !== undefined) {
+          if (validatedData.tag_names.length > 0) {
+            // 태그들을 찾거나 생성 (배치 최적화)
+            const tags = await this.tagModel.findOrCreateMany(
+              validatedData.tag_names,
+            );
+            await this.articleTagModel.updateArticleTags(
+              id,
+              tags.map((tag) => tag._id.toString()),
+            );
+          } else {
+            await this.articleTagModel.deleteByArticle(id); // 모든 태그 제거
+          }
+          delete updateData.tag_names;
+        }
+
+        updatedArticle = await this.articleModel.updateById(id, updateData);
+        if (!updatedArticle) {
+          throw new Error('게시글 업데이트에 실패했습니다.');
+        }
+      });
+
+      // 트랜잭션 성공 후 캐시 무효화
+      await CacheHelper.deletePatterns([
+        CacheInvalidationPatterns.ARTICLE_BY_ID(id),
+        CacheInvalidationPatterns.ARTICLE_LIST(),
+      ]);
+
+      if (!updatedArticle) {
+        throw new Error('게시글 업데이트에 실패했습니다.');
       }
-      delete updateData.category_name;
+
+      return updatedArticle;
+    } finally {
+      await session.endSession();
     }
-
-    // 태그 이름으로 ID 조회 및 업데이트
-    if (validatedData.tag_names !== undefined) {
-      if (validatedData.tag_names.length > 0) {
-        // 태그들을 찾거나 생성 (배치 최적화)
-        const tags = await this.tagModel.findOrCreateMany(
-          validatedData.tag_names,
-        );
-        await this.articleTagModel.updateArticleTags(
-          id,
-          tags.map((tag) => tag._id.toString()),
-        );
-      } else {
-        await this.articleTagModel.deleteByArticle(id); // 모든 태그 제거
-      }
-      delete updateData.tag_names;
-    }
-
-    const updatedArticle = await this.articleModel.updateById(id, updateData);
-    if (!updatedArticle) {
-      throw new Error('게시글 업데이트에 실패했습니다.');
-    }
-
-    // 캐시 무효화 - 해당 게시글과 관련된 모든 캐시 삭제
-    await CacheHelper.deletePatterns([
-      CacheInvalidationPatterns.ARTICLE_BY_ID(id),
-      CacheInvalidationPatterns.ARTICLE_LIST(),
-    ]);
-
-    return updatedArticle;
   }
 
   // 게시글 삭제
@@ -417,21 +451,29 @@ export class ArticleService {
       throw new Error('게시글을 찾을 수 없습니다.');
     }
 
-    // 관련 데이터 삭제 (병렬 처리)
-    await Promise.all([
-      this.articleTagModel.deleteByArticle(id),
-      this.articleLikeModel.deleteByArticle(id),
-      this.articleBookmarkModel.deleteByArticle(id),
-    ]);
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const session = db.client.startSession();
 
-    // 게시글 삭제
-    await this.articleModel.deleteById(id);
+    try {
+      await session.withTransaction(async () => {
+        // 관련 데이터 삭제 (순차 처리로 변경 - 트랜잭션 내에서)
+        await this.articleTagModel.deleteByArticle(id);
+        await this.articleLikeModel.deleteByArticle(id);
+        await this.articleBookmarkModel.deleteByArticle(id);
 
-    // 캐시 무효화
-    await CacheHelper.deletePatterns([
-      CacheInvalidationPatterns.ARTICLE_BY_ID(id),
-      CacheInvalidationPatterns.ARTICLE_LIST(),
-    ]);
+        // 게시글 삭제
+        await this.articleModel.deleteById(id);
+      });
+
+      // 트랜잭션 성공 후 캐시 무효화
+      await CacheHelper.deletePatterns([
+        CacheInvalidationPatterns.ARTICLE_BY_ID(id),
+        CacheInvalidationPatterns.ARTICLE_LIST(),
+      ]);
+    } finally {
+      await session.endSession();
+    }
   }
 
   // 조회수 증가
