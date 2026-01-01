@@ -83,16 +83,35 @@ export class ArticleBookmarkService {
       throw new Error('게시글을 찾을 수 없습니다.');
     }
 
-    // 북마크 추가
-    const bookmark = await this.articleBookmarkModel.create(
-      validatedData.article_id,
-      validatedData.user_id,
-    );
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const session = db.client.startSession();
 
-    // 게시글의 북마크 수 증가 (atomic operation)
-    await this.articleModel.updateBookmarkCount(validatedData.article_id, 1);
+    try {
+      let bookmark: IArticleBookmark | null = null;
 
-    return bookmark;
+      await session.withTransaction(async () => {
+        // 북마크 추가
+        bookmark = await this.articleBookmarkModel.create(
+          validatedData.article_id,
+          validatedData.user_id,
+        );
+
+        // 게시글의 북마크 수 증가 (atomic operation)
+        await this.articleModel.updateBookmarkCount(
+          validatedData.article_id,
+          1,
+        );
+      });
+
+      if (!bookmark) {
+        throw new Error('북마크 추가에 실패했습니다.');
+      }
+
+      return bookmark;
+    } finally {
+      await session.endSession();
+    }
   }
 
   // 북마크 삭제
@@ -101,20 +120,37 @@ export class ArticleBookmarkService {
   ): Promise<{ success: boolean }> {
     const validatedData = deleteBookmarkSchema.parse(data);
 
-    // 북마크 삭제
-    const deletedBookmark = await this.articleBookmarkModel.delete(
-      validatedData.article_id,
-      validatedData.user_id,
-    );
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const session = db.client.startSession();
 
-    if (!deletedBookmark) {
-      throw new Error('북마크를 찾을 수 없습니다.');
+    try {
+      let success = false;
+
+      await session.withTransaction(async () => {
+        // 북마크 삭제
+        const deletedBookmark = await this.articleBookmarkModel.delete(
+          validatedData.article_id,
+          validatedData.user_id,
+        );
+
+        if (!deletedBookmark) {
+          throw new Error('북마크를 찾을 수 없습니다.');
+        }
+
+        // 게시글의 북마크 수 감소 (atomic operation)
+        await this.articleModel.updateBookmarkCount(
+          validatedData.article_id,
+          -1,
+        );
+
+        success = true;
+      });
+
+      return { success };
+    } finally {
+      await session.endSession();
     }
-
-    // 게시글의 북마크 수 감소 (atomic operation)
-    await this.articleModel.updateBookmarkCount(validatedData.article_id, -1);
-
-    return { success: true };
   }
 
   // 북마크 상태 확인
