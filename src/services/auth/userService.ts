@@ -93,101 +93,145 @@ export class UserService {
   async deleteUser(id: string): Promise<boolean> {
     logger.info(`🗑️ 사용자 데이터 삭제 시작: ${id}`);
 
+    const { ObjectId } = await import('mongodb');
+    const { getDB } = await import('../../utils/database/db');
+    const db = getDB();
+    const session = db.client.startSession();
+
     try {
-      // 1. 사용자가 작성한 게시글 삭제
-      try {
+      let result: boolean = false;
+
+      await session.withTransaction(async () => {
+        const userObjectId = new ObjectId(id);
+
+        // 삭제 통계 추적
+        const deleteStats = {
+          articles: 0,
+          comments: 0,
+          commentLikes: 0,
+          articleLikes: 0,
+          bookmarks: 0,
+          messages: 0,
+          chatRooms: 0,
+          notifications: 0,
+          sessions: 0,
+          concertLikes: 0,
+        };
+
+        // 1. 사용자가 작성한 게시글 삭제
         const { Article } = await import('../../models/article/article');
         const articleModel = Article.get();
-        const deletedArticles = await articleModel.deleteByAuthor(id);
-        logger.info(`  ✅ 삭제된 게시글 수: ${deletedArticles}`);
-      } catch (error) {
-        logger.error('  ❌ 게시글 삭제 중 오류:', error);
-      }
+        deleteStats.articles = await articleModel.deleteByAuthor(id);
+        logger.info(`  ✅ 삭제된 게시글 수: ${deleteStats.articles}`);
 
-      // 2. 사용자가 작성한 댓글 삭제
-      try {
+        // 2. 사용자가 작성한 댓글 삭제
         const { Comment } = await import('../../models/article/comment');
         const commentModel = Comment.get();
-        const deletedComments = await commentModel.deleteByUser(id);
-        logger.info(`  ✅ 삭제된 댓글 수: ${deletedComments}`);
-      } catch (error) {
-        logger.error('  ❌ 댓글 삭제 중 오류:', error);
-      }
+        deleteStats.comments = await commentModel.deleteByUser(id);
+        logger.info(`  ✅ 삭제된 댓글 수: ${deleteStats.comments}`);
 
-      // 3. 댓글 좋아요 삭제
-      try {
+        // 3. 댓글 좋아요 삭제
         const { CommentLike } = await import(
           '../../models/article/commentLike'
         );
         const commentLikeModel = CommentLike.get();
-        const deletedCommentLikes = await commentLikeModel.deleteByUser(id);
-        logger.info(`  ✅ 삭제된 댓글 좋아요 수: ${deletedCommentLikes}`);
-      } catch (error) {
-        logger.error('  ❌ 댓글 좋아요 삭제 중 오류:', error);
-      }
+        deleteStats.commentLikes = await commentLikeModel.deleteByUser(id);
+        logger.info(`  ✅ 삭제된 댓글 좋아요 수: ${deleteStats.commentLikes}`);
 
-      // 4. 게시글 좋아요 삭제
-      try {
+        // 4. 게시글 좋아요 삭제
         const { ArticleLike } = await import(
           '../../models/article/articleLike'
         );
         const articleLikeModel = ArticleLike.get();
-        const deletedArticleLikes = await articleLikeModel.deleteByUser(id);
-        logger.info(`  ✅ 삭제된 게시글 좋아요 수: ${deletedArticleLikes}`);
-      } catch (error) {
-        logger.error('  ❌ 게시글 좋아요 삭제 중 오류:', error);
-      }
+        deleteStats.articleLikes = await articleLikeModel.deleteByUser(id);
+        logger.info(
+          `  ✅ 삭제된 게시글 좋아요 수: ${deleteStats.articleLikes}`,
+        );
 
-      // 5. 게시글 북마크 삭제
-      try {
+        // 5. 게시글 북마크 삭제
         const { ArticleBookmark } = await import(
           '../../models/article/articleBookmark'
         );
         const bookmarkModel = ArticleBookmark.get();
-        const deletedBookmarks = await bookmarkModel.deleteByUser(id);
-        logger.info(`  ✅ 삭제된 북마크 수: ${deletedBookmarks}`);
-      } catch (error) {
-        logger.error('  ❌ 북마크 삭제 중 오류:', error);
-      }
+        deleteStats.bookmarks = await bookmarkModel.deleteByUser(id);
+        logger.info(`  ✅ 삭제된 북마크 수: ${deleteStats.bookmarks}`);
 
-      // 6. 채팅 메시지 삭제 (소프트 삭제)
-      try {
+        // 6. 채팅 메시지 삭제 (소프트 삭제)
         const { MessageModel } = await import('../../models/chat/message');
         const messageModel = new MessageModel();
-        const deletedMessages = await messageModel.deleteByUser(id);
-        logger.info(`  ✅ 삭제된 메시지 수: ${deletedMessages}`);
-      } catch (error) {
-        logger.error('  ❌ 메시지 삭제 중 오류:', error);
-      }
+        deleteStats.messages = await messageModel.deleteByUser(id);
+        logger.info(`  ✅ 삭제된 메시지 수: ${deleteStats.messages}`);
 
-      // 7. 생성한 채팅방 삭제
-      try {
+        // 7. 생성한 채팅방 삭제
         const { ChatRoomModel } = await import('../../models/chat/chatRoom');
         const chatRoomModel = new ChatRoomModel();
-        const deletedChatRooms = await chatRoomModel.deleteByUser(id);
-        logger.info(`  ✅ 삭제된 채팅방 수: ${deletedChatRooms}`);
-      } catch (error) {
-        logger.error('  ❌ 채팅방 삭제 중 오류:', error);
-      }
+        deleteStats.chatRooms = await chatRoomModel.deleteByUser(id);
+        logger.info(`  ✅ 삭제된 채팅방 수: ${deleteStats.chatRooms}`);
 
-      // 8. 마지막으로 사용자 계정 삭제
-      const deleted = await this.getUserModel().deleteUser(id);
+        // 8. 알림 데이터 삭제
+        const { getNotificationHistoryModel } = await import(
+          '../../models/notification/notificationHistory'
+        );
+        const notificationModel = getNotificationHistoryModel(db);
+        deleteStats.notifications =
+          await notificationModel.deleteAllByUserId(userObjectId);
+        logger.info(`  ✅ 삭제된 알림 수: ${deleteStats.notifications}`);
 
-      if (deleted) {
-        // 캐시 무효화 - 사용자 관련 모든 캐시 삭제
+        // 9. 세션 데이터 삭제
+        const { UserSessionModel } = await import(
+          '../../models/auth/userSession'
+        );
+        const sessionModel = new UserSessionModel();
+        deleteStats.sessions = await sessionModel.deleteAllUserSessions(id);
+        logger.info(`  ✅ 삭제된 세션 수: ${deleteStats.sessions}`);
+
+        // 10. 콘서트 좋아요 삭제 (User의 likedConcerts 필드)
+        // User 문서에서 likedConcerts 배열을 제거하기 전에
+        // Concert의 likeCount를 감소시켜야 함
+        const usersCollection = db.collection('users');
+        const user = await usersCollection.findOne(
+          { _id: userObjectId },
+          { projection: { likedConcerts: 1 } },
+        );
+
+        if (user?.likedConcerts && user.likedConcerts.length > 0) {
+          const concertsCollection = db.collection('concerts');
+          await concertsCollection.updateMany(
+            { _id: { $in: user.likedConcerts } },
+            { $inc: { likeCount: -1 } },
+          );
+          deleteStats.concertLikes = user.likedConcerts.length;
+          logger.info(
+            `  ✅ 삭제된 콘서트 좋아요 수: ${deleteStats.concertLikes}`,
+          );
+        }
+
+        // 11. 마지막으로 사용자 계정 삭제
+        result = await this.getUserModel().deleteUser(id);
+
+        if (!result) {
+          throw new Error('사용자 계정 삭제 실패');
+        }
+
+        logger.info(`✅ 사용자 계정 및 모든 데이터 삭제 완료: ${id}`);
+        logger.info(`📊 삭제 통계: ${JSON.stringify(deleteStats, null, 2)}`);
+      });
+
+      // 트랜잭션 성공 후 캐시 무효화
+      if (result) {
         const cacheKey = CacheKeyBuilder.user(id);
         await cacheManager.del(cacheKey);
 
         const statsCacheKey = CacheKeyBuilder.userStats(id);
         await cacheManager.del(statsCacheKey);
-
-        logger.info(`✅ 사용자 계정 및 모든 데이터 삭제 완료: ${id}`);
       }
 
-      return deleted;
+      return result;
     } catch (error) {
       logger.error('❌ 사용자 데이터 삭제 중 오류 발생:', error);
       throw error;
+    } finally {
+      await session.endSession();
     }
   }
 
