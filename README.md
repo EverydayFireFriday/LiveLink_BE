@@ -104,7 +104,7 @@
 - npm >= 9.0.0
 - Docker & Docker Compose (권장)
 
-### Docker Compose로 실행 (권장)
+### Docker Compose로 실행 (권장) 🐳
 
 ```bash
 # 1. 저장소 클론
@@ -112,16 +112,26 @@ git clone https://github.com/YourOrg/LiveLink_BE.git
 cd LiveLink_BE
 
 # 2. 환경 변수 설정
-cp .env.example .env
+cp .env.example .env.production
+# .env.production 파일을 열어서 필수 값들을 수정하세요
+# (MONGO_ROOT_PASSWORD, REDIS_PASSWORD, JWT_SECRET 등)
 
-# 3. 전체 스택 실행
+# 3. 전체 스택 실행 (Backend + MongoDB + Redis + Monitoring)
 docker-compose up -d
 
 # 4. 로그 확인
 docker-compose logs -f app
+
+# 5. 헬스체크
+curl http://localhost:3000/health/liveness
 ```
 
-서버가 `http://localhost:3000` 에서 실행됩니다.
+**서비스 접속:**
+- Backend API: http://localhost:3000
+- Grafana (모니터링): http://localhost:3001
+- Prometheus: http://localhost:9090
+
+📘 **상세 가이드**: [Docker Quick Start](./docs/deployment/DOCKER_QUICKSTART.md) | [Docker Guide](./docs/deployment/DOCKER_GUIDE.md)
 
 ### 로컬 개발 환경
 
