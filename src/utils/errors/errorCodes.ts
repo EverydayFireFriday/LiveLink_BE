@@ -90,6 +90,16 @@ export const ErrorCodes = {
   CONCERT_NOT_ON_SALE: 'CONCERT_009',
   CONCERT_SETLIST_NOT_FOUND: 'CONCERT_010',
 
+  // ==================== Concert Review 관련 (5500번대) ====================
+  REVIEW_NOT_FOUND: 'REVIEW_001',
+  REVIEW_CREATE_FAILED: 'REVIEW_002',
+  REVIEW_UPDATE_FAILED: 'REVIEW_003',
+  REVIEW_DELETE_FAILED: 'REVIEW_004',
+  REVIEW_NO_PERMISSION: 'REVIEW_005',
+  ALREADY_LIKED: 'REVIEW_006',
+  LIKE_NOT_FOUND: 'REVIEW_007',
+  FORBIDDEN: 'REVIEW_008',
+
   // ==================== Notification 관련 (6000번대) ====================
   NOTIF_NOT_FOUND: 'NOTIF_001',
   NOTIF_ALREADY_READ: 'NOTIF_002',
@@ -144,6 +154,7 @@ export const ErrorCodes = {
   SYS_RATE_LIMIT_EXCEEDED: 'SYS_003',
   SYS_MAINTENANCE: 'SYS_004',
   SYS_TIMEOUT: 'SYS_005',
+  INTERNAL_SERVER_ERROR: 'SYS_001', // Alias for SYS_INTERNAL_ERROR
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
@@ -227,6 +238,16 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   CONCERT_008: '매진된 공연입니다.',
   CONCERT_009: '판매 중이지 않은 공연입니다.',
   CONCERT_010: '생성된 셋리스트가 없습니다.',
+
+  // Concert Review
+  REVIEW_001: '리뷰를 찾을 수 없습니다.',
+  REVIEW_002: '리뷰 생성에 실패했습니다.',
+  REVIEW_003: '리뷰 수정에 실패했습니다.',
+  REVIEW_004: '리뷰 삭제에 실패했습니다.',
+  REVIEW_005: '리뷰 수정 권한이 없습니다.',
+  REVIEW_006: '이미 좋아요한 리뷰입니다.',
+  REVIEW_007: '좋아요를 찾을 수 없습니다.',
+  REVIEW_008: '접근 권한이 없습니다.',
 
   // Notification
   NOTIF_001: '알림을 찾을 수 없습니다.',
