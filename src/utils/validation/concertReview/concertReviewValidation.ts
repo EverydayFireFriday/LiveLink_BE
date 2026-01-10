@@ -6,10 +6,11 @@ import { z } from 'zod';
 export const createConcertReviewSchema = z.object({
   concertId: z.string().min(1, '콘서트 ID는 필수입니다'),
   images: z
-    .array(z.string().url('올바른 이미지 URL 형식이 아닙니다'))
+    .array(z.string().min(1).url('올바른 이미지 URL 형식이 아닙니다'))
     .max(10, '이미지는 최대 10개까지 업로드할 수 있습니다')
     .optional()
-    .default([]),
+    .default([])
+    .transform((val) => val.filter((url) => url.length > 0)),
   content: z
     .string()
     .min(1, '리뷰 내용은 필수입니다')
@@ -34,9 +35,10 @@ export const createConcertReviewSchema = z.object({
  */
 export const updateConcertReviewSchema = z.object({
   images: z
-    .array(z.string().url('올바른 이미지 URL 형식이 아닙니다'))
+    .array(z.string().min(1).url('올바른 이미지 URL 형식이 아닙니다'))
     .max(10, '이미지는 최대 10개까지 업로드할 수 있습니다')
-    .optional(),
+    .optional()
+    .transform((val) => (val ? val.filter((url) => url.length > 0) : val)),
   content: z
     .string()
     .min(1, '리뷰 내용은 최소 1자 이상이어야 합니다')
