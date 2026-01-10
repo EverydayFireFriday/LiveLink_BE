@@ -26,10 +26,22 @@ const router = express.Router();
  *         required: true
  *         schema:
  *           type: string
- *         description: 리뷰 ID
+ *         description: 리뷰 ID (MongoDB ObjectId)
+ *         example: "677f2a4b8e9d1a3b4c5e6f7c"
  *     responses:
  *       201:
  *         description: 좋아요 추가 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "리뷰에 좋아요를 추가했습니다."
  *       401:
  *         description: 로그인 필요
  *       404:
@@ -60,10 +72,22 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
- *         description: 리뷰 ID
+ *         description: 리뷰 ID (MongoDB ObjectId)
+ *         example: "677f2a4b8e9d1a3b4c5e6f7c"
  *     responses:
- *       204:
+ *       200:
  *         description: 좋아요 취소 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "좋아요를 취소했습니다."
  *       401:
  *         description: 로그인 필요
  *       404:
@@ -92,7 +116,8 @@ router.delete(
  *         required: true
  *         schema:
  *           type: string
- *         description: 리뷰 ID
+ *         description: 리뷰 ID (MongoDB ObjectId)
+ *         example: "677f2a4b8e9d1a3b4c5e6f7c"
  *     responses:
  *       200:
  *         description: 좋아요 여부 조회 성공
@@ -101,9 +126,18 @@ router.delete(
  *             schema:
  *               type: object
  *               properties:
- *                 liked:
+ *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "좋아요 여부를 확인했습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     liked:
+ *                       type: boolean
+ *                       example: true
  *       401:
  *         description: 로그인 필요
  *       500:
@@ -128,7 +162,8 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
- *         description: 리뷰 ID
+ *         description: 리뷰 ID (MongoDB ObjectId)
+ *         example: "677f2a4b8e9d1a3b4c5e6f7c"
  *     responses:
  *       200:
  *         description: 좋아요 수 조회 성공
@@ -137,9 +172,18 @@ router.get(
  *             schema:
  *               type: object
  *               properties:
- *                 count:
- *                   type: integer
- *                   example: 42
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "좋아요 수를 조회했습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 42
  *       500:
  *         description: 서버 에러
  */
@@ -162,9 +206,18 @@ router.get('/:reviewId/like/count', concertReviewLikeController.getLikeCount);
  *             schema:
  *               type: object
  *               properties:
- *                 count:
- *                   type: integer
- *                   example: 15
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "사용자가 좋아요한 리뷰 수를 조회했습니다."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 15
  *       401:
  *         description: 로그인 필요
  *       500:
