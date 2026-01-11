@@ -1,6 +1,6 @@
 import { getDB } from '../../utils/database/db';
 import logger from '../../utils/logger/logger';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { startOfDay, endOfDay, isAfter } from 'date-fns';
 import { DailyStats, DateRange } from '../../types/stats/statsTypes';
 import {
@@ -75,7 +75,7 @@ export class DailyStatsService {
 
     if (!targetDate) {
       // 날짜가 제공되지 않으면 오늘 날짜 사용 (KST)
-      date = utcToZonedTime(new Date(), KST_TIMEZONE);
+      date = toZonedTime(new Date(), KST_TIMEZONE);
     } else if (typeof targetDate === 'string') {
       // 문자열인 경우 YYYY-MM-DD 형식 검증
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -99,7 +99,7 @@ export class DailyStatsService {
     }
 
     // 미래 날짜인지 확인
-    const today = utcToZonedTime(new Date(), KST_TIMEZONE);
+    const today = toZonedTime(new Date(), KST_TIMEZONE);
     if (isAfter(startOfDay(date), startOfDay(today))) {
       throw new BadRequestError(
         '미래 날짜의 통계는 조회할 수 없습니다',
@@ -115,7 +115,7 @@ export class DailyStatsService {
    */
   private getKoreanDateRange(date: Date): DateRange {
     // 한국 시간대로 변환
-    const zonedDate = utcToZonedTime(date, KST_TIMEZONE);
+    const zonedDate = toZonedTime(date, KST_TIMEZONE);
 
     // 하루의 시작 (00:00:00)
     const start = startOfDay(zonedDate);
@@ -123,8 +123,8 @@ export class DailyStatsService {
     const end = endOfDay(zonedDate);
 
     // UTC로 다시 변환
-    const startOfDayUTC = zonedTimeToUtc(start, KST_TIMEZONE);
-    const endOfDayUTC = zonedTimeToUtc(end, KST_TIMEZONE);
+    const startOfDayUTC = fromZonedTime(start, KST_TIMEZONE);
+    const endOfDayUTC = fromZonedTime(end, KST_TIMEZONE);
 
     return {
       startOfDay: startOfDayUTC,
@@ -136,7 +136,7 @@ export class DailyStatsService {
    * 날짜를 YYYY-MM-DD 형식으로 포맷
    */
   private formatDate(date: Date): string {
-    const zonedDate = utcToZonedTime(date, KST_TIMEZONE);
+    const zonedDate = toZonedTime(date, KST_TIMEZONE);
     const year = zonedDate.getFullYear();
     const month = String(zonedDate.getMonth() + 1).padStart(2, '0');
     const day = String(zonedDate.getDate()).padStart(2, '0');
