@@ -147,6 +147,7 @@ export const ErrorCodes = {
   VAL_INVALID_FORMAT: 'VAL_003',
   VAL_OUT_OF_RANGE: 'VAL_004',
   VAL_INVALID_ENUM: 'VAL_005',
+  VAL_INVALID_DATE: 'VAL_006',
 
   // ==================== System 관련 ====================
   SYS_INTERNAL_ERROR: 'SYS_001',
@@ -296,6 +297,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   VAL_003: '잘못된 형식입니다.',
   VAL_004: '값이 허용 범위를 벗어났습니다.',
   VAL_005: '유효하지 않은 값입니다.',
+  VAL_006: '유효하지 않은 날짜입니다.',
 
   // System
   SYS_001: '서버 내부 오류가 발생했습니다.',

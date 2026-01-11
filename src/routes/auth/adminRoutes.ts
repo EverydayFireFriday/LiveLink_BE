@@ -339,4 +339,114 @@ router.patch(
  */
 router.get('/stats', requireAdmin, adminController.getAdminStats);
 
+/**
+ * @swagger
+ * /auth/admin/stats/daily:
+ *   get:
+ *     summary: 일일 사용자 통계 조회 (관리자 전용)
+ *     description: 특정 날짜의 사용자 활동 통계를 조회합니다. 날짜를 지정하지 않으면 오늘 날짜의 통계를 반환합니다.
+ *     tags: [Admin]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2026-01-11"
+ *         description: 조회할 날짜 (YYYY-MM-DD 형식, 생략 시 오늘 날짜)
+ *     responses:
+ *       200:
+ *         description: 일일 통계 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "일일 통계 조회 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     date:
+ *                       type: string
+ *                       format: date
+ *                       example: "2026-01-11"
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         users:
+ *                           type: object
+ *                           properties:
+ *                             dailyActiveUsers:
+ *                               type: integer
+ *                               description: 일일 활성 사용자 수 (DAU)
+ *                               example: 1523
+ *                             newRegistrations:
+ *                               type: integer
+ *                               description: 일일 신규 가입자 수
+ *                               example: 42
+ *                         sessions:
+ *                           type: object
+ *                           properties:
+ *                             totalLogins:
+ *                               type: integer
+ *                               description: 일일 총 로그인 횟수
+ *                               example: 2341
+ *                         activity:
+ *                           type: object
+ *                           properties:
+ *                             articlesCreated:
+ *                               type: integer
+ *                               description: 생성된 게시글 수
+ *                               example: 187
+ *                             commentsCreated:
+ *                               type: integer
+ *                               description: 생성된 댓글 수
+ *                               example: 543
+ *                             likesCreated:
+ *                               type: integer
+ *                               description: 생성된 좋아요 수
+ *                               example: 1234
+ *                             bookmarksCreated:
+ *                               type: integer
+ *                               description: 생성된 북마크 수
+ *                               example: 321
+ *                             reviewsCreated:
+ *                               type: integer
+ *                               description: 생성된 리뷰 수
+ *                               example: 89
+ *                     timestamp:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-01-11T15:30:00.000Z"
+ *       400:
+ *         description: 잘못된 요청 (날짜 형식 오류, 미래 날짜)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "올바른 날짜 형식이 아닙니다 (YYYY-MM-DD)"
+ *                 errorCode:
+ *                   type: string
+ *       401:
+ *         description: 로그인 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/stats/daily', requireAdmin, adminController.getDailyStats);
+
 export default router;
