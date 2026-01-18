@@ -341,6 +341,97 @@ router.get('/stats', requireAdmin, adminController.getAdminStats);
 
 /**
  * @swagger
+ * /auth/admin/stats/cache:
+ *   get:
+ *     summary: 캐시 메트릭 조회 (관리자 전용)
+ *     description: Redis 캐시의 히트율, 응답 시간 등 성능 메트릭을 조회합니다.
+ *     tags: [Admin]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: detailed
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: 상세 메트릭 조회 여부 (응답 시간 분석 포함)
+ *     responses:
+ *       200:
+ *         description: 캐시 메트릭 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "캐시 메트릭 조회 성공"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hits:
+ *                       type: integer
+ *                       description: 캐시 히트 수
+ *                     misses:
+ *                       type: integer
+ *                       description: 캐시 미스 수
+ *                     sets:
+ *                       type: integer
+ *                       description: 캐시 저장 수
+ *                     deletes:
+ *                       type: integer
+ *                       description: 캐시 삭제 수
+ *                     errors:
+ *                       type: integer
+ *                       description: 에러 발생 수
+ *                     totalRequests:
+ *                       type: integer
+ *                       description: 전체 요청 수
+ *                     hitRate:
+ *                       type: number
+ *                       description: 캐시 히트율 (%)
+ *                     avgResponseTime:
+ *                       type: number
+ *                       description: 평균 응답 시간 (ms)
+ *       401:
+ *         description: 로그인 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.get('/stats/cache', requireAdmin, adminController.getCacheMetrics);
+
+/**
+ * @swagger
+ * /auth/admin/stats/cache/reset:
+ *   post:
+ *     summary: 캐시 메트릭 리셋 (관리자 전용)
+ *     description: 캐시 메트릭을 초기화합니다.
+ *     tags: [Admin]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: 캐시 메트릭 리셋 성공
+ *       401:
+ *         description: 로그인 필요
+ *       403:
+ *         description: 관리자 권한 필요
+ *       500:
+ *         description: 서버 에러
+ */
+router.post(
+  '/stats/cache/reset',
+  requireAdmin,
+  adminController.resetCacheMetrics,
+);
+
+/**
+ * @swagger
  * /auth/admin/stats/daily:
  *   get:
  *     summary: 일일 사용자 통계 조회 (관리자 전용)
