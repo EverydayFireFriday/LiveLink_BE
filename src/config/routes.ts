@@ -45,6 +45,16 @@ export const setupRoutes = async (
   const { default: chatRouter } = await import('../routes/chat/index');
   app.use('/chat', chatRouter);
 
+  // 동적 라우터 로드 - Concert Review
+  const { default: concertReviewRouter } = await import(
+    '../routes/concertReview/concertReviewRoutes'
+  );
+  const { default: concertReviewLikeRouter } = await import(
+    '../routes/concertReview/concertReviewLikeRoutes'
+  );
+  app.use('/concert-review', concertReviewRouter);
+  app.use('/concert-review', concertReviewLikeRouter);
+
   // Report REST API
   const reportRouter = createReportRouterWithService(reportService);
   app.use('/report', reportRouter);
