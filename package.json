@@ -30,7 +30,6 @@
     "migrate:up": "ts-node src/scripts/migrate.ts up",
     "migrate:down": "ts-node src/scripts/migrate.ts down",
     "migrate:status": "ts-node src/scripts/migrate.ts status",
-    "migrate:notification-preference": "ts-node scripts/migration/updateNotificationPreference.ts",
     "migrate:roles": "ts-node src/scripts/migrateUserRoles.ts",
     "migrate:notification-history": "ts-node src/scripts/migrateNotificationHistory.ts",
     "migrate:article-bookmark-count": "ts-node src/scripts/migrateArticleBookmarkCount.ts",
