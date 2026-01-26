@@ -43,12 +43,9 @@ LiveLink Backend 프로젝트 문서 목록입니다.
 
 ## 🔧 개발 참고
 
-### 코딩 표준 (.claude/)
-- [Project Overview](./.claude/PROJECT_OVERVIEW.md)
-- [Architecture](./.claude/ARCHITECTURE.md)
-- [Coding Standards](./.claude/CODING_STANDARDS.md)
-- [Common Tasks](./.claude/COMMON_TASKS.md)
-- [Dependencies](./.claude/DEPENDENCIES.md)
+### AI 개발 가이드 (.claude/)
+- [Project Overview](../.claude/README.md) - 프로젝트 개요 및 AI 가이드
+- [Development Guide](../.claude/DEVELOPMENT_GUIDE.md) - 개발 가이드 및 코딩 표준
 
 ## 📊 성능 최적화
 

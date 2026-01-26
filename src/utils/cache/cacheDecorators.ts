@@ -250,6 +250,49 @@ export function CachePut<
  */
 
 /**
+ * MeasureTime 데코레이터
+ * 메서드 실행 시간을 측정하고 로그에 기록
+ *
+ * @example
+ * class ArticleService {
+ *   @MeasureTime()
+ *   async getArticleById(id: string) {
+ *     return await this.articleModel.findById(id);
+ *   }
+ * }
+ */
+export function MeasureTime(options?: { label?: string }) {
+  return function (
+    target: object,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (this: unknown, ...args: unknown[]) {
+      const startTime = Date.now();
+      const label =
+        options?.label || `${target.constructor.name}.${propertyKey}`;
+
+      try {
+        const result = await originalMethod.apply(this, args);
+        const duration = Date.now() - startTime;
+
+        logger.info(`⏱️ ${label} completed in ${duration}ms`);
+
+        return result;
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        logger.error(`⏱️ ${label} failed after ${duration}ms`, { error });
+        throw error;
+      }
+    };
+
+    return descriptor;
+  };
+}
+
+/**
  * 캐시 헬퍼 함수들
  */
 export class CacheHelper {
