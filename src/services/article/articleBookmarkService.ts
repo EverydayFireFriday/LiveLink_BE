@@ -8,6 +8,8 @@ import {
   deleteBookmarkSchema,
   getUserBookmarksSchema,
 } from '../../utils/validation/article';
+import { CacheHelper } from '../../utils/cache/cacheDecorators';
+import { CacheInvalidationPatterns } from '../../utils/cache/cacheConfig';
 
 // 타입 정의
 interface CreateBookmarkData {
@@ -108,6 +110,15 @@ export class ArticleBookmarkService {
         throw new Error('북마크 추가에 실패했습니다.');
       }
 
+      // 캐시 무효화: 게시글 상세 및 인기 게시글, 사용자 북마크 목록 캐시
+      await CacheHelper.deletePatterns([
+        CacheInvalidationPatterns.ARTICLE_BY_ID(validatedData.article_id),
+        CacheInvalidationPatterns.ARTICLE_POPULAR(),
+        CacheInvalidationPatterns.USER_BOOKMARKED_ARTICLES(
+          validatedData.user_id,
+        ),
+      ]);
+
       return bookmark;
     } finally {
       await session.endSession();
@@ -146,6 +157,15 @@ export class ArticleBookmarkService {
 
         success = true;
       });
+
+      // 캐시 무효화: 게시글 상세 및 인기 게시글, 사용자 북마크 목록 캐시
+      await CacheHelper.deletePatterns([
+        CacheInvalidationPatterns.ARTICLE_BY_ID(validatedData.article_id),
+        CacheInvalidationPatterns.ARTICLE_POPULAR(),
+        CacheInvalidationPatterns.USER_BOOKMARKED_ARTICLES(
+          validatedData.user_id,
+        ),
+      ]);
 
       return { success };
     } finally {

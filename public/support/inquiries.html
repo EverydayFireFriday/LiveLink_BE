@@ -294,6 +294,109 @@
     .search-button:active {
       transform: translateY(0);
     }
+
+    /* 일일 통계 스타일 */
+    .stats-section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .stats-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-date {
+      font-size: 13px;
+      color: #666;
+      background: #f3f4f6;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-card.highlight {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-subtext {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    .stats-loading {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .stats-error {
+      text-align: center;
+      padding: 20px;
+      color: #ef4444;
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -305,6 +408,19 @@
   <button class="logout-button" id="logoutButton">로그아웃</button>
 
   <div class="container">
+    <!-- 일일 사용자 통계 섹션 -->
+    <div class="stats-section">
+      <div class="stats-header">
+        <div class="stats-title">
+          📊 오늘의 사용자 통계
+        </div>
+        <div class="stats-date" id="statsDate"></div>
+      </div>
+      <div id="statsContent">
+        <div class="stats-loading">통계를 불러오는 중...</div>
+      </div>
+    </div>
+
     <div class="filters">
       <div class="filter-group">
         <label for="statusFilter">상태:</label>
@@ -358,6 +474,93 @@
     const limit = 20;
     let isRefreshing = false;
     let autoRefreshInterval = null;
+
+    // 일일 통계 로드
+    async function loadDailyStats() {
+      try {
+        const response = await fetch('/auth/admin/stats/daily', {
+          credentials: 'include'
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('권한 없음');
+        }
+
+        if (!response.ok) {
+          throw new Error('통계 로드 실패');
+        }
+
+        const result = await response.json();
+        displayDailyStats(result.data);
+      } catch (error) {
+        console.error('Error loading daily stats:', error);
+        document.getElementById('statsContent').innerHTML = `
+          <div class="stats-error">통계를 불러오는데 실패했습니다.</div>
+        `;
+      }
+    }
+
+    // 일일 통계 표시
+    function displayDailyStats(data) {
+      const { date, stats } = data;
+
+      // 날짜 표시
+      const formattedDate = new Date(date).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short'
+      });
+      document.getElementById('statsDate').textContent = formattedDate;
+
+      // 통계 카드 표시
+      const statsHtml = `
+        <div class="stats-grid">
+          <div class="stat-card highlight">
+            <div class="stat-label">일일 활성 사용자 (DAU)</div>
+            <div class="stat-value">${stats.users.dailyActiveUsers.toLocaleString()}</div>
+            <div class="stat-subtext">오늘 활동한 고유 사용자</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">신규 가입자</div>
+            <div class="stat-value">${stats.users.newRegistrations.toLocaleString()}</div>
+            <div class="stat-subtext">오늘 가입한 사용자</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">로그인 횟수</div>
+            <div class="stat-value">${stats.sessions.totalLogins.toLocaleString()}</div>
+            <div class="stat-subtext">총 로그인 시도 횟수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">게시글</div>
+            <div class="stat-value">${stats.activity.articlesCreated.toLocaleString()}</div>
+            <div class="stat-subtext">생성된 게시글 수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">댓글</div>
+            <div class="stat-value">${stats.activity.commentsCreated.toLocaleString()}</div>
+            <div class="stat-subtext">생성된 댓글 수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">좋아요</div>
+            <div class="stat-value">${stats.activity.likesCreated.toLocaleString()}</div>
+            <div class="stat-subtext">생성된 좋아요 수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">북마크</div>
+            <div class="stat-value">${stats.activity.bookmarksCreated.toLocaleString()}</div>
+            <div class="stat-subtext">생성된 북마크 수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">리뷰</div>
+            <div class="stat-value">${stats.activity.reviewsCreated.toLocaleString()}</div>
+            <div class="stat-subtext">생성된 리뷰 수</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('statsContent').innerHTML = statsHtml;
+    }
 
     // 자동 새로고침 시작 (30초마다)
     function startAutoRefresh() {
@@ -591,6 +794,7 @@
     document.getElementById('refreshButton').addEventListener('click', manualRefresh);
 
     // 페이지 로드 시 실행 (권한 체크는 로그인에서만)
+    loadDailyStats(); // 일일 통계 로드
     loadInquiries();
     startAutoRefresh();
   </script>

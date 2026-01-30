@@ -70,11 +70,15 @@ export const CacheInvalidationPatterns = {
   ARTICLE_BY_AUTHOR: (authorId: string) =>
     `${CachePrefix.ARTICLE}:*author=${authorId}*`,
   ARTICLE_LIST: () => `${CachePrefix.ARTICLE}:list:*`,
+  ARTICLE_POPULAR: () => `${CachePrefix.ARTICLE}:popular*`,
+  USER_LIKED_ARTICLES: (userId: string) =>
+    `${CachePrefix.ARTICLE}:liked:${userId}*`,
+  USER_BOOKMARKED_ARTICLES: (userId: string) =>
+    `${CachePrefix.ARTICLE}:bookmarked:${userId}*`,
 
   // 콘서트 관련
   CONCERT_ALL: () => `${CachePrefix.CONCERT}:*`,
-  CONCERT_BY_ID: (concertId: string) =>
-    `${CachePrefix.CONCERT}:${concertId}*`,
+  CONCERT_BY_ID: (concertId: string) => `${CachePrefix.CONCERT}:${concertId}*`,
   CONCERT_LIST: () => `${CachePrefix.CONCERT}:list:*`,
 
   // 통계 관련

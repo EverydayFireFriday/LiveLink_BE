@@ -21,6 +21,11 @@ import {
   CacheInvalidationPatterns,
   CacheHelper,
 } from '../../utils';
+import {
+  Cacheable,
+  CacheEvict,
+  WriteThrough,
+} from '../../utils/cache/cacheDecorators';
 
 // 인터페이스 정의
 interface ArticleWithTags extends IArticle {
@@ -125,6 +130,12 @@ export class ArticleService {
   private articleBookmarkModel = getArticleBookmarkModel();
 
   // 게시글 생성 (태그 자동 생성 최적화)
+  @CacheEvict({
+    keyPatterns: () => [
+      CacheInvalidationPatterns.ARTICLE_ALL(),
+      CacheInvalidationPatterns.ARTICLE_LIST(),
+    ],
+  })
   async createArticle(data: CreateArticleData): Promise<IArticle> {
     // 유효성 검사
     const validatedData = createArticleSchema.parse(data);
@@ -174,11 +185,6 @@ export class ArticleService {
         }
       });
 
-      // 트랜잭션 성공 후 캐시 무효화
-      await CacheHelper.deletePatterns([
-        CacheInvalidationPatterns.ARTICLE_ALL(),
-      ]);
-
       if (!article) {
         throw new Error('게시글 생성에 실패했습니다.');
       }
@@ -190,6 +196,13 @@ export class ArticleService {
   }
 
   // 게시글 조회 (ID로)
+  @Cacheable({
+    keyGenerator: (id: string, options: GetArticleOptions = {}) =>
+      CacheKeyBuilder.articleDetail(id, { userId: options.userId }),
+    ttl: CacheTTL.ARTICLE_DETAIL,
+    skipIf: (_id: string, options: GetArticleOptions = {}) =>
+      options.withStats === true || options.withTags === true,
+  })
   async getArticleById(
     id: string,
     options: GetArticleOptions = {},
@@ -369,6 +382,15 @@ export class ArticleService {
   }
 
   // 게시글 업데이트 (태그 자동 생성 최적화)
+  @WriteThrough({
+    keyGenerator: (result: IArticle) =>
+      CacheKeyBuilder.articleDetail(result._id.toString(), {}),
+    ttl: CacheTTL.ARTICLE_DETAIL,
+    invalidatePatterns: () => [
+      CacheInvalidationPatterns.ARTICLE_LIST(),
+      CacheInvalidationPatterns.ARTICLE_POPULAR(),
+    ],
+  })
   async updateArticle(id: string, data: UpdateArticleData): Promise<IArticle> {
     articleIdSchema.parse({ id });
     const validatedData = updateArticleSchema.parse(data);
@@ -426,12 +448,6 @@ export class ArticleService {
         }
       });
 
-      // 트랜잭션 성공 후 캐시 무효화
-      await CacheHelper.deletePatterns([
-        CacheInvalidationPatterns.ARTICLE_BY_ID(id),
-        CacheInvalidationPatterns.ARTICLE_LIST(),
-      ]);
-
       if (!updatedArticle) {
         throw new Error('게시글 업데이트에 실패했습니다.');
       }
@@ -443,6 +459,12 @@ export class ArticleService {
   }
 
   // 게시글 삭제
+  @CacheEvict({
+    keyPatterns: (id: string) => [
+      CacheInvalidationPatterns.ARTICLE_BY_ID(id),
+      CacheInvalidationPatterns.ARTICLE_LIST(),
+    ],
+  })
   async deleteArticle(id: string): Promise<void> {
     articleIdSchema.parse({ id });
 
@@ -465,12 +487,6 @@ export class ArticleService {
         // 게시글 삭제
         await this.articleModel.deleteById(id);
       });
-
-      // 트랜잭션 성공 후 캐시 무효화
-      await CacheHelper.deletePatterns([
-        CacheInvalidationPatterns.ARTICLE_BY_ID(id),
-        CacheInvalidationPatterns.ARTICLE_LIST(),
-      ]);
     } finally {
       await session.endSession();
     }
@@ -480,6 +496,11 @@ export class ArticleService {
   async incrementViews(id: string): Promise<void> {
     incrementViewSchema.parse({ article_id: id });
     await this.articleModel.incrementViews(id);
+
+    // 캐시 무효화: 게시글 상세 캐시 (조회수 반영)
+    await CacheHelper.deletePatterns([
+      CacheInvalidationPatterns.ARTICLE_BY_ID(id),
+    ]);
   }
 
   // 작성자별 게시글 조회 (N+1 해결)
@@ -635,6 +656,11 @@ export class ArticleService {
   }
 
   // 인기 게시글 조회 (N+1 해결)
+  @Cacheable({
+    keyGenerator: (options: GetPopularOptions = {}) =>
+      CacheKeyBuilder.articlesPopular(options),
+    ttl: CacheTTL.ARTICLE_POPULAR,
+  })
   async getPopularArticles(
     options: GetPopularOptions = {},
   ): Promise<PaginatedResult<EnrichedArticle>> {

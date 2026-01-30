@@ -6,7 +6,12 @@ import {
 } from '../../models/auth/user';
 import { User } from '../../types/auth/authTypes';
 import { cacheManager } from '../../utils/cache/cacheManager';
-import { CacheKeyBuilder, CacheTTL } from '../../utils';
+import {
+  CacheKeyBuilder,
+  CacheTTL,
+  CacheInvalidationPatterns,
+} from '../../utils';
+import { Cacheable, CacheEvict } from '../../utils/cache/cacheDecorators';
 import logger from '../../utils/logger/logger';
 
 export class UserService {
@@ -34,25 +39,16 @@ export class UserService {
     return (await this.getUserModel().findByUsername(username)) as User | null;
   }
 
-  async findById(id: string, skipCache: boolean = false): Promise<User | null> {
-    // 새로운 캐시 키 빌더 사용
-    const cacheKey = CacheKeyBuilder.user(id);
-
-    // 캐시 우회 옵션이 false이고 캐시에 데이터가 있으면 캐시 반환
-    if (!skipCache) {
-      const cachedUser = await cacheManager.get<User>(cacheKey);
-      if (cachedUser) {
-        return cachedUser;
-      }
-    }
-
-    // DB에서 최신 데이터 조회
-    const user = (await this.getUserModel().findById(id)) as User | null;
-    if (user) {
-      // 캐시 갱신 (설정된 TTL 사용)
-      await cacheManager.set(cacheKey, user, CacheTTL.USER_PROFILE);
-    }
-    return user;
+  @Cacheable({
+    keyGenerator: (id: string) => CacheKeyBuilder.user(id),
+    ttl: CacheTTL.USER_PROFILE,
+    skipIf: (_id: string, _skipCache: boolean = false) => _skipCache,
+  })
+  async findById(
+    id: string,
+    _skipCache: boolean = false,
+  ): Promise<User | null> {
+    return (await this.getUserModel().findById(id)) as User | null;
   }
 
   async createUser(userData: {
@@ -69,25 +65,19 @@ export class UserService {
     return (await this.getUserModel().createUser(userData)) as User;
   }
 
+  @CacheEvict({
+    keyPatterns: (id: string) => [
+      CacheInvalidationPatterns.USER_PROFILE(id),
+      CacheInvalidationPatterns.USER_ALL(id),
+    ],
+  })
   async updateUser(
     id: string,
     updateData: Partial<User>,
   ): Promise<User | null> {
-    const user = (await this.getUserModel().updateUser(id, {
+    return (await this.getUserModel().updateUser(id, {
       $set: updateData,
     })) as User | null;
-
-    if (user) {
-      // 캐시 무효화 - 새로운 유틸리티 사용
-      const cacheKey = CacheKeyBuilder.user(id);
-      await cacheManager.del(cacheKey);
-
-      // 사용자 통계 캐시도 무효화
-      const statsCacheKey = CacheKeyBuilder.userStats(id);
-      await cacheManager.del(statsCacheKey);
-    }
-
-    return user;
   }
 
   async deleteUser(id: string): Promise<boolean> {
@@ -340,6 +330,10 @@ export class UserService {
    * Get user statistics including upcoming liked concerts count
    * 사용자 통계 조회 - 좋아요한 다가오는 콘서트 개수 포함
    */
+  @Cacheable({
+    keyGenerator: (userId: string) => CacheKeyBuilder.userStats(userId),
+    ttl: CacheTTL.USER_PROFILE,
+  })
   async getUserStats(userId: string): Promise<{
     upcomingLikedConcertsCount: number;
     totalLikedConcertsCount: number;

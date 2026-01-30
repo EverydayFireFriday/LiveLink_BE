@@ -2,6 +2,8 @@ import { ObjectId } from 'mongodb';
 import { getArticleModel, IArticle } from '../../models/article';
 import { UserModel } from '../../models/auth/user';
 import { getClient } from '../../utils/database/db';
+import { CacheHelper } from '../../utils/cache/cacheDecorators';
+import { CacheInvalidationPatterns } from '../../utils/cache/cacheConfig';
 
 export class ArticleLikeService {
   private articleModel = getArticleModel();
@@ -36,6 +38,8 @@ export class ArticleLikeService {
 
       let newLikesCount = article.likes_count;
 
+      let isLiked: boolean;
+
       if (isCurrentlyLiked) {
         // --- 좋아요 취소 ---
         await session.withTransaction(async () => {
@@ -52,7 +56,7 @@ export class ArticleLikeService {
           }
         });
 
-        return { isLiked: false, newLikesCount };
+        isLiked = false;
       } else {
         // --- 좋아요 추가 ---
         await session.withTransaction(async () => {
@@ -69,8 +73,17 @@ export class ArticleLikeService {
           }
         });
 
-        return { isLiked: true, newLikesCount };
+        isLiked = true;
       }
+
+      // 캐시 무효화: 게시글 상세 및 인기 게시글 캐시
+      await CacheHelper.deletePatterns([
+        CacheInvalidationPatterns.ARTICLE_BY_ID(articleId),
+        CacheInvalidationPatterns.ARTICLE_POPULAR(),
+        CacheInvalidationPatterns.USER_LIKED_ARTICLES(userId),
+      ]);
+
+      return { isLiked, newLikesCount };
     } finally {
       await session.endSession();
     }

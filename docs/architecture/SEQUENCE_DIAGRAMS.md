@@ -884,6 +884,213 @@ sequenceDiagram
     AdminClient-->>Admin: 문의 목록 표시 (우선순위별 강조)
 ```
 
+## 11. Concert Review System
+
+### 11.1 콘서트 리뷰 작성
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant ConcertReviewModel
+    participant ConcertModel
+    participant UserModel
+    participant MongoDB
+
+    User->>Client: 콘서트 리뷰 작성
+    Client->>API: POST /concert-review {concertId, content, images[], tags[], hashtags[], isPublic}
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Redis-->>Auth: 세션 + userId
+    Auth-->>API: 인증된 사용자
+
+    API->>ConcertReviewModel: existsByUserAndConcert(userId, concertId)
+    ConcertReviewModel->>MongoDB: countDocuments({user.id, concert.id})
+    MongoDB-->>ConcertReviewModel: count
+
+    alt 이미 리뷰 작성함
+        ConcertReviewModel-->>API: true
+        API-->>Client: 409 Conflict (이미 리뷰 작성됨)
+    else 리뷰 작성 가능
+        ConcertReviewModel-->>API: false
+
+        Note over API: 사용자 및 콘서트 정보 조회
+
+        API->>UserModel: findById(userId)
+        UserModel->>MongoDB: findOne({_id: userId})
+        MongoDB-->>UserModel: User 정보
+        UserModel-->>API: {username, profileImage}
+
+        API->>ConcertModel: findById(concertId)
+        ConcertModel->>MongoDB: findOne({uid: concertId})
+        MongoDB-->>ConcertModel: Concert 정보
+        ConcertModel-->>API: {title, posterImage, location, datetime}
+
+        API->>ConcertReviewModel: create({user, concert, content, images, tags, hashtags, isPublic})
+        ConcertReviewModel->>MongoDB: insertOne(review)
+        MongoDB-->>ConcertReviewModel: 생성된 Review
+        ConcertReviewModel-->>API: ConcertReview 객체
+
+        API-->>Client: 201 Created + ConcertReview
+        Client-->>User: 리뷰 작성 완료
+    end
+```
+
+### 11.2 콘서트 리뷰 좋아요
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant ConcertReviewLikeModel
+    participant ConcertReviewModel
+    participant MongoDB
+
+    User->>Client: 리뷰 좋아요 클릭
+    Client->>API: POST /concert-review/:reviewId/like
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Redis-->>Auth: 세션 + userId
+    Auth-->>API: 인증된 사용자
+
+    API->>ConcertReviewLikeModel: exists(reviewId, userId)
+    ConcertReviewLikeModel->>MongoDB: countDocuments({reviewId, userId})
+    MongoDB-->>ConcertReviewLikeModel: count
+
+    alt 이미 좋아요함
+        ConcertReviewLikeModel-->>API: true
+        API->>ConcertReviewLikeModel: delete(reviewId, userId)
+        ConcertReviewLikeModel->>MongoDB: deleteOne({reviewId, userId})
+        API->>ConcertReviewModel: decrementLikeCount(reviewId)
+        ConcertReviewModel->>MongoDB: updateOne({$inc: {likeCount: -1}})
+        API-->>Client: 200 OK {liked: false}
+    else 좋아요 추가
+        ConcertReviewLikeModel-->>API: false
+        API->>ConcertReviewLikeModel: create(reviewId, userId)
+        ConcertReviewLikeModel->>MongoDB: insertOne({reviewId, userId, createdAt})
+        API->>ConcertReviewModel: incrementLikeCount(reviewId)
+        ConcertReviewModel->>MongoDB: updateOne({$inc: {likeCount: 1}})
+        API-->>Client: 200 OK {liked: true}
+    end
+
+    Client-->>User: 좋아요 상태 업데이트
+```
+
+## 12. Report System
+
+### 12.1 콘텐츠 신고
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant Redis
+    participant ReportModel
+    participant TargetModel as Target Model (Article/Comment/Review)
+    participant MongoDB
+    participant Notification as Notification Service
+
+    User->>Client: 콘텐츠 신고
+    Client->>API: POST /report {entityType, entityId, reportType, reason}
+    API->>Auth: 인증 확인
+    Auth->>Redis: 세션 확인
+    Redis-->>Auth: 세션 + userId
+    Auth-->>API: 인증된 사용자
+
+    API->>ReportModel: findByReporterAndEntity(userId, entityType, entityId)
+    ReportModel->>MongoDB: findOne({reporterId, reportedEntityType, reportedEntityId})
+    MongoDB-->>ReportModel: 기존 신고 또는 null
+
+    alt 이미 신고함
+        ReportModel-->>API: 기존 신고 존재
+        API-->>Client: 409 Conflict (이미 신고함)
+    else 신규 신고
+        ReportModel-->>API: null
+
+        API->>ReportModel: create({reporterId, entityType, entityId, reportType, reason, status: 'pending'})
+        ReportModel->>MongoDB: insertOne(report)
+        MongoDB-->>ReportModel: 생성된 Report
+        ReportModel-->>API: Report 객체
+
+        Note over API,TargetModel: 신고 수 증가 (해당 엔티티)
+
+        alt entityType === 'REVIEW'
+            API->>TargetModel: incrementReportCount(entityId)
+            TargetModel->>MongoDB: updateOne({$inc: {reportCount: 1}})
+        end
+
+        Note over API,Notification: 관리자 알림 (선택적)
+
+        API->>Notification: notifyAdminNewReport(reportId, entityType, reportType)
+
+        API-->>Client: 201 Created + Report
+        Client-->>User: 신고 접수 완료
+    end
+```
+
+### 12.2 관리자 신고 처리
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant AdminClient as Admin Client
+    participant API as Express Server
+    participant Auth as Auth Middleware
+    participant ReportModel
+    participant TargetModel as Target Model
+    participant UserModel
+    participant MongoDB
+    participant FCM as Firebase Cloud Messaging
+
+    Admin->>AdminClient: 신고 처리 (승인/기각)
+    AdminClient->>API: PATCH /report/:reportId {status, action}
+    API->>Auth: 관리자 권한 확인
+    Auth-->>API: 관리자 인증 완료
+
+    API->>ReportModel: findById(reportId)
+    ReportModel->>MongoDB: findOne({_id: reportId})
+    MongoDB-->>ReportModel: Report 정보
+    ReportModel-->>API: Report (entityType, entityId, reporterId)
+
+    alt status === 'resolved' (신고 승인)
+        Note over API,TargetModel: 콘텐츠 처리 (숨김/삭제)
+
+        alt action === 'hide'
+            API->>TargetModel: update({_id: entityId}, {isPublic: false})
+        else action === 'delete'
+            API->>TargetModel: delete({_id: entityId})
+        end
+
+        TargetModel->>MongoDB: 업데이트/삭제
+        MongoDB-->>TargetModel: 완료
+    end
+
+    API->>ReportModel: update({_id: reportId}, {status, updatedAt})
+    ReportModel->>MongoDB: updateOne(...)
+    MongoDB-->>ReportModel: 업데이트 완료
+
+    Note over API,FCM: 신고자에게 결과 알림 (선택적)
+
+    API->>UserModel: findById(reporterId)
+    UserModel->>MongoDB: findOne({_id: reporterId})
+    MongoDB-->>UserModel: User (fcmToken)
+
+    alt FCM 토큰 존재
+        API->>FCM: send({token, notification: {title: '신고 처리 완료', body: '...'}})
+    end
+
+    API-->>AdminClient: 200 OK + Updated Report
+    AdminClient-->>Admin: 신고 처리 완료
+```
+
 ## 시스템 아키텍처 특징
 
 ### Redis 활용
@@ -925,7 +1132,26 @@ sequenceDiagram
 - **푸시 알림**: 답변 완료 시 FCM 푸시 알림 자동 전송
 - **소프트 삭제**: isDeleted, deletedAt으로 복구 가능한 삭제
 
+### 콘서트 리뷰
+- **ConcertReview**: 콘서트 후기 작성 및 관리
+- **비정규화**: 사용자/콘서트 정보 embedded document로 저장 (조회 성능 최적화)
+- **이미지/태그**: 다중 이미지, 태그, 해시태그 지원
+- **좋아요**: ConcertReviewLike 컬렉션으로 좋아요 관계 관리
+- **공개 설정**: isPublic 플래그로 공개/비공개 설정
+
+### 신고 시스템
+- **다형성 관계**: 여러 엔티티 타입 지원 (POST, COMMENT, REVIEW, USER)
+- **신고 유형**: SPAM, HARASSMENT, INAPPROPRIATE, OTHER
+- **상태 관리**: pending, reviewed, resolved, dismissed
+- **관리자 처리**: 콘텐츠 숨김/삭제 조치
+- **알림**: 신고자에게 처리 결과 FCM 푸시 알림
+
+### 권한 관리
+- **역할 기반 접근 제어 (RBAC)**: user, admin, superadmin
+- **관리자 기능**: 신고 처리, 콘텐츠 관리, 사용자 관리
+- **슈퍼 관리자**: 전체 시스템 관리, 관리자 권한 부여
+
 ---
 
-**Last Updated:** 2025-12-25
-**Version:** 1.2.0
+**Last Updated:** 2026-01-24
+**Version:** 1.3.0
