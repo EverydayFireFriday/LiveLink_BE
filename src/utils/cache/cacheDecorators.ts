@@ -249,6 +249,85 @@ export function CachePut<
  * }
  */
 
+interface WriteThroughOptions<
+  TArgs extends unknown[] = unknown[],
+  TResult = unknown,
+> {
+  /**
+   * 캐시 키 생성 함수 (결과와 인자를 받아 캐시 키 생성)
+   */
+  keyGenerator: (result: TResult, ...args: TArgs) => string;
+
+  /**
+   * TTL (초 단위)
+   */
+  ttl: number;
+
+  /**
+   * 관련 캐시 무효화 패턴 (옵션)
+   */
+  invalidatePatterns?: (result: TResult) => string[];
+}
+
+/**
+ * WriteThrough 데코레이터
+ * 메서드 실행 후 결과를 캐시에 저장하고 관련 캐시를 무효화
+ * Write-Through 패턴: DB 업데이트 후 캐시도 즉시 갱신
+ *
+ * @example
+ * class ArticleService {
+ *   @WriteThrough({
+ *     keyGenerator: (result) => CacheKeyBuilder.articleDetail(result._id.toString()),
+ *     ttl: CacheTTL.ARTICLE_DETAIL,
+ *     invalidatePatterns: () => [CacheInvalidationPatterns.ARTICLE_LIST()],
+ *   })
+ *   async updateArticle(id: string, data: UpdateArticleData) {
+ *     return await this.articleModel.updateById(id, data);
+ *   }
+ * }
+ */
+export function WriteThrough<
+  TArgs extends unknown[] = unknown[],
+  TResult = unknown,
+>(options: WriteThroughOptions<TArgs, TResult>) {
+  return function (
+    target: object,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (this: unknown, ...args: TArgs) {
+      try {
+        // 원본 메서드 실행 (DB 업데이트)
+        const result = await originalMethod.apply(this, args);
+
+        // 결과가 있을 때만 캐시 처리
+        if (result !== undefined && result !== null) {
+          // 1. 결과를 캐시에 저장 (Write-Through)
+          const cacheKey = options.keyGenerator(result, ...args);
+          await cacheManager.set(cacheKey, result, options.ttl);
+
+          // 2. 관련 캐시 무효화 (옵션)
+          if (options.invalidatePatterns) {
+            const patterns = options.invalidatePatterns(result);
+            await Promise.all(
+              patterns.map((pattern) => cacheManager.delByPattern(pattern)),
+            );
+          }
+        }
+
+        return result;
+      } catch (error) {
+        logger.error(`WriteThrough error in ${propertyKey}:`, { error });
+        throw error;
+      }
+    };
+
+    return descriptor;
+  };
+}
+
 /**
  * MeasureTime 데코레이터
  * 메서드 실행 시간을 측정하고 로그에 기록

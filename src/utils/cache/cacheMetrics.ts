@@ -1,4 +1,11 @@
 import { logger } from '../index';
+import {
+  cacheHitsCounter,
+  cacheMissesCounter,
+  cacheHitRateGauge,
+  cacheOperationsCounter,
+  cacheResponseTimeHistogram,
+} from '../../config/metrics/prometheus';
 
 /**
  * 캐시 메트릭 데이터 타입
@@ -54,11 +61,22 @@ class CacheMetrics {
   /**
    * 캐시 히트 기록
    * @param responseTime 응답 시간 (ms)
+   * @param cacheType 캐시 타입 (article, user, concert 등)
    */
-  recordHit(responseTime?: number): void {
+  recordHit(responseTime?: number, cacheType: string = 'default'): void {
     this.hits++;
+
+    // Prometheus 메트릭 업데이트
+    cacheHitsCounter.inc({ cache_type: cacheType });
+    this.updateHitRateGauge();
+
     if (responseTime !== undefined) {
       this.cacheHitResponseTimes.push(responseTime);
+      // Prometheus 응답 시간 히스토그램 (ms -> seconds)
+      cacheResponseTimeHistogram.observe(
+        { operation: 'get', result: 'hit' },
+        responseTime / 1000,
+      );
       // 메모리 관리: 최근 1000개만 유지
       if (this.cacheHitResponseTimes.length > 1000) {
         this.cacheHitResponseTimes.shift();
@@ -69,11 +87,22 @@ class CacheMetrics {
   /**
    * 캐시 미스 기록
    * @param responseTime 응답 시간 (ms)
+   * @param cacheType 캐시 타입 (article, user, concert 등)
    */
-  recordMiss(responseTime?: number): void {
+  recordMiss(responseTime?: number, cacheType: string = 'default'): void {
     this.misses++;
+
+    // Prometheus 메트릭 업데이트
+    cacheMissesCounter.inc({ cache_type: cacheType });
+    this.updateHitRateGauge();
+
     if (responseTime !== undefined) {
       this.cacheMissResponseTimes.push(responseTime);
+      // Prometheus 응답 시간 히스토그램 (ms -> seconds)
+      cacheResponseTimeHistogram.observe(
+        { operation: 'get', result: 'miss' },
+        responseTime / 1000,
+      );
       // 메모리 관리: 최근 1000개만 유지
       if (this.cacheMissResponseTimes.length > 1000) {
         this.cacheMissResponseTimes.shift();
@@ -86,6 +115,8 @@ class CacheMetrics {
    */
   recordSet(): void {
     this.sets++;
+    // Prometheus 메트릭 업데이트
+    cacheOperationsCounter.inc({ operation: 'set' });
   }
 
   /**
@@ -93,6 +124,8 @@ class CacheMetrics {
    */
   recordDelete(): void {
     this.deletes++;
+    // Prometheus 메트릭 업데이트
+    cacheOperationsCounter.inc({ operation: 'delete' });
   }
 
   /**
@@ -100,6 +133,17 @@ class CacheMetrics {
    */
   recordError(): void {
     this.errors++;
+    // Prometheus 메트릭 업데이트
+    cacheOperationsCounter.inc({ operation: 'error' });
+  }
+
+  /**
+   * Prometheus 히트율 게이지 업데이트
+   */
+  private updateHitRateGauge(): void {
+    const totalRequests = this.hits + this.misses;
+    const hitRate = totalRequests > 0 ? (this.hits / totalRequests) * 100 : 0;
+    cacheHitRateGauge.set(Math.round(hitRate * 100) / 100);
   }
 
   /**
