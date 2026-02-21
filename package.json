@@ -74,7 +74,7 @@
     "@types/swagger-ui-express": "^4.1.4",
     "apollo-server-express": "^3.13.0",
     "apple-signin-auth": "^2.0.0",
-    "axios": "^1.13.3",
+    "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.69.2",
     "connect-redis": "^7.1.1",
