@@ -52,17 +52,14 @@ ENV NODE_ENV=production \
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# Install curl for health checks and dumb-init for proper signal handling
-# 헬스 체크를 위한 curl과 시그널 처리를 위한 dumb-init 설치
-RUN apk add --no-cache curl dumb-init
-
-# Create a non-root user and group for security
-# -S: create a system user
-# -G: add user to a group
-# 보안을 위해 non-root 사용자와 그룹 생성
-# -S: 시스템 사용자 생성
-# -G: 사용자를 그룹에 추가
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Install system dependencies and create non-root user in a single layer
+# 시스템 종속성 설치 및 non-root 사용자 생성을 단일 레이어로 처리
+# - curl: 헬스 체크용
+# - dumb-init: 시그널 처리 개선 (graceful shutdown)
+# - appgroup/appuser: 보안을 위한 non-root 사용자
+RUN apk add --no-cache curl dumb-init && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 
 # Copy dependencies and built application from the builder stage
 # 빌더 단계에서 종속성과 빌드된 애플리케이션 복사

@@ -49,6 +49,8 @@ import {
   disconnectLiveDB,
   isLiveSyncEnabled,
 } from '../../utils/database/liveDbConnection';
+import { initializeConcertReviewModel } from '../../models/concertReview/concertReview';
+import { initializeConcertReviewLikeModel } from '../../models/concertReview/concertReviewLike';
 
 // 데이터베이스 연결 상태 추적
 export interface DatabaseState {
@@ -95,6 +97,8 @@ export const initializeDatabases = async (): Promise<void> => {
     initializeConcertModel(concertDB);
     initializeConcertTestModel(concertDB);
     initializeSetlistModel(concertDB);
+    initializeConcertReviewModel(concertDB);
+    initializeConcertReviewLikeModel(concertDB);
     databaseState.isConcertDBConnected = true;
     dbConnectionGauge.set({ database: 'concert' }, 1);
     logger.info('✅ Concert Database connected and models initialized');

@@ -15,8 +15,13 @@ erDiagram
     User ||--o{ ScheduledNotification : "receives"
     User ||--o{ NotificationHistory : "receives"
     User ||--o{ SupportInquiry : "submits"
+    User ||--o{ ConcertReview : "writes"
+    User ||--o{ ConcertReviewLike : "likes"
+    User ||--o{ Report : "submits"
     User }o--o{ ChatRoom : "participates"
     User }o--o{ Concert : "likes"
+    Concert ||--o{ ConcertReview : "has"
+    ConcertReview ||--o{ ConcertReviewLike : "has"
     ChatRoom ||--o{ Message : "contains"
     Article }o--|| Category : "belongs to"
     Article ||--o{ Comment : "has"
@@ -38,6 +43,7 @@ erDiagram
         string status "active|inactive|suspended|deleted|pending_verification|pending_registration"
         string statusReason "상태 변경 사유"
         string profileImage "프로필 이미지 URL"
+        string role "user|admin|superadmin"
         TermsConsent[] termsConsents "약관 동의 배열"
         OAuthProvider[] oauthProviders "OAuth 제공자 목록"
         ObjectId[] likedConcerts "좋아요한 콘서트"
@@ -132,6 +138,7 @@ erDiagram
         Date updated_at
         number views "조회수"
         number likes_count "좋아요 수"
+        number bookmark_count "북마크 수"
     }
 
     Category {
@@ -276,6 +283,54 @@ erDiagram
         string content "답변 내용"
         Date respondedAt "답변 시간"
     }
+
+    ConcertReview {
+        ObjectId _id PK
+        ConcertReviewUser user "작성자 정보 (embedded)"
+        ConcertReviewConcert concert "콘서트 정보 (embedded)"
+        string[] images "이미지 URL 목록"
+        string content "리뷰 내용"
+        string[] tags "태그 목록"
+        string[] hashtags "해시태그 목록"
+        number likeCount "좋아요 수"
+        number reportCount "신고 수"
+        boolean isPublic "공개 여부"
+        Date createdAt
+        Date updatedAt
+    }
+
+    ConcertReviewUser {
+        string id "사용자 ID"
+        string username "사용자명"
+        string profileImage "프로필 이미지"
+    }
+
+    ConcertReviewConcert {
+        string id "콘서트 ID"
+        string title "콘서트 제목"
+        string posterImage "포스터 이미지"
+        string venue "공연장"
+        Date date "공연 날짜"
+    }
+
+    ConcertReviewLike {
+        ObjectId _id PK
+        ObjectId reviewId FK "리뷰 ID"
+        string userId FK "사용자 ID"
+        Date createdAt
+    }
+
+    Report {
+        ObjectId _id PK
+        ObjectId reporterId FK "신고자 ID"
+        string reportedEntityType "POST|COMMENT|REVIEW|USER"
+        ObjectId reportedEntityId FK "신고 대상 ID"
+        string reportType "SPAM|HARASSMENT|INAPPROPRIATE|OTHER"
+        string reason "신고 사유"
+        string status "pending|reviewed|resolved|dismissed"
+        Date createdAt
+        Date updatedAt
+    }
 ```
 
 ## 인덱스 정보
@@ -284,6 +339,7 @@ erDiagram
 - `username`: Unique Index
 - `email`: Unique Index
 - `status`: Index
+- `role`: Index
 - `{oauthProviders.provider, oauthProviders.socialId}`: Unique Sparse Index
 
 ### UserSession Collection
@@ -360,6 +416,27 @@ erDiagram
 - `{userId, status}`: Compound Index
 - `category`: Index
 - `priority`: Index
+
+### ConcertReview Collection (concert_reviews)
+- `{user.id, createdAt}`: Compound Index (Descending)
+- `{concert.id, createdAt}`: Compound Index (Descending)
+- `createdAt`: Descending Index
+- `likeCount`: Descending Index
+- `hashtags`: Index
+- `tags`: Index
+- `{isPublic, createdAt}`: Compound Index (Descending)
+- `{user.id, concert.id}`: Compound Index
+
+### ConcertReviewLike Collection (concert_review_likes)
+- `{reviewId, userId}`: Unique Compound Index
+- `{userId, createdAt}`: Compound Index (Descending)
+- `reviewId`: Index
+
+### Report Collection
+- `reporterId`: Index
+- `{reportedEntityType, reportedEntityId}`: Compound Index
+- `status`: Index
+- `{status, createdAt}`: Compound Index
 
 ## 관계 설명
 
@@ -451,6 +528,29 @@ erDiagram
 - `SupportInquiry.userId` → `User._id`
 - 관리자 답변은 `SupportInquiry.adminResponse`에 embedded document로 저장됩니다
 
+### User → ConcertReview (1:N)
+- 한 명의 사용자는 여러 개의 콘서트 리뷰를 작성할 수 있습니다
+- `ConcertReview.user.id` → `User._id`
+- 사용자 정보는 embedded document로 저장 (비정규화)
+
+### Concert → ConcertReview (1:N)
+- 한 개의 콘서트는 여러 개의 리뷰를 가질 수 있습니다
+- `ConcertReview.concert.id` → `Concert.uid`
+- 콘서트 정보는 embedded document로 저장 (비정규화)
+
+### User → ConcertReviewLike (1:N)
+- 한 명의 사용자는 여러 리뷰에 좋아요할 수 있습니다
+- `ConcertReviewLike.userId` → `User._id`
+
+### ConcertReview → ConcertReviewLike (1:N)
+- 한 개의 리뷰는 여러 좋아요를 받을 수 있습니다
+- `ConcertReviewLike.reviewId` → `ConcertReview._id`
+
+### User → Report (1:N)
+- 한 명의 사용자는 여러 개의 신고를 제출할 수 있습니다
+- `Report.reporterId` → `User._id`
+- 다형성 관계: `reportedEntityType`에 따라 `reportedEntityId`가 다른 컬렉션 참조
+
 ## 데이터베이스 연결 정보
 
 - **Primary Database**: `stagelives` (Users, UserSessions, Notifications, SupportInquiries)
@@ -501,7 +601,27 @@ erDiagram
 - 첨부파일 지원 (URL 목록)
 - 소프트 삭제 지원 (`isDeleted`, `deletedAt`)
 
+### 9. 콘서트 리뷰 시스템
+- `ConcertReview` 컬렉션으로 콘서트 후기 관리
+- 사용자/콘서트 정보 비정규화 (embedded document)
+- 이미지, 태그, 해시태그 지원
+- 좋아요 수 (`likeCount`) 및 신고 수 (`reportCount`) 추적
+- 공개/비공개 설정 (`isPublic`)
+- `ConcertReviewLike`로 좋아요 관계 관리
+
+### 10. 신고 시스템
+- `Report` 컬렉션으로 신고 관리
+- 다형성 관계로 여러 엔티티 타입 지원 (POST, COMMENT, REVIEW, USER)
+- 신고 유형 분류 (SPAM, HARASSMENT, INAPPROPRIATE, OTHER)
+- 상태 관리 (pending, reviewed, resolved, dismissed)
+
+### 11. 권한 관리
+- `User.role` 필드로 사용자 권한 레벨 관리
+- user: 일반 사용자
+- admin: 관리자 (콘텐츠 관리, 신고 처리)
+- superadmin: 슈퍼 관리자 (전체 시스템 관리)
+
 ---
 
-**Last Updated:** 2025-12-25
-**Version:** 1.2.0
+**Last Updated:** 2026-01-24
+**Version:** 1.3.0

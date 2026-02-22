@@ -1,5 +1,7 @@
 import express from 'express';
 import { UserService } from '../../services/auth/userService';
+import { DailyStatsService } from '../../services/stats/dailyStatsService';
+import { cacheManager } from '../../utils/cache/cacheManager';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
@@ -14,9 +16,11 @@ import {
 
 export class AdminController {
   private userService: UserService;
+  private dailyStatsService: DailyStatsService;
 
   constructor() {
     this.userService = new UserService();
+    this.dailyStatsService = new DailyStatsService();
   }
 
   getAllUsers = async (req: express.Request, res: express.Response) => {
@@ -291,6 +295,81 @@ export class AdminController {
       logger.error('사용자 역할 변경 에러:', error);
       throw new InternalServerError(
         '사용자 역할 변경 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
+    }
+  };
+
+  /**
+   * Get daily user statistics
+   * 일일 사용자 통계 조회 (관리자 전용)
+   */
+  getDailyStats = async (req: express.Request, res: express.Response) => {
+    try {
+      const dateParam = req.query.date as string | undefined;
+
+      // DailyStatsService를 통해 통계 조회
+      const result = await this.dailyStatsService.getDailyStatistics(dateParam);
+
+      return ResponseBuilder.success(res, '일일 통계 조회 성공', {
+        ...result,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.error('일일 통계 조회 에러:', error);
+      throw new InternalServerError(
+        '통계 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
+    }
+  };
+
+  /**
+   * Get cache metrics
+   * 캐시 메트릭 조회 (관리자 전용)
+   */
+  getCacheMetrics = (req: express.Request, res: express.Response) => {
+    try {
+      const detailed = req.query.detailed === 'true';
+
+      const metrics = detailed
+        ? cacheManager.getDetailedMetrics()
+        : cacheManager.getMetrics();
+
+      return ResponseBuilder.success(res, '캐시 메트릭 조회 성공', metrics);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.error('캐시 메트릭 조회 에러:', error);
+      throw new InternalServerError(
+        '캐시 메트릭 조회 실패',
+        ErrorCodes.SYS_INTERNAL_ERROR,
+      );
+    }
+  };
+
+  /**
+   * Reset cache metrics
+   * 캐시 메트릭 리셋 (관리자 전용)
+   */
+  resetCacheMetrics = (req: express.Request, res: express.Response) => {
+    try {
+      cacheManager.resetMetrics();
+
+      return ResponseBuilder.success(res, '캐시 메트릭이 리셋되었습니다', {
+        resetAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      logger.error('캐시 메트릭 리셋 에러:', error);
+      throw new InternalServerError(
+        '캐시 메트릭 리셋 실패',
         ErrorCodes.SYS_INTERNAL_ERROR,
       );
     }
