@@ -51,6 +51,25 @@ export const setupApolloServer = async (
   });
 
   await server.start();
+
+  // XS-Search (CSRF) mitigation: block Content-Type: message/* headers on GraphQL endpoint
+  // Workaround for GHSA-xxx apollo-server-core <= 3.13.0 (no patch available for v3)
+  app.use(
+    '/graphql',
+    (req: Request, res: Response, next: express.NextFunction) => {
+      for (let i = 0; i < req.rawHeaders.length - 1; i += 2) {
+        if (
+          req.rawHeaders[i].toLowerCase() === 'content-type' &&
+          req.rawHeaders[i + 1].includes('message/')
+        ) {
+          res.status(415).json({ error: 'Content-Type not allowed' });
+          return;
+        }
+      }
+      next();
+    },
+  );
+
   // Type assertion needed due to @types/express version mismatch in apollo-server-express
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (server.applyMiddleware as (config: { app: any; path: string }) => void)({
