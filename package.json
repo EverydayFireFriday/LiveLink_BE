@@ -150,10 +150,10 @@
     "openapi-to-postmanv2": "^6.0.0",
     "prettier": "^3.6.2",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.6",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.8.3"
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=18.0.0",
