@@ -68,11 +68,12 @@
   "author": "EverydayFireFriday Team",
   "license": "MIT",
   "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "@as-integrations/express4": "^1.1.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/swagger-ui-express": "^4.1.4",
-    "apollo-server-express": "^3.13.0",
     "apple-signin-auth": "^2.0.0",
     "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
@@ -105,13 +106,13 @@
     "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^13.0.0",
+    "uuid": "^12.0.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.4.0",
+    "@faker-js/faker": "^10.6.0",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/connect-redis": "^0.0.23",
@@ -130,7 +131,6 @@
     "@types/node": "^25.3.0",
     "@types/node-fetch": "^2.6.13",
     "@types/nodemailer": "^7.0.5",
-    "@types/openapi-to-postmanv2": "^5.0.0",
     "@types/passport-apple": "^2.0.3",
     "@types/sanitize-html": "^2.16.0",
     "@types/supertest": "^7.2.0",
@@ -147,7 +147,6 @@
     "js-yaml": "^4.1.1",
     "lint-staged": "^16.2.7",
     "nodemon": "^3.1.14",
-    "openapi-to-postmanv2": "^6.0.0",
     "prettier": "^3.6.2",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
@@ -161,6 +160,7 @@
   },
   "overrides": {
     "@apidevtools/swagger-parser": "12.0.0",
+    "@faker-js/faker": "^10.6.0",
     "esbuild": "^0.28.2",
     "fast-uri": "^3.1.0",
     "follow-redirects": "^1.15.11",
@@ -168,6 +168,7 @@
     "glob": "^10.5.0",
     "js-yaml": "^4.1.1",
     "lodash": ">=4.18.1",
-    "minimatch": ">=9.0.7"
+    "minimatch": ">=9.0.7",
+    "uuid": "^12.0.0"
   }
 }

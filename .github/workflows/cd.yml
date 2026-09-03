@@ -1,80 +1,80 @@
-name: CD - Build and Push Docker Image
-
-on:
-  push:
-    branches:
-      - main
-      - develop
-    tags:
-      - 'v*.*.*'
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
-jobs:
-  build-and-push:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-
-      - name: Generate deployment artifact
-        run: |
-          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}" > deployment-info.txt
-          echo "SHA: ${{ github.sha }}" >> deployment-info.txt
-          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-info.txt
-
-      - name: Upload deployment artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: deployment-info
-          path: deployment-info.txt
-
-      - name: Summary
-        run: |
-          echo ":white_check_mark: Docker image built and pushed successfully"
-          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "Tags: ${{ steps.meta.outputs.tags }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo ""
-          echo ":package: Deployment artifact uploaded. Manual deployment required."
+# name: CD - Build and Push Docker Image
+#
+# on:
+#   push:
+#     branches:
+#       - main
+#       - develop
+#     tags:
+#       - 'v*.*.*'
+#
+# env:
+#   REGISTRY: ghcr.io
+#   IMAGE_NAME: ${{ github.repository }}
+#
+# jobs:
+#   build-and-push:
+#     name: Build and Push Docker Image
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: read
+#       packages: write
+#
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v7
+#
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v4
+#
+#       - name: Log in to GitHub Container Registry
+#         uses: docker/login-action@v4
+#         with:
+#           registry: ${{ env.REGISTRY }}
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#
+#       - name: Extract metadata (tags, labels)
+#         id: meta
+#         uses: docker/metadata-action@v6
+#         with:
+#           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+#           tags: |
+#             type=ref,event=branch
+#             type=semver,pattern={{version}}
+#             type=semver,pattern={{major}}.{{minor}}
+#             type=sha,prefix={{branch}}-
+#             type=raw,value=latest,enable={{is_default_branch}}
+#
+#       - name: Build and push Docker image
+#         uses: docker/build-push-action@v7
+#         with:
+#           context: .
+#           push: true
+#           tags: ${{ steps.meta.outputs.tags }}
+#           labels: ${{ steps.meta.outputs.labels }}
+#           cache-from: type=gha
+#           cache-to: type=gha,mode=max
+#           platforms: linux/amd64
+#
+#       - name: Generate deployment artifact
+#         run: |
+#           echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}" > deployment-info.txt
+#           echo "SHA: ${{ github.sha }}" >> deployment-info.txt
+#           echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-info.txt
+#
+#       - name: Upload deployment artifact
+#         uses: actions/upload-artifact@v7
+#         with:
+#           name: deployment-info
+#           path: deployment-info.txt
+#
+#       - name: Summary
+#         run: |
+#           echo ":white_check_mark: Docker image built and pushed successfully"
+#           echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+#           echo "Tags: ${{ steps.meta.outputs.tags }}"
+#           echo "Branch: ${{ github.ref_name }}"
+#           echo "Commit: ${{ github.sha }}"
+#           echo ""
+#           echo ":package: Deployment artifact uploaded. Manual deployment required."
