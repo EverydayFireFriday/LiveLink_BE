@@ -1,24 +1,24 @@
-name: PR Agent
-
-on:
-  issue_comment:
-    types: [created, edited]
-
-permissions:
-  pull-requests: write
-  contents: read
-  issues: write
-
-jobs:
-  pr_agent_job:
-    if: ${{ github.event.sender.type != 'Bot' && contains(github.event.comment.body, '/review') }}
-    runs-on: ubuntu-latest
-    name: Run PR Agent
-
-    steps:
-      - name: PR Agent action
-        id: pragent
-        uses: Codium-ai/pr-agent@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          config.model: "github/gpt-4o"
+# name: PR Agent
+#
+# on:
+#   issue_comment:
+#     types: [created, edited]
+#
+# permissions:
+#   pull-requests: write
+#   contents: read
+#   issues: write
+#
+# jobs:
+#   pr_agent_job:
+#     if: ${{ github.event.sender.type != 'Bot' && contains(github.event.comment.body, '/review') }}
+#     runs-on: ubuntu-latest
+#     name: Run PR Agent
+#
+#     steps:
+#       - name: PR Agent action
+#         id: pragent
+#         uses: Codium-ai/pr-agent@main
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           config.model: "github/gpt-4o"
