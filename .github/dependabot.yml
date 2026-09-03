@@ -1,120 +1,122 @@
 version: 2
-updates:
-  # npm 의존성 업데이트 - 4주 주기 대규모 일괄 패치
-  - package-ecosystem: 'npm'
-    directory: '/'
-    schedule:
-      interval: 'monthly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Asia/Seoul'
-    target-branch: 'develop'
-    open-pull-requests-limit: 20
-    rebase-strategy: 'auto'
-    reviewers:
-      - 'sinbla78'
-    assignees:
-      - 'sinbla78'
-    labels:
-      - 'dependencies'
-      - 'npm'
-    commit-message:
-      prefix: 'chore'
-      prefix-development: 'chore'
-      include: 'scope'
-    versioning-strategy: 'increase'
-    allow:
-      - dependency-type: 'all'
-    groups:
-      # 프로덕션 의존성 - patch/minor 일괄
-      production-patch-minor:
-        dependency-type: 'production'
-        update-types:
-          - 'patch'
-          - 'minor'
-      # 개발 의존성 - patch/minor 일괄
-      development-patch-minor:
-        dependency-type: 'development'
-        update-types:
-          - 'patch'
-          - 'minor'
-      # TypeScript 관련 도구 - major 포함 묶음
-      typescript-tools:
-        patterns:
-          - 'typescript'
-          - 'ts-node'
-          - 'tsx'
-          - 'ts-jest'
-          - '@typescript-eslint/*'
-      # ESLint 생태계 묶음
-      eslint:
-        patterns:
-          - 'eslint'
-          - 'eslint-*'
-      # Jest/테스트 도구 묶음
-      testing:
-        patterns:
-          - 'jest'
-          - '@jest/*'
-          - '@types/jest'
-          - 'supertest'
-          - '@types/supertest'
-          - '@faker-js/faker'
-      # @types/* 패키지 일괄
-      type-definitions:
-        patterns:
-          - '@types/*'
+updates: []
 
-  # Docker 이미지 업데이트
-  - package-ecosystem: 'docker'
-    directory: '/'
-    schedule:
-      interval: 'monthly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Asia/Seoul'
-    open-pull-requests-limit: 5
-    rebase-strategy: 'auto'
-    reviewers:
-      - 'sinbla78'
-    assignees:
-      - 'sinbla78'
-    labels:
-      - 'dependencies'
-      - 'docker'
-    commit-message:
-      prefix: 'chore'
-    groups:
-      docker-all:
-        patterns:
-          - '*'
-        update-types:
-          - 'patch'
-          - 'minor'
+# updates:
+#   # npm 의존성 업데이트 - 4주 주기 대규모 일괄 패치
+#   - package-ecosystem: 'npm'
+#     directory: '/'
+#     schedule:
+#       interval: 'monthly'
+#       day: 'monday'
+#       time: '09:00'
+#       timezone: 'Asia/Seoul'
+#     target-branch: 'develop'
+#     open-pull-requests-limit: 20
+#     rebase-strategy: 'auto'
+#     reviewers:
+#       - 'sinbla78'
+#     assignees:
+#       - 'sinbla78'
+#     labels:
+#       - 'dependencies'
+#       - 'npm'
+#     commit-message:
+#       prefix: 'chore'
+#       prefix-development: 'chore'
+#       include: 'scope'
+#     versioning-strategy: 'increase'
+#     allow:
+#       - dependency-type: 'all'
+#     groups:
+#       # 프로덕션 의존성 - patch/minor 일괄
+#       production-patch-minor:
+#         dependency-type: 'production'
+#         update-types:
+#           - 'patch'
+#           - 'minor'
+#       # 개발 의존성 - patch/minor 일괄
+#       development-patch-minor:
+#         dependency-type: 'development'
+#         update-types:
+#           - 'patch'
+#           - 'minor'
+#       # TypeScript 관련 도구 - major 포함 묶음
+#       typescript-tools:
+#         patterns:
+#           - 'typescript'
+#           - 'ts-node'
+#           - 'tsx'
+#           - 'ts-jest'
+#           - '@typescript-eslint/*'
+#       # ESLint 생태계 묶음
+#       eslint:
+#         patterns:
+#           - 'eslint'
+#           - 'eslint-*'
+#       # Jest/테스트 도구 묶음
+#       testing:
+#         patterns:
+#           - 'jest'
+#           - '@jest/*'
+#           - '@types/jest'
+#           - 'supertest'
+#           - '@types/supertest'
+#           - '@faker-js/faker'
+#       # @types/* 패키지 일괄
+#       type-definitions:
+#         patterns:
+#           - '@types/*'
 
-  # GitHub Actions 워크플로우 업데이트
-  - package-ecosystem: 'github-actions'
-    directory: '/'
-    schedule:
-      interval: 'monthly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Asia/Seoul'
-    open-pull-requests-limit: 5
-    rebase-strategy: 'auto'
-    reviewers:
-      - 'sinbla78'
-    assignees:
-      - 'sinbla78'
-    labels:
-      - 'dependencies'
-      - 'github-actions'
-    commit-message:
-      prefix: 'chore'
-    groups:
-      github-actions-all:
-        patterns:
-          - '*'
-        update-types:
-          - 'patch'
-          - 'minor'
+#   # Docker 이미지 업데이트
+#   - package-ecosystem: 'docker'
+#     directory: '/'
+#     schedule:
+#       interval: 'monthly'
+#       day: 'monday'
+#       time: '09:00'
+#       timezone: 'Asia/Seoul'
+#     open-pull-requests-limit: 5
+#     rebase-strategy: 'auto'
+#     reviewers:
+#       - 'sinbla78'
+#     assignees:
+#       - 'sinbla78'
+#     labels:
+#       - 'dependencies'
+#       - 'docker'
+#     commit-message:
+#       prefix: 'chore'
+#     groups:
+#       docker-all:
+#         patterns:
+#           - '*'
+#         update-types:
+#           - 'patch'
+#           - 'minor'
+
+#   # GitHub Actions 워크플로우 업데이트
+#   - package-ecosystem: 'github-actions'
+#     directory: '/'
+#     schedule:
+#       interval: 'monthly'
+#       day: 'monday'
+#       time: '09:00'
+#       timezone: 'Asia/Seoul'
+#     open-pull-requests-limit: 5
+#     rebase-strategy: 'auto'
+#     reviewers:
+#       - 'sinbla78'
+#     assignees:
+#       - 'sinbla78'
+#     labels:
+#       - 'dependencies'
+#       - 'github-actions'
+#     commit-message:
+#       prefix: 'chore'
+#     groups:
+#       github-actions-all:
+#         patterns:
+#           - '*'
+#         update-types:
+#           - 'patch'
+#           - 'minor'
