@@ -2,6 +2,7 @@ import express from 'express';
 import { getArticleLikeService } from '../../services/article';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
+import { toIdStrings } from '../../utils/id/idUtils';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { ErrorCodes } from '../../utils/errors/errorCodes';
 import {
@@ -45,10 +46,8 @@ export class ArticleLikeController {
       if (updatedUser && req.session.user) {
         req.session.user = {
           ...req.session.user,
-          likedArticles: (updatedUser.likedArticles || []).map((articleId) =>
-            articleId.toString(),
-          ),
-        } as typeof req.session.user;
+          likedArticles: toIdStrings(updatedUser.likedArticles),
+        };
       }
 
       return ResponseBuilder.success(

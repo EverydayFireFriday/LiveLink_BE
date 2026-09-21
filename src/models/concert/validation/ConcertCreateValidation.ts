@@ -259,10 +259,12 @@ export const normalizeConcertData = (rawData: any): any => {
       : [],
     ticketLink: Array.isArray(rawData.ticketLink) ? rawData.ticketLink : [],
     ticketOpenDate: Array.isArray(rawData.ticketOpenDate)
-      ? rawData.ticketOpenDate.map((item: any) => ({
-          openTitle: item.openTitle,
-          openDate: new Date(item.openDate),
-        }))
+      ? rawData.ticketOpenDate.map(
+          (item: { openTitle: string; openDate: string | number | Date }) => ({
+            openTitle: item.openTitle,
+            openDate: new Date(item.openDate),
+          }),
+        )
       : undefined,
     posterImage: rawData.posterImage?.trim() || '',
     infoImages: Array.isArray(rawData.infoImages)

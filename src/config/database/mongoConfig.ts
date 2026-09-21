@@ -106,7 +106,10 @@ export const getMongoClientOptions = (
   );
   logger.info(`  🔒 TLS Enabled: ${options.tls}`);
   logger.info(`  ✍️  Write Concern: ${JSON.stringify(options.writeConcern)}`);
-  logger.info(`  📖 Read Preference: ${String(options.readPreference)}`);
+  const readPreference = options.readPreference;
+  logger.info(
+    `  📖 Read Preference: ${typeof readPreference === 'string' ? readPreference : (readPreference?.mode ?? 'unknown')}`,
+  );
 
   return options;
 };

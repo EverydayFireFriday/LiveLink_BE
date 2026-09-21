@@ -13,7 +13,7 @@ describe('numberUtils', () => {
       expect(safeParseInt('', 5)).toBe(5);
       expect(safeParseInt(null, 20)).toBe(20);
       expect(safeParseInt(undefined, 30)).toBe(30);
-      expect(safeParseInt({} as any, 40)).toBe(40);
+      expect(safeParseInt({}, 40)).toBe(40);
     });
 
     it('should return default value for NaN results', () => {

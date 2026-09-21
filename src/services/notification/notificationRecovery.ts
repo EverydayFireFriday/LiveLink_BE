@@ -2,7 +2,6 @@ import { Db } from 'mongodb';
 import { getScheduledNotificationModel } from '../../models/notification/index.js';
 import { notificationQueue } from '../../config/queue/notificationQueue.js';
 import logger from '../../utils/logger/logger.js';
-import type { NotificationJobData } from './notificationWorker.js';
 
 /**
  * Notification Recovery Service
@@ -60,7 +59,7 @@ export class NotificationRecoveryService {
               // Recreate the job
               await notificationQueue.add(
                 'send-notification',
-                { notificationId } as NotificationJobData,
+                { notificationId },
                 {
                   delay,
                   jobId: notificationId,
@@ -76,7 +75,7 @@ export class NotificationRecoveryService {
               // Add immediately
               await notificationQueue.add(
                 'send-notification',
-                { notificationId } as NotificationJobData,
+                { notificationId },
                 {
                   jobId: notificationId,
                 },
@@ -161,7 +160,7 @@ export class NotificationRecoveryService {
               // Not too old - try to send immediately
               await notificationQueue.add(
                 'send-notification',
-                { notificationId } as NotificationJobData,
+                { notificationId },
                 {
                   jobId: notificationId,
                 },

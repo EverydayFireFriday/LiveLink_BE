@@ -78,7 +78,7 @@ export class SupportNotificationService {
       // Save notification history
       await notificationHistoryModel.create({
         userId: inquiry.userId,
-        type: 'support_response' as any,
+        type: 'support_response',
         title,
         message: body,
         data,

@@ -3,7 +3,6 @@ import { getFirebaseApp } from '../../config/firebase/firebaseConfig';
 import logger from '../../utils/logger/logger';
 import { UserModel } from '../../models/auth/user.js';
 import { getDB } from '../../utils/database/db.js';
-import { ObjectId } from 'mongodb';
 import {
   getNotificationHistoryModel,
   ConcertUpdateNotificationType,

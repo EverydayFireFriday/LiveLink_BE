@@ -2,6 +2,7 @@ import express from 'express';
 import { ConcertLikeService } from '../../services/concert/concertLikeService';
 import { safeParseInt } from '../../utils/number/numberUtils';
 import logger from '../../utils/logger/logger';
+import { toIdStrings } from '../../utils/id/idUtils';
 import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { ErrorCodes } from '../../utils/errors/errorCodes';
 import {
@@ -76,10 +77,8 @@ export const addLike = async (req: express.Request, res: express.Response) => {
       if (updatedUser && req.session.user) {
         req.session.user = {
           ...req.session.user,
-          likedConcerts: (updatedUser.likedConcerts || []).map((concertId) =>
-            concertId.toString(),
-          ),
-        } as typeof req.session.user;
+          likedConcerts: toIdStrings(updatedUser.likedConcerts),
+        };
       }
 
       return ResponseBuilder.created(res, '좋아요 추가 성공', {
@@ -140,10 +139,8 @@ export const removeLike = async (
       if (updatedUser && req.session.user) {
         req.session.user = {
           ...req.session.user,
-          likedConcerts: (updatedUser.likedConcerts || []).map((concertId) =>
-            concertId.toString(),
-          ),
-        } as typeof req.session.user;
+          likedConcerts: toIdStrings(updatedUser.likedConcerts),
+        };
       }
 
       return ResponseBuilder.success(res, '좋아요 삭제 성공', {
