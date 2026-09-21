@@ -400,7 +400,7 @@ export class UserModel {
 
     const result = await this.userCollection.findOneAndUpdate(
       { _id: objectId },
-      updateQuery as Parameters<typeof this.userCollection.findOneAndUpdate>[1],
+      updateQuery,
       { returnDocument: 'after' },
     );
 

@@ -170,7 +170,7 @@ export class ArticleCommentService {
         }
       });
     };
-    collectCommentIds(comments as CommentWithReplies[]);
+    collectCommentIds(comments);
 
     // 배치로 좋아요 상태와 좋아요 수 조회
     const [likeStatusMap, likeCountMap] = await Promise.all([

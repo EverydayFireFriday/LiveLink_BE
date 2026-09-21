@@ -41,7 +41,10 @@ export class ArticleController {
 
       if (error instanceof Error) {
         if (error.message.includes('유효성 검사')) {
-          throw new BadRequestError(error.message, ErrorCodes.VAL_INVALID_INPUT);
+          throw new BadRequestError(
+            error.message,
+            ErrorCodes.VAL_INVALID_INPUT,
+          );
         } else if (error.message.includes('존재하지 않는')) {
           throw new NotFoundError(error.message, ErrorCodes.ARTICLE_NOT_FOUND);
         }
@@ -75,7 +78,10 @@ export class ArticleController {
 
       logger.error('게시글 조회 에러:', error);
 
-      if (error instanceof Error && error.message.includes('찾을 수 없습니다')) {
+      if (
+        error instanceof Error &&
+        error.message.includes('찾을 수 없습니다')
+      ) {
         throw new NotFoundError(error.message, ErrorCodes.ARTICLE_NOT_FOUND);
       }
       throw new InternalServerError(
@@ -154,7 +160,10 @@ export class ArticleController {
 
       if (error instanceof Error) {
         if (error.message.includes('유효성 검사')) {
-          throw new BadRequestError(error.message, ErrorCodes.VAL_INVALID_INPUT);
+          throw new BadRequestError(
+            error.message,
+            ErrorCodes.VAL_INVALID_INPUT,
+          );
         } else if (error.message.includes('찾을 수 없습니다')) {
           throw new NotFoundError(error.message, ErrorCodes.ARTICLE_NOT_FOUND);
         }
@@ -190,7 +199,10 @@ export class ArticleController {
 
       logger.error('게시글 삭제 에러:', error);
 
-      if (error instanceof Error && error.message.includes('찾을 수 없습니다')) {
+      if (
+        error instanceof Error &&
+        error.message.includes('찾을 수 없습니다')
+      ) {
         throw new NotFoundError(error.message, ErrorCodes.ARTICLE_NOT_FOUND);
       }
       throw new InternalServerError(

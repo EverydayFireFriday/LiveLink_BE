@@ -110,7 +110,7 @@ export class TestService {
         if (existingById) {
           mongoId = new ObjectId();
         }
-      } catch (error) {
+      } catch {
         mongoId = new ObjectId();
       }
 

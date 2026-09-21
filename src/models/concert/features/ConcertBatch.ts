@@ -81,11 +81,7 @@ export class ConcertBatch {
       return {
         ...concert,
         _id: new ObjectId(),
-        status: (concert.status || 'upcoming') as
-          | 'upcoming'
-          | 'ongoing'
-          | 'completed'
-          | 'cancelled',
+        status: concert.status || 'upcoming',
         likes: concert.likes || [],
         likesCount: concert.likesCount || 0,
         createdAt: concert.createdAt || now,
@@ -146,7 +142,11 @@ export class ConcertBatch {
       userId: string;
       action: 'add' | 'remove';
     }>,
-  ): Promise<{ success: number; failed: number; errors: IBatchOperationError[] }> {
+  ): Promise<{
+    success: number;
+    failed: number;
+    errors: IBatchOperationError[];
+  }> {
     if (!operations || operations.length === 0)
       return { success: 0, failed: 0, errors: [] };
 

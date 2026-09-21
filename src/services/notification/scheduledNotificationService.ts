@@ -6,7 +6,6 @@ import {
 import logger from '../../utils/logger/logger.js';
 import { getDB } from '../../utils/database/db.js';
 import { notificationQueue } from '../../config/queue/notificationQueue.js';
-import type { NotificationJobData } from './notificationWorker.js';
 
 /**
  * Create Scheduled Notification Request
@@ -148,7 +147,7 @@ export class ScheduledNotificationService {
           'send-notification',
           {
             notificationId: notification._id!.toString(),
-          } as NotificationJobData,
+          },
           {
             delay,
             jobId: notification._id!.toString(), // Use notification ID as job ID to prevent duplicates
@@ -163,7 +162,7 @@ export class ScheduledNotificationService {
           'send-notification',
           {
             notificationId: notification._id!.toString(),
-          } as NotificationJobData,
+          },
           {
             jobId: notification._id!.toString(),
           },
@@ -516,7 +515,7 @@ export class ScheduledNotificationService {
           name: 'send-notification',
           data: {
             notificationId: notification._id!.toString(),
-          } as NotificationJobData,
+          },
           opts: {
             delay: delay > 0 ? delay : 0,
             jobId: notification._id!.toString(),

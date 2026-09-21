@@ -6,7 +6,7 @@ import { redisClient } from '../../config/redis/redisClient';
 
 // connect-redis v7.1.1 방식 (named export)
 export const sessionMiddleware = (app: express.Application) => {
-  const store = new (RedisStore as any)({ client: redisClient }) as Store;
+  const store: Store = new RedisStore({ client: redisClient });
 
   app.use(
     session({

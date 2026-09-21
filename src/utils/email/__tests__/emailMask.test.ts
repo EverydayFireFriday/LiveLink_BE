@@ -46,8 +46,8 @@ describe('emailMask', () => {
     });
 
     it('should handle null/undefined gracefully', () => {
-      expect(maskEmail(null as any)).toBe('***');
-      expect(maskEmail(undefined as any)).toBe('***');
+      expect(maskEmail(null as unknown as string)).toBe('***');
+      expect(maskEmail(undefined as unknown as string)).toBe('***');
     });
   });
 
