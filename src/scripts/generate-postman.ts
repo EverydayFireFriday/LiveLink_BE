@@ -1,45 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
-import * as fs from 'fs';
-import * as path from 'path';
-import { swaggerSpec } from '../config/swagger';
-import logger from '../utils/logger/logger';
-import * as Converter from 'openapi-to-postmanv2';
+// openapi-to-postmanv2 패키지가 제거되어 이 스크립트는 비활성화 상태입니다.
+// Postman 컬렉션 생성이 필요한 경우 별도 도구를 사용하거나
+// API 문서(/api-docs)에서 직접 Export하세요.
 
-const outputDir = path.join(__dirname, '../../docs');
-const outputPath = path.join(outputDir, 'postman-collection.json');
-
-// Create docs directory if it doesn't exist
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
-}
-
-// Convert Swagger to Postman Collection
-const options = {
-  requestNameSource: 'URL' as const,
-  indentCharacter: 'Space' as const,
-  collapseFolders: true,
-  includeAuthInfoInExample: false, // Session-based auth uses cookies
-};
-
-Converter.convert(
-  { type: 'json', data: JSON.stringify(swaggerSpec) },
-  options,
-  (err: unknown, conversionResult: any) => {
-    if (err) {
-      logger.error('❌ Error converting to Postman:', err);
-      process.exit(1);
-    }
-
-    if (!conversionResult.result) {
-      logger.error('❌ Conversion failed:', conversionResult.reason);
-      process.exit(1);
-    }
-
-    // Save Postman collection
-    const collection = conversionResult.output[0].data;
-    fs.writeFileSync(outputPath, JSON.stringify(collection, null, 2));
-
-    logger.info('✅ Postman collection generated successfully!');
-    logger.info(`📄 File: ${outputPath}`);
-  },
-);
+console.error('❌ generate-postman 스크립트가 비활성화되었습니다.');
+console.error('📄 /api-docs 에서 Swagger UI를 통해 직접 Export하거나,');
+console.error('   다른 OpenAPI → Postman 변환 도구를 사용하세요.');
+process.exit(1);
