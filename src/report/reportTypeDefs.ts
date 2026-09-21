@@ -1,6 +1,6 @@
 // src/report/reportTypeDefs.ts
 
-import { gql } from 'apollo-server-express';
+import gql from 'graphql-tag';
 
 export const reportTypeDefs = gql`
   scalar ObjectId
