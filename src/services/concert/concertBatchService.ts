@@ -214,7 +214,7 @@ export class ConcertBatchService {
                 ? concertData.datetime.map(
                     (dt: unknown) => new Date(dt as string),
                   )
-                : [new Date(concertData.datetime as string)]
+                : [new Date(concertData.datetime)]
               : [],
             price: Array.isArray(concertData.price)
               ? concertData.price

@@ -6,11 +6,7 @@ import { ResponseBuilder } from '../../utils/response/apiResponse';
 import { ErrorCodes } from '../../utils/errors/errorCodes';
 import {
   AppError,
-  UnauthorizedError,
-  NotFoundError,
   BadRequestError,
-  ConflictError,
-  ForbiddenError,
   InternalServerError,
 } from '../../utils/errors/customErrors';
 

@@ -9,7 +9,12 @@ import { ConcertStats } from '../concert/features/ConcertStats';
 import { ConcertAutomation } from '../concert/features/ConcertAutomation';
 
 // Mixin helper
-function applyMixins(derivedCtor: any, constructors: any[]) {
+type MixinConstructor = { prototype: object };
+
+function applyMixins(
+  derivedCtor: MixinConstructor,
+  constructors: MixinConstructor[],
+) {
   constructors.forEach((baseCtor) => {
     Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
       if (name !== 'constructor') {

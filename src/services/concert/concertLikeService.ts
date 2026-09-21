@@ -53,7 +53,7 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
         });
 
     case 'upcoming_soon':
-    default:
+    default: {
       // 날짜순 (미래 공연 임박순 -> 과거 공연 최신순)
       const futureConcerts = sorted.filter((c) => {
         const date = c.datetime?.[0] ? new Date(c.datetime[0]).getTime() : 0;
@@ -84,6 +84,7 @@ function sortConcerts(concerts: IConcert[], sortBy?: string): IConcert[] {
       });
 
       return [...futureConcerts, ...pastConcerts];
+    }
   }
 }
 
@@ -401,7 +402,7 @@ export class ConcertLikeService {
         .toArray();
 
       // 정렬 적용
-      const sortedConcerts = sortConcerts(allConcerts as IConcert[], sortBy);
+      const sortedConcerts = sortConcerts(allConcerts, sortBy);
 
       const total = sortedConcerts.length;
       const totalPages = Math.ceil(total / limit);
@@ -531,7 +532,7 @@ export class ConcertLikeService {
         .toArray();
 
       // 정렬 적용
-      const sortedConcerts = sortConcerts(allConcerts as IConcert[], sortBy);
+      const sortedConcerts = sortConcerts(allConcerts, sortBy);
 
       const total = sortedConcerts.length;
       const totalPages = Math.ceil(total / limit);
