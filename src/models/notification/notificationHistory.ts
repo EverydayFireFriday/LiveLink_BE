@@ -34,6 +34,12 @@ export enum ConcertUpdateNotificationType {
 }
 
 /**
+ * Support Notification Type
+ * 고객 문의 답변 알림 타입
+ */
+export type SupportNotificationType = 'support_response';
+
+/**
  * Combined Notification Type
  * 통합 알림 타입
  */
@@ -41,7 +47,8 @@ export type NotificationType =
   | TicketNotificationType
   | ConcertStartNotificationType
   | ScheduledNotificationType
-  | ConcertUpdateNotificationType;
+  | ConcertUpdateNotificationType
+  | SupportNotificationType;
 
 /**
  * Notification History Interface

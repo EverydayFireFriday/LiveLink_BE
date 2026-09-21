@@ -23,7 +23,10 @@ export const createScheduledNotification = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
@@ -97,7 +100,10 @@ export const getUserScheduledNotifications = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
@@ -152,7 +158,10 @@ export const getScheduledNotificationById = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
@@ -214,7 +223,10 @@ export const cancelScheduledNotification = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
@@ -288,7 +300,10 @@ export const getNotificationStats = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
@@ -326,7 +341,10 @@ export const bulkCreateScheduledNotifications = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
@@ -400,7 +418,10 @@ export const bulkCancelScheduledNotifications = async (
   const userId = req.session?.user?.userId;
 
   if (!userId) {
-    throw new UnauthorizedError('인증이 필요합니다', ErrorCodes.AUTH_UNAUTHORIZED);
+    throw new UnauthorizedError(
+      '인증이 필요합니다',
+      ErrorCodes.AUTH_UNAUTHORIZED,
+    );
   }
 
   try {
