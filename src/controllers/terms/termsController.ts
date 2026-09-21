@@ -30,7 +30,10 @@ export const getAllPolicies = (req: Request, res: Response) => {
       throw error;
     }
     logger.error('약관 조회 에러:', error);
-    throw new InternalServerError('약관 조회 실패', ErrorCodes.SYS_INTERNAL_ERROR);
+    throw new InternalServerError(
+      '약관 조회 실패',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 };
 
@@ -61,7 +64,10 @@ export const getPolicyByType = (req: Request, res: Response) => {
       throw error;
     }
     logger.error('약관 조회 에러:', error);
-    throw new InternalServerError('약관 조회 실패', ErrorCodes.SYS_INTERNAL_ERROR);
+    throw new InternalServerError(
+      '약관 조회 실패',
+      ErrorCodes.SYS_INTERNAL_ERROR,
+    );
   }
 };
 

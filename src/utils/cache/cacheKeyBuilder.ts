@@ -51,7 +51,10 @@ export class CacheKeyBuilder {
     return this.buildKey(`${CachePrefix.ARTICLE}:list`, params);
   }
 
-  static articleDetail(articleId: string, params?: { userId?: string }): string {
+  static articleDetail(
+    articleId: string,
+    params?: { userId?: string },
+  ): string {
     return this.buildKey(`${CachePrefix.ARTICLE}:${articleId}`, params);
   }
 
@@ -104,7 +107,10 @@ export class CacheKeyBuilder {
     return this.buildKey(`${CachePrefix.CONCERT}:list`, params);
   }
 
-  static concertDetail(concertId: string, params?: { userId?: string }): string {
+  static concertDetail(
+    concertId: string,
+    params?: { userId?: string },
+  ): string {
     return this.buildKey(`${CachePrefix.CONCERT}:${concertId}`, params);
   }
 
@@ -222,7 +228,10 @@ export class CacheKeyBuilder {
 
   // ========== 알림 관련 캐시 키 ==========
 
-  static notifications(userId: string, params?: { unreadOnly?: boolean }): string {
+  static notifications(
+    userId: string,
+    params?: { unreadOnly?: boolean },
+  ): string {
     return this.buildKey(`${CachePrefix.NOTIFICATION}:${userId}`, params);
   }
 
