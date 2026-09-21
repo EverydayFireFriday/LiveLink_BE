@@ -9,6 +9,13 @@ import { UserModel, User } from '../../models/auth/user';
 import { OAuthService } from '../../services/auth/oauthService';
 import logger from '../../utils/logger/logger';
 
+// passport-apple의 VerifyCallback은 네임스페이스로 export되지 않아 로컬에 정의
+type AppleVerifyCallback = (
+  err?: Error | null,
+  user?: object,
+  info?: object,
+) => void;
+
 // OAuth 프로필 타입 정의
 interface GoogleProfileExtended extends GoogleProfile {
   emails?: Array<{ value: string; verified: boolean }>;
@@ -84,7 +91,7 @@ export const configurePassport = (passport: PassportStatic) => {
               return done(null, user);
             } catch (error) {
               logger.error('Error in Google OAuth strategy:', error);
-              return done(error as Error);
+              return done(error);
             }
           })();
         },
@@ -109,7 +116,6 @@ export const configurePassport = (passport: PassportStatic) => {
     process.env.APPLE_PRIVATE_KEY
   ) {
     passport.use(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       new AppleStrategy(
         {
           clientID: process.env.APPLE_CLIENT_ID,
@@ -125,8 +131,8 @@ export const configurePassport = (passport: PassportStatic) => {
           accessToken: string,
           refreshToken: string,
           idToken: string,
-          profile: any,
-          done: any,
+          profile: unknown,
+          done: AppleVerifyCallback,
         ) => {
           void (async () => {
             try {
