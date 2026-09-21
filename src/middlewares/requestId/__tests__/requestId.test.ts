@@ -9,9 +9,10 @@ const mockedUuid = uuidv4 as unknown as jest.Mock;
 
 const createMocks = (headers: Record<string, string> = {}) => {
   const req = { headers } as unknown as Request;
-  const res = { setHeader: jest.fn() } as unknown as Response;
+  const setHeader = jest.fn();
+  const res = { setHeader } as unknown as Response;
   const next = jest.fn() as NextFunction;
-  return { req, res, next };
+  return { req, res, next, setHeader };
 };
 
 describe('requestIdMiddleware', () => {
@@ -21,15 +22,12 @@ describe('requestIdMiddleware', () => {
   });
 
   it('should generate an id when no X-Request-ID header is given', () => {
-    const { req, res, next } = createMocks();
+    const { req, res, next, setHeader } = createMocks();
 
     requestIdMiddleware(req, res, next);
 
     expect(req.id).toBe('generated-uuid');
-    expect(res.setHeader).toHaveBeenCalledWith(
-      'X-Request-ID',
-      'generated-uuid',
-    );
+    expect(setHeader).toHaveBeenCalledWith('X-Request-ID', 'generated-uuid');
   });
 
   it('should reuse the X-Request-ID header sent by the client', () => {
@@ -42,11 +40,13 @@ describe('requestIdMiddleware', () => {
   });
 
   it('should set the X-Request-ID response header', () => {
-    const { req, res, next } = createMocks({ 'x-request-id': 'abc' });
+    const { req, res, next, setHeader } = createMocks({
+      'x-request-id': 'abc',
+    });
 
     requestIdMiddleware(req, res, next);
 
-    expect(res.setHeader).toHaveBeenCalledWith('X-Request-ID', 'abc');
+    expect(setHeader).toHaveBeenCalledWith('X-Request-ID', 'abc');
   });
 
   it('should call next exactly once', () => {
