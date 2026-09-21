@@ -112,10 +112,7 @@ export class ArticleCommentController {
 
       if (error instanceof Error) {
         if (error.message.includes('찾을 수 없습니다')) {
-          throw new NotFoundError(
-            error.message,
-            ErrorCodes.ARTICLE_NOT_FOUND,
-          );
+          throw new NotFoundError(error.message, ErrorCodes.ARTICLE_NOT_FOUND);
         }
       }
 

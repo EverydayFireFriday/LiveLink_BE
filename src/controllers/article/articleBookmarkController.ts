@@ -9,7 +9,6 @@ import {
   UnauthorizedError,
   NotFoundError,
   BadRequestError,
-  ForbiddenError,
   InternalServerError,
 } from '../../utils/errors/customErrors';
 
@@ -51,10 +50,7 @@ export class ArticleBookmarkController {
             ErrorCodes.ARTICLE_BOOKMARK_ALREADY_EXISTS,
           );
         } else if (error.message.includes('찾을 수 없습니다')) {
-          throw new NotFoundError(
-            error.message,
-            ErrorCodes.ARTICLE_NOT_FOUND,
-          );
+          throw new NotFoundError(error.message, ErrorCodes.ARTICLE_NOT_FOUND);
         } else if (error.message.includes('유효성 검사')) {
           throw new BadRequestError(
             error.message,
